@@ -1,0 +1,47 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { Dashboard } from './Dashboard';
+import { useApp, setRepository } from '@/state/store';
+import { createLocalRepository } from '@/persistence/storage';
+
+describe('tableau de bord et création de dossier', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    setRepository(createLocalRepository(localStorage));
+    useApp.getState().resetDemo();
+  });
+
+  it('liste les dossiers de démonstration avec montants estimés', () => {
+    render(<Dashboard />);
+    const row = screen.getByTestId('dossier-row-MOV-DEMO-0001');
+    expect(within(row).getByText('1 893 €')).toBeInTheDocument();
+    expect(within(row).getByText('55,90 €/mois')).toBeInTheDocument();
+  });
+
+  it('recherche par référence', async () => {
+    render(<Dashboard />);
+    await userEvent.type(screen.getByLabelText('Rechercher par référence'), '0002');
+    expect(screen.queryByTestId('dossier-row-MOV-DEMO-0001')).not.toBeInTheDocument();
+    expect(screen.getByTestId('dossier-row-MOV-DEMO-0002')).toBeInTheDocument();
+  });
+
+  it('crée un dossier depuis le formulaire et refuse un formulaire incomplet', async () => {
+    render(<Dashboard />);
+    await userEvent.click(screen.getByRole('button', { name: /Nouvel audit/ }));
+    const dialog = screen.getByRole('dialog');
+    await userEvent.click(within(dialog).getByRole('button', { name: /Créer et dessiner/ }));
+    expect(within(dialog).getByRole('alert')).toHaveTextContent(/client est obligatoire/);
+    await userEvent.type(dialog.querySelector('input[name="clientName"]')!, 'Client test 042');
+    await userEvent.type(dialog.querySelector('input[name="address"]')!, '3 allée Fictive');
+    await userEvent.type(dialog.querySelector('input[name="surface"]')!, '95');
+    await userEvent.click(within(dialog).getByRole('button', { name: /Créer et dessiner/ }));
+    const s = useApp.getState();
+    const created = s.dossiers.find((d) => d.info.clientName === 'Client test 042')!;
+    expect(created).toBeDefined();
+    expect(created.info.surface).toBe(95);
+    expect(s.view).toBe('workspace');
+    expect(s.tab).toBe('plan');
+    expect(s.activeDossierId).toBe(created.id);
+  });
+});

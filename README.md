@@ -1,2 +1,179 @@
-# SA-IA
-Assistante IA
+# Audit Movers – prototype d'audit de sécurité 2D/3D et de génération de devis
+
+Prototype de démonstration réalisé dans le cadre d'une **proposition d'amélioration du service Movers** :
+lors d'un déménagement, le conseiller prépare dans une seule interface le dossier, le plan du nouveau
+logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le devis PDF.
+
+> ⚠️ **Prototype non officiel.** Ce n'est ni un outil validé par Sector Alarm, ni une certification de
+> sécurité. Les tarifs, compositions de packs et règles d'audit sont des **données de démonstration /
+> hypothèses de configuration** à valider par les responsables métier. Toutes les données préchargées
+> sont fictives. Aucune intégration à un système interne n'existe.
+
+---
+
+## 1. Démarrage rapide
+
+Prérequis : **Node.js 20 ou plus récent** (testé avec Node 22) et un navigateur récent (Chrome, Edge, Firefox) avec WebGL.
+
+```bash
+npm install          # installe les dépendances (.npmrc : legacy-peer-deps)
+npm run dev          # lance l'application sur http://localhost:5173
+```
+
+Autres commandes :
+
+| Commande | Rôle |
+|---|---|
+| `npm run build` | vérification TypeScript + build de production dans `dist/` |
+| `npm run preview` | sert le build de production (http://localhost:4173) |
+| `npm test` | tests unitaires et de composants (Vitest, 73 tests) |
+| `npm run test:e2e` | tests de bout en bout dans Chromium (Playwright, 3 parcours) – nécessite `npx playwright install chromium` la première fois |
+| `npm run typecheck` | vérification des types |
+| `node scripts/generate-demo-assets.mjs` | régénère les fichiers de démonstration de `demo-assets/` |
+
+Au premier lancement, l'application contient :
+- un dossier **MOV-DEMO-0001** (maison fictive à deux niveaux : entrée, séjour, cuisine ouverte, trois chambres, couloirs, garage, cellier, 13 ouvertures extérieures) déjà audité en mode volumétrique ;
+- un dossier **MOV-DEMO-0002** (appartement fictif incomplet, pour montrer les alertes « information manquante ») ;
+- le catalogue et les deux packs de démonstration.
+
+Le bouton **« Réinitialiser la démo »** du tableau de bord restaure ces données à tout moment.
+
+---
+
+## 2. Parcours guidé (6 étapes)
+
+L'en-tête de chaque dossier affiche l'étape en cours, les étapes terminées (✓) et les informations
+manquantes (pastille orange + bandeau « Pour poursuivre… »).
+
+| Étape | Onglet | Ce que fait le conseiller |
+|---|---|---|
+| 1. Création du dossier | Tableau de bord → *Nouvel audit*, puis **Logement** | référence, client fictif, adresse, type, surface, étages, pièces, dates, animaux, usage de nuit, commentaires |
+| 2. Création / import du plan | **Plan 2D** | dessin des pièces, murs, portes, fenêtres, baies ; import d'un plan (PNG, JPG, photo, capture, PDF) et calibrage de l'échelle |
+| 3. Visualisation 2D / 3D | **Plan 2D** / **Vue 3D** | maquette générée depuis la géométrie corrigée, vues isométrique / dessus / face, niveau seul, murs coupés ou masqués |
+| 4. Audit et placement | **Audit** / **Équipements** | propositions volumétrique et périmétrique, alertes, placement et validation des équipements |
+| 5. Choix et comparaison des offres | **Devis** (comparateur) | configuration retenue / standard / alternative × Pack Essentiel / Pack Sérénité / à la carte |
+| 6. Devis PDF | **Devis** | ajustements, remises, génération du PDF, historique avec prix figés |
+
+Écran de travail : **à gauche** niveaux, pièces, outils et bibliothèque d'équipements ; **au centre** le plan
+2D ou la scène 3D ; **à droite** les propriétés de l'objet sélectionné, la synthèse d'audit et la synthèse tarifaire.
+
+---
+
+## 3. Scénario de démonstration (≈ 10 minutes)
+
+Fichiers fournis dans `demo-assets/` : `plan-exemple.png`, `plan-exemple.pdf` (plan fictif avec une cote de
+10,00 m) et `catalogue-exemple.xlsx` (catalogue à importer, avec erreurs volontaires).
+
+1. **Modifier le plan** – Ouvrir *MOV-DEMO-0001* → *Plan 2D*. Cliquer sur le séjour, tirer une poignée ou saisir la largeur ; les cotes s'affichent.
+2. **Ajouter une ouverture** – Outil *Fenêtre* (barre d'outils), cliquer sur un mur extérieur : l'ouverture reçoit un identifiant unique (ex. `RDC-O14`) et est reconnue comme extérieure.
+3. **Importer une image de référence** – Niveau *Étage (R+1)* → *Importer un plan* → `plan-exemple.png` (ou `.pdf`). Régler la transparence, la rotation, la position.
+4. **Corriger le plan** – Outil *Échelle* : cliquer les deux extrémités de la cote rouge, saisir `10` m. Tracer ou ajuster les pièces par-dessus, puis *Retirer le fond* si besoin. `Ctrl+Z` / `Ctrl+Y` pour annuler / rétablir.
+5. **Générer la vue 3D** – Onglet *Vue 3D* : niveaux côte à côte, vue isométrique / dessus, *Rez-de-chaussée seul*, *Masquer un mur au clic*.
+6. **Positionner des équipements** – Bibliothèque → *Sirène extérieure* → clic sur le sol en 3D (ou sur le plan 2D) : l'équipement apparaît dans les deux vues. Sélection, orientation, quantité et changement de référence dans le panneau de droite.
+7. **Comparer les modes de protection** – Onglet *Audit* : nombres d'équipements, prix et limites des modes volumétrique et périmétrique, tableau des écarts ; *Appliquer sur le plan*.
+8. **Comparer les deux packs** – Onglet *Devis* : comparateur, clic sur une case de la ligne « Configuration retenue » pour choisir l'offre.
+9. **Modifier un tarif** – *Catalogue & règles* → *Produits* : changer le prix du détecteur de fumée (ou importer `catalogue-exemple.xlsx` via *Import / export Excel*, avec aperçu, doublons et erreurs signalés).
+10. **Voir le devis se recalculer** – Retour au dossier, onglet *Devis* : les montants sont mis à jour instantanément.
+11. **Exporter le PDF** – *Générer le devis PDF* (option « Utiliser cette vue pour le devis » dans l'onglet 3D). Le devis est ajouté à l'historique avec la copie des prix appliqués.
+
+---
+
+## 4. Fonctionnalités
+
+### Plan 2D
+- Pièces rectangulaires typées (séjour, cuisine, chambre, couloir, entrée, garage, salle de bain…), pièce ouverte (cuisine ouverte).
+- Murs / cloisons libres déplaçables (poignées d'extrémité), épaisseur réglable.
+- Portes, portes intérieures, fenêtres, baies vitrées, portes de garage (sectionnelles ou non), indicateur « donne sur l'extérieur » déduit de la géométrie et modifiable, identifiant unique par ouverture.
+- Plusieurs niveaux (ajout, suppression, reprise de l'emprise du niveau inférieur).
+- Grille magnétique (5 cm à 1 m), alignement magnétique sur les autres pièces avec guides, déplacement au clavier (flèches).
+- Cotes de la pièce sélectionnée, surfaces, échelle graphique, coordonnées du curseur, zoom molette, déplacement de la vue.
+- Annuler / rétablir (80 étapes), enregistrement automatique + bouton *Enregistrer*.
+
+### Import d'un plan ou d'une photo
+- PNG, JPG/JPEG (photo, capture d'écran) et **PDF** (première page rendue avec pdf.js).
+- Fond de référence : déplacement, taille, transparence, rotation, verrouillage, masquage.
+- **Échelle par dimension connue** (deux clics + valeur réelle).
+- **Aucune reconnaissance automatique** : le conseiller trace la géométrie ; la 3D et le devis n'utilisent jamais l'image.
+
+### Visualisation 3D (Three.js / React Three Fiber)
+- Sols colorés par type de pièce, murs avec découpes aux ouvertures, menuiseries (verre, portes, porte de garage), liseré sur les accès extérieurs, dalles, niveaux empilés ou côte à côte.
+- Libellés des pièces, légende des équipements, équipements en volume avec repère au sol.
+- Vues isométrique, de dessus, de face ; rotation, zoom, déplacement ; niveau seul ; murs complets / coupés / masqués ; masquage d'un mur au clic.
+- Sélection d'un équipement, placement et déplacement au clic : même source de données que le plan 2D (synchronisation immédiate dans les deux sens).
+- Secteurs de détection orange **explicitement indiqués comme simulations indicatives**, découpés aux limites de la pièce.
+
+### Équipements
+- Bibliothèque issue du catalogue (produits actifs), placement 2D ou 3D, déplacement, suppression, orientation, quantité, changement de référence, caractéristiques.
+- Distinction visuelle : cercle plein = placé par le conseiller ou suggestion validée ; cercle pointillé / translucide = suggestion du moteur de règles non validée.
+- Tableau récapitulatif par niveau et total par équipement.
+
+### Moteur d'audit (`src/rules/`)
+Indépendant de l'interface (fonction pure `runAudit`) et paramétrable dans *Catalogue & règles → Règles d'audit*. Règles implémentées (hypothèses à valider) :
+- 1 centrale par logement/adresse ; 1 clavier, jusqu'à 4 si plusieurs points d'entrée (point à vérifier) ;
+- mouvement : séjour (avec étude de la cuisine ouverte selon la diagonale vs portée 10 m), entrée, couloirs ≥ 4 m, garage à étudier, minimum 1 par étage ; caractéristiques 110° / 10 m utilisées comme **référence** seulement ;
+- fumée : estimation par niveau à 50 m² indicatifs, toujours en « point à vérifier » (pas de règle « un seul détecteur au dernier étage ») ;
+- choc / ouverture : 1 par menuiserie extérieure, 2 pour une baie, jamais automatique sur porte sectionnelle ;
+- modes volumétrique et périmétrique comparés (nombre, prix, différences, limites animaux / usage de nuit sans garantie) ;
+- contrôles : informations manquantes, échelle non définie, pièces qui se chevauchent, ouvertures en doublon, incohérence « extérieure », écart entre placement et proposition, surface plan vs déclarée.
+- Statuts : *Information manquante*, *Point à vérifier*, *Suggestion automatique*, *Validé par le conseiller* (avec justification), chacun avec motif et action recommandée.
+
+### Catalogue, tarifs et import Excel (`src/catalog/`)
+- Produits (référence, nom, catégorie, description, prix matériel, supplément mensuel, facturation, quantité de lot, statut, compatibilité, commentaires), édition en ligne, activation / désactivation, ajout.
+- Packs modifiables (prix forfaitaire et composition), remises configurables, paramètres (TVA, base HT/TTC, frais d'installation, validité, conditions commerciales, regroupement en lot).
+- Import `.xlsx` / `.csv` : correspondance automatique et manuelle des colonnes, aperçu, validation des prix (formats français, négatifs, invalides), doublons (dans le fichier et avec le catalogue), champs et colonnes obligatoires manquants, différences ligne à ligne, annulation, **confirmation explicite** ; les produits existants ne sont modifiés que si la case est cochée et les produits absents du fichier ne sont jamais supprimés. La version précédente est archivée et restaurable (*Historique*).
+- Modèle Excel téléchargeable (avec feuille d'aide) et export `.xlsx` / `.csv`.
+
+### Calculateur et comparateur (`src/quote/`)
+- Le prix d'un pack est un **forfait** ; les équipements inclus ne sont **jamais facturés deux fois** ; seuls les suppléments sont ajoutés à leur prix unitaire.
+- Distinction : forfait, suppléments, frais d'installation (« à confirmer » si non renseignés), remises, coût initial, coût mensuel, TVA (uniquement si renseignée), éléments inclus non positionnés.
+- Prix inconnu (centrale, clavier hors pack) : ligne « à confirmer », **exclue des totaux et signalée** – jamais de prix inventé.
+- Regroupement automatique en pack périmétrique lorsque c'est moins cher (sans augmenter le mensuel).
+- Calculs en centimes (aucune erreur d'arrondi), ajustements de quantités, recalcul instantané.
+- Comparateur : configuration retenue (plan), standard (volumétrique), alternative (périmétrique) × Pack Essentiel, Pack Sérénité, sans forfait.
+
+### Devis PDF (`src/export/`)
+Référence, date, validité, dossier, descriptif du logement, plans 2D de chaque niveau, vue 3D, liste des équipements (quantités, inclus, suppléments, prix unitaires connus), détail du pack, récapitulatif initial / mensuel, remises, TVA, ouvertures extérieures, comparaison des propositions, réserves (informations manquantes, points à vérifier, prix à confirmer), conditions commerciales et mentions « non contractuel ». Le PDF est conservé localement et peut être retéléchargé ; la copie des prix appliqués est stockée avec le devis.
+
+### Tableau de bord
+Création d'un audit, liste des dossiers, recherche par référence ou client, filtre par statut, dernière modification, statut modifiable (Brouillon, Audit en cours, Audit à vérifier, Devis généré, Proposition validée (démo), Dossier clôturé), montants initial et mensuel estimés, accès direct au plan et au devis, duplication, suppression.
+
+---
+
+## 5. Architecture technique
+
+React 19 · TypeScript · Vite · Tailwind CSS 4 · Three.js / React Three Fiber / drei · Zustand · Zod · ExcelJS · jsPDF + AutoTable · pdf.js · Vitest + Testing Library · Playwright.
+
+```
+src/
+  domain/        modèle de données (types.ts), schémas Zod, libellés
+  plan/          géométrie (murs, ouvertures, alignement, doublons), actions d'édition, rendu SVG partagé, import d'image/PDF
+  view3d/        scène 3D (génération depuis le plan), vue interactive, capture hors écran pour le PDF
+  rules/         moteur de règles d'audit (pur) + application des propositions sur le plan
+  catalog/       catalogue de démonstration, import/validation Excel-CSV (pur), lecture/écriture Excel
+  quote/         calculateur (pur), comparateur, copie historique des prix
+  export/        génération du PDF et des images du plan
+  persistence/   stockage local (localStorage validé par Zod) et images (IndexedDB)
+  state/         store applicatif (Zustand) : dossiers, historique annuler/rétablir, catalogue
+  ui/            interface (tableau de bord, espace de travail, catalogue)
+  demo/          données fictives préchargées
+e2e/             tests de bout en bout Playwright
+demo-assets/     plan et catalogue d'exemple (fictifs)
+docs/            limites, validations métier et évolutions
+```
+
+Principes :
+- **Une seule source de vérité** (le dossier : plan + équipements) ; 2D, 3D, audit et devis sont des vues calculées.
+- Les modules métier (`plan/geometry`, `rules`, `quote/calculator`, `catalog/importer`) sont des fonctions pures testées indépendamment de l'interface.
+- Unités : mètres et euros ; un prix `null` signifie « non communiqué / à confirmer ».
+
+### Persistance
+Les données sont enregistrées **uniquement dans le navigateur du poste** (localStorage pour les dossiers, le catalogue et les règles ; IndexedDB pour les images importées et les PDF générés), avec enregistrement automatique, validation au chargement et copie de sauvegarde des données illisibles. **Elles ne sont ni centralisées ni partagées entre conseillers.** L'interface `Repository` (`src/persistence/storage.ts`) permet de brancher une API serveur (base de données + authentification) sans modifier les modules métier – voir `docs/LIMITES_ET_VALIDATIONS.md`.
+
+---
+
+## 6. Tests
+
+- **Unitaires / composants (Vitest)** : géométrie et dessin de plusieurs pièces, redimensionnement, ouvertures, murs, calibrage d'échelle, import d'image (formats refusés), synchronisation 2D/3D, moteur de règles, application des propositions, calculs initial/mensuel, packs, suppléments, lots, remises, TVA, arrondis, historique des prix, import Excel/CSV (validation des prix, doublons, champs manquants, non-écrasement), store (création, annuler/rétablir, ajout/suppression d'équipement, recalcul après changement de tarif), persistance (enregistrement/rechargement, données corrompues, quota), génération PDF, tableau de bord (création de dossier, recherche).
+- **Bout en bout (Playwright, Chromium)** : parcours complet *création → import d'un plan PNG → échelle → tracé → correction → ouvertures → annuler/rétablir → audit → 3D → équipements → comparaison → modification de tarif → recalcul → PDF → rechargement* ; import Excel ; scénario de démonstration avec import PDF, 3D par niveau et PDF.
+
+Les limites connues et les validations métier restantes sont détaillées dans **[docs/LIMITES_ET_VALIDATIONS.md](docs/LIMITES_ET_VALIDATIONS.md)**.
