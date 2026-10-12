@@ -196,8 +196,8 @@ export function ImportWizard() {
                         <td className="px-2 py-1.5">
                           <Badge tone={ACTION_BADGE[r.action].tone}>{ACTION_BADGE[r.action].label}</Badge>
                         </td>
-                        <td className="px-2 py-1.5 font-mono">{r.product?.reference ?? '—'}</td>
-                        <td className="px-2 py-1.5">{r.product?.name ?? '—'}</td>
+                        <td className="px-2 py-1.5 font-mono">{r.reference || '—'}</td>
+                        <td className="px-2 py-1.5">{r.name || '—'}</td>
                         <td className="px-2 py-1.5">{r.product ? CATEGORY_LABELS[r.product.category] : '—'}</td>
                         <td className="px-2 py-1.5 text-right tabular-nums">{r.product ? formatEuro(r.product.priceInitial) : '—'}</td>
                         <td className="px-2 py-1.5 text-right tabular-nums">{r.product ? formatEuro(r.product.monthly) : '—'}</td>

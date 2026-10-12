@@ -147,6 +147,6 @@ describe('historique des prix', () => {
     expect(record.priceSnapshot.products.find((p) => p.id === 'prd_fumee')!.priceInitial).toBe(149);
     expect(record.priceSnapshot.pack!.initial).toBe(799);
     expect(record.totals.initial).toBe(799 + 298);
-    expect(record.reference).toMatch(/^DEV-\d{4}-MOV-DEMO-0001-01$/);
+    expect(record.reference).toBe('DEV-MOV-DEMO-0001-01');
   });
 });

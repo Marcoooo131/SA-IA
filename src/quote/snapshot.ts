@@ -3,9 +3,8 @@ import { uid } from '@/lib/id';
 import type { QuoteResult } from './calculator';
 
 export function nextQuoteReference(dossier: Dossier, date = new Date()): string {
-  const y = date.getFullYear();
-  const base = dossier.info.reference.replace(/[^A-Za-z0-9-]/g, '') || 'DOSSIER';
-  return `DEV-${y}-${base}-${String(dossier.quotes.length + 1).padStart(2, '0')}`;
+  const base = dossier.info.reference.replace(/[^A-Za-z0-9-]/g, '') || `DOSSIER-${date.getFullYear()}`;
+  return `DEV-${base}-${String(dossier.quotes.length + 1).padStart(2, '0')}`;
 }
 
 /**

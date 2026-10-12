@@ -10,7 +10,7 @@ function Capture({ dossier, onDone }: { dossier: Dossier; onDone: (url: string) 
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
   useEffect(() => {
-    const p = cameraPreset(dossier, 'iso', 'tous');
+    const p = cameraPreset(dossier, 'iso', 'tous', 0.85, 'cote');
     camera.position.copy(p.position);
     camera.lookAt(p.target);
     camera.updateProjectionMatrix();
@@ -70,6 +70,7 @@ export function capture3DView(dossier: Dossier, products: Product[], rules: Rule
               hiddenWalls: new Set(),
               showCoverage: false,
               showLabels: true,
+              layout: 'cote',
               motionAngle: rules.motion.angleDeg,
               motionRange: rules.motion.rangeM,
             }}

@@ -7,20 +7,20 @@ import { useApp, useActiveDossier } from '@/state/store';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from '@/domain/labels';
 import type { ProductCategory } from '@/domain/types';
 import { uid } from '@/lib/id';
-import { Scene3DContent, cameraPreset, type WallMode } from './Scene3D';
+import { Scene3DContent, cameraPreset, type LevelLayout, type WallMode } from './Scene3D';
 import { cx } from '@/ui/kit';
 import { ErrorBoundary } from '@/ui/ErrorBoundary';
 import { setLastViewSnapshot } from './lastView';
 
 type Preset = 'iso' | 'dessus' | 'face';
 
-function CameraRig({ preset, levelFilter, nonce }: { preset: Preset; levelFilter: string; nonce: number }) {
+function CameraRig({ preset, levelFilter, nonce, layout }: { preset: Preset; levelFilter: string; nonce: number; layout: LevelLayout }) {
   const dossier = useActiveDossier();
   const camera = useThree((s) => s.camera);
   const controls = useThree((s) => s.controls) as unknown as OrbitControlsImpl | null;
   useEffect(() => {
     if (!dossier) return;
-    const p = cameraPreset(dossier, preset, levelFilter);
+    const p = cameraPreset(dossier, preset, levelFilter, layout === 'cote' && levelFilter === 'tous' ? 0.8 : 1, layout);
     camera.position.copy(p.position);
     camera.lookAt(p.target);
     if (controls) {
@@ -28,7 +28,7 @@ function CameraRig({ preset, levelFilter, nonce }: { preset: Preset; levelFilter
       controls.update();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preset, levelFilter, nonce, controls, camera]);
+  }, [preset, levelFilter, nonce, controls, camera, layout]);
   return null;
 }
 
@@ -68,7 +68,8 @@ export function View3D() {
   const [preset, setPreset] = useState<Preset>('iso');
   const [nonce, setNonce] = useState(0);
   const [levelFilter, setLevelFilter] = useState<string>('tous');
-  const [wallMode, setWallMode] = useState<WallMode>('complet');
+  const [wallMode, setWallMode] = useState<WallMode>('coupe');
+  const [layout, setLayout] = useState<LevelLayout>('cote');
   const [hiddenWalls, setHiddenWalls] = useState<Set<string>>(new Set());
   const [hideOnClick, setHideOnClick] = useState(false);
   const [moveMode, setMoveMode] = useState(false);
@@ -147,6 +148,19 @@ export function View3D() {
             </option>
           ))}
         </select>
+        <select
+          aria-label="Disposition des niveaux"
+          className="h-7 rounded-md border border-slate-200 bg-white px-1.5 text-xs"
+          value={layout}
+          disabled={levelFilter !== 'tous' || levels.length < 2}
+          onChange={(e) => {
+            setLayout(e.target.value as LevelLayout);
+            setNonce((n) => n + 1);
+          }}
+        >
+          <option value="cote">Niveaux côte à côte</option>
+          <option value="empile">Niveaux empilés</option>
+        </select>
         <select aria-label="Affichage des murs" className="h-7 rounded-md border border-slate-200 bg-white px-1.5 text-xs" value={wallMode} onChange={(e) => setWallMode(e.target.value as WallMode)}>
           <option value="complet">Murs complets</option>
           <option value="coupe">Murs coupés (vue maquette)</option>
@@ -203,6 +217,7 @@ export function View3D() {
                     hiddenWalls,
                     showCoverage,
                     showLabels,
+                    layout,
                     motionAngle: rules.motion.angleDeg,
                     motionRange: rules.motion.rangeM,
                     selectedDeviceId,
@@ -219,7 +234,7 @@ export function View3D() {
                 />
               </Suspense>
               <OrbitControls makeDefault enableDamping dampingFactor={0.12} maxPolarAngle={Math.PI / 2.05} minDistance={3} maxDistance={120} />
-              <CameraRig preset={preset} levelFilter={levelFilter} nonce={nonce} />
+              <CameraRig preset={preset} levelFilter={levelFilter} nonce={nonce} layout={layout} />
               <SnapshotBridge onReady={(fn) => (snapRef.current = fn)} />
             </Canvas>
           </ErrorBoundary>

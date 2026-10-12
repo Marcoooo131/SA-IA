@@ -44,7 +44,10 @@ describe("moteur de règles d'audit", () => {
     // 13 ouvertures extérieures - 1 sectionnelle + 1 (baie = 2)
     expect(r.proposals.perimetrique.counts.detecteur_choc).toBe(13);
     expect(r.alerts.some((a) => a.id === 'choc:o_garage:sectionnelle')).toBe(true);
-    expect(shockQuantity({ ...shocks[0] as never, type: 'fenetre', sectional: false } as never, DEFAULT_RULES_CONFIG)).toBe(1);
+    const garage = demoHouseDossier(catalog).plan.levels[0].openings.find((o) => o.id === 'o_garage')!;
+    expect(shockQuantity(garage, DEFAULT_RULES_CONFIG)).toBe(0);
+    expect(shockQuantity({ ...garage, sectional: false }, DEFAULT_RULES_CONFIG)).toBe(1);
+    expect(shockQuantity({ ...garage, sectional: false }, { ...DEFAULT_RULES_CONFIG, shock: { ...DEFAULT_RULES_CONFIG.shock, perOpening: 2 } })).toBe(2);
   });
 
   it('garantit au minimum un détecteur de mouvement par étage', () => {

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
 import type { Dossier, Level, OpeningType, PlacedDevice, Product, ProductCategory } from '@/domain/types';
 import { CATEGORY_COLORS, ROOM_COLORS } from '@/domain/labels';
-import { adjacentRooms, buildWallSegments, levelBounds, planBounds, type WallSegment } from '@/plan/geometry';
+import { adjacentRooms, buildWallSegments, levelBounds, type WallSegment } from '@/plan/geometry';
 
 /**
  * Scène 3D générée à partir de la géométrie corrigée du plan (pièces, murs, ouvertures)
@@ -19,6 +19,7 @@ export interface Scene3DOptions {
   hiddenWalls: Set<string>;
   showCoverage: boolean;
   showLabels: boolean;
+  layout?: LevelLayout;
   motionAngle: number;
   motionRange: number;
   selectedDeviceId?: string | null;
@@ -266,18 +267,19 @@ function DeviceMesh({ device, product, level, elevation, selected, onSelect, ope
   );
 }
 
-function CoverageSector({ device, level, elevation, angle, range }: { device: PlacedDevice; level: Level; elevation: number; angle: number; range: number }) {
+function CoverageSector({ device, level, elevation, offsetX = 0, angle, range }: { device: PlacedDevice; level: Level; elevation: number; offsetX?: number; angle: number; range: number }) {
   const material = useMemo(() => {
     const room = level.rooms.find((r) => r.id === device.roomId) ?? level.rooms.find((r) => device.x >= r.x && device.x <= r.x + r.w && device.y >= r.y && device.y <= r.y + r.h);
     const rooms = room ? [room, ...(room.openPlan ? adjacentRooms(level, room).filter((r) => r.openPlan) : [])] : [];
-    const minX = rooms.length ? Math.min(...rooms.map((r) => r.x)) : -1e4;
-    const maxX = rooms.length ? Math.max(...rooms.map((r) => r.x + r.w)) : 1e4;
+    // plans de découpe exprimés en coordonnées monde (décalage du niveau inclus)
+    const minX = rooms.length ? Math.min(...rooms.map((r) => r.x)) + offsetX : -1e4;
+    const maxX = rooms.length ? Math.max(...rooms.map((r) => r.x + r.w)) + offsetX : 1e4;
     const minZ = rooms.length ? Math.min(...rooms.map((r) => r.y)) : -1e4;
     const maxZ = rooms.length ? Math.max(...rooms.map((r) => r.y + r.h)) : 1e4;
     return new THREE.MeshBasicMaterial({
-      color: '#f59e0b',
+      color: '#f97316',
       transparent: true,
-      opacity: 0.22,
+      opacity: 0.34,
       side: THREE.DoubleSide,
       depthWrite: false,
       clippingPlanes: [
@@ -287,7 +289,7 @@ function CoverageSector({ device, level, elevation, angle, range }: { device: Pl
         new THREE.Plane(new THREE.Vector3(0, 0, -1), maxZ),
       ],
     });
-  }, [device, level]);
+  }, [device, level, offsetX]);
   useEffect(() => () => material.dispose(), [material]);
   const thetaLen = (angle * Math.PI) / 180;
   // CircleGeometry dans le plan XY, couché au sol (rotation -90° autour de X : y -> -z)
@@ -299,19 +301,53 @@ function CoverageSector({ device, level, elevation, angle, range }: { device: Pl
   );
 }
 
+export type LevelLayout = 'empile' | 'cote';
+
+/** Position de chaque niveau dans la scène : empilés, ou côte à côte (vue maquette). */
+export function levelPlacements(levels: Level[], layout: LevelLayout, levelFilter: string) {
+  const sorted = [...levels].sort((a, b) => a.index - b.index);
+  const visible = sorted.filter((l) => levelFilter === 'tous' || l.id === levelFilter);
+  const elev = levelElevations(sorted);
+  const map = new Map<string, { dx: number; y: number }>();
+  let right: number | null = null;
+  for (const l of visible) {
+    const b = levelBounds(l) ?? { minX: 0, minY: 0, maxX: 8, maxY: 8 };
+    if (layout === 'empile' || visible.length === 1) {
+      map.set(l.id, { dx: 0, y: layout === 'empile' ? (elev.get(l.id) ?? 0) : 0 });
+      continue;
+    }
+    const dx: number = right === null ? 0 : right + 4 - b.minX;
+    map.set(l.id, { dx, y: 0 });
+    right = b.maxX + dx;
+  }
+  let bounds = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity, maxY3: 0 };
+  for (const l of visible) {
+    const b = levelBounds(l);
+    const p = map.get(l.id)!;
+    if (!b) continue;
+    bounds = {
+      minX: Math.min(bounds.minX, b.minX + p.dx),
+      maxX: Math.max(bounds.maxX, b.maxX + p.dx),
+      minY: Math.min(bounds.minY, b.minY),
+      maxY: Math.max(bounds.maxY, b.maxY),
+      maxY3: Math.max(bounds.maxY3, p.y),
+    };
+  }
+  if (!Number.isFinite(bounds.minX)) bounds = { minX: 0, minY: 0, maxX: 10, maxY: 10, maxY3: 0 };
+  return { visible, placements: map, bounds };
+}
+
 export function Scene3DContent({ dossier, products, options, onSelectDevice, onFloorClick, onWallClick }: Scene3DProps) {
   const gl = useThree((s) => s.gl);
   useEffect(() => {
     gl.localClippingEnabled = true;
   }, [gl]);
-  const levels = [...dossier.plan.levels].sort((a, b) => a.index - b.index);
-  const elev = levelElevations(levels);
+  const layout = options.layout ?? 'empile';
+  const { visible, placements, bounds } = levelPlacements(dossier.plan.levels, layout, options.levelFilter);
   const productMap = new Map(products.map((p) => [p.id, p]));
-  const visible = levels.filter((l) => options.levelFilter === 'tous' || l.id === options.levelFilter);
-  const bounds = planBounds(dossier.plan) ?? { minX: 0, minY: 0, maxX: 10, maxY: 10 };
   const cx = (bounds.minX + bounds.maxX) / 2;
   const cz = (bounds.minY + bounds.maxY) / 2;
-  const size = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY);
+  const size = Math.max(bounds.maxX - bounds.minX, bounds.maxY - bounds.minY, 6);
 
   return (
     <group>
@@ -324,11 +360,12 @@ export function Scene3DContent({ dossier, products, options, onSelectDevice, onF
         <meshStandardMaterial color="#e8eee6" roughness={1} />
       </mesh>
       {visible.map((level) => {
-        const y0 = elev.get(level.id) ?? 0;
+        const { dx, y: y0 } = placements.get(level.id)!;
         const segments = buildWallSegments(level);
         const lb = levelBounds(level);
+        const devices = dossier.devices.filter((d) => d.levelId === level.id);
         return (
-          <group key={level.id} position={[0, y0, 0]}>
+          <group key={level.id} position={[dx, y0, 0]}>
             {/* Dalle */}
             {lb && (
               <mesh position={[(lb.minX + lb.maxX) / 2, -SLAB / 2, (lb.minY + lb.maxY) / 2]} receiveShadow>
@@ -345,7 +382,7 @@ export function Scene3DContent({ dossier, products, options, onSelectDevice, onF
                 onClick={(e) => {
                   if (!onFloorClick) return;
                   e.stopPropagation();
-                  onFloorClick(level.id, e.point.x, e.point.z);
+                  onFloorClick(level.id, e.point.x - dx, e.point.z);
                 }}
               >
                 <boxGeometry args={[r.w, 0.04, r.h]} />
@@ -361,52 +398,48 @@ export function Scene3DContent({ dossier, products, options, onSelectDevice, onF
               level.rooms.map((r) => (
                 <Label key={`l-${r.id}`} text={r.name} sub={`${(r.w * r.h).toFixed(1).replace('.', ',')} m²`} position={[r.x + r.w / 2, 0.7, r.y + r.h / 2]} scale={Math.min(1, Math.max(0.6, Math.min(r.w, r.h) / 3))} />
               ))}
+            {layout === 'cote' && visible.length > 1 && lb && (
+              <Label text={level.name} position={[(lb.minX + lb.maxX) / 2, 3.2, lb.minY - 0.6]} scale={1.6} />
+            )}
+            {devices.map((d) => {
+              const opening = d.openingId ? level.openings.find((o) => o.id === d.openingId)?.type : undefined;
+              return (
+                <DeviceMesh
+                  key={d.id}
+                  device={d}
+                  product={productMap.get(d.productId)}
+                  level={level}
+                  elevation={0}
+                  selected={options.selectedDeviceId === d.id}
+                  onSelect={onSelectDevice ? (id) => onSelectDevice(id) : undefined}
+                  opening={opening}
+                />
+              );
+            })}
+            {options.showCoverage &&
+              devices
+                .filter((d) => productMap.get(d.productId)?.category === 'detecteur_mouvement')
+                .map((d) => (
+                  <CoverageSector key={`c-${d.id}`} device={d} level={level} elevation={0} offsetX={dx} angle={options.motionAngle} range={options.motionRange} />
+                ))}
           </group>
         );
       })}
-      {/* Équipements */}
-      {dossier.devices
-        .filter((d) => visible.some((l) => l.id === d.levelId))
-        .map((d) => {
-          const level = levels.find((l) => l.id === d.levelId)!;
-          const opening = d.openingId ? level.openings.find((o) => o.id === d.openingId)?.type : undefined;
-          return (
-            <DeviceMesh
-              key={d.id}
-              device={d}
-              product={productMap.get(d.productId)}
-              level={level}
-              elevation={elev.get(level.id) ?? 0}
-              selected={options.selectedDeviceId === d.id}
-              onSelect={onSelectDevice ? (id) => onSelectDevice(id) : undefined}
-              opening={opening}
-            />
-          );
-        })}
-      {options.showCoverage &&
-        dossier.devices
-          .filter((d) => visible.some((l) => l.id === d.levelId) && productMap.get(d.productId)?.category === 'detecteur_mouvement')
-          .map((d) => {
-            const level = levels.find((l) => l.id === d.levelId)!;
-            return <CoverageSector key={`c-${d.id}`} device={d} level={level} elevation={elev.get(level.id) ?? 0} angle={options.motionAngle} range={options.motionRange} />;
-          })}
     </group>
   );
 }
 
 /** Position de caméra pour les vues prédéfinies. */
-export function cameraPreset(dossier: Dossier, preset: 'iso' | 'dessus' | 'face', levelFilter: string) {
-  const b = planBounds(dossier.plan) ?? { minX: 0, minY: 0, maxX: 10, maxY: 10 };
-  const levels = [...dossier.plan.levels].sort((a, b2) => a.index - b2.index);
-  const elev = levelElevations(levels);
-  const targetY = levelFilter === 'tous' ? (levels.length > 1 ? (elev.get(levels[levels.length - 1].id) ?? 0) / 2 : 0) : (elev.get(levelFilter) ?? 0);
+export function cameraPreset(dossier: Dossier, preset: 'iso' | 'dessus' | 'face', levelFilter: string, zoom = 1, layout: LevelLayout = 'empile') {
+  const { bounds: b } = levelPlacements(dossier.plan.levels, layout, levelFilter);
+  const targetY = b.maxY3 / 2;
   const cx = (b.minX + b.maxX) / 2;
   const cz = (b.minY + b.maxY) / 2;
-  const size = Math.max(b.maxX - b.minX, b.maxY - b.minY, 6);
+  const size = Math.max(b.maxX - b.minX, b.maxY - b.minY, 6) * zoom;
   const target = new THREE.Vector3(cx, targetY, cz);
-  if (preset === 'dessus') return { position: new THREE.Vector3(cx, targetY + size * 1.55, cz + 0.01), target };
-  if (preset === 'face') return { position: new THREE.Vector3(cx, targetY + size * 0.35, cz + size * 1.35), target };
-  return { position: new THREE.Vector3(cx + size * 0.85, targetY + size * 0.95, cz + size * 1.0), target };
+  if (preset === 'dessus') return { position: new THREE.Vector3(cx, targetY + size * 1.35, cz + 0.01), target };
+  if (preset === 'face') return { position: new THREE.Vector3(cx, targetY + size * 0.35, cz + size * 1.2), target };
+  return { position: new THREE.Vector3(cx + size * 0.55, targetY + size * 0.8, cz + size * 0.85), target };
 }
 
 export function useStableRef<T>(value: T) {

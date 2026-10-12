@@ -122,6 +122,9 @@ export interface FieldChange {
 
 export interface PreviewRow {
   rowNumber: number;
+  /** Valeurs lues (affichées même si la ligne est en erreur). */
+  reference: string;
+  name: string;
   product: Product | null;
   errors: string[];
   warnings: string[];
@@ -263,7 +266,7 @@ export function buildImportPreview(rows: unknown[][], mapping: ColumnMapping, ex
       }
       action = changes.length ? 'mettre_a_jour' : 'identique';
     }
-    out.push({ rowNumber, product, errors, warnings, action, existingId: existingProduct?.id, changes });
+    out.push({ rowNumber, reference, name, product, errors, warnings, action, existingId: existingProduct?.id, changes });
   });
 
   const summary = { creer: 0, mettre_a_jour: 0, identique: 0, erreur: 0, total: out.length, warnings: 0 };
