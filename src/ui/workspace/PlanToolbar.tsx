@@ -20,6 +20,8 @@ import {
   RectangleHorizontal,
   Warehouse,
   Slash,
+  Sparkles,
+  Columns2,
 } from 'lucide-react';
 import { useApp, useActiveDossier } from '@/state/store';
 import { useEditor, type Tool } from '@/state/editor';
@@ -40,6 +42,7 @@ const TOOLS: { tool: Tool; label: string; icon: React.ReactNode }[] = [
   { tool: 'baie', label: 'Baie vitrée', icon: <RectangleHorizontal size={16} /> },
   { tool: 'porte_garage', label: 'Porte de garage', icon: <Warehouse size={16} /> },
   { tool: 'porte_interieure', label: 'Porte intérieure', icon: <DoorOpen size={16} /> },
+  { tool: 'passage', label: 'Passage ouvert (sans porte)', icon: <Columns2 size={16} /> },
   { tool: 'calibrate', label: "Définir l'échelle du plan importé", icon: <Ruler size={16} /> },
 ];
 
@@ -156,6 +159,11 @@ export function PlanToolbar() {
       <IconButton label="Libellés" active={ed.showLabels} onClick={() => ed.set({ showLabels: !ed.showLabels })}>
         <Tags size={16} />
       </IconButton>
+      {dossier?.generation && (
+        <IconButton label="Provenance des éléments (questionnaire / généré / corrigé)" active={ed.showProvenance} onClick={() => ed.set({ showProvenance: !ed.showProvenance })}>
+          <Sparkles size={16} />
+        </IconButton>
+      )}
       <div className="ml-auto flex items-center gap-2">
         <input
           ref={fileRef}
@@ -166,8 +174,11 @@ export function PlanToolbar() {
           onChange={(e) => onFile(e.target.files?.[0])}
         />
         <button
-          onClick={() => fileRef.current?.click()}
-          className="flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-slate-700 hover:bg-slate-50"
+          onClick={() => {
+            ed.set({ highlightImport: false });
+            fileRef.current?.click();
+          }}
+          className={`flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-medium whitespace-nowrap hover:bg-slate-50 ${ed.highlightImport ? 'animate-pulse border-brand-500 bg-brand-50 text-brand-800 ring-2 ring-brand-200' : 'border-slate-300 bg-white text-slate-700'}`}
           title="Importer un plan ou une photo (PNG, JPG, PDF) comme fond de référence"
         >
           <FileImage size={14} /> Importer un plan

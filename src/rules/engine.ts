@@ -247,6 +247,15 @@ export function runAudit(
       nextAction: "Dessiner les pièces ou importer un plan dans l'onglet Plan 2D.",
     });
   }
+  if (dossier.generation && !dossier.generation.validatedAt)
+    add({
+      id: 'plan:genere',
+      ruleId: 'R-PLAN',
+      status: 'a_verifier',
+      title: 'Plan généré automatiquement, non vérifié',
+      reason: 'Le plan a été produit à partir du questionnaire : c’est une représentation générique, pas un relevé du logement réel.',
+      nextAction: 'Vérifier dimensions, ouvertures et disposition dans le Plan 2D, puis cliquer sur « Valider le plan ».',
+    });
   if (info.floors && levels.length && info.floors !== levels.length)
     add({
       id: 'plan:etages',
@@ -427,7 +436,7 @@ export function runAudit(
     if (!inv.smokeEstimate) continue;
     const candidates = l.rooms
       .filter((r) => r.type !== 'garage' || config.smoke.includeGarage)
-      .filter((r) => !['cuisine', 'salle_de_bain', 'wc'].includes(r.type))
+      .filter((r) => !['cuisine', 'salle_de_bain', 'wc', 'escalier', 'veranda'].includes(r.type))
       .sort((a, b) => {
         const pa = CIRCULATION.includes(a.type) ? 0 : a.type === 'sejour' ? 1 : 2;
         const pb = CIRCULATION.includes(b.type) ? 0 : b.type === 'sejour' ? 1 : 2;

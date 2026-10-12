@@ -18,10 +18,14 @@ import { DEFAULT_RULES_CONFIG, type RulesConfig } from '@/rules/config';
 import { runAudit } from '@/rules/engine';
 import { applyProposal } from '@/rules/apply';
 import { uid } from '@/lib/id';
+import type { HousingAnswers } from '@/domain/types';
+import type { GenerationResult } from '@/generator/generate';
+import { mergeWithCorrections } from '@/generator/provenance';
+import { levelHabitableArea } from '@/plan/geometry';
 import { createLocalRepository, type PersistedState, type Repository } from '@/persistence/storage';
 
 export type View = 'dashboard' | 'workspace' | 'catalog';
-export type WorkspaceTab = 'logement' | 'plan' | 'vue3d' | 'audit' | 'equipements' | 'devis';
+export type WorkspaceTab = 'logement' | 'questionnaire' | 'plan' | 'vue3d' | 'audit' | 'equipements' | 'devis';
 
 export type Selection =
   | { kind: 'room'; id: string }
@@ -83,6 +87,11 @@ export interface AppState {
   setStatus(status: DossierStatus, dossierId?: string): void;
   setProtectionMode(mode: ProtectionMode): void;
   validateDemo(): void;
+
+  // plan généré par questionnaire
+  saveWizardDraft(templateId: string | null, answers: HousingAnswers | null): void;
+  applyGeneration(input: { answers: HousingAnswers; result: GenerationResult; mode: 'remplacer' | 'conserver' }): string[];
+  validateGeneratedPlan(): void;
 
   // plan & équipements (avec historique)
   checkpoint(): void;
@@ -259,6 +268,52 @@ export const useApp = create<AppState>()((set, get) => {
       set((s) => ({ dossiers: s.dossiers.map((d) => (d.id === id ? touch({ ...d, status }) : d)) }));
     },
     setProtectionMode: (mode) => updateActive((d) => ({ ...d, protectionMode: mode })),
+    saveWizardDraft: (templateId, answers) => updateActive((d) => ({ ...d, wizardDraft: { templateId, answers } })),
+    applyGeneration: ({ answers, result, mode }) => {
+      const d = active();
+      if (!d) return [];
+      let notes: string[] = [];
+      let levels = structuredClone(result.levels);
+      if (mode === 'conserver' && d.generation) {
+        const merged = mergeWithCorrections(d.plan.levels, d.generation, result.levels);
+        levels = merged.levels;
+        notes = merged.notes;
+      }
+      get().mutate((draft) => {
+        draft.plan.levels = levels;
+        const ids = new Set(levels.map((l) => l.id));
+        const before = draft.devices.length;
+        // les suggestions non validées seront recalculées par l'audit sur le nouveau plan
+        draft.devices = draft.devices.filter((x) => ids.has(x.levelId) && (x.origin === 'manuel' || x.validated));
+        if (draft.devices.length < before) notes.push(`${before - draft.devices.length} suggestion(s) d'équipement non validée(s) retirée(s) : relancez l'audit.`);
+      });
+      const mainRooms = levels.flatMap((l) => l.rooms).filter((r) => !['couloir', 'palier', 'escalier', 'entree', 'wc', 'cellier', 'garage'].includes(r.type)).length;
+      const area = Math.round(levels.reduce((s, l) => s + levelHabitableArea(l), 0));
+      updateActive((x) => ({
+        ...x,
+        generation: {
+          templateId: result.template.id,
+          answers,
+          generatedAt: new Date().toISOString(),
+          baseline: structuredClone(result.levels),
+          fromAnswers: result.fromAnswers,
+          validatedAt: null,
+          warnings: [...result.warnings, ...notes],
+        },
+        wizardDraft: { templateId: result.template.id, answers },
+        info: {
+          ...x.info,
+          housingType: answers.housingType === 'autre' ? 'autre' : answers.housingType,
+          floors: levels.length,
+          rooms: mainRooms,
+          surface: x.info.surface ?? area,
+        },
+      }));
+      set({ activeLevelId: levels[0]?.id ?? null, selection: null });
+      return notes;
+    },
+    validateGeneratedPlan: () =>
+      updateActive((d) => (d.generation ? { ...d, generation: { ...d.generation, validatedAt: new Date().toISOString() } } : d)),
     validateDemo: () =>
       updateActive((d) => ({ ...d, status: 'proposition_validee', demoValidatedAt: new Date().toISOString() })),
 

@@ -18,7 +18,7 @@ export function levelArea(level: Level): number {
 }
 
 export function levelHabitableArea(level: Level): number {
-  return level.rooms.filter((r) => r.type !== 'garage').reduce((sum, r) => sum + roomArea(r), 0);
+  return level.rooms.filter((r) => r.type !== 'garage' && r.type !== 'veranda').reduce((sum, r) => sum + roomArea(r), 0);
 }
 
 export function planArea(plan: Plan): number {

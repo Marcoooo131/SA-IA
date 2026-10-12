@@ -86,6 +86,16 @@ Fichiers fournis dans `demo-assets/` : `plan-exemple.png`, `plan-exemple.pdf` (p
 
 ## 4. Fonctionnalités
 
+### Créer mon plan en quelques questions (`src/generator/`)
+Méthode recommandée sur la page d'accueil (« Créer un plan avec le questionnaire »), à côté de « Dessiner mon logement en 2D » et « Importer un plan ou une photo ».
+1. **Choix du logement** : 16 modèles (studio, T2 à T4, couloir central, cuisine ouverte, plain-pied, à étage, garage attenant ou séparé, plusieurs chambres à l'étage, maison en L, rectangulaire, avec extension, logement personnalisé), chacun avec vignette 2D, miniature 3D et aperçu (plans de tous les niveaux + maquette 3D interactive).
+2. **Questionnaire adaptatif** (10 questions + commentaire libre) avec **aperçu en direct** : les questions s'adaptent (pas de garage pour un appartement, « duplex » au lieu de 3 niveaux, pas de couloir pour un studio, escalier ajouté d'office au-delà d'un niveau, garage communicant seulement si attenant). Les réponses sont conservées dans le dossier.
+3. **Génération déterministe** (aucun aléatoire) : pièces rangées en bandes (jour / couloir / nuit) ou en L, largeurs minimales par type de pièce, surface visée respectée autant que possible, escalier aligné entre les niveaux, garage, véranda, extension, portes intérieures et passages ouverts, porte d'entrée, accès, fenêtres et baies répartis sur les murs extérieurs. Contrôles automatiques : chevauchements, pièces sans accès, surface, ouvertures non placées ; si le plan n'est pas cohérent, le modèle le plus proche est proposé avec demande de correction.
+4. **Maquette 3D** générée depuis la géométrie (murs découpés, menuiseries, escaliers en volume, trémie à l'étage), même système de coordonnées que le plan et les équipements.
+5. **Vérification** : bandeau « Votre plan a été généré à partir de vos réponses… », bouton « Valider le plan ». Tant qu'il n'est pas validé, l'audit et le PDF le signalent comme **plan générique non vérifié**.
+6. **Provenance visible** sur le plan : Q = issu du questionnaire, G = généré automatiquement, C = corrigé par le conseiller ; les équipements suggérés restent des recommandations à valider.
+7. **Régénération** après modification des réponses : choix explicite entre « Conserver mes modifications » (ajouts, modifications et suppressions réappliqués) et « Repartir du modèle » ; jamais d'écrasement silencieux, et annulation possible (Ctrl+Z).
+
 ### Plan 2D
 - Pièces rectangulaires typées (séjour, cuisine, chambre, couloir, entrée, garage, salle de bain…), pièce ouverte (cuisine ouverte).
 - Murs / cloisons libres déplaçables (poignées d'extrémité), épaisseur réglable.
@@ -132,7 +142,8 @@ Indépendant de l'interface (fonction pure `runAudit`) et paramétrable dans *Ca
 ### Calculateur et comparateur (`src/quote/`)
 - Le prix d'un pack est un **forfait** ; les équipements inclus ne sont **jamais facturés deux fois** ; seuls les suppléments sont ajoutés à leur prix unitaire.
 - Distinction : forfait, suppléments, frais d'installation (« à confirmer » si non renseignés), remises, coût initial, coût mensuel, TVA (uniquement si renseignée), éléments inclus non positionnés.
-- Prix inconnu (ex. supplément mensuel de la centrale) : « à confirmer », **exclu des totaux et signalé** – jamais de prix inventé.
+- Prix inconnu : « à confirmer », **exclu des totaux et signalé** – jamais de prix inventé.
+- **Centrale : supplément mensuel toujours à 0 €** (règle métier validée) – verrouillé dans le catalogue et le devis ; un import Excel indiquant une autre valeur affiche une alerte, exige une confirmation et conserve 0 €.
 - **Prix modifiables dans le devis** (prix matériel, supplément mensuel, prix du forfait) sans changer le catalogue ; « Prix du catalogue » pour revenir à la valeur d'origine.
 - **Montants finaux modifiables** : frais initiaux et mensualité du devis saisissables à la main, avec un motif ; l'écart avec le calcul apparaît comme « ajustement » dans le récapitulatif et le PDF.
 - **Déménagement** : équipements repris du logement précédent (case par ligne, quantité réglable) et abonnement transféré à **0 € et 0 €/mois** ; bouton « Tout passer en déménagement ». Repris dans le PDF et l'historique.

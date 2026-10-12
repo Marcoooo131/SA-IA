@@ -112,6 +112,18 @@ export function generateQuotePdf(input: QuotePdfInput): jsPDF {
       [T('Adresse du logement'), T(dossier.info.address || 'Non renseignée'), T('Surface du plan'), T(formatArea(audit.inventory.totalArea))],
       [T('Installation souhaitée'), T(formatDate(dossier.info.installationDate)), T('Niveaux / pièces'), T(`${levels.length} / ${levels.reduce((s, l) => s + l.rooms.length, 0)}`)],
       [T('Mode de protection'), T(MODE_LABELS[dossier.protectionMode]), T('Ouvertures extérieures'), String(audit.inventory.exteriorOpenings.length)],
+      [
+        T('Origine du plan'),
+        T(
+          dossier.generation
+            ? dossier.generation.validatedAt
+              ? `Généré par questionnaire, vérifié le ${formatDate(dossier.generation.validatedAt)}`
+              : 'Généré par questionnaire - plan générique NON vérifié'
+            : 'Saisi par le conseiller',
+        ),
+        '',
+        '',
+      ],
     ],
   });
   y = lastY() + 6;

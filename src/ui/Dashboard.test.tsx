@@ -12,6 +12,13 @@ describe('tableau de bord et création de dossier', () => {
     useApp.getState().resetDemo();
   });
 
+  it('propose les trois façons de créer le plan, questionnaire recommandé', () => {
+    render(<Dashboard />);
+    expect(screen.getByTestId('start-questionnaire')).toHaveTextContent('Recommandé');
+    expect(screen.getByTestId('start-dessin')).toHaveTextContent('Dessiner mon logement en 2D');
+    expect(screen.getByTestId('start-import')).toHaveTextContent('Importer un plan ou une photo');
+  });
+
   it('liste les dossiers de démonstration avec montants estimés', () => {
     render(<Dashboard />);
     const row = screen.getByTestId('dossier-row-MOV-DEMO-0001');
@@ -28,20 +35,20 @@ describe('tableau de bord et création de dossier', () => {
 
   it('crée un dossier depuis le formulaire et refuse un formulaire incomplet', async () => {
     render(<Dashboard />);
-    await userEvent.click(screen.getByRole('button', { name: /Nouvel audit/ }));
+    await userEvent.click(screen.getByTestId('start-questionnaire'));
     const dialog = screen.getByRole('dialog');
-    await userEvent.click(within(dialog).getByRole('button', { name: /Créer et dessiner/ }));
+    await userEvent.click(within(dialog).getByRole('button', { name: /Créer et répondre au questionnaire/ }));
     expect(within(dialog).getByRole('alert')).toHaveTextContent(/client est obligatoire/);
     await userEvent.type(dialog.querySelector('input[name="clientName"]')!, 'Client test 042');
     await userEvent.type(dialog.querySelector('input[name="address"]')!, '3 allée Fictive');
     await userEvent.type(dialog.querySelector('input[name="surface"]')!, '95');
-    await userEvent.click(within(dialog).getByRole('button', { name: /Créer et dessiner/ }));
+    await userEvent.click(within(dialog).getByRole('button', { name: /Créer et répondre au questionnaire/ }));
     const s = useApp.getState();
     const created = s.dossiers.find((d) => d.info.clientName === 'Client test 042')!;
     expect(created).toBeDefined();
     expect(created.info.surface).toBe(95);
     expect(s.view).toBe('workspace');
-    expect(s.tab).toBe('plan');
+    expect(s.tab).toBe('questionnaire');
     expect(s.activeDossierId).toBe(created.id);
   });
 });

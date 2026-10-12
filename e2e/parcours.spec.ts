@@ -32,12 +32,12 @@ test('parcours complet : dossier → plan importé → 3D → équipements → o
   await expect(page.getByRole('heading', { name: 'Tableau de bord des audits' })).toBeVisible();
 
   // 1. Création du dossier
-  await page.getByRole('button', { name: 'Nouvel audit' }).click();
+  await page.getByTestId('start-import').click();
   const dialog = page.getByRole('dialog');
   await dialog.locator('input[name="clientName"]').fill('Client démo E2E');
   await dialog.locator('input[name="address"]').fill('5 impasse Fictive, 00000 Démo');
   await dialog.locator('input[name="surface"]').fill('75');
-  await dialog.getByRole('button', { name: /Créer et dessiner/ }).click();
+  await dialog.getByRole('button', { name: /Créer et importer le plan/ }).click();
   await expect(page.getByRole('tab', { name: 'Plan 2D' })).toHaveAttribute('aria-selected', 'true');
 
   // 2. Import d'une image de plan comme fond de référence

@@ -3,6 +3,9 @@ import type { Level, Opening, PlacedDevice, Product, Room } from '@/domain/types
 import { CATEGORY_COLORS, CATEGORY_GLYPH, ROOM_COLORS } from '@/domain/labels';
 import { adjacentRooms, buildWallSegments, openingPlacement, roomArea, type WallSegment } from './geometry';
 import { formatNumber } from '@/lib/format';
+import { PROVENANCE_COLORS, type Provenance } from '@/generator/provenance';
+
+const PROV_LETTER: Record<Provenance, string> = { questionnaire: 'Q', genere: 'G', conseiller: 'C' };
 
 export type PlanTarget =
   | { kind: 'room'; id: string; handle?: 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' }
@@ -26,6 +29,8 @@ export interface PlanDrawingProps {
   motionAngle?: number;
   motionRange?: number;
   onTargetDown?: (target: PlanTarget, e: ReactPointerEvent) => void;
+  /** Provenance des éléments d'un plan généré (questionnaire / généré / corrigé). */
+  provenance?: Map<string, Provenance>;
 }
 
 const DOOR = '#334155';
@@ -201,6 +206,7 @@ export function PlanDrawing({
   motionAngle = 110,
   motionRange = 10,
   onTargetDown,
+  provenance,
 }: PlanDrawingProps) {
   const px = pxPerMeter;
   const segments = buildWallSegments(level);
@@ -367,6 +373,31 @@ export function PlanDrawing({
             </g>
           );
         })}
+
+      {/* Provenance (plan généré) */}
+      {provenance && (
+        <g style={{ pointerEvents: 'none' }} fontFamily="Inter, Helvetica, Arial, sans-serif" data-testid="provenance-layer">
+          {level.rooms.map((r) => {
+            const p = provenance.get(r.id);
+            if (!p) return null;
+            const s = 14 / px;
+            return (
+              <g key={`pv-${r.id}`} data-provenance={p}>
+                <rect x={r.x + 4 / px} y={r.y + 4 / px} width={s} height={s} rx={3 / px} fill={PROVENANCE_COLORS[p]} />
+                <text x={r.x + 4 / px + s / 2} y={r.y + 4 / px + s / 2} fontSize={9 / px} fontWeight={700} fill="#fff" textAnchor="middle" dominantBaseline="central">
+                  {PROV_LETTER[p]}
+                </text>
+              </g>
+            );
+          })}
+          {level.openings.map((o) => {
+            const p = provenance.get(o.id);
+            const pl = openingPlacement(level, o);
+            if (!p || !pl) return null;
+            return <circle key={`po-${o.id}`} cx={pl.center.x} cy={pl.center.y} r={3 / px} fill={PROVENANCE_COLORS[p]} stroke="#fff" strokeWidth={1 / px} />;
+          })}
+        </g>
+      )}
 
       {/* Cotes de la pièce sélectionnée */}
       {showDimensions &&
