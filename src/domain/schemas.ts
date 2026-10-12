@@ -226,6 +226,10 @@ export const dossierSchema = z.object({
     moved: z.array(z.object({ productId: z.string(), quantity: z.number().int().min(0) })).default([]),
     packOverride: z.object({ initial: z.number().min(0).optional(), monthly: z.number().min(0).optional() }).nullable().default(null),
     packTransferred: z.boolean().default(false),
+    totalOverride: z
+      .object({ initial: z.number().min(0).optional(), monthly: z.number().min(0).optional(), note: z.string().default('') })
+      .nullable()
+      .default(null),
   }),
   quotes: z.array(quoteRecordSchema),
   demoValidatedAt: z.string().nullable(),

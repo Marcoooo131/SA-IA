@@ -59,6 +59,7 @@ export function buildComparison(dossier: Dossier, catalog: Catalog, audit: Audit
           moved: config === 'plan' ? dossier.quoteDraft.moved : [],
           packOverride: offer.packId === dossier.quoteDraft.packId ? dossier.quoteDraft.packOverride : null,
           packTransferred: config === 'plan' && offer.packId === dossier.quoteDraft.packId && dossier.quoteDraft.packTransferred,
+          totalOverride: config === 'plan' && offer.packId === dossier.quoteDraft.packId ? dossier.quoteDraft.totalOverride : null,
         },
         catalog,
       );

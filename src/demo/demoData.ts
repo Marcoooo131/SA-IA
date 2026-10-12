@@ -127,7 +127,7 @@ export function demoHouseDossier(catalog: Catalog = createDefaultCatalog()): Dos
     devices: [],
     protectionMode: 'volumetrique',
     auditValidations: {},
-    quoteDraft: { packId: 'pack_serenite', adjustments: [], discountIds: [], priceOverrides: [], moved: [], packOverride: null, packTransferred: false },
+    quoteDraft: { packId: 'pack_serenite', adjustments: [], discountIds: [], priceOverrides: [], moved: [], packOverride: null, packTransferred: false, totalOverride: null },
     quotes: [],
     demoValidatedAt: null,
   };
@@ -191,7 +191,7 @@ export function demoApartmentDossier(): Dossier {
     devices: [],
     protectionMode: 'perimetrique',
     auditValidations: {},
-    quoteDraft: { packId: 'pack_essentiel', adjustments: [], discountIds: [], priceOverrides: [], moved: [], packOverride: null, packTransferred: false },
+    quoteDraft: { packId: 'pack_essentiel', adjustments: [], discountIds: [], priceOverrides: [], moved: [], packOverride: null, packTransferred: false, totalOverride: null },
     quotes: [],
     demoValidatedAt: null,
   };
@@ -226,7 +226,7 @@ export function emptyDossier(id: string, reference: string): Dossier {
     devices: [],
     protectionMode: 'volumetrique',
     auditValidations: {},
-    quoteDraft: { packId: 'pack_essentiel', adjustments: [], discountIds: [], priceOverrides: [], moved: [], packOverride: null, packTransferred: false },
+    quoteDraft: { packId: 'pack_essentiel', adjustments: [], discountIds: [], priceOverrides: [], moved: [], packOverride: null, packTransferred: false, totalOverride: null },
     quotes: [],
     demoValidatedAt: null,
   };

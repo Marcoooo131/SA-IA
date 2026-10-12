@@ -14,6 +14,7 @@ const draft = (packId: string | null, extra: Partial<QuoteDraft> = {}): QuoteDra
   moved: [],
   packOverride: null,
   packTransferred: false,
+  totalOverride: null,
   ...extra,
 });
 
@@ -114,6 +115,21 @@ describe('calculateur de devis', () => {
     expect(all.totals.monthly).toBe(0);
     // la reprise ne dépasse jamais la quantité supplémentaire
     expect(all.lines.find((l) => l.productId === 'prd_fumee')!.moved).toBe(1);
+  });
+
+  it('accepte des montants finaux saisis manuellement et affiche l’écart', () => {
+    const base = bom({ prd_fumee: 3 });
+    const computed = computeQuote(base, draft('pack_essentiel'), catalog);
+    expect(computed.manualAdjustment).toBeNull();
+    const r = computeQuote(base, draft('pack_essentiel', { totalOverride: { initial: 1000, monthly: 39, note: 'Geste commercial' } }), catalog);
+    expect(r.totals.initialComputed).toBe(799 + 298);
+    expect(r.totals.initial).toBe(1000);
+    expect(r.totals.monthly).toBe(39);
+    expect(r.manualAdjustment).toEqual({ initial: -97, monthly: -2.9, note: 'Geste commercial' });
+    // un seul montant modifié : l'autre reste calculé
+    const onlyMonthly = computeQuote(base, draft('pack_essentiel', { totalOverride: { monthly: 35, note: '' } }), catalog);
+    expect(onlyMonthly.totals.initial).toBe(1097);
+    expect(onlyMonthly.manualAdjustment!.initial).toBeNull();
   });
 
   it('regroupe les détecteurs de choc en pack périmétrique lorsque c’est plus avantageux', () => {

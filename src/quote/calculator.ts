@@ -90,7 +90,12 @@ export interface QuoteResult {
   extras: { initial: number; monthly: number };
   installation: number | null;
   discounts: AppliedDiscount[];
+  /** Écart entre le montant saisi manuellement et le montant calculé (null = pas d'ajustement). */
+  manualAdjustment: { initial: number | null; monthly: number | null; note: string } | null;
   totals: {
+    /** Montants calculés avant ajustement manuel. */
+    initialComputed: number;
+    monthlyComputed: number;
     initialBeforeDiscount: number;
     initialDiscount: number;
     initial: number;
@@ -278,8 +283,20 @@ export function computeQuote(bom: Map<string, number>, draft: QuoteDraft, catalo
     applied.push({ id: d.id, label: d.label, target: d.target, amount: fromCents(amount) });
   }
 
-  const initialC = initialBeforeC - initialDiscountC;
-  const monthlyC = monthlyBeforeC - monthlyDiscountC;
+  const initialComputedC = initialBeforeC - initialDiscountC;
+  const monthlyComputedC = monthlyBeforeC - monthlyDiscountC;
+  // Montants finaux saisis manuellement par le conseiller
+  const to = draft.totalOverride;
+  const initialC = to?.initial !== undefined && to !== null ? toCents(to.initial) : initialComputedC;
+  const monthlyC = to?.monthly !== undefined && to !== null ? toCents(to.monthly) : monthlyComputedC;
+  const manualAdjustment =
+    to && (to.initial !== undefined || to.monthly !== undefined)
+      ? {
+          initial: to.initial !== undefined ? fromCents(initialC - initialComputedC) : null,
+          monthly: to.monthly !== undefined ? fromCents(monthlyC - monthlyComputedC) : null,
+          note: to.note ?? '',
+        }
+      : null;
   const { priceBasis, vatRate } = catalog.settings;
   const vat: QuoteResult['vat'] = {
     basis: priceBasis,
@@ -330,7 +347,10 @@ export function computeQuote(bom: Map<string, number>, draft: QuoteDraft, catalo
     extras: { initial: fromCents(extrasInitialC), monthly: fromCents(extrasMonthlyC) },
     installation,
     discounts: applied,
+    manualAdjustment,
     totals: {
+      initialComputed: fromCents(initialComputedC),
+      monthlyComputed: fromCents(monthlyComputedC),
       initialBeforeDiscount: fromCents(initialBeforeC),
       initialDiscount: fromCents(initialDiscountC),
       initial: fromCents(initialC),

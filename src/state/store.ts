@@ -104,6 +104,7 @@ export interface AppState {
   setPackOverride(patch: { initial?: number | null; monthly?: number | null } | null): void;
   setPackTransferred(on: boolean): void;
   setMovingAll(on: boolean, lines: { productId: string; quantity: number }[]): void;
+  setTotalOverride(patch: { initial?: number | null; monthly?: number | null; note?: string } | null): void;
   toggleDiscount(discountId: string): void;
   addQuoteRecord(record: QuoteRecord): void;
 
@@ -375,6 +376,20 @@ export const useApp = create<AppState>()((set, get) => {
           else next[k] = v;
         }
         return { ...d, quoteDraft: { ...d.quoteDraft, packOverride: next.initial !== undefined || next.monthly !== undefined ? next : null } };
+      }),
+    setTotalOverride: (patch) =>
+      updateActive((d) => {
+        if (patch === null) return { ...d, quoteDraft: { ...d.quoteDraft, totalOverride: null } };
+        const next: { initial?: number; monthly?: number; note: string } = { note: '', ...(d.quoteDraft.totalOverride ?? {}) };
+        for (const k of ['initial', 'monthly'] as const) {
+          if (!(k in patch)) continue;
+          const v = patch[k];
+          if (v === null || v === undefined) delete next[k];
+          else next[k] = v;
+        }
+        if (patch.note !== undefined) next.note = patch.note;
+        const keep = next.initial !== undefined || next.monthly !== undefined || next.note !== '';
+        return { ...d, quoteDraft: { ...d.quoteDraft, totalOverride: keep ? next : null } };
       }),
     setPackTransferred: (on) => updateActive((d) => ({ ...d, quoteDraft: { ...d.quoteDraft, packTransferred: on } })),
     setMovingAll: (on, lines) =>

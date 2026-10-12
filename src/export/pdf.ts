@@ -200,6 +200,15 @@ export function generateQuotePdf(input: QuotePdfInput): jsPDF {
   totals.push([T("Frais d'installation"), T(result.installation === null ? 'À confirmer' : formatEuro(result.installation)), '-']);
   for (const d of result.discounts)
     totals.push([T(`Remise : ${d.label}`), d.target === 'mensuel_total' ? '-' : T(`- ${formatEuro(d.amount)}`), d.target === 'mensuel_total' ? T(`- ${formatMonthly(d.amount)}`) : '-']);
+  const adj = result.manualAdjustment;
+  if (adj && (adj.initial !== null || adj.monthly !== null)) {
+    const sgn = (v: number) => `${v >= 0 ? '+' : '-'} ${formatEuro(Math.abs(v))}`;
+    totals.push([
+      T(`Ajustement${adj.note ? ` : ${adj.note}` : ''}`),
+      adj.initial !== null ? T(sgn(adj.initial)) : '-',
+      adj.monthly !== null ? T(`${sgn(adj.monthly)}/mois`) : '-',
+    ]);
+  }
   totals.push([T('TOTAL'), T(formatEuro(result.totals.initial)), T(formatMonthly(result.totals.monthly))]);
   autoTable(doc, {
     startY: y,

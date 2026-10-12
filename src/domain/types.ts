@@ -291,6 +291,8 @@ export interface QuoteDraft {
   packOverride: { initial?: number; monthly?: number } | null;
   /** Abonnement transféré lors du déménagement : forfait à 0 € et 0 €/mois. */
   packTransferred: boolean;
+  /** Montants finaux saisis manuellement par le conseiller (remplacent le calcul). */
+  totalOverride: { initial?: number; monthly?: number; note: string } | null;
 }
 
 export interface QuoteRecord {

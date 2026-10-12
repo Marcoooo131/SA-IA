@@ -134,6 +134,7 @@ Indépendant de l'interface (fonction pure `runAudit`) et paramétrable dans *Ca
 - Distinction : forfait, suppléments, frais d'installation (« à confirmer » si non renseignés), remises, coût initial, coût mensuel, TVA (uniquement si renseignée), éléments inclus non positionnés.
 - Prix inconnu (ex. supplément mensuel de la centrale) : « à confirmer », **exclu des totaux et signalé** – jamais de prix inventé.
 - **Prix modifiables dans le devis** (prix matériel, supplément mensuel, prix du forfait) sans changer le catalogue ; « Prix du catalogue » pour revenir à la valeur d'origine.
+- **Montants finaux modifiables** : frais initiaux et mensualité du devis saisissables à la main, avec un motif ; l'écart avec le calcul apparaît comme « ajustement » dans le récapitulatif et le PDF.
 - **Déménagement** : équipements repris du logement précédent (case par ligne, quantité réglable) et abonnement transféré à **0 € et 0 €/mois** ; bouton « Tout passer en déménagement ». Repris dans le PDF et l'historique.
 - Regroupement automatique en pack périmétrique lorsque c'est moins cher (sans augmenter le mensuel).
 - Calculs en centimes (aucune erreur d'arrondi), ajustements de quantités, recalcul instantané.

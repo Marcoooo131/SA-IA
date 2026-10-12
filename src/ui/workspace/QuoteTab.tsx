@@ -5,11 +5,13 @@ import { useAudit, useQuote } from '@/state/derived';
 import { buildComparison } from '@/quote/compare';
 import { formatDateTime, formatEuro, formatMonthly, formatNumber } from '@/lib/format';
 import { DISCOUNT_TARGET_LABELS } from '@/domain/labels';
-import { Badge, Button, Card, IconButton, NumberInput, Select, Toggle, cx } from '../kit';
+import { Badge, Button, Card, IconButton, NumberInput, Select, TextInput, Toggle, cx } from '../kit';
 import { CategoryDot } from './LeftPanels';
 import { downloadBlob } from '@/catalog/excel';
 import { getAsset, putAsset } from '@/persistence/assets';
 import { getLastViewSnapshot } from '@/view3d/lastView';
+
+const signed = (v: number) => `${v >= 0 ? '+' : '-'} ${formatEuro(Math.abs(v))}`;
 
 function Comparator() {
   const dossier = useActiveDossier()!;
@@ -87,6 +89,7 @@ export function QuoteTab() {
   const setPackOverride = useApp((s) => s.setPackOverride);
   const setPackTransferred = useApp((s) => s.setPackTransferred);
   const setMovingAll = useApp((s) => s.setMovingAll);
+  const setTotalOverride = useApp((s) => s.setTotalOverride);
   const toggleDiscount = useApp((s) => s.toggleDiscount);
   const addQuoteRecord = useApp((s) => s.addQuoteRecord);
   const validateDemo = useApp((s) => s.validateDemo);
@@ -421,7 +424,58 @@ export function QuoteTab() {
                     <dd className="tabular-nums">- {d.target === 'mensuel_total' ? formatMonthly(d.amount) : formatEuro(d.amount)}</dd>
                   </div>
                 ))}
+                {quote.manualAdjustment && (quote.manualAdjustment.initial !== null || quote.manualAdjustment.monthly !== null) && (
+                  <div className="flex justify-between text-blue-800" data-testid="manual-adjustment">
+                    <dt>Ajustement manuel{quote.manualAdjustment.note ? ` : ${quote.manualAdjustment.note}` : ''}</dt>
+                    <dd className="text-right tabular-nums">
+                      {quote.manualAdjustment.initial !== null && <div>{signed(quote.manualAdjustment.initial)}</div>}
+                      {quote.manualAdjustment.monthly !== null && <div className="text-xs">{signed(quote.manualAdjustment.monthly)}/mois</div>}
+                    </dd>
+                  </div>
+                )}
               </dl>
+              <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50/60 p-2.5">
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-blue-900">Modifier manuellement les montants du devis</span>
+                  {dossier.quoteDraft.totalOverride && (
+                    <button className="text-[11px] text-blue-700 hover:underline" onClick={() => setTotalOverride(null)}>
+                      Revenir au calcul
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <NumberInput
+                    value={dossier.quoteDraft.totalOverride?.initial ?? null}
+                    onChange={(v) => setTotalOverride({ initial: v })}
+                    allowNull
+                    min={0}
+                    step={10}
+                    suffix="€"
+                    placeholder={formatNumber(quote.totals.initialComputed, quote.totals.initialComputed % 1 ? 2 : 0)}
+                    aria-label="Frais initiaux du devis"
+                  />
+                  <NumberInput
+                    value={dossier.quoteDraft.totalOverride?.monthly ?? null}
+                    onChange={(v) => setTotalOverride({ monthly: v })}
+                    allowNull
+                    min={0}
+                    step={0.5}
+                    suffix="€/m"
+                    placeholder={formatNumber(quote.totals.monthlyComputed)}
+                    aria-label="Mensualité du devis"
+                  />
+                </div>
+                <TextInput
+                  className="mt-2 text-xs"
+                  placeholder="Motif (ex. geste commercial, arrondi)"
+                  value={dossier.quoteDraft.totalOverride?.note ?? ''}
+                  onChange={(e) => setTotalOverride({ note: e.target.value })}
+                  aria-label="Motif de l'ajustement"
+                />
+                <p className="mt-1 text-[10px] text-blue-900/70">
+                  Calculé : {formatEuro(quote.totals.initialComputed)} · {formatMonthly(quote.totals.monthlyComputed)}. Laisser vide pour garder le calcul.
+                </p>
+              </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <div className="rounded-lg bg-slate-100 px-3 py-2">
                   <div className="text-[10px] text-slate-500 uppercase">Frais initiaux</div>
