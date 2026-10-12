@@ -34,7 +34,7 @@ Autres commandes :
 ### Version en ligne (GitHub Pages)
 
 Le workflow `.github/workflows/deploy-pages.yml` construit et publie l'application à chaque mise à jour de
-`main` (et de la branche du prototype). Activation unique : *Settings → Pages → Source : GitHub Actions*.
+`main`. Activation unique : *Settings → Pages → Source : GitHub Actions*.
 L'adresse est ensuite `https://<compte>.github.io/SA-IA/`.
 
 Au premier lancement, l'application contient :
