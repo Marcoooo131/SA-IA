@@ -12,7 +12,7 @@ import type {
   ProtectionMode,
   QuoteRecord,
 } from '@/domain/types';
-import { createDefaultCatalog } from '@/catalog/defaultCatalog';
+import { createDefaultCatalog, migrateCatalog } from '@/catalog/defaultCatalog';
 import { demoApartmentDossier, demoHouseDossier, emptyDossier } from '@/demo/demoData';
 import { DEFAULT_RULES_CONFIG, type RulesConfig } from '@/rules/config';
 import { runAudit } from '@/rules/engine';
@@ -99,6 +99,12 @@ export interface AppState {
   // devis
   setQuotePack(packId: string | null): void;
   setAdjustment(productId: string, delta: number): void;
+  setPriceOverride(productId: string, patch: { initial?: number | null; monthly?: number | null }): void;
+  setMoved(productId: string, quantity: number): void;
+  setPackOverride(patch: { initial?: number | null; monthly?: number | null } | null): void;
+  setPackTransferred(on: boolean): void;
+  setMovingAll(on: boolean, lines: { productId: string; quantity: number }[]): void;
+  setTotalOverride(patch: { initial?: number | null; monthly?: number | null; note?: string } | null): void;
   toggleDiscount(discountId: string): void;
   addQuoteRecord(record: QuoteRecord): void;
 
@@ -147,7 +153,8 @@ function touch(d: Dossier): Dossier {
 export function initialData(): Pick<AppState, 'dossiers' | 'catalog' | 'catalogHistory' | 'rules' | 'loadErrors'> {
   const repo = getRepo();
   const loaded = repo?.load() ?? { state: {}, errors: [] };
-  const catalog = loaded.state.catalog ?? createDefaultCatalog();
+  const migrated = loaded.state.catalog ? migrateCatalog(loaded.state.catalog) : null;
+  const catalog = migrated ? migrated.catalog : createDefaultCatalog();
   const dossiers = loaded.state.dossiers ?? [demoHouseDossier(catalog), demoApartmentDossier()];
   return {
     dossiers,
@@ -334,7 +341,66 @@ export const useApp = create<AppState>()((set, get) => {
         return { ...d, auditValidations: next };
       }),
 
-    setQuotePack: (packId) => updateActive((d) => ({ ...d, quoteDraft: { ...d.quoteDraft, packId } })),
+    // Le prix modifié d'un forfait ne vaut que pour ce forfait
+    setQuotePack: (packId) => updateActive((d) => ({ ...d, quoteDraft: { ...d.quoteDraft, packId, packOverride: null } })),
+    setPriceOverride: (productId, patch) =>
+      updateActive((d) => {
+        const cur = d.quoteDraft.priceOverrides.find((o) => o.productId === productId) ?? { productId };
+        const next = { ...cur };
+        if ('initial' in patch) {
+          if (patch.initial === null || patch.initial === undefined) delete next.initial;
+          else next.initial = patch.initial;
+        }
+        if ('monthly' in patch) {
+          if (patch.monthly === null || patch.monthly === undefined) delete next.monthly;
+          else next.monthly = patch.monthly;
+        }
+        const others = d.quoteDraft.priceOverrides.filter((o) => o.productId !== productId);
+        const keep = next.initial !== undefined || next.monthly !== undefined;
+        return { ...d, quoteDraft: { ...d.quoteDraft, priceOverrides: keep ? [...others, next] : others } };
+      }),
+    setMoved: (productId, quantity) =>
+      updateActive((d) => {
+        const others = d.quoteDraft.moved.filter((m) => m.productId !== productId);
+        const q = Math.max(0, Math.round(quantity));
+        return { ...d, quoteDraft: { ...d.quoteDraft, moved: q ? [...others, { productId, quantity: q }] : others } };
+      }),
+    setPackOverride: (patch) =>
+      updateActive((d) => {
+        if (patch === null) return { ...d, quoteDraft: { ...d.quoteDraft, packOverride: null } };
+        const next: { initial?: number; monthly?: number } = { ...(d.quoteDraft.packOverride ?? {}) };
+        for (const k of ['initial', 'monthly'] as const) {
+          if (!(k in patch)) continue;
+          const v = patch[k];
+          if (v === null || v === undefined) delete next[k];
+          else next[k] = v;
+        }
+        return { ...d, quoteDraft: { ...d.quoteDraft, packOverride: next.initial !== undefined || next.monthly !== undefined ? next : null } };
+      }),
+    setTotalOverride: (patch) =>
+      updateActive((d) => {
+        if (patch === null) return { ...d, quoteDraft: { ...d.quoteDraft, totalOverride: null } };
+        const next: { initial?: number; monthly?: number; note: string } = { note: '', ...(d.quoteDraft.totalOverride ?? {}) };
+        for (const k of ['initial', 'monthly'] as const) {
+          if (!(k in patch)) continue;
+          const v = patch[k];
+          if (v === null || v === undefined) delete next[k];
+          else next[k] = v;
+        }
+        if (patch.note !== undefined) next.note = patch.note;
+        const keep = next.initial !== undefined || next.monthly !== undefined || next.note !== '';
+        return { ...d, quoteDraft: { ...d.quoteDraft, totalOverride: keep ? next : null } };
+      }),
+    setPackTransferred: (on) => updateActive((d) => ({ ...d, quoteDraft: { ...d.quoteDraft, packTransferred: on } })),
+    setMovingAll: (on, lines) =>
+      updateActive((d) => ({
+        ...d,
+        quoteDraft: {
+          ...d.quoteDraft,
+          packTransferred: on,
+          moved: on ? lines.filter((l) => l.quantity > 0).map((l) => ({ productId: l.productId, quantity: l.quantity })) : [],
+        },
+      })),
     setAdjustment: (productId, delta) =>
       updateActive((d) => {
         const others = d.quoteDraft.adjustments.filter((a) => a.productId !== productId);

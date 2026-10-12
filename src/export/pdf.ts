@@ -156,7 +156,11 @@ export function generateQuotePdf(input: QuotePdfInput): jsPDF {
   sectionTitle("Détail de l'offre et des équipements");
   if (result.pack) {
     doc.text(
-      T(`${result.pack.name} : forfait de ${formatEuro(result.pack.initial)} de frais matériel et ${formatMonthly(result.pack.monthly)}. Le forfait n'est pas la somme des prix unitaires.`),
+      T(
+        result.pack.transferred
+          ? `${result.pack.name} : abonnement transféré dans le cadre du déménagement (0 € de frais matériel, 0 €/mois).`
+          : `${result.pack.name} : forfait de ${formatEuro(result.pack.initial)} de frais matériel et ${formatMonthly(result.pack.monthly)}${result.pack.overridden ? ' (prix ajusté pour ce devis)' : ''}. Le forfait n'est pas la somme des prix unitaires.`,
+      ),
       MARGIN,
       y,
       { maxWidth: W - MARGIN * 2 },
@@ -168,11 +172,11 @@ export function generateQuotePdf(input: QuotePdfInput): jsPDF {
     T(l.reference),
     l.requested,
     l.included || '-',
-    l.extra ? (l.bundled ? `${l.extra} (dont ${l.bundled} en lot)` : l.extra) : '-',
-    T(l.priceKnown ? formatEuro(l.unitInitial) : 'À confirmer'),
-    T(l.priceKnown ? formatMonthly(l.unitMonthly) : 'À confirmer'),
-    T(l.extra - l.bundled > 0 ? (l.extraInitial === null ? 'À confirmer' : formatEuro(l.extraInitial)) : '-'),
-    T(l.extra - l.bundled > 0 ? (l.extraMonthly === null ? 'À confirmer' : formatMonthly(l.extraMonthly)) : '-'),
+    T(l.extra ? [String(l.extra), l.bundled ? `dont ${l.bundled} en lot` : '', l.moved ? `dont ${l.moved} repris (déménagement)` : ''].filter(Boolean).join(', ') : '-'),
+    T(formatEuro(l.unitInitial)),
+    T(formatMonthly(l.unitMonthly)),
+    T(l.extra - l.bundled - l.moved > 0 ? (l.extraInitial === null ? 'À confirmer' : formatEuro(l.extraInitial)) : l.moved ? '0 €' : '-'),
+    T(l.extra - l.bundled - l.moved > 0 ? (l.extraMonthly === null ? 'À confirmer' : formatMonthly(l.extraMonthly)) : l.moved ? '0 €/mois' : '-'),
   ]);
   for (const b of result.bundles)
     body.push([T(b.name), T(b.reference), `${b.count} lot(s)`, '-', `${b.covers} unités`, T(formatEuro(b.unitInitial)), T(formatMonthly(b.unitMonthly)), T(formatEuro(b.initial)), T(formatMonthly(b.monthly))]);
@@ -192,9 +196,19 @@ export function generateQuotePdf(input: QuotePdfInput): jsPDF {
   const totals: string[][] = [];
   if (result.pack) totals.push([T(`Forfait ${result.pack.name}`), T(formatEuro(result.pack.initial)), T(formatMonthly(result.pack.monthly))]);
   totals.push([T('Équipements supplémentaires'), T(formatEuro(result.extras.initial)), T(formatMonthly(result.extras.monthly))]);
+  if (result.movedCount) totals.push([T(`Équipements repris (déménagement) : ${result.movedCount}`), T('0 €'), T('0 €/mois')]);
   totals.push([T("Frais d'installation"), T(result.installation === null ? 'À confirmer' : formatEuro(result.installation)), '-']);
   for (const d of result.discounts)
     totals.push([T(`Remise : ${d.label}`), d.target === 'mensuel_total' ? '-' : T(`- ${formatEuro(d.amount)}`), d.target === 'mensuel_total' ? T(`- ${formatMonthly(d.amount)}`) : '-']);
+  const adj = result.manualAdjustment;
+  if (adj && (adj.initial !== null || adj.monthly !== null)) {
+    const sgn = (v: number) => `${v >= 0 ? '+' : '-'} ${formatEuro(Math.abs(v))}`;
+    totals.push([
+      T(`Ajustement${adj.note ? ` : ${adj.note}` : ''}`),
+      adj.initial !== null ? T(sgn(adj.initial)) : '-',
+      adj.monthly !== null ? T(`${sgn(adj.monthly)}/mois`) : '-',
+    ]);
+  }
   totals.push([T('TOTAL'), T(formatEuro(result.totals.initial)), T(formatMonthly(result.totals.monthly))]);
   autoTable(doc, {
     startY: y,
@@ -215,7 +229,7 @@ export function generateQuotePdf(input: QuotePdfInput): jsPDF {
   y = lastY() + 4;
   if (result.unpriced.length) {
     doc.setTextColor(180, 83, 9);
-    doc.text(T(`Prix à confirmer (exclus des totaux) : ${result.unpriced.map((u) => `${u.quantity} x ${u.name}`).join(', ')}.`), MARGIN, y, { maxWidth: W - MARGIN * 2 });
+    doc.text(T(`Prix à confirmer (exclus des totaux) : ${result.unpriced.map((u) => `${u.quantity} x ${u.name} (${u.missing.map((m) => (m === 'materiel' ? 'prix matériel' : 'mensualité')).join(' et ')})`).join(', ')}.`), MARGIN, y, { maxWidth: W - MARGIN * 2 });
     doc.setTextColor(30, 41, 59);
     y += 8;
   }

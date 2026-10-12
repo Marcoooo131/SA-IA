@@ -67,3 +67,32 @@ describe('persistance locale', () => {
     expect(await getAsset('img1')).toBe('data:image/png;base64,AAAA');
   });
 });
+
+describe('mise à jour des données existantes', () => {
+  it('complète un brouillon de devis enregistré avant l’ajout du déménagement', async () => {
+    const { dossierSchema } = await import('@/domain/schemas');
+    const d = demoHouseDossier(createDefaultCatalog()) as unknown as Record<string, unknown>;
+    const old = structuredClone(d) as { quoteDraft: Record<string, unknown> };
+    delete old.quoteDraft.priceOverrides;
+    delete old.quoteDraft.moved;
+    delete old.quoteDraft.packOverride;
+    delete old.quoteDraft.packTransferred;
+    const parsed = dossierSchema.parse(old);
+    expect(parsed.quoteDraft).toMatchObject({ priceOverrides: [], moved: [], packOverride: null, packTransferred: false });
+  });
+
+  it('applique les prix communiqués à un ancien catalogue sans écraser un prix saisi', async () => {
+    const { migrateCatalog } = await import('@/catalog/defaultCatalog');
+    const cat = createDefaultCatalog();
+    cat.products = cat.products.map((p) =>
+      p.id === 'prd_centrale' || p.id === 'prd_clavier' ? { ...p, priceInitial: null, monthly: null, billing: 'forfait' as const } : p,
+    );
+    const res = migrateCatalog(cat);
+    expect(res.changed).toBe(true);
+    expect(res.catalog.products.find((p) => p.id === 'prd_centrale')).toMatchObject({ priceInitial: 499, monthly: null, billing: 'unitaire' });
+    expect(res.catalog.products.find((p) => p.id === 'prd_clavier')).toMatchObject({ priceInitial: 149, monthly: 0 });
+    const custom = createDefaultCatalog();
+    custom.products = custom.products.map((p) => (p.id === 'prd_clavier' ? { ...p, priceInitial: 120 } : p));
+    expect(migrateCatalog(custom).catalog.products.find((p) => p.id === 'prd_clavier')!.priceInitial).toBe(120);
+  });
+});

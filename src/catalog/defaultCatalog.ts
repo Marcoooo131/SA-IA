@@ -4,7 +4,7 @@ import type { Catalog, Product, ProductCategory } from '@/domain/types';
  * Catalogue de démonstration.
  * - Les références « DEMO-… » sont fictives : aucune référence commerciale officielle n'est inventée.
  * - Les prix sont ceux communiqués pour le prototype et ne constituent pas des tarifs officiels.
- * - Aucun prix individuel n'est défini pour la centrale et le clavier (non communiqué).
+ * - Centrale : 499 € (supplément mensuel non communiqué) ; clavier : 149 € sans supplément mensuel.
  */
 export const DEFAULT_PRODUCTS: Product[] = [
   {
@@ -13,14 +13,14 @@ export const DEFAULT_PRODUCTS: Product[] = [
     name: 'Centrale',
     category: 'centrale',
     description: "Unité centrale du système, une par logement associé à une adresse.",
-    priceInitial: null,
+    priceInitial: 499,
     monthly: null,
-    billing: 'forfait',
+    billing: 'unitaire',
     packQuantity: 1,
     icon: 'centrale',
     compatibility: 'À confirmer avec la fiche fabricant.',
     active: true,
-    comments: 'Prix individuel non communiqué : incluse dans les packs.',
+    comments: 'Prix matériel communiqué : 499 €. Supplément mensuel non communiqué (à confirmer). Incluse dans les packs.',
   },
   {
     id: 'prd_clavier',
@@ -28,14 +28,14 @@ export const DEFAULT_PRODUCTS: Product[] = [
     name: 'Clavier',
     category: 'clavier',
     description: "Clavier de commande, placé à proximité d'un point d'entrée.",
-    priceInitial: null,
-    monthly: null,
-    billing: 'forfait',
+    priceInitial: 149,
+    monthly: 0,
+    billing: 'unitaire',
     packQuantity: 1,
     icon: 'clavier',
     compatibility: "Jusqu'à 4 claviers par logement selon les points d'entrée (hypothèse à valider).",
     active: true,
-    comments: 'Prix individuel non communiqué : inclus dans les packs.',
+    comments: 'Prix communiqué : 149 €, sans supplément mensuel. Inclus dans les packs.',
   },
   {
     id: 'prd_choc',
@@ -213,4 +213,21 @@ export function productForCategory(products: Product[], category: ProductCategor
     products.find((p) => p.active && p.category === category && p.billing !== 'lot') ??
     products.find((p) => p.category === category && p.billing !== 'lot')
   );
+}
+
+/**
+ * Mise à jour des catalogues déjà enregistrés dans un navigateur : applique les prix
+ * communiqués pour la centrale et le clavier uniquement s'ils n'ont jamais été
+ * renseignés (un prix saisi par l'utilisateur n'est jamais écrasé).
+ */
+export function migrateCatalog<T extends { products: Product[] }>(catalog: T): { catalog: T; changed: boolean } {
+  let changed = false;
+  const products = catalog.products.map((p) => {
+    const ref = DEFAULT_PRODUCTS.find((d) => d.id === p.id);
+    if (!ref || (p.id !== 'prd_centrale' && p.id !== 'prd_clavier')) return p;
+    if (p.priceInitial !== null || p.billing !== 'forfait') return p;
+    changed = true;
+    return { ...p, priceInitial: ref.priceInitial, monthly: p.monthly ?? ref.monthly, billing: ref.billing, comments: ref.comments };
+  });
+  return { catalog: changed ? { ...catalog, products } : catalog, changed };
 }

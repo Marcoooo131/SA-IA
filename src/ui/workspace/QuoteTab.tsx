@@ -1,15 +1,17 @@
 import { useMemo, useState } from 'react';
-import { BadgeCheck, Download, FileDown, Loader2, Minus, Plus, Settings2 } from 'lucide-react';
+import { BadgeCheck, Download, FileDown, Loader2, Minus, Plus, RotateCcw, Settings2 } from 'lucide-react';
 import { useApp, useActiveDossier } from '@/state/store';
 import { useAudit, useQuote } from '@/state/derived';
 import { buildComparison } from '@/quote/compare';
-import { formatDateTime, formatEuro, formatMonthly } from '@/lib/format';
+import { formatDateTime, formatEuro, formatMonthly, formatNumber } from '@/lib/format';
 import { DISCOUNT_TARGET_LABELS } from '@/domain/labels';
-import { Badge, Button, Card, IconButton, Select, Toggle, cx } from '../kit';
+import { Badge, Button, Card, IconButton, NumberInput, Select, TextInput, Toggle, cx } from '../kit';
 import { CategoryDot } from './LeftPanels';
 import { downloadBlob } from '@/catalog/excel';
 import { getAsset, putAsset } from '@/persistence/assets';
 import { getLastViewSnapshot } from '@/view3d/lastView';
+
+const signed = (v: number) => `${v >= 0 ? '+' : '-'} ${formatEuro(Math.abs(v))}`;
 
 function Comparator() {
   const dossier = useActiveDossier()!;
@@ -82,6 +84,12 @@ export function QuoteTab() {
   const rules = useApp((s) => s.rules);
   const setPack = useApp((s) => s.setQuotePack);
   const setAdjustment = useApp((s) => s.setAdjustment);
+  const setPriceOverride = useApp((s) => s.setPriceOverride);
+  const setMoved = useApp((s) => s.setMoved);
+  const setPackOverride = useApp((s) => s.setPackOverride);
+  const setPackTransferred = useApp((s) => s.setPackTransferred);
+  const setMovingAll = useApp((s) => s.setMovingAll);
+  const setTotalOverride = useApp((s) => s.setTotalOverride);
   const toggleDiscount = useApp((s) => s.toggleDiscount);
   const addQuoteRecord = useApp((s) => s.addQuoteRecord);
   const validateDemo = useApp((s) => s.validateDemo);
@@ -137,21 +145,84 @@ export function QuoteTab() {
             }
             bodyClassName="p-0"
           >
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200 bg-amber-50 px-4 py-2.5 text-sm" data-testid="moving-bar">
+              <div>
+                <div className="font-semibold text-amber-900">Déménagement</div>
+                <div className="text-[11px] text-amber-800">
+                  Équipements repris du logement précédent et abonnement transféré : 0 € et 0 €/mois.
+                  {quote.movedCount > 0 && ` ${quote.movedCount} équipement(s) repris.`}
+                  {quote.pack?.transferred && ' Abonnement transféré.'}
+                </div>
+              </div>
+              <Toggle
+                checked={(!quote.pack || quote.pack.transferred) && quote.lines.every((l) => l.moved === l.extra) && (quote.movedCount > 0 || !!quote.pack?.transferred)}
+                onChange={(on) => setMovingAll(on, quote.lines.map((l) => ({ productId: l.productId, quantity: l.extra })))}
+                label="Tout passer en déménagement"
+              />
+            </div>
             {quote.pack && (
               <div className="border-b border-slate-100 bg-slate-50 px-4 py-2.5 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-slate-800">{quote.pack.name} – forfait</span>
-                  <span className="tabular-nums">
-                    <strong>{formatEuro(quote.pack.initial)}</strong> de frais matériel · <strong>{formatMonthly(quote.pack.monthly)}</strong>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-semibold text-slate-800">
+                    {quote.pack.name} – forfait
+                    {quote.pack.transferred && (
+                      <Badge tone="amber" className="ml-2">
+                        Abonnement transféré
+                      </Badge>
+                    )}
+                    {quote.pack.overridden && (
+                      <Badge tone="blue" className="ml-2">
+                        Prix modifié
+                      </Badge>
+                    )}
                   </span>
+                  <div className="flex items-center gap-2">
+                    <NumberInput
+                      value={dossier.quoteDraft.packOverride?.initial ?? null}
+                      onChange={(v) => setPackOverride({ initial: v })}
+                      allowNull
+                      min={0}
+                      step={10}
+                      suffix="€"
+                      placeholder={formatNumber(quote.pack.catalogInitial, 0)}
+                      className="w-28"
+                      disabled={quote.pack.transferred}
+                      aria-label="Frais matériel du forfait"
+                    />
+                    <NumberInput
+                      value={dossier.quoteDraft.packOverride?.monthly ?? null}
+                      onChange={(v) => setPackOverride({ monthly: v })}
+                      allowNull
+                      min={0}
+                      step={0.5}
+                      suffix="€/m"
+                      placeholder={formatNumber(quote.pack.catalogMonthly)}
+                      className="w-28"
+                      disabled={quote.pack.transferred}
+                      aria-label="Mensualité du forfait"
+                    />
+                    {quote.pack.overridden && (
+                      <IconButton label="Revenir au prix du catalogue" className="h-7 w-7" onClick={() => setPackOverride(null)}>
+                        <RotateCcw size={13} />
+                      </IconButton>
+                    )}
+                  </div>
                 </div>
-                <div className="mt-1 flex flex-wrap gap-1.5">
-                  {quote.pack.items.map((i) => (
-                    <Badge key={i.productId} tone={i.used >= i.quantity ? 'green' : 'slate'}>
-                      {i.quantity} × {i.name} {i.used < i.quantity ? `(${i.used} utilisé${i.used > 1 ? 's' : ''})` : ''}
-                    </Badge>
-                  ))}
+                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap gap-1.5">
+                    {quote.pack.items.map((i) => (
+                      <Badge key={i.productId} tone={i.used >= i.quantity ? 'green' : 'slate'}>
+                        {i.quantity} × {i.name} {i.used < i.quantity ? `(${i.used} utilisé${i.used > 1 ? 's' : ''})` : ''}
+                      </Badge>
+                    ))}
+                  </div>
+                  <Toggle checked={quote.pack.transferred} onChange={setPackTransferred} label="Abonnement transféré (0 € / 0 €/mois)" />
                 </div>
+                <p className="mt-1 text-[11px] text-slate-500">
+                  Appliqué : <strong>{formatEuro(quote.pack.initial)}</strong> · <strong>{formatMonthly(quote.pack.monthly)}</strong>
+                  {(quote.pack.overridden || quote.pack.transferred) && ` (catalogue : ${formatEuro(quote.pack.catalogInitial)} · ${formatMonthly(quote.pack.catalogMonthly)})`}. Laisser un
+                  champ vide pour revenir au prix du catalogue.
+                </p>
               </div>
             )}
             <table className="w-full text-sm" data-testid="quote-lines">
@@ -163,21 +234,27 @@ export function QuoteTab() {
                   <th className="px-2 py-2 text-center font-medium">Total</th>
                   <th className="px-2 py-2 text-center font-medium">Inclus</th>
                   <th className="px-2 py-2 text-center font-medium">Suppl.</th>
-                  <th className="px-2 py-2 text-right font-medium">Prix unit.</th>
+                  <th className="px-2 py-2 text-center font-medium">Déménag.</th>
+                  <th className="px-2 py-2 text-right font-medium">Prix unitaire (modifiable)</th>
                   <th className="px-4 py-2 text-right font-medium">Supplément</th>
                 </tr>
               </thead>
               <tbody>
                 {quote.lines.map((l) => {
                   const a = adj(l.productId);
+                  const o = dossier.quoteDraft.priceOverrides.find((x) => x.productId === l.productId);
+                  const billable = l.extra - l.moved - l.bundled;
                   return (
-                    <tr key={l.productId} className="border-t border-slate-100" data-testid={`quote-line-${l.reference}`}>
+                    <tr key={l.productId} className="border-t border-slate-100 align-top" data-testid={`quote-line-${l.reference}`}>
                       <td className="px-4 py-2">
                         <div className="flex items-center gap-2">
                           <CategoryDot category={l.category} />
                           <div>
                             <div className="font-medium text-slate-800">{l.name}</div>
-                            <div className="text-[11px] text-slate-500">{l.reference}</div>
+                            <div className="text-[11px] text-slate-500">
+                              {l.reference}
+                              {l.overridden && <span className="ml-1 font-medium text-blue-700">· prix modifié</span>}
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -201,36 +278,72 @@ export function QuoteTab() {
                         {l.extra || '—'}
                         {l.bundled > 0 && <div className="text-[10px] text-slate-500">dont {l.bundled} en lot</div>}
                       </td>
-                      <td className="px-2 py-2 text-right text-xs tabular-nums text-slate-600">
-                        {l.priceKnown ? (
-                          <>
-                            {formatEuro(l.unitInitial)}
-                            <div>{formatMonthly(l.unitMonthly)}</div>
-                          </>
+                      <td className="px-2 py-2 text-center">
+                        {l.extra > 0 ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 accent-amber-600"
+                              checked={l.moved > 0}
+                              onChange={(e) => setMoved(l.productId, e.target.checked ? l.extra : 0)}
+                              aria-label={`Déménagement : ${l.name}`}
+                            />
+                            {l.extra > 1 && l.moved > 0 && (
+                              <NumberInput value={l.moved} onChange={(v) => setMoved(l.productId, Math.min(l.extra, v ?? 0))} min={0} max={l.extra} step={1} className="w-14" aria-label={`Unités reprises : ${l.name}`} />
+                            )}
+                          </div>
                         ) : (
-                          <Badge tone="amber">À confirmer</Badge>
+                          <span className="text-slate-300">—</span>
                         )}
                       </td>
+                      <td className="px-2 py-2">
+                        <div className="ml-auto flex w-32 flex-col gap-1">
+                          <NumberInput
+                            value={o?.initial ?? null}
+                            onChange={(v) => setPriceOverride(l.productId, { initial: v })}
+                            allowNull
+                            min={0}
+                            step={1}
+                            suffix="€"
+                            placeholder={l.catalogInitial === null ? 'à confirmer' : formatNumber(l.catalogInitial, l.catalogInitial % 1 ? 2 : 0)}
+                            aria-label={`Prix matériel ${l.reference}`}
+                          />
+                          <NumberInput
+                            value={o?.monthly ?? null}
+                            onChange={(v) => setPriceOverride(l.productId, { monthly: v })}
+                            allowNull
+                            min={0}
+                            step={0.5}
+                            suffix="€/m"
+                            placeholder={l.catalogMonthly === null ? 'à confirmer' : formatNumber(l.catalogMonthly, l.catalogMonthly % 1 ? 2 : 0)}
+                            aria-label={`Mensualité ${l.reference}`}
+                          />
+                          {l.overridden && (
+                            <button className="text-right text-[10px] text-blue-700 hover:underline" onClick={() => setPriceOverride(l.productId, { initial: null, monthly: null })}>
+                              Prix du catalogue
+                            </button>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-4 py-2 text-right tabular-nums">
-                        {l.extra - l.bundled > 0 ? (
-                          l.extraInitial === null ? (
-                            <Badge tone="amber">À confirmer</Badge>
-                          ) : (
-                            <>
-                              {formatEuro(l.extraInitial)}
-                              <div className="text-xs text-slate-500">{formatMonthly(l.extraMonthly)}</div>
-                            </>
-                          )
+                        {billable > 0 ? (
+                          <>
+                            {l.extraInitial === null ? <Badge tone="amber">À confirmer</Badge> : formatEuro(l.extraInitial)}
+                            <div className="text-xs text-slate-500">{l.extraMonthly === null ? 'Mensuel à confirmer' : formatMonthly(l.extraMonthly)}</div>
+                          </>
+                        ) : l.moved > 0 ? (
+                          <span className="text-xs text-amber-700">Repris : 0 €</span>
                         ) : (
                           <span className="text-slate-400">—</span>
                         )}
+                        {billable > 0 && l.moved > 0 && <div className="text-[10px] text-amber-700">{l.moved} repris à 0 €</div>}
                       </td>
                     </tr>
                   );
                 })}
                 {quote.bundles.map((b) => (
                   <tr key={`${b.productId}-${b.coveredProductId}`} className="border-t border-slate-100 bg-emerald-50/40">
-                    <td className="px-4 py-2" colSpan={5}>
+                    <td className="px-4 py-2" colSpan={6}>
                       <div className="font-medium text-slate-800">
                         {b.count} × {b.name}
                       </div>
@@ -251,7 +364,7 @@ export function QuoteTab() {
                 ))}
                 {quote.includedUnused.map((u) => (
                   <tr key={`unused-${u.productId}`} className="border-t border-slate-100 text-slate-500">
-                    <td className="px-4 py-2 text-xs" colSpan={8}>
+                    <td className="px-4 py-2 text-xs" colSpan={9}>
                       Inclus dans le forfait mais non positionné sur le plan : {u.quantity} × {u.name}
                     </td>
                   </tr>
@@ -295,6 +408,12 @@ export function QuoteTab() {
                     <div className="text-xs text-slate-500">{formatMonthly(quote.extras.monthly)}</div>
                   </dd>
                 </div>
+                {quote.movedCount > 0 && (
+                  <div className="flex justify-between text-amber-800">
+                    <dt>Équipements repris (déménagement) : {quote.movedCount}</dt>
+                    <dd className="tabular-nums">0 € · 0 €/mois</dd>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <dt className="text-slate-600">Frais d'installation</dt>
                   <dd className={cx('tabular-nums', quote.installation === null && 'text-amber-700')}>{formatEuro(quote.installation)}</dd>
@@ -305,7 +424,58 @@ export function QuoteTab() {
                     <dd className="tabular-nums">- {d.target === 'mensuel_total' ? formatMonthly(d.amount) : formatEuro(d.amount)}</dd>
                   </div>
                 ))}
+                {quote.manualAdjustment && (quote.manualAdjustment.initial !== null || quote.manualAdjustment.monthly !== null) && (
+                  <div className="flex justify-between text-blue-800" data-testid="manual-adjustment">
+                    <dt>Ajustement manuel{quote.manualAdjustment.note ? ` : ${quote.manualAdjustment.note}` : ''}</dt>
+                    <dd className="text-right tabular-nums">
+                      {quote.manualAdjustment.initial !== null && <div>{signed(quote.manualAdjustment.initial)}</div>}
+                      {quote.manualAdjustment.monthly !== null && <div className="text-xs">{signed(quote.manualAdjustment.monthly)}/mois</div>}
+                    </dd>
+                  </div>
+                )}
               </dl>
+              <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50/60 p-2.5">
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="text-xs font-semibold text-blue-900">Modifier manuellement les montants du devis</span>
+                  {dossier.quoteDraft.totalOverride && (
+                    <button className="text-[11px] text-blue-700 hover:underline" onClick={() => setTotalOverride(null)}>
+                      Revenir au calcul
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <NumberInput
+                    value={dossier.quoteDraft.totalOverride?.initial ?? null}
+                    onChange={(v) => setTotalOverride({ initial: v })}
+                    allowNull
+                    min={0}
+                    step={10}
+                    suffix="€"
+                    placeholder={formatNumber(quote.totals.initialComputed, quote.totals.initialComputed % 1 ? 2 : 0)}
+                    aria-label="Frais initiaux du devis"
+                  />
+                  <NumberInput
+                    value={dossier.quoteDraft.totalOverride?.monthly ?? null}
+                    onChange={(v) => setTotalOverride({ monthly: v })}
+                    allowNull
+                    min={0}
+                    step={0.5}
+                    suffix="€/m"
+                    placeholder={formatNumber(quote.totals.monthlyComputed)}
+                    aria-label="Mensualité du devis"
+                  />
+                </div>
+                <TextInput
+                  className="mt-2 text-xs"
+                  placeholder="Motif (ex. geste commercial, arrondi)"
+                  value={dossier.quoteDraft.totalOverride?.note ?? ''}
+                  onChange={(e) => setTotalOverride({ note: e.target.value })}
+                  aria-label="Motif de l'ajustement"
+                />
+                <p className="mt-1 text-[10px] text-blue-900/70">
+                  Calculé : {formatEuro(quote.totals.initialComputed)} · {formatMonthly(quote.totals.monthlyComputed)}. Laisser vide pour garder le calcul.
+                </p>
+              </div>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <div className="rounded-lg bg-slate-100 px-3 py-2">
                   <div className="text-[10px] text-slate-500 uppercase">Frais initiaux</div>

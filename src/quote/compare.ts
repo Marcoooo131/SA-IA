@@ -53,6 +53,13 @@ export function buildComparison(dossier: Dossier, catalog: Catalog, audit: Audit
           packId: offer.packId,
           adjustments: config === 'plan' ? dossier.quoteDraft.adjustments : [],
           discountIds: dossier.quoteDraft.discountIds,
+          // Les prix modifiés s'appliquent à toutes les configurations ; la reprise
+          // d'équipements (déménagement) ne concerne que la configuration retenue.
+          priceOverrides: dossier.quoteDraft.priceOverrides,
+          moved: config === 'plan' ? dossier.quoteDraft.moved : [],
+          packOverride: offer.packId === dossier.quoteDraft.packId ? dossier.quoteDraft.packOverride : null,
+          packTransferred: config === 'plan' && offer.packId === dossier.quoteDraft.packId && dossier.quoteDraft.packTransferred,
+          totalOverride: config === 'plan' && offer.packId === dossier.quoteDraft.packId ? dossier.quoteDraft.totalOverride : null,
         },
         catalog,
       );

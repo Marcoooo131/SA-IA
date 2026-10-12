@@ -267,11 +267,32 @@ export interface QuoteAdjustment {
   delta: number;
 }
 
+/** Prix modifié pour ce devis uniquement (le catalogue n'est pas changé). */
+export interface PriceOverride {
+  productId: Id;
+  initial?: number;
+  monthly?: number;
+}
+
+/** Équipements repris du logement précédent (déménagement) : 0 € et 0 €/mois. */
+export interface MovedEquipment {
+  productId: Id;
+  quantity: number;
+}
+
 export interface QuoteDraft {
   /** null = sans forfait (à la carte). */
   packId: Id | null;
   adjustments: QuoteAdjustment[];
   discountIds: Id[];
+  priceOverrides: PriceOverride[];
+  moved: MovedEquipment[];
+  /** Prix du forfait modifié pour ce devis. */
+  packOverride: { initial?: number; monthly?: number } | null;
+  /** Abonnement transféré lors du déménagement : forfait à 0 € et 0 €/mois. */
+  packTransferred: boolean;
+  /** Montants finaux saisis manuellement par le conseiller (remplacent le calcul). */
+  totalOverride: { initial?: number; monthly?: number; note: string } | null;
 }
 
 export interface QuoteRecord {
@@ -293,7 +314,7 @@ export interface QuoteRecord {
     monthly: number;
     hasUnpricedItems: boolean;
   };
-  lines: { label: string; quantity: number; unitInitial: number | null; unitMonthly: number | null; included: number }[];
+  lines: { label: string; quantity: number; unitInitial: number | null; unitMonthly: number | null; included: number; moved?: number }[];
 }
 
 // ---------------------------------------------------------------------------

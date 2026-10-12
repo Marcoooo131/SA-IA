@@ -3,13 +3,19 @@ import { computeQuote } from './calculator';
 import { createDefaultCatalog } from '@/catalog/defaultCatalog';
 import { createQuoteRecord } from './snapshot';
 import { demoHouseDossier } from '@/demo/demoData';
-import type { Catalog } from '@/domain/types';
+import type { Catalog, QuoteDraft } from '@/domain/types';
 
 const bom = (entries: Record<string, number>) => new Map(Object.entries(entries));
-const draft = (packId: string | null, extra: Partial<{ adjustments: { productId: string; delta: number }[]; discountIds: string[] }> = {}) => ({
+const draft = (packId: string | null, extra: Partial<QuoteDraft> = {}): QuoteDraft => ({
   packId,
-  adjustments: extra.adjustments ?? [],
-  discountIds: extra.discountIds ?? [],
+  adjustments: [],
+  discountIds: [],
+  priceOverrides: [],
+  moved: [],
+  packOverride: null,
+  packTransferred: false,
+  totalOverride: null,
+  ...extra,
 });
 
 describe('calculateur de devis', () => {
@@ -52,13 +58,78 @@ describe('calculateur de devis', () => {
     ]);
   });
 
-  it("n'invente pas de prix pour la centrale et le clavier sans forfait", () => {
+  it('applique les prix communiqués de la centrale (499 €) et du clavier (149 €, sans mensualité) sans forfait', () => {
     const r = computeQuote(bom({ prd_centrale: 1, prd_clavier: 1, prd_choc: 1 }), draft(null), catalog);
-    expect(r.hasUnpricedItems).toBe(true);
-    expect(r.unpriced.map((u) => u.productId).sort()).toEqual(['prd_centrale', 'prd_clavier']);
-    expect(r.totals.initial).toBe(79);
+    expect(r.totals.initial).toBe(499 + 149 + 79);
+    // clavier sans mensualité, mensualité de la centrale non communiquée : signalée, jamais inventée
     expect(r.totals.monthly).toBe(2);
+    expect(r.unpriced).toEqual([{ productId: 'prd_centrale', name: 'Centrale', quantity: 1, missing: ['mensuel'] }]);
+    expect(r.hasUnpricedItems).toBe(true);
+  });
+
+  it('n’invente jamais un prix non communiqué', () => {
+    const c: Catalog = { ...catalog, products: catalog.products.map((p) => (p.id === 'prd_centrale' ? { ...p, priceInitial: null } : p)) };
+    const r = computeQuote(bom({ prd_centrale: 1 }), draft(null), c);
+    expect(r.totals.initial).toBe(0);
+    expect(r.unpriced[0].missing).toEqual(['materiel', 'mensuel']);
     expect(r.warnings.join(' ')).toMatch(/prix à confirmer/);
+  });
+
+  it('permet de modifier un prix pour ce devis sans changer le catalogue', () => {
+    const r = computeQuote(
+      bom({ prd_fumee: 3 }),
+      draft('pack_essentiel', { priceOverrides: [{ productId: 'prd_fumee', initial: 99, monthly: 1 }], packOverride: { initial: 699 } }),
+      catalog,
+    );
+    const line = r.lines.find((l) => l.productId === 'prd_fumee')!;
+    expect(line.overridden).toBe(true);
+    expect(line.catalogInitial).toBe(149);
+    expect(r.extras).toEqual({ initial: 198, monthly: 2 });
+    expect(r.pack!.initial).toBe(699);
+    expect(r.pack!.monthly).toBe(37.9);
+    expect(r.pack!.overridden).toBe(true);
+    expect(r.totals.initial).toBe(699 + 198);
+    expect(catalog.products.find((p) => p.id === 'prd_fumee')!.priceInitial).toBe(149);
+  });
+
+  it('met les équipements repris et l’abonnement transféré à 0 € et 0 €/mois (déménagement)', () => {
+    const base = bom({ prd_centrale: 1, prd_clavier: 1, prd_mouvement: 5, prd_fumee: 2 });
+    const partial = computeQuote(base, draft('pack_serenite', { moved: [{ productId: 'prd_mouvement', quantity: 1 }] }), catalog);
+    // 2 détecteurs de mouvement supplémentaires dont 1 repris -> 1 facturé
+    expect(partial.lines.find((l) => l.productId === 'prd_mouvement')!.moved).toBe(1);
+    expect(partial.extras.initial).toBe(149 + 149);
+    expect(partial.movedCount).toBe(1);
+    const all = computeQuote(
+      base,
+      draft('pack_serenite', {
+        packTransferred: true,
+        moved: [
+          { productId: 'prd_mouvement', quantity: 2 },
+          { productId: 'prd_fumee', quantity: 5 },
+        ],
+      }),
+      catalog,
+    );
+    expect(all.pack!.transferred).toBe(true);
+    expect(all.totals.initial).toBe(0);
+    expect(all.totals.monthly).toBe(0);
+    // la reprise ne dépasse jamais la quantité supplémentaire
+    expect(all.lines.find((l) => l.productId === 'prd_fumee')!.moved).toBe(1);
+  });
+
+  it('accepte des montants finaux saisis manuellement et affiche l’écart', () => {
+    const base = bom({ prd_fumee: 3 });
+    const computed = computeQuote(base, draft('pack_essentiel'), catalog);
+    expect(computed.manualAdjustment).toBeNull();
+    const r = computeQuote(base, draft('pack_essentiel', { totalOverride: { initial: 1000, monthly: 39, note: 'Geste commercial' } }), catalog);
+    expect(r.totals.initialComputed).toBe(799 + 298);
+    expect(r.totals.initial).toBe(1000);
+    expect(r.totals.monthly).toBe(39);
+    expect(r.manualAdjustment).toEqual({ initial: -97, monthly: -2.9, note: 'Geste commercial' });
+    // un seul montant modifié : l'autre reste calculé
+    const onlyMonthly = computeQuote(base, draft('pack_essentiel', { totalOverride: { monthly: 35, note: '' } }), catalog);
+    expect(onlyMonthly.totals.initial).toBe(1097);
+    expect(onlyMonthly.manualAdjustment!.initial).toBeNull();
   });
 
   it('regroupe les détecteurs de choc en pack périmétrique lorsque c’est plus avantageux', () => {
