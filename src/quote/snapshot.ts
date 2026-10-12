@@ -27,15 +27,19 @@ export function createQuoteRecord(dossier: Dossier, result: QuoteResult, catalog
     priceSnapshot: structuredClone({
       products: catalog.products
         .filter((p) => usedIds.has(p.id))
-        .map((p) => ({
-          id: p.id,
-          reference: p.reference,
-          name: p.name,
-          priceInitial: p.priceInitial,
-          monthly: p.monthly,
-          packQuantity: p.packQuantity,
-        })),
-      pack: pack ? { id: pack.id, name: pack.name, initial: pack.initial, monthly: pack.monthly, items: pack.items } : null,
+        .map((p) => {
+          // prix réellement appliqués (y compris les prix modifiés pour ce devis)
+          const line = result.lines.find((l) => l.productId === p.id);
+          return {
+            id: p.id,
+            reference: p.reference,
+            name: p.name,
+            priceInitial: line ? line.unitInitial : p.priceInitial,
+            monthly: line ? line.unitMonthly : p.monthly,
+            packQuantity: p.packQuantity,
+          };
+        }),
+      pack: pack && result.pack ? { id: pack.id, name: pack.name, initial: result.pack.initial, monthly: result.pack.monthly, items: pack.items } : null,
       discounts: catalog.discounts.filter((d) => result.discounts.some((a) => a.id === d.id)),
       settings: catalog.settings,
       catalogVersion: catalog.version,
@@ -48,6 +52,7 @@ export function createQuoteRecord(dossier: Dossier, result: QuoteResult, catalog
         unitInitial: l.unitInitial,
         unitMonthly: l.unitMonthly,
         included: l.included,
+        moved: l.moved,
       })),
       ...result.bundles.map((b) => ({
         label: b.name,

@@ -188,6 +188,7 @@ const quoteRecordSchema = z.object({
       unitInitial: z.number().nullable(),
       unitMonthly: z.number().nullable(),
       included: z.number(),
+      moved: z.number().optional(),
     }),
   ),
 });
@@ -219,6 +220,12 @@ export const dossierSchema = z.object({
     packId: z.string().nullable(),
     adjustments: z.array(z.object({ productId: z.string(), delta: z.number().int() })),
     discountIds: z.array(z.string()),
+    priceOverrides: z
+      .array(z.object({ productId: z.string(), initial: z.number().min(0).optional(), monthly: z.number().min(0).optional() }))
+      .default([]),
+    moved: z.array(z.object({ productId: z.string(), quantity: z.number().int().min(0) })).default([]),
+    packOverride: z.object({ initial: z.number().min(0).optional(), monthly: z.number().min(0).optional() }).nullable().default(null),
+    packTransferred: z.boolean().default(false),
   }),
   quotes: z.array(quoteRecordSchema),
   demoValidatedAt: z.string().nullable(),

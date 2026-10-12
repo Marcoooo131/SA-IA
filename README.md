@@ -132,7 +132,9 @@ Indépendant de l'interface (fonction pure `runAudit`) et paramétrable dans *Ca
 ### Calculateur et comparateur (`src/quote/`)
 - Le prix d'un pack est un **forfait** ; les équipements inclus ne sont **jamais facturés deux fois** ; seuls les suppléments sont ajoutés à leur prix unitaire.
 - Distinction : forfait, suppléments, frais d'installation (« à confirmer » si non renseignés), remises, coût initial, coût mensuel, TVA (uniquement si renseignée), éléments inclus non positionnés.
-- Prix inconnu (centrale, clavier hors pack) : ligne « à confirmer », **exclue des totaux et signalée** – jamais de prix inventé.
+- Prix inconnu (ex. supplément mensuel de la centrale) : « à confirmer », **exclu des totaux et signalé** – jamais de prix inventé.
+- **Prix modifiables dans le devis** (prix matériel, supplément mensuel, prix du forfait) sans changer le catalogue ; « Prix du catalogue » pour revenir à la valeur d'origine.
+- **Déménagement** : équipements repris du logement précédent (case par ligne, quantité réglable) et abonnement transféré à **0 € et 0 €/mois** ; bouton « Tout passer en déménagement ». Repris dans le PDF et l'historique.
 - Regroupement automatique en pack périmétrique lorsque c'est moins cher (sans augmenter le mensuel).
 - Calculs en centimes (aucune erreur d'arrondi), ajustements de quantités, recalcul instantané.
 - Comparateur : configuration retenue (plan), standard (volumétrique), alternative (périmétrique) × Pack Essentiel, Pack Sérénité, sans forfait.

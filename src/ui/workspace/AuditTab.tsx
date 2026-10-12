@@ -27,11 +27,11 @@ function ModeComparison() {
       Object.fromEntries(
         modes.map((m) => [
           m,
-          computeQuote(proposalBom(audit.proposals[m], catalog.products), { packId: dossier.quoteDraft.packId, adjustments: [], discountIds: [] }, catalog),
+          computeQuote(proposalBom(audit.proposals[m], catalog.products), { ...dossier.quoteDraft, adjustments: [], discountIds: [], moved: [], packTransferred: false }, catalog),
         ]),
       ) as Record<ProtectionMode, ReturnType<typeof computeQuote>>,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [audit, catalog, dossier.quoteDraft.packId],
+    [audit, catalog, dossier.quoteDraft],
   );
   const packName = catalog.packs.find((p) => p.id === dossier.quoteDraft.packId)?.name ?? 'sans forfait';
   return (
