@@ -58,18 +58,26 @@ describe('calculateur de devis', () => {
     ]);
   });
 
-  it('applique les prix communiqués de la centrale (499 €) et du clavier (149 €, sans mensualité) sans forfait', () => {
+  it('applique les prix de la centrale (499 €, 0 €/mois) et du clavier (149 €, 0 €/mois) sans forfait', () => {
     const r = computeQuote(bom({ prd_centrale: 1, prd_clavier: 1, prd_choc: 1 }), draft(null), catalog);
     expect(r.totals.initial).toBe(499 + 149 + 79);
-    // clavier sans mensualité, mensualité de la centrale non communiquée : signalée, jamais inventée
     expect(r.totals.monthly).toBe(2);
-    expect(r.unpriced).toEqual([{ productId: 'prd_centrale', name: 'Centrale', quantity: 1, missing: ['mensuel'] }]);
-    expect(r.hasUnpricedItems).toBe(true);
+    expect(r.unpriced).toEqual([]);
+  });
+
+  it("n'ajoute jamais de supplément mensuel pour la centrale, même si le catalogue ou le devis en indique un", () => {
+    const c: Catalog = { ...catalog, products: catalog.products.map((p) => (p.id === 'prd_centrale' ? { ...p, monthly: 9 } : p)) };
+    const r = computeQuote(bom({ prd_centrale: 2 }), draft('pack_essentiel', { priceOverrides: [{ productId: 'prd_centrale', monthly: 5 }] }), c);
+    const line = r.lines.find((l) => l.productId === 'prd_centrale')!;
+    expect(line.unitMonthly).toBe(0);
+    expect(line.extraMonthly).toBe(0);
+    expect(r.totals.monthly).toBe(37.9);
+    expect(r.totals.initial).toBe(799 + 499);
   });
 
   it('n’invente jamais un prix non communiqué', () => {
-    const c: Catalog = { ...catalog, products: catalog.products.map((p) => (p.id === 'prd_centrale' ? { ...p, priceInitial: null } : p)) };
-    const r = computeQuote(bom({ prd_centrale: 1 }), draft(null), c);
+    const c: Catalog = { ...catalog, products: catalog.products.map((p) => (p.id === 'prd_save' ? { ...p, priceInitial: null, monthly: null } : p)) };
+    const r = computeQuote(bom({ prd_save: 1 }), draft(null), c);
     expect(r.totals.initial).toBe(0);
     expect(r.unpriced[0].missing).toEqual(['materiel', 'mensuel']);
     expect(r.warnings.join(' ')).toMatch(/prix à confirmer/);

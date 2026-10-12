@@ -309,7 +309,9 @@ export function QuoteTab() {
                             aria-label={`Prix matériel ${l.reference}`}
                           />
                           <NumberInput
-                            value={o?.monthly ?? null}
+                            disabled={l.category === 'centrale'}
+                            title={l.category === 'centrale' ? 'Règle métier : la centrale n’a pas de supplément mensuel (0 €)' : undefined}
+                            value={l.category === 'centrale' ? 0 : (o?.monthly ?? null)}
                             onChange={(v) => setPriceOverride(l.productId, { monthly: v })}
                             allowNull
                             min={0}

@@ -61,6 +61,8 @@ export type RoomType =
   | 'bureau'
   | 'palier'
   | 'cellier'
+  | 'escalier'
+  | 'veranda'
   | 'autre';
 
 /** Pièce rectangulaire alignée sur les axes (choix volontaire de simplicité). */
@@ -90,7 +92,8 @@ export type OpeningHost =
   | { kind: 'room'; roomId: Id; side: RoomSide }
   | { kind: 'wall'; wallId: Id };
 
-export type OpeningType = 'porte' | 'fenetre' | 'baie' | 'porte_garage' | 'porte_interieure';
+/** `passage` : ouverture libre sans porte (ex. cuisine ouverte sur le séjour). */
+export type OpeningType = 'porte' | 'fenetre' | 'baie' | 'porte_garage' | 'porte_interieure' | 'passage';
 
 export interface Opening {
   id: Id;
@@ -321,6 +324,51 @@ export interface QuoteRecord {
 // Dossier complet
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Génération automatique (questionnaire)
+// ---------------------------------------------------------------------------
+
+export type SurfaceBand = 'moins_50' | '50_80' | '80_120' | '120_180' | 'plus_180' | 'exacte';
+export type KitchenLayout = 'ouverte' | 'separee' | 'partielle';
+export type GarageOption = 'aucun' | 'attenant' | 'separe';
+
+export interface HousingAnswers {
+  housingType: 'appartement' | 'maison' | 'autre';
+  surfaceBand: SurfaceBand;
+  surfaceExact: number | null;
+  levels: 1 | 2 | 3;
+  bedrooms: number;
+  kitchen: KitchenLayout;
+  corridor: boolean;
+  garage: GarageOption;
+  exteriorAccesses: number;
+  windows: number;
+  bays: number;
+  extraDoors: number;
+  features: {
+    stairs: boolean;
+    extension: boolean;
+    veranda: boolean;
+    extraRoom: boolean;
+    garageCommunicating: boolean;
+    other: boolean;
+  };
+  comment: string;
+}
+
+export interface PlanGeneration {
+  templateId: string;
+  answers: HousingAnswers;
+  generatedAt: string;
+  /** Plan tel que généré (référence pour distinguer les corrections du conseiller). */
+  baseline: Level[];
+  /** Éléments directement issus d'une réponse au questionnaire (ids). */
+  fromAnswers: string[];
+  /** Vérification du plan par le conseiller. */
+  validatedAt: string | null;
+  warnings: string[];
+}
+
 export interface AuditValidation {
   validatedAt: string;
   note: string;
@@ -340,4 +388,8 @@ export interface Dossier {
   quotes: QuoteRecord[];
   /** Validation commerciale (action de démonstration uniquement). */
   demoValidatedAt: string | null;
+  /** Plan généré par le questionnaire (null si dessiné ou importé). */
+  generation: PlanGeneration | null;
+  /** Brouillon du questionnaire (réponses en cours, conservées entre les étapes). */
+  wizardDraft: { templateId: string | null; answers: HousingAnswers | null } | null;
 }

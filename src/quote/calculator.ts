@@ -9,7 +9,8 @@ import type { Catalog, Discount, Pack, Product, ProductCategory, QuoteDraft } fr
  *  - un prix inconnu n'est jamais inventé : la ligne est marquée « à confirmer »
  *    et exclue des totaux (signalé par `unpriced`) ;
  *  - un prix peut être modifié pour un devis sans changer le catalogue ;
- *  - les équipements repris lors du déménagement sont à 0 € et 0 €/mois.
+ *  - les équipements repris lors du déménagement sont à 0 € et 0 €/mois ;
+ *  - la centrale n'a jamais de supplément mensuel (règle métier validée : 0 €).
  * Les calculs sont faits en centimes pour éviter les erreurs d'arrondi.
  */
 
@@ -163,7 +164,8 @@ export function computeQuote(bom: Map<string, number>, draft: QuoteDraft, catalo
     const usable = p.active && p.billing !== 'sur_devis';
     if (!p.active) warnings.push(`« ${p.name} » est désactivé dans le catalogue : prix à confirmer.`);
     const unitInitial = o?.initial ?? (usable ? p.priceInitial : null);
-    const unitMonthly = o?.monthly ?? (usable ? p.monthly : null);
+    // Règle métier : la centrale n'a jamais de supplément mensuel (ni catalogue, ni prix modifié).
+    const unitMonthly = p.category === 'centrale' ? 0 : (o?.monthly ?? (usable ? p.monthly : null));
     const included = Math.min(qty, includedMap.get(productId) ?? 0);
     const extra = qty - included;
     const moved = Math.min(extra, movedMap.get(productId) ?? 0);

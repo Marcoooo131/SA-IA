@@ -78,6 +78,8 @@ function openingVertical(type: OpeningType, height: number): { bottom: number; t
       return { bottom: 0.02, top: Math.min(2.2, height - 0.15) };
     case 'porte_garage':
       return { bottom: 0, top: Math.min(2.2, height - 0.15) };
+    case 'passage':
+      return { bottom: 0, top: Math.min(2.2, height - 0.15) };
     default:
       return { bottom: 0, top: Math.min(2.1, height - 0.2) };
   }
@@ -138,7 +140,7 @@ function Wall({ seg, height, mode, onClick }: { seg: WallSegment; height: number
     const angle = Math.atan2(uy, ux);
     const yTop = Math.min(v.top, mode === 'coupe' ? Math.max(top, v.bottom + 0.3) : v.top);
     const h = yTop - v.bottom;
-    if (h > 0.05) {
+    if (h > 0.05 && c.opening.type !== 'passage') {
       const t = c.opening.type;
       const isGlass = t === 'fenetre' || t === 'baie';
       pieces.push(

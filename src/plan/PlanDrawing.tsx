@@ -66,7 +66,15 @@ export function OpeningShape({ level, opening, selected, px }: { level: Level; o
   const lw = 1.5 / px;
   const color = opening.exterior ? '#0f766e' : DOOR;
   let body: ReactNode;
-  if (opening.type === 'fenetre' || opening.type === 'baie') {
+  if (opening.type === 'passage') {
+    body = (
+      <g>
+        <rect x={-w / 2} y={-0.07} width={w} height={0.14} fill="#ffffff" stroke="none" />
+        <line x1={-w / 2} y1={-0.07} x2={w / 2} y2={-0.07} stroke="#94a3b8" strokeWidth={lw} strokeDasharray={`${4 / px} ${3 / px}`} />
+        <line x1={-w / 2} y1={0.07} x2={w / 2} y2={0.07} stroke="#94a3b8" strokeWidth={lw} strokeDasharray={`${4 / px} ${3 / px}`} />
+      </g>
+    );
+  } else if (opening.type === 'fenetre' || opening.type === 'baie') {
     const t = opening.type === 'baie' ? 0.16 : 0.12;
     body = (
       <g>

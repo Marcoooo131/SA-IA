@@ -95,6 +95,7 @@ export interface AuditResult {
 }
 
 const CIRCULATION: Room['type'][] = ['couloir', 'palier', 'entree'];
+const isExteriorType = (t: Opening['type']) => t !== 'porte_interieure' && t !== 'passage';
 
 function isDoor(o: Opening): boolean {
   return o.type === 'porte' || o.type === 'porte_garage';
@@ -336,7 +337,7 @@ export function runAudit(
   // Inventaire
   // -------------------------------------------------------------------------
   const exteriorOpenings = levels.flatMap((level) =>
-    level.openings.filter((o) => o.exterior && o.type !== 'porte_interieure').map((opening) => ({ opening, level })),
+    level.openings.filter((o) => o.exterior && isExteriorType(o.type)).map((opening) => ({ opening, level })),
   );
   const entryPoints = exteriorOpenings.filter(({ opening }) => isDoor(opening)).length;
   const ground = levels[0];
@@ -358,7 +359,7 @@ export function runAudit(
       area: l.rooms.reduce((s, r) => s + roomArea(r), 0),
       habitableArea: habitable,
       rooms: l.rooms.length,
-      exteriorOpenings: l.openings.filter((o) => o.exterior && o.type !== 'porte_interieure').length,
+      exteriorOpenings: l.openings.filter((o) => o.exterior && isExteriorType(o.type)).length,
       smokeEstimate: habitable > 0 ? Math.ceil(habitable / config.smoke.coverageM2) : 0,
     };
   });

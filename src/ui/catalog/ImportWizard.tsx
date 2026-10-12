@@ -27,6 +27,7 @@ export function ImportWizard() {
   const [headerRow, setHeaderRow] = useState(0);
   const [mapping, setMapping] = useState<ColumnMapping | null>(null);
   const [updateExisting, setUpdateExisting] = useState(false);
+  const [confirmCentrale, setConfirmCentrale] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const rows = sheets?.[sheetIdx]?.rows ?? [];
@@ -38,6 +39,7 @@ export function ImportWizard() {
     setMapping(null);
     setFileName(null);
     setError(null);
+    setConfirmCentrale(false);
     if (fileRef.current) fileRef.current.value = '';
   };
 
@@ -62,7 +64,7 @@ export function ImportWizard() {
   const confirm = () => {
     if (!preview) return;
     try {
-      const res = applyImport(catalog, preview, { updateExisting });
+      const res = applyImport(catalog, preview, { updateExisting, confirmCentraleRule: confirmCentrale });
       replaceCatalog(res.catalog, `Import ${fileName ?? ''} : ${res.created} créé(s), ${res.updated} mis à jour`);
       toast('success', `Import validé : ${res.created} produit(s) créé(s), ${res.updated} mis à jour. Version précédente conservée dans l'historique.`);
       reset();
@@ -223,6 +225,19 @@ export function ImportWizard() {
                   </tbody>
                 </table>
               </div>
+              {preview.rows.some((r) => r.centraleMonthlyConflict !== undefined) && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-900" role="alert" data-testid="centrale-alert">
+                  <p className="font-semibold">Mensualité de la centrale différente de 0 € dans le fichier</p>
+                  <p className="text-xs">
+                    Le fichier indique {preview.rows.filter((r) => r.centraleMonthlyConflict !== undefined).map((r) => `${String(r.centraleMonthlyConflict).replace('.', ',')} €/mois (ligne ${r.rowNumber})`).join(', ')}.
+                    La règle métier validée s'applique : la centrale reste à <strong>0 €/mois</strong>. Son prix matériel est importé normalement.
+                  </p>
+                  <label className="mt-1.5 flex items-center gap-2 text-xs font-medium">
+                    <input type="checkbox" checked={confirmCentrale} onChange={(e) => setConfirmCentrale(e.target.checked)} className="h-4 w-4" />
+                    Je confirme : la mensualité de la centrale reste à 0 €.
+                  </label>
+                </div>
+              )}
               <div className="flex items-center justify-between gap-3 rounded-md bg-slate-50 px-3 py-2.5">
                 <div className="flex flex-col gap-1">
                   <Toggle checked={updateExisting} onChange={setUpdateExisting} label={`Mettre à jour les ${preview.summary.mettre_a_jour} produit(s) existant(s) modifié(s)`} />
@@ -232,7 +247,7 @@ export function ImportWizard() {
                 </div>
                 <div className="flex gap-2">
                   <Button onClick={reset}>Annuler</Button>
-                  <Button variant="primary" disabled={!importable || preview.missingRequiredColumns.length > 0} onClick={confirm}>
+                  <Button variant="primary" disabled={!importable || preview.missingRequiredColumns.length > 0 || (preview.rows.some((r) => r.centraleMonthlyConflict !== undefined) && !confirmCentrale)} onClick={confirm}>
                     Valider l'import ({importable} ligne{importable > 1 ? 's' : ''})
                   </Button>
                 </div>

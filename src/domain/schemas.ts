@@ -7,7 +7,7 @@ const point = z.object({ x: z.number(), y: z.number() });
 export const roomSchema = z.object({
   id: z.string(),
   name: z.string(),
-  type: z.enum(['sejour', 'cuisine', 'chambre', 'couloir', 'entree', 'garage', 'salle_de_bain', 'wc', 'bureau', 'palier', 'cellier', 'autre']),
+  type: z.enum(['sejour', 'cuisine', 'chambre', 'couloir', 'entree', 'garage', 'salle_de_bain', 'wc', 'bureau', 'palier', 'cellier', 'escalier', 'veranda', 'autre']),
   x: z.number(),
   y: z.number(),
   w: z.number().positive(),
@@ -18,7 +18,7 @@ export const roomSchema = z.object({
 const openingSchema = z.object({
   id: z.string(),
   code: z.string(),
-  type: z.enum(['porte', 'fenetre', 'baie', 'porte_garage', 'porte_interieure']),
+  type: z.enum(['porte', 'fenetre', 'baie', 'porte_garage', 'porte_interieure', 'passage']),
   host: z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('room'), roomId: z.string(), side: z.enum(['N', 'S', 'E', 'W']) }),
     z.object({ kind: z.literal('wall'), wallId: z.string() }),
@@ -193,6 +193,40 @@ const quoteRecordSchema = z.object({
   ),
 });
 
+const answersSchema = z.object({
+  housingType: z.enum(['appartement', 'maison', 'autre']),
+  surfaceBand: z.enum(['moins_50', '50_80', '80_120', '120_180', 'plus_180', 'exacte']),
+  surfaceExact: z.number().nullable(),
+  levels: z.union([z.literal(1), z.literal(2), z.literal(3)]),
+  bedrooms: z.number().int().min(0),
+  kitchen: z.enum(['ouverte', 'separee', 'partielle']),
+  corridor: z.boolean(),
+  garage: z.enum(['aucun', 'attenant', 'separe']),
+  exteriorAccesses: z.number().int().min(1),
+  windows: z.number().int().min(0),
+  bays: z.number().int().min(0),
+  extraDoors: z.number().int().min(0),
+  features: z.object({
+    stairs: z.boolean(),
+    extension: z.boolean(),
+    veranda: z.boolean(),
+    extraRoom: z.boolean(),
+    garageCommunicating: z.boolean(),
+    other: z.boolean(),
+  }),
+  comment: z.string(),
+});
+
+const generationSchema = z.object({
+  templateId: z.string(),
+  answers: answersSchema,
+  generatedAt: z.string(),
+  baseline: z.array(levelSchema),
+  fromAnswers: z.array(z.string()),
+  validatedAt: z.string().nullable(),
+  warnings: z.array(z.string()),
+});
+
 export const dossierSchema = z.object({
   id: z.string(),
   schemaVersion: z.number().int(),
@@ -233,4 +267,9 @@ export const dossierSchema = z.object({
   }),
   quotes: z.array(quoteRecordSchema),
   demoValidatedAt: z.string().nullable(),
+  generation: generationSchema.nullable().default(null),
+  wizardDraft: z
+    .object({ templateId: z.string().nullable(), answers: answersSchema.nullable() })
+    .nullable()
+    .default(null),
 });

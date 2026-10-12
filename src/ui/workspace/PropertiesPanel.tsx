@@ -136,7 +136,7 @@ export function PropertiesPanel() {
               value={o.type}
               onChange={(e) => {
                 const type = e.target.value as OpeningType;
-                upd({ type, exterior: type === 'porte_interieure' ? false : o.exterior, sectional: type === 'porte_garage' ? o.sectional : false });
+                upd({ type, exterior: type === 'porte_interieure' || type === 'passage' ? false : o.exterior, sectional: type === 'porte_garage' ? o.sectional : false });
               }}
               name="opening-type"
             >
@@ -155,8 +155,8 @@ export function PropertiesPanel() {
               <NumberInput value={o.offset} onChange={(v) => v !== null && upd({ offset: v })} min={0} max={hostLen} step={0.05} suffix="m" name="opening-offset" />
             </Field>
           </Grid2>
-          <Toggle checked={o.exterior} onChange={(v) => upd({ exterior: v })} label="Donne sur l'extérieur" disabled={o.type === 'porte_interieure'} />
-          {o.exterior !== geomExterior && o.type !== 'porte_interieure' && (
+          <Toggle checked={o.exterior} onChange={(v) => upd({ exterior: v })} label="Donne sur l'extérieur" disabled={o.type === 'porte_interieure' || o.type === 'passage'} />
+          {o.exterior !== geomExterior && o.type !== 'porte_interieure' && o.type !== 'passage' && (
             <p className="rounded bg-amber-50 px-2 py-1 text-[11px] text-amber-800">
               La géométrie suggère : {geomExterior ? 'extérieure' : 'intérieure (pièce contiguë)'}. Vérifiez cet indicateur.
             </p>

@@ -82,7 +82,7 @@ export function addOpeningAt(plan: Plan, level: Level, type: OpeningType, p: Poi
   const width = Math.min(OPENING_DEFAULT_WIDTH[type], Math.max(0.4, len - 0.1));
   const offset = clampOffset(cand.offset, width, len);
   let exterior = false;
-  if (type !== 'porte_interieure' && cand.host.kind === 'room') {
+  if (type !== 'porte_interieure' && type !== 'passage' && cand.host.kind === 'room') {
     const proj = projectOnSegment(p, cand.segment);
     exterior = isExteriorAt(level, cand.host.roomId, cand.host.side, proj.point);
   }

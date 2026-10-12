@@ -98,7 +98,13 @@ function Products() {
                   <NumberInput value={p.priceInitial} onChange={(v) => updateProduct(p.id, { priceInitial: v })} allowNull min={0} step={1} suffix="€" aria-label={`Prix matériel ${p.reference}`} placeholder="—" />
                 </td>
                 <td className="px-2 py-1.5">
-                  <NumberInput value={p.monthly} onChange={(v) => updateProduct(p.id, { monthly: v })} allowNull min={0} step={0.5} suffix="€" aria-label={`Supplément mensuel ${p.reference}`} placeholder="—" />
+                  {p.category === 'centrale' ? (
+                    <div className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm text-slate-600" title="Règle métier validée : la centrale n'a pas de supplément mensuel" data-testid="centrale-monthly-locked">
+                      0 € <span className="text-[10px] text-slate-400">(règle)</span>
+                    </div>
+                  ) : (
+                    <NumberInput value={p.monthly} onChange={(v) => updateProduct(p.id, { monthly: v })} allowNull min={0} step={0.5} suffix="€" aria-label={`Supplément mensuel ${p.reference}`} placeholder="—" />
+                  )}
                 </td>
                 <td className="px-2 py-1.5">
                   <Select value={p.billing} onChange={(e) => updateProduct(p.id, { billing: e.target.value as BillingType })} className="text-xs" aria-label="Facturation">
