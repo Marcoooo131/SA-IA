@@ -5,6 +5,8 @@ import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath, URL } from 'node:url';
 
 export default defineConfig({
+  // Chemins relatifs : l'application fonctionne aussi dans un sous-dossier (GitHub Pages)
+  base: './',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },

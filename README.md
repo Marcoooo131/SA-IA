@@ -31,6 +31,12 @@ Autres commandes :
 | `npm run typecheck` | vérification des types |
 | `node scripts/generate-demo-assets.mjs` | régénère les fichiers de démonstration de `demo-assets/` |
 
+### Version en ligne (GitHub Pages)
+
+Le workflow `.github/workflows/deploy-pages.yml` construit et publie l'application à chaque mise à jour de
+`main` (et de la branche du prototype). Activation unique : *Settings → Pages → Source : GitHub Actions*.
+L'adresse est ensuite `https://<compte>.github.io/SA-IA/`.
+
 Au premier lancement, l'application contient :
 - un dossier **MOV-DEMO-0001** (maison fictive à deux niveaux : entrée, séjour, cuisine ouverte, trois chambres, couloirs, garage, cellier, 13 ouvertures extérieures) déjà audité en mode volumétrique ;
 - un dossier **MOV-DEMO-0002** (appartement fictif incomplet, pour montrer les alertes « information manquante ») ;
