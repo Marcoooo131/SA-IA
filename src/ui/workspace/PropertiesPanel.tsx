@@ -112,13 +112,18 @@ export function PropertiesPanel() {
     if (!o) return null;
     const seg = hostSegment(level, o.host);
     const hostLen = seg ? segmentLength(seg) : 0;
+    const unplaced = o.host.kind === 'unplaced';
     const upd = (patch: Partial<typeof o>) =>
       edit((l) => {
         const x = l.openings.find((y) => y.id === o.id);
         if (!x) return;
         Object.assign(x, patch);
-        x.offset = clampOffset(x.offset, x.width, hostLen);
+        if (!unplaced) x.offset = clampOffset(x.offset, x.width, hostLen);
       });
+    const linkedRoom = unplaced ? level.rooms.find((r) => r.id === (o.host as { roomId: string }).roomId) : null;
+    const startPlacing = () => {
+      useEditor.getState().set({ tool: 'place_opening', placingOpeningId: o.id });
+    };
     const hostRoom = o.host.kind === 'room' ? level.rooms.find((r) => r.id === (o.host as { roomId: string }).roomId) : null;
     const geomExterior = isOpeningExteriorByGeometry(level, o);
     return (
@@ -128,15 +133,29 @@ export function PropertiesPanel() {
             <span className="font-mono text-sm font-semibold text-slate-800">{o.code}</span>
             {o.exterior ? <Badge tone="teal">Donne sur l'extérieur</Badge> : <Badge>Intérieure</Badge>}
           </div>
+          {unplaced ? (
+            <div className="flex flex-col gap-1.5 rounded border border-amber-300 bg-amber-50 p-2 text-[11px] text-amber-900" data-testid="prop-opening-unplaced">
+              <span>
+                Saisie par quantité dans {linkedRoom ? `« ${linkedRoom.name} »` : 'une pièce'} : <strong>position à définir</strong>. Elle est comptée une seule fois dans l'audit, avec un repère indicatif.
+              </span>
+              <Button size="sm" variant="primary" onClick={startPlacing} data-testid="prop-opening-place">
+                Positionner sur un mur
+              </Button>
+            </div>
+          ) : (
+            !o.positionConfirmed && (
+              <p className="rounded bg-sky-50 px-2 py-1 text-[11px] text-sky-800">Position proposée automatiquement : à vérifier (validée avec le plan).</p>
+            )
+          )}
           <p className="text-xs text-slate-500">
-            Identifiant unique utilisé pour éviter les doublons. Support : {hostRoom ? `${hostRoom.name}, côté ${({ N: 'nord', S: 'sud', E: 'est', W: 'ouest' } as const)[(o.host as { side: 'N' }).side]}` : 'mur libre'}.
+            Identifiant unique utilisé pour éviter les doublons. Support : {unplaced ? 'non positionnée' : hostRoom ? `${hostRoom.name}, côté ${({ N: 'nord', S: 'sud', E: 'est', W: 'ouest' } as const)[(o.host as { side: 'N' }).side]}` : 'mur libre'}.
           </p>
           <Field label="Type">
             <Select
               value={o.type}
               onChange={(e) => {
                 const type = e.target.value as OpeningType;
-                upd({ type, exterior: type === 'porte_interieure' ? false : o.exterior, sectional: type === 'porte_garage' ? o.sectional : false });
+                upd({ type, exterior: type === 'porte_interieure' || type === 'passage' ? false : o.exterior, sectional: type === 'porte_garage' ? o.sectional : false });
               }}
               name="opening-type"
             >
@@ -149,14 +168,24 @@ export function PropertiesPanel() {
           </Field>
           <Grid2>
             <Field label="Largeur">
-              <NumberInput value={o.width} onChange={(v) => v && upd({ width: Math.min(v, hostLen) })} min={0.3} max={Math.max(0.3, hostLen)} step={0.05} suffix="m" name="opening-width" />
+              <NumberInput
+                value={o.width}
+                onChange={(v) => v && upd({ width: unplaced ? v : Math.min(v, hostLen) })}
+                min={0.3}
+                max={unplaced ? 6 : Math.max(0.3, hostLen)}
+                step={0.05}
+                suffix="m"
+                name="opening-width"
+              />
             </Field>
-            <Field label="Position sur le mur">
-              <NumberInput value={o.offset} onChange={(v) => v !== null && upd({ offset: v })} min={0} max={hostLen} step={0.05} suffix="m" name="opening-offset" />
-            </Field>
+            {!unplaced && (
+              <Field label="Position sur le mur">
+                <NumberInput value={o.offset} onChange={(v) => v !== null && upd({ offset: v, positionConfirmed: true })} min={0} max={hostLen} step={0.05} suffix="m" name="opening-offset" />
+              </Field>
+            )}
           </Grid2>
-          <Toggle checked={o.exterior} onChange={(v) => upd({ exterior: v })} label="Donne sur l'extérieur" disabled={o.type === 'porte_interieure'} />
-          {o.exterior !== geomExterior && o.type !== 'porte_interieure' && (
+          <Toggle checked={o.exterior} onChange={(v) => upd({ exterior: v })} label="Donne sur l'extérieur" disabled={o.type === 'porte_interieure' || o.type === 'passage'} />
+          {!unplaced && o.exterior !== geomExterior && o.type !== 'porte_interieure' && o.type !== 'passage' && (
             <p className="rounded bg-amber-50 px-2 py-1 text-[11px] text-amber-800">
               La géométrie suggère : {geomExterior ? 'extérieure' : 'intérieure (pièce contiguë)'}. Vérifiez cet indicateur.
             </p>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { useThree, type ThreeEvent } from '@react-three/fiber';
-import type { Dossier, Level, OpeningType, PlacedDevice, Product, ProductCategory } from '@/domain/types';
+import type { Dossier, Level, OpeningType, PlacedDevice, Product, ProductCategory, Room } from '@/domain/types';
 import { CATEGORY_COLORS, ROOM_COLORS } from '@/domain/labels';
 import { adjacentRooms, buildWallSegments, levelBounds, type WallSegment } from '@/plan/geometry';
 
@@ -78,6 +78,8 @@ function openingVertical(type: OpeningType, height: number): { bottom: number; t
       return { bottom: 0.02, top: Math.min(2.2, height - 0.15) };
     case 'porte_garage':
       return { bottom: 0, top: Math.min(2.2, height - 0.15) };
+    case 'passage':
+      return { bottom: 0, top: Math.min(2.2, height - 0.15) };
     default:
       return { bottom: 0, top: Math.min(2.1, height - 0.2) };
   }
@@ -138,7 +140,7 @@ function Wall({ seg, height, mode, onClick }: { seg: WallSegment; height: number
     const angle = Math.atan2(uy, ux);
     const yTop = Math.min(v.top, mode === 'coupe' ? Math.max(top, v.bottom + 0.3) : v.top);
     const h = yTop - v.bottom;
-    if (h > 0.05) {
+    if (h > 0.05 && c.opening.type !== 'passage') {
       const t = c.opening.type;
       const isGlass = t === 'fenetre' || t === 'baie';
       pieces.push(
@@ -301,6 +303,31 @@ function CoverageSector({ device, level, elevation, offsetX = 0, angle, range }:
   );
 }
 
+/** Escalier droit : marches calculées depuis le rectangle de la pièce « escalier ». */
+function StairSteps({ room, rise }: { room: Room; rise: number }) {
+  const along = room.h >= room.w ? 'y' : 'x';
+  const length = along === 'y' ? room.h : room.w;
+  const n = Math.max(8, Math.round(rise / 0.18));
+  const run = length / n;
+  return (
+    <group>
+      {Array.from({ length: n }, (_, i) => {
+        const h = (rise * (i + 1)) / n;
+        const t = run * i + run / 2;
+        const pos: [number, number, number] =
+          along === 'y' ? [room.x + room.w / 2, h / 2, room.y + room.h - t] : [room.x + t, h / 2, room.y + room.h / 2];
+        const size: [number, number, number] = along === 'y' ? [room.w - 0.1, h, run] : [run, h, room.h - 0.1];
+        return (
+          <mesh key={i} position={pos} castShadow receiveShadow>
+            <boxGeometry args={size} />
+            <meshStandardMaterial color={i % 2 ? '#c8b89a' : '#d6c7aa'} roughness={0.8} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
 export type LevelLayout = 'empile' | 'cote';
 
 /** Position de chaque niveau dans la scène : empilés, ou côte à côte (vue maquette). */
@@ -373,8 +400,11 @@ export function Scene3DContent({ dossier, products, options, onSelectDevice, onF
                 <meshStandardMaterial color="#cfd5db" />
               </mesh>
             )}
-            {/* Sols des pièces */}
-            {level.rooms.map((r) => (
+            {/* Escaliers (vers le niveau supérieur) */}
+            {dossier.plan.levels.some((l) => l.index > level.index) &&
+              level.rooms.filter((r) => r.type === 'escalier').map((r) => <StairSteps key={`st-${r.id}`} room={r} rise={level.height + SLAB} />)}
+            {/* Sols des pièces (trémie d'escalier laissée ouverte à l'étage) */}
+            {level.rooms.filter((r) => !(r.type === 'escalier' && level.index > 0)).map((r) => (
               <mesh
                 key={r.id}
                 position={[r.x + r.w / 2, 0.02, r.y + r.h / 2]}
@@ -394,6 +424,23 @@ export function Scene3DContent({ dossier, products, options, onSelectDevice, onF
               .map((s) => (
                 <Wall key={s.key} seg={s} height={level.height} mode={options.wallMode} onClick={onWallClick ? () => onWallClick(`${level.id}:${s.key}`) : undefined} />
               ))}
+            {/* Ouvertures saisies par quantité (non positionnées) : repères translucides indicatifs */}
+            {level.rooms.map((r) => {
+              const pending = level.openings.filter((o) => o.host.kind === 'unplaced' && o.host.roomId === r.id);
+              return pending.map((o, i) => {
+                const n = pending.length;
+                const step = Math.min(0.6, (r.w - 0.3) / Math.max(1, n));
+                const x = r.x + r.w / 2 + (i - (n - 1) / 2) * step;
+                const v = openingVertical(o.type, level.height);
+                const h = Math.max(0.3, v.top - v.bottom);
+                return (
+                  <mesh key={`up-${o.id}`} position={[x, v.bottom + h / 2, r.y + r.h - 0.25]}>
+                    <boxGeometry args={[Math.max(0.15, step * 0.7), h, 0.06]} />
+                    <meshStandardMaterial color="#f59e0b" transparent opacity={0.45} depthWrite={false} />
+                  </mesh>
+                );
+              });
+            })}
             {options.showLabels &&
               level.rooms.map((r) => (
                 <Label key={`l-${r.id}`} text={r.name} sub={`${(r.w * r.h).toFixed(1).replace('.', ',')} m²`} position={[r.x + r.w / 2, 0.7, r.y + r.h / 2]} scale={Math.min(1, Math.max(0.6, Math.min(r.w, r.h) / 3))} />

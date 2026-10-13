@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Copy, FileText, FolderPlus, Map as MapIcon, RotateCcw, Search, Trash2 } from 'lucide-react';
+import { Copy, FileText, FolderPlus, ImageUp, Map as MapIcon, PencilRuler, RotateCcw, Search, Sparkles, Trash2 } from 'lucide-react';
+import { useEditor } from '@/state/editor';
 import { useApp } from '@/state/store';
 import type { DossierInfo, DossierStatus } from '@/domain/types';
 import { HOUSING_TYPE_LABELS, STATUS_LABELS, STATUS_ORDER } from '@/domain/labels';
@@ -22,7 +23,9 @@ export function StatusBadge({ status }: { status: DossierStatus }) {
   return <Badge tone={STATUS_TONE[status]}>{STATUS_LABELS[status]}</Badge>;
 }
 
-function NewDossierDialog({ onClose }: { onClose: () => void }) {
+type Intent = 'questionnaire' | 'dessin' | 'import';
+
+function NewDossierDialog({ onClose, intent }: { onClose: () => void; intent: Intent }) {
   const createDossier = useApp((s) => s.createDossier);
   const openDossier = useApp((s) => s.openDossier);
   const dossiers = useApp((s) => s.dossiers);
@@ -38,7 +41,16 @@ function NewDossierDialog({ onClose }: { onClose: () => void }) {
     if (!info.clientName.trim()) return setError('Le nom ou identifiant du client est obligatoire.');
     const id = createDossier({ ...info, createdAt: new Date().toISOString() });
     onClose();
+    if (intent === 'questionnaire') {
+      openDossier(id, 'questionnaire');
+      return;
+    }
     openDossier(id, 'plan');
+    if (intent === 'dessin') useEditor.getState().setTool('room');
+    else {
+      useEditor.getState().set({ highlightImport: true });
+      useApp.getState().toast('info', 'Cliquez sur « Importer un plan » (PNG, JPG, photo ou PDF) pour l’afficher en fond, puis définissez l’échelle.');
+    }
   };
   return (
     <Modal
@@ -48,7 +60,7 @@ function NewDossierDialog({ onClose }: { onClose: () => void }) {
         <>
           <Button onClick={onClose}>Annuler</Button>
           <Button variant="primary" onClick={submit}>
-            Créer et dessiner le plan
+            {intent === 'questionnaire' ? 'Créer et répondre au questionnaire' : intent === 'import' ? 'Créer et importer le plan' : 'Créer et dessiner le plan'}
           </Button>
         </>
       }
@@ -74,7 +86,7 @@ export function Dashboard() {
   const toast = useApp((s) => s.toast);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<DossierStatus | 'tous'>('tous');
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState<Intent | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState(false);
 
@@ -107,10 +119,36 @@ export function Dashboard() {
           <Button icon={<RotateCcw size={15} />} onClick={() => setConfirmReset(true)}>
             Réinitialiser la démo
           </Button>
-          <Button variant="primary" icon={<FolderPlus size={15} />} onClick={() => setCreating(true)}>
+          <Button variant="primary" icon={<FolderPlus size={15} />} onClick={() => setCreating('questionnaire')}>
             Nouvel audit
           </Button>
         </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3" data-testid="start-options">
+        {(
+          [
+            ['questionnaire', <Sparkles key="q" size={22} />, 'Créer un plan avec le questionnaire', 'Recommandé : choisissez un modèle, répondez à quelques questions, le plan 2D et la maquette 3D sont générés.', true],
+            ['dessin', <PencilRuler key="d" size={22} />, 'Dessiner mon logement en 2D', 'Tracez pièces, murs et ouvertures sur une grille magnétique.', false],
+            ['import', <ImageUp key="i" size={22} />, 'Importer un plan ou une photo', 'PNG, JPG, photo ou PDF en fond de référence, à calibrer puis à retracer.', false],
+          ] as [Intent, React.ReactNode, string, string, boolean][]
+        ).map(([intent, icon, title, text, recommended]) => (
+          <button
+            key={intent}
+            onClick={() => setCreating(intent)}
+            className={`flex items-start gap-3 rounded-xl border p-4 text-left transition-shadow hover:shadow-md ${recommended ? 'border-brand-500 bg-brand-50' : 'border-slate-200 bg-white'}`}
+            data-testid={`start-${intent}`}
+          >
+            <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg ${recommended ? 'bg-brand-700 text-white' : 'bg-slate-100 text-slate-600'}`}>{icon}</span>
+            <span>
+              <span className="flex items-center gap-2 font-semibold text-slate-900">
+                {title}
+                {recommended && <Badge tone="blue">Recommandé</Badge>}
+              </span>
+              <span className="mt-0.5 block text-xs text-slate-600">{text}</span>
+            </span>
+          </button>
+        ))}
       </div>
 
       <div className="grid grid-cols-4 gap-3">
@@ -228,7 +266,7 @@ export function Dashboard() {
         )}
       </Card>
 
-      {creating && <NewDossierDialog onClose={() => setCreating(false)} />}
+      {creating && <NewDossierDialog intent={creating} onClose={() => setCreating(null)} />}
       {confirmDelete && (
         <Modal
           title="Supprimer le dossier ?"

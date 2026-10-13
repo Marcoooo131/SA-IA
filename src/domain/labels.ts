@@ -50,6 +50,8 @@ export const ROOM_TYPE_LABELS: Record<RoomType, string> = {
   bureau: 'Bureau',
   palier: 'Palier',
   cellier: 'Cellier',
+  escalier: 'Escalier',
+  veranda: 'Véranda',
   autre: 'Autre',
 };
 
@@ -65,6 +67,8 @@ export const ROOM_COLORS: Record<RoomType, string> = {
   bureau: '#e9e4f2',
   palier: '#ecebe7',
   cellier: '#e5e5e0',
+  escalier: '#e2ddd3',
+  veranda: '#e6f2e4',
   autre: '#eeeeee',
 };
 
@@ -74,6 +78,8 @@ export const OPENING_TYPE_LABELS: Record<OpeningType, string> = {
   baie: 'Baie vitrée',
   porte_garage: 'Porte de garage',
   porte_interieure: 'Porte intérieure',
+  passage: 'Passage ouvert (sans porte)',
+  autre: 'Autre ouverture',
 };
 
 export const OPENING_DEFAULT_WIDTH: Record<OpeningType, number> = {
@@ -82,6 +88,8 @@ export const OPENING_DEFAULT_WIDTH: Record<OpeningType, number> = {
   baie: 2.4,
   porte_garage: 2.5,
   porte_interieure: 0.8,
+  passage: 1.6,
+  autre: 0.8,
 };
 
 export const CATEGORY_LABELS: Record<ProductCategory, string> = {

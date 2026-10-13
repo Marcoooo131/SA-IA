@@ -23,6 +23,7 @@ import {
 } from '@/plan/geometry';
 import { formatArea, formatNumber } from '@/lib/format';
 import type { RulesConfig } from './config';
+import { countOpenings, openingDetectors, openingDevicePoint, roomDetectorCalc, roomOpenings, type JoineryCounts, type RoomDetectorCalc } from '@/plan/joinery';
 
 /**
  * Moteur de règles d'audit : fonction pure, indépendante de l'interface.
@@ -83,7 +84,18 @@ export interface LevelInventory {
   smokeEstimate: number;
 }
 
+export interface RoomJoineryLine {
+  levelId: string;
+  levelName: string;
+  roomId: string;
+  roomName: string;
+  counts: JoineryCounts;
+  calc: RoomDetectorCalc;
+}
+
 export interface AuditResult {
+  /** Menuiseries et calcul indicatif des détecteurs, pièce par pièce. */
+  rooms: RoomJoineryLine[];
   inventory: {
     levels: LevelInventory[];
     totalArea: number;
@@ -95,6 +107,7 @@ export interface AuditResult {
 }
 
 const CIRCULATION: Room['type'][] = ['couloir', 'palier', 'entree'];
+const isExteriorType = (t: Opening['type']) => t !== 'porte_interieure' && t !== 'passage';
 
 function isDoor(o: Opening): boolean {
   return o.type === 'porte' || o.type === 'porte_garage';
@@ -161,9 +174,7 @@ function count(devices: SuggestedDevice[]): Partial<Record<ProductCategory, numb
 }
 
 export function shockQuantity(opening: Opening, config: RulesConfig): number {
-  if (opening.sectional && config.shock.skipSectional) return 0;
-  if (opening.type === 'baie') return config.shock.perBay;
-  return config.shock.perOpening;
+  return openingDetectors({ ...opening, exterior: true }, config);
 }
 
 export function runAudit(
@@ -246,6 +257,15 @@ export function runAudit(
       nextAction: "Dessiner les pièces ou importer un plan dans l'onglet Plan 2D.",
     });
   }
+  if (dossier.generation && !dossier.generation.validatedAt)
+    add({
+      id: 'plan:genere',
+      ruleId: 'R-PLAN',
+      status: 'a_verifier',
+      title: 'Plan généré automatiquement, non vérifié',
+      reason: 'Le plan a été produit à partir du questionnaire : c’est une représentation générique, pas un relevé du logement réel.',
+      nextAction: 'Vérifier dimensions, ouvertures et disposition dans le Plan 2D, puis cliquer sur « Valider le plan ».',
+    });
   if (info.floors && levels.length && info.floors !== levels.length)
     add({
       id: 'plan:etages',
@@ -336,7 +356,7 @@ export function runAudit(
   // Inventaire
   // -------------------------------------------------------------------------
   const exteriorOpenings = levels.flatMap((level) =>
-    level.openings.filter((o) => o.exterior && o.type !== 'porte_interieure').map((opening) => ({ opening, level })),
+    level.openings.filter((o) => o.exterior && isExteriorType(o.type)).map((opening) => ({ opening, level })),
   );
   const entryPoints = exteriorOpenings.filter(({ opening }) => isDoor(opening)).length;
   const ground = levels[0];
@@ -358,7 +378,7 @@ export function runAudit(
       area: l.rooms.reduce((s, r) => s + roomArea(r), 0),
       habitableArea: habitable,
       rooms: l.rooms.length,
-      exteriorOpenings: l.openings.filter((o) => o.exterior && o.type !== 'porte_interieure').length,
+      exteriorOpenings: l.openings.filter((o) => o.exterior && isExteriorType(o.type)).length,
       smokeEstimate: habitable > 0 ? Math.ceil(habitable / config.smoke.coverageM2) : 0,
     };
   });
@@ -426,7 +446,7 @@ export function runAudit(
     if (!inv.smokeEstimate) continue;
     const candidates = l.rooms
       .filter((r) => r.type !== 'garage' || config.smoke.includeGarage)
-      .filter((r) => !['cuisine', 'salle_de_bain', 'wc'].includes(r.type))
+      .filter((r) => !['cuisine', 'salle_de_bain', 'wc', 'escalier', 'veranda'].includes(r.type))
       .sort((a, b) => {
         const pa = CIRCULATION.includes(a.type) ? 0 : a.type === 'sejour' ? 1 : 2;
         const pb = CIRCULATION.includes(b.type) ? 0 : b.type === 'sejour' ? 1 : 2;
@@ -469,20 +489,23 @@ export function runAudit(
       if (scope === 'acces' && !isDoor(opening)) continue;
       const qty = shockQuantity(opening, config);
       if (!qty) continue;
-      const ip = inwardPoint(level, opening, 0.15);
-      if (!ip) continue;
+      // ouverture non positionnée : détecteur placé de façon indicative dans la pièce
+      const ip = opening.host.kind === 'unplaced' ? null : inwardPoint(level, opening, 0.15);
+      const pt = ip ? { x: ip.p.x, y: ip.p.y, rotation: ip.rotation } : openingDevicePoint(level, opening);
+      if (!pt) continue;
       out.push({
         key: `choc:${opening.id}`,
         category: 'detecteur_choc',
         levelId: level.id,
-        x: ip.p.x,
-        y: ip.p.y,
-        rotation: ip.rotation,
+        x: pt.x,
+        y: pt.y,
+        rotation: pt.rotation,
         quantity: qty,
         reason:
-          opening.type === 'baie'
+          (opening.type === 'baie'
             ? `${opening.code} – baie vitrée : quantité indicative ${qty}.`
-            : `${opening.code} – ${OPENING_TYPE_LABELS[opening.type].toLowerCase()} donnant sur l'extérieur.`,
+            : `${opening.code} – ${OPENING_TYPE_LABELS[opening.type].toLowerCase()} donnant sur l'extérieur.`) +
+          (opening.host.kind === 'unplaced' ? ' Position de l’ouverture à définir.' : ''),
         openingId: opening.id,
       });
     }
@@ -748,6 +771,27 @@ export function runAudit(
       });
   }
 
+  // Menuiseries pièce par pièce (source unique : level.openings)
+  const roomLines: RoomJoineryLine[] = levels.flatMap((level) =>
+    level.rooms.map((room) => {
+      const ops = roomOpenings(level, room.id);
+      return { levelId: level.id, levelName: level.name, roomId: room.id, roomName: room.name, counts: countOpenings(ops), calc: roomDetectorCalc(room.name, ops, config) };
+    }),
+  );
+  const unplaced = levels.flatMap((l) => l.openings.filter((o) => o.host.kind === 'unplaced').map((o) => ({ o, l })));
+  if (unplaced.length)
+    add({
+      id: 'menuiseries:a-positionner',
+      ruleId: 'R-MENUISERIES',
+      status: 'manquant',
+      title: `${unplaced.length} ouverture(s) à positionner sur le plan`,
+      reason: `Saisies par quantité, sans position : ${unplaced
+        .slice(0, 6)
+        .map(({ o, l }) => `${o.code} (${l.rooms.find((r) => o.host.kind === 'unplaced' && r.id === o.host.roomId)?.name ?? '?'})`)
+        .join(', ')}${unplaced.length > 6 ? '…' : ''}. Elles sont comptées dans l'audit, mais leur emplacement reste indicatif.`,
+      nextAction: 'Onglet « Pièces & menuiseries » : bouton « Positionner », puis cliquer sur le mur concerné dans le plan 2D.',
+    });
+
   // Validations du conseiller
   for (const a of alerts) {
     const v = dossier.auditValidations[a.id];
@@ -758,6 +802,7 @@ export function runAudit(
   }
 
   return {
+    rooms: roomLines,
     inventory: { levels: inventoryLevels, totalArea, exteriorOpenings, entryPoints },
     proposals,
     alerts,

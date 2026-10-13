@@ -3,6 +3,9 @@ import type { Level, Opening, PlacedDevice, Product, Room } from '@/domain/types
 import { CATEGORY_COLORS, CATEGORY_GLYPH, ROOM_COLORS } from '@/domain/labels';
 import { adjacentRooms, buildWallSegments, openingPlacement, roomArea, type WallSegment } from './geometry';
 import { formatNumber } from '@/lib/format';
+import { PROVENANCE_COLORS, type Provenance } from '@/generator/provenance';
+
+const PROV_LETTER: Record<Provenance, string> = { questionnaire: 'Q', genere: 'G', conseiller: 'C' };
 
 export type PlanTarget =
   | { kind: 'room'; id: string; handle?: 'move' | 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' }
@@ -26,6 +29,8 @@ export interface PlanDrawingProps {
   motionAngle?: number;
   motionRange?: number;
   onTargetDown?: (target: PlanTarget, e: ReactPointerEvent) => void;
+  /** Provenance des éléments d'un plan généré (questionnaire / généré / corrigé). */
+  provenance?: Map<string, Provenance>;
 }
 
 const DOOR = '#334155';
@@ -66,7 +71,15 @@ export function OpeningShape({ level, opening, selected, px }: { level: Level; o
   const lw = 1.5 / px;
   const color = opening.exterior ? '#0f766e' : DOOR;
   let body: ReactNode;
-  if (opening.type === 'fenetre' || opening.type === 'baie') {
+  if (opening.type === 'passage') {
+    body = (
+      <g>
+        <rect x={-w / 2} y={-0.07} width={w} height={0.14} fill="#ffffff" stroke="none" />
+        <line x1={-w / 2} y1={-0.07} x2={w / 2} y2={-0.07} stroke="#94a3b8" strokeWidth={lw} strokeDasharray={`${4 / px} ${3 / px}`} />
+        <line x1={-w / 2} y1={0.07} x2={w / 2} y2={0.07} stroke="#94a3b8" strokeWidth={lw} strokeDasharray={`${4 / px} ${3 / px}`} />
+      </g>
+    );
+  } else if (opening.type === 'fenetre' || opening.type === 'baie') {
     const t = opening.type === 'baie' ? 0.16 : 0.12;
     body = (
       <g>
@@ -193,6 +206,7 @@ export function PlanDrawing({
   motionAngle = 110,
   motionRange = 10,
   onTargetDown,
+  provenance,
 }: PlanDrawingProps) {
   const px = pxPerMeter;
   const segments = buildWallSegments(level);
@@ -324,7 +338,7 @@ export function PlanDrawing({
       })}
 
       {/* Ouvertures */}
-      {level.openings.map((o) => {
+      {level.openings.filter((o) => o.host.kind !== 'unplaced').map((o) => {
         const pl = openingPlacement(level, o);
         return (
           <g key={o.id} onPointerDown={down({ kind: 'opening', id: o.id })} style={{ cursor: interactive ? 'pointer' : undefined }} data-testid={`opening-${o.code}`}>
@@ -337,6 +351,59 @@ export function PlanDrawing({
                 {o.code}
               </text>
             )}
+          </g>
+        );
+      })}
+
+      {/* Ouvertures saisies par quantité, pas encore positionnées : repères indicatifs */}
+      {level.rooms.map((room) => {
+        const pending = level.openings.filter((o) => o.host.kind === 'unplaced' && o.host.roomId === room.id);
+        if (!pending.length) return null;
+        const bw = Math.max(0.55, 30 / px);
+        const bh = Math.max(0.28, 14 / px);
+        const gap = 0.08;
+        const perRow = Math.max(1, Math.floor((room.w - 0.2 + gap) / (bw + gap)));
+        return (
+          <g key={`unplaced-${room.id}`} data-testid={`unplaced-${room.name}`}>
+            {pending.map((o, i) => {
+              const x = room.x + 0.1 + (i % perRow) * (bw + gap);
+              const y = room.y + room.h - 0.1 - bh - Math.floor(i / perRow) * (bh + gap);
+              const sel = isSel('opening', o.id);
+              return (
+                <g
+                  key={o.id}
+                  onPointerDown={down({ kind: 'opening', id: o.id })}
+                  style={{ cursor: interactive ? 'pointer' : undefined }}
+                  data-testid={`opening-${o.code}`}
+                  data-unplaced="true"
+                >
+                  <title>{`${o.code} – à positionner sur le plan`}</title>
+                  <rect
+                    x={x}
+                    y={y}
+                    width={bw}
+                    height={bh}
+                    rx={0.05}
+                    fill={sel ? '#fde68a' : '#fffbeb'}
+                    stroke="#d97706"
+                    strokeWidth={1.2 / px}
+                    strokeDasharray={`${3 / px} ${2 / px}`}
+                  />
+                  <text
+                    x={x + bw / 2}
+                    y={y + bh / 2}
+                    dy={3 / px}
+                    fontSize={Math.min(8 / px, bh * 0.7)}
+                    textAnchor="middle"
+                    fill="#92400e"
+                    fontFamily="Inter, Helvetica, Arial, sans-serif"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    {o.code}
+                  </text>
+                </g>
+              );
+            })}
           </g>
         );
       })}
@@ -359,6 +426,31 @@ export function PlanDrawing({
             </g>
           );
         })}
+
+      {/* Provenance (plan généré) */}
+      {provenance && (
+        <g style={{ pointerEvents: 'none' }} fontFamily="Inter, Helvetica, Arial, sans-serif" data-testid="provenance-layer">
+          {level.rooms.map((r) => {
+            const p = provenance.get(r.id);
+            if (!p) return null;
+            const s = 14 / px;
+            return (
+              <g key={`pv-${r.id}`} data-provenance={p}>
+                <rect x={r.x + 4 / px} y={r.y + 4 / px} width={s} height={s} rx={3 / px} fill={PROVENANCE_COLORS[p]} />
+                <text x={r.x + 4 / px + s / 2} y={r.y + 4 / px + s / 2} fontSize={9 / px} fontWeight={700} fill="#fff" textAnchor="middle" dominantBaseline="central">
+                  {PROV_LETTER[p]}
+                </text>
+              </g>
+            );
+          })}
+          {level.openings.map((o) => {
+            const p = provenance.get(o.id);
+            const pl = openingPlacement(level, o);
+            if (!p || !pl) return null;
+            return <circle key={`po-${o.id}`} cx={pl.center.x} cy={pl.center.y} r={3 / px} fill={PROVENANCE_COLORS[p]} stroke="#fff" strokeWidth={1 / px} />;
+          })}
+        </g>
+      )}
 
       {/* Cotes de la pièce sélectionnée */}
       {showDimensions &&

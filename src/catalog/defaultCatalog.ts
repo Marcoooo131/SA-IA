@@ -4,7 +4,7 @@ import type { Catalog, Product, ProductCategory } from '@/domain/types';
  * Catalogue de démonstration.
  * - Les références « DEMO-… » sont fictives : aucune référence commerciale officielle n'est inventée.
  * - Les prix sont ceux communiqués pour le prototype et ne constituent pas des tarifs officiels.
- * - Centrale : 499 € (supplément mensuel non communiqué) ; clavier : 149 € sans supplément mensuel.
+ * - Centrale : 499 €, supplément mensuel 0 € (règle validée) ; clavier : 149 € sans supplément mensuel.
  */
 export const DEFAULT_PRODUCTS: Product[] = [
   {
@@ -14,13 +14,13 @@ export const DEFAULT_PRODUCTS: Product[] = [
     category: 'centrale',
     description: "Unité centrale du système, une par logement associé à une adresse.",
     priceInitial: 499,
-    monthly: null,
+    monthly: 0,
     billing: 'unitaire',
     packQuantity: 1,
     icon: 'centrale',
     compatibility: 'À confirmer avec la fiche fabricant.',
     active: true,
-    comments: 'Prix matériel communiqué : 499 €. Supplément mensuel non communiqué (à confirmer). Incluse dans les packs.',
+    comments: 'Prix matériel communiqué : 499 € (configurable). Supplément mensuel : 0 € (règle métier validée). Une centrale par logement relié à une adresse.',
   },
   {
     id: 'prd_clavier',
@@ -223,11 +223,15 @@ export function productForCategory(products: Product[], category: ProductCategor
 export function migrateCatalog<T extends { products: Product[] }>(catalog: T): { catalog: T; changed: boolean } {
   let changed = false;
   const products = catalog.products.map((p) => {
+    let next = p;
     const ref = DEFAULT_PRODUCTS.find((d) => d.id === p.id);
-    if (!ref || (p.id !== 'prd_centrale' && p.id !== 'prd_clavier')) return p;
-    if (p.priceInitial !== null || p.billing !== 'forfait') return p;
-    changed = true;
-    return { ...p, priceInitial: ref.priceInitial, monthly: p.monthly ?? ref.monthly, billing: ref.billing, comments: ref.comments };
+    if (ref && (p.id === 'prd_centrale' || p.id === 'prd_clavier') && p.priceInitial === null && p.billing === 'forfait') {
+      next = { ...next, priceInitial: ref.priceInitial, monthly: next.monthly ?? ref.monthly, billing: ref.billing, comments: ref.comments };
+    }
+    // Règle métier : centrale à 0 €/mois
+    if (next.category === 'centrale' && next.monthly !== 0) next = { ...next, monthly: 0 };
+    if (next !== p) changed = true;
+    return next;
   });
   return { catalog: changed ? { ...catalog, products } : catalog, changed };
 }

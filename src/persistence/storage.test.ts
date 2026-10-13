@@ -89,10 +89,14 @@ describe('mise à jour des données existantes', () => {
     );
     const res = migrateCatalog(cat);
     expect(res.changed).toBe(true);
-    expect(res.catalog.products.find((p) => p.id === 'prd_centrale')).toMatchObject({ priceInitial: 499, monthly: null, billing: 'unitaire' });
+    expect(res.catalog.products.find((p) => p.id === 'prd_centrale')).toMatchObject({ priceInitial: 499, monthly: 0, billing: 'unitaire' });
     expect(res.catalog.products.find((p) => p.id === 'prd_clavier')).toMatchObject({ priceInitial: 149, monthly: 0 });
     const custom = createDefaultCatalog();
     custom.products = custom.products.map((p) => (p.id === 'prd_clavier' ? { ...p, priceInitial: 120 } : p));
     expect(migrateCatalog(custom).catalog.products.find((p) => p.id === 'prd_clavier')!.priceInitial).toBe(120);
+    // la mensualité de la centrale est toujours ramenée à 0 €
+    const old = createDefaultCatalog();
+    old.products = old.products.map((p) => (p.id === 'prd_centrale' ? { ...p, monthly: null } : p));
+    expect(migrateCatalog(old).catalog.products.find((p) => p.id === 'prd_centrale')!.monthly).toBe(0);
   });
 });

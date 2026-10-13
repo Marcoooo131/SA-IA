@@ -90,6 +90,19 @@ describe('import du catalogue', () => {
     expect(catalog.products.find((x) => x.reference === 'DEMO-FUM-01')!.priceInitial).toBe(149);
   });
 
+  it('ramène la mensualité de la centrale à 0 € et exige une confirmation explicite', () => {
+    const rows = [HEADER, ['DEMO-CENT-01', 'Centrale', 'Centrale', '', '459', '3', 'Unitaire', '1', 'Actif', '']];
+    const p = buildImportPreview(rows, autoMapColumns(HEADER), catalog.products);
+    expect(p.rows[0].centraleMonthlyConflict).toBe(3);
+    expect(p.rows[0].product!.monthly).toBe(0);
+    expect(p.rows[0].warnings.join(' ')).toMatch(/règle validée \(0 €\)/);
+    expect(() => applyImport(catalog, p, { updateExisting: true })).toThrow(/Confirmez/);
+    const res = applyImport(catalog, p, { updateExisting: true, confirmCentraleRule: true });
+    const c = res.catalog.products.find((x) => x.reference === 'DEMO-CENT-01')!;
+    expect(c.priceInitial).toBe(459);
+    expect(c.monthly).toBe(0);
+  });
+
   it('reconnaît les catégories en libellé ou en code', () => {
     expect(parseCategory("Détecteur de choc et d'ouverture")).toBe('detecteur_choc');
     expect(parseCategory('detecteur_fumee')).toBe('detecteur_fumee');

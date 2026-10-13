@@ -16,7 +16,7 @@ valider avant toute utilisation réelle. Il doit accompagner toute présentation
 | Point | État dans le prototype |
 |---|---|
 | Prix matériel et suppléments mensuels des produits | Valeurs communiquées pour le prototype, **non officielles** |
-| Prix individuels de la centrale et du clavier | Centrale 499 € (supplément mensuel **non communiqué** → « à confirmer ») ; clavier 149 € sans supplément mensuel |
+| Prix individuels de la centrale et du clavier | Centrale 499 € (prix matériel configurable) et **0 €/mois** (règle validée, imposée par le calculateur) ; clavier 149 € sans supplément mensuel |
 | Déménagement (reprise d'équipements, transfert d'abonnement à 0 €) | Règle commerciale à confirmer (conditions, frais éventuels de déplacement/réinstallation) |
 | Composition et prix des Packs Essentiel et Sérénité | Valeurs communiquées, modifiables dans le catalogue |
 | Pack périmétrique (5 détecteurs) : règles d'utilisation | Regroupement automatique quand c'est moins cher (désactivable) – à confirmer commercialement |
@@ -44,6 +44,8 @@ Toutes les règles sont des **hypothèses de configuration** issues des données
 | Pièces | Rectangles alignés sur les axes | Pièces en L à composer avec plusieurs rectangles ; polygones libres envisageables |
 | Murs | Générés depuis les contours de pièces + cloisons libres ; épaisseurs standard (20 / 10 cm) | Pas de murs courbes ni d'épaisseurs réelles relevées |
 | Hauteurs | Hauteur sous plafond par niveau, allèges / linteaux standards | Pas d'escaliers, trémies ni toitures |
+| Plans générés par questionnaire | Disposition générique en bandes ou en L, pièces rectangulaires, dimensions indicatives ; ne représente pas le logement réel tant que le conseiller ne l'a pas vérifié et validé |
+| Menuiseries saisies par quantité | Ouvertures « à positionner » sans position ni dimension relevée ; emplacement 2D/3D indicatif | À positionner sur le plan avant validation ; pas de vérification de chevauchement entre deux ouvertures d'un même mur |
 | Analyse d'image | **Non développée** : pas de reconnaissance automatique des murs | Le conseiller trace la géométrie sur le fond calibré ; une analyse automatique ne pourrait proposer qu'une première interprétation à corriger |
 | Import PDF | Première page uniquement, rendue en image | Plans multi-pages : importer la page utile |
 | Couverture de détection | Secteur 110° / 10 m découpé à la pièce, **sans** calcul d'obstacles ni de hauteur | Simulation indicative uniquement, clairement libellée |

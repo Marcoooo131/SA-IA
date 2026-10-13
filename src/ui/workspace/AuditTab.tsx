@@ -56,7 +56,9 @@ function ModeComparison() {
                       <CategoryDot category={c} />
                       {CATEGORY_LABELS[c]}
                     </span>
-                    <span className="font-semibold tabular-nums">{p.counts[c] ?? 0}</span>
+                    <span className="font-semibold tabular-nums" data-testid={`count-${m}-${c}`}>
+                      {p.counts[c] ?? 0}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -127,6 +129,48 @@ function ModeComparison() {
           </tr>
         </tbody>
       </table>
+    </Card>
+  );
+}
+
+/** Synthèse des menuiseries par pièce, issue du même modèle que le plan et le tableau. */
+function JoinerySummary() {
+  const dossier = useActiveDossier()!;
+  const audit = useAudit(dossier)!;
+  const setTab = useApp((s) => s.setTab);
+  const lines = audit.rooms.filter((r) => r.counts.total > 0);
+  const detectors = lines.reduce((n, r) => n + r.calc.detectors, 0);
+  const pending = lines.reduce((n, r) => n + r.counts.aPositionner, 0);
+  return (
+    <Card
+      title="Menuiseries par pièce (détecteurs de choc et d'ouverture indicatifs)"
+      actions={
+        <button className="text-xs text-brand-600 hover:underline" onClick={() => setTab('menuiseries')}>
+          Modifier les menuiseries
+        </button>
+      }
+    >
+      {lines.length === 0 ? (
+        <p className="text-sm text-slate-500">Aucune menuiserie renseignée.</p>
+      ) : (
+        <div data-testid="audit-joinery">
+          <ul className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs text-slate-700">
+            {lines.map((r) => (
+              <li key={r.roomId} className="flex justify-between gap-2">
+                <span>
+                  <span className="text-slate-400">{r.levelName} · </span>
+                  {r.calc.explanation}
+                </span>
+                {r.counts.aPositionner > 0 && <Badge tone="amber">{r.counts.aPositionner} à positionner</Badge>}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-sm font-semibold text-slate-800">
+            Total : <span data-testid="audit-joinery-detectors">{detectors}</span> détecteur(s) indicatif(s) pour {lines.reduce((n, r) => n + r.counts.total, 0)} menuiserie(s)
+            {pending > 0 ? `, dont ${pending} à positionner sur le plan` : ''}.
+          </p>
+        </div>
+      )}
     </Card>
   );
 }
@@ -227,6 +271,7 @@ export function AuditTab() {
           responsable métier ; les exigences applicables et préconisations des fabricants doivent être vérifiées indépendamment.
         </div>
         <ModeComparison />
+        <JoinerySummary />
         <div className="grid grid-cols-3 gap-5">
           <Card
             title="Points d'audit"

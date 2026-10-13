@@ -131,6 +131,8 @@ export interface PreviewRow {
   action: RowAction;
   existingId?: string;
   changes: FieldChange[];
+  /** Mensualité non nulle importée pour une centrale : ramenée à 0 € (règle métier). */
+  centraleMonthlyConflict?: number;
 }
 
 export interface ImportPreview {
@@ -213,6 +215,19 @@ export function buildImportPreview(rows: unknown[][], mapping: ColumnMapping, ex
       if (m > 500) warnings.push('Supplément mensuel inhabituellement élevé : à vérifier.');
     }
 
+    // Règle métier validée : la centrale n'a jamais de supplément mensuel
+    let centraleMonthlyConflict: number | undefined;
+    if (category === 'centrale') {
+      if (monthly !== null && monthly !== 0) {
+        centraleMonthlyConflict = monthly;
+        warnings.push(`Mensualité de la centrale à ${String(monthly).replace('.', ',')} € dans le fichier : la règle validée (0 €) reste appliquée.`);
+      } else if (monthly === null) {
+        const i = warnings.indexOf('Supplément mensuel non renseigné : « à confirmer ».');
+        if (i >= 0) warnings.splice(i, 1);
+      }
+      monthly = 0;
+    }
+
     let packQuantity = 1;
     const rawQty = cell(row, mapping.packQuantity);
     if (rawQty !== undefined && rawQty !== null && String(rawQty).trim() !== '') {
@@ -266,7 +281,7 @@ export function buildImportPreview(rows: unknown[][], mapping: ColumnMapping, ex
       }
       action = changes.length ? 'mettre_a_jour' : 'identique';
     }
-    out.push({ rowNumber, reference, name, product, errors, warnings, action, existingId: existingProduct?.id, changes });
+    out.push({ rowNumber, reference, name, product, errors, warnings, action, existingId: existingProduct?.id, changes, centraleMonthlyConflict });
   });
 
   const summary = { creer: 0, mettre_a_jour: 0, identique: 0, erreur: 0, total: out.length, warnings: 0 };
@@ -280,6 +295,8 @@ export function buildImportPreview(rows: unknown[][], mapping: ColumnMapping, ex
 export interface ApplyOptions {
   /** Mettre à jour les produits existants (sinon ils sont conservés tels quels). */
   updateExisting: boolean;
+  /** Confirmation explicite lorsque le fichier propose une mensualité non nulle pour la centrale. */
+  confirmCentraleRule?: boolean;
 }
 
 /**
@@ -288,6 +305,8 @@ export interface ApplyOptions {
  */
 export function applyImport(catalog: Catalog, preview: ImportPreview, options: ApplyOptions): { catalog: Catalog; created: number; updated: number } {
   if (preview.missingRequiredColumns.length) throw new Error('Colonnes obligatoires non associées.');
+  if (preview.rows.some((r) => r.centraleMonthlyConflict !== undefined) && !options.confirmCentraleRule)
+    throw new Error('Confirmez que la mensualité de la centrale reste à 0 € avant de valider l’import.');
   const products = catalog.products.map((p) => ({ ...p }));
   let created = 0;
   let updated = 0;

@@ -4,7 +4,7 @@ name: Déploiement GitHub Pages
 
 on:
   push:
-    branches: [main, claude/sector-alarm-movers-audit-krbvkl]
+    branches: [main]
   workflow_dispatch:
 
 permissions:

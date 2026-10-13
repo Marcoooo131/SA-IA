@@ -21,6 +21,8 @@ import { uid } from '@/lib/id';
 import { formatNumber } from '@/lib/format';
 import { OPENING_TYPE_LABELS } from '@/domain/labels';
 import { useAssetUrl } from '../useAsset';
+import { placeOpeningAt } from '@/plan/joinery';
+import { PROVENANCE_COLORS, PROVENANCE_LABELS, provenanceMap, type Provenance } from '@/generator/provenance';
 import { Button, Modal, NumberInput, Field } from '../kit';
 
 type Drag =
@@ -45,7 +47,9 @@ const TOOL_HINT: Record<string, string> = {
   baie: 'Cliquez sur un mur pour placer une baie vitrée.',
   porte_garage: 'Cliquez sur un mur pour placer une porte de garage.',
   porte_interieure: 'Cliquez sur une cloison pour placer une porte intérieure.',
+  passage: 'Cliquez sur une cloison pour créer un passage ouvert (sans porte).',
   device: "Cliquez sur le plan pour placer l'équipement sélectionné dans la bibliothèque.",
+  place_opening: "Cliquez sur le mur de la pièce où se trouve l'ouverture à positionner (Échap pour annuler).",
   calibrate: "Cliquez deux points d'une dimension connue sur le plan importé (ex. largeur d'une porte).",
 };
 
@@ -77,6 +81,10 @@ export function PlanEditor() {
   const level: Level | undefined = dossier?.plan.levels.find((l) => l.id === levelId) ?? dossier?.plan.levels[0];
   const devices = useMemo(() => dossier?.devices.filter((d) => d.levelId === level?.id) ?? [], [dossier, level]);
   const bgUrl = useAssetUrl(level?.background?.assetId);
+  const provenance = useMemo(
+    () => (dossier?.generation && ed.showProvenance ? provenanceMap(dossier.plan.levels, dossier.generation) : undefined),
+    [dossier?.plan.levels, dossier?.generation, ed.showProvenance],
+  );
   const { view } = ed;
 
   useEffect(() => {
@@ -308,11 +316,34 @@ export function PlanEditor() {
         } else setCalib(pts);
         break;
       }
+      case 'place_opening': {
+        const id = ed.placingOpeningId;
+        const target = id ? level.openings.find((o) => o.id === id) : undefined;
+        if (!id || !target) {
+          toast('error', "L'ouverture à positionner n'existe pas sur ce niveau.");
+          useEditor.getState().setTool('select');
+          return;
+        }
+        const maxD = 12 / view.scale + 0.4;
+        const probe = structuredClone({ plan: dossier.plan, devices: dossier.devices });
+        if (!placeOpeningAt(probe, level.id, id, raw, maxD)) {
+          toast('info', `Cliquez plus près d'un mur pour positionner ${target.code}.`);
+          return;
+        }
+        mutate((d) => {
+          placeOpeningAt(d, level.id, id, raw, maxD);
+        });
+        select({ kind: 'opening', id });
+        useEditor.getState().setTool('select');
+        toast('success', `${target.code} positionnée sur le plan.`);
+        break;
+      }
       case 'porte':
       case 'fenetre':
       case 'baie':
       case 'porte_garage':
-      case 'porte_interieure': {
+      case 'porte_interieure':
+      case 'passage': {
         let createdId: string | null = null;
         const tool = ed.tool;
         const probe = structuredClone({ plan: dossier.plan, devices: dossier.devices });
@@ -424,7 +455,10 @@ export function PlanEditor() {
         mutate((d) => {
           const l = findLevel(d, level.id);
           const o = l.openings.find((x) => x.id === dr.id);
-          if (o) moveOpeningTo(l, o, raw);
+          if (o && o.host.kind !== 'unplaced') {
+            moveOpeningTo(l, o, raw);
+            o.positionConfirmed = true;
+          }
         }, { history: false });
         markMoved();
         break;
@@ -530,6 +564,7 @@ export function PlanEditor() {
             motionAngle={rules.motion.angleDeg}
             motionRange={rules.motion.rangeM}
             onTargetDown={onTargetDown}
+            provenance={provenance}
           />
           {/* Guides d'alignement */}
           {guides.x.map((x) => (
@@ -585,6 +620,20 @@ export function PlanEditor() {
         <div className="h-2 border-x-2 border-b-2 border-slate-700" style={{ width: scaleBar.px }} />
         <span>{scaleBar.m} m</span>
       </div>
+      {provenance && (
+        <div className="pointer-events-none absolute top-2 right-2 flex flex-col gap-1 rounded-md border border-slate-200 bg-white/95 px-2.5 py-1.5 text-[11px] text-slate-600 shadow-sm" data-testid="provenance-legend">
+          {(Object.keys(PROVENANCE_LABELS) as Provenance[]).map((p) => (
+            <span key={p} className="flex items-center gap-1.5">
+              <span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: PROVENANCE_COLORS[p] }} />
+              {PROVENANCE_LABELS[p]}
+            </span>
+          ))}
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2.5 w-2.5 rounded-full border-2 border-dashed border-amber-500" />
+            Recommandation à valider (équipement suggéré)
+          </span>
+        </div>
+      )}
       {/* Barre d'état */}
       <div className="absolute inset-x-0 bottom-0 flex h-7 items-center gap-4 border-t border-slate-200 bg-white/95 px-3 text-[11px] text-slate-500">
         <span className="truncate">{hint}</span>

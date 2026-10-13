@@ -24,7 +24,7 @@ function op(
   offset: number,
   opts: { width?: number; exterior?: boolean; sectional?: boolean } = {},
 ): Opening {
-  const width = opts.width ?? { porte: 0.9, fenetre: 1.2, baie: 2.4, porte_garage: 2.5, porte_interieure: 0.8 }[type];
+  const width = opts.width ?? { porte: 0.9, fenetre: 1.2, baie: 2.4, porte_garage: 2.5, porte_interieure: 0.8, passage: 1.6, autre: 0.8 }[type];
   return {
     id,
     code,
@@ -32,7 +32,7 @@ function op(
     host: { kind: 'room', roomId, side },
     offset,
     width,
-    exterior: opts.exterior ?? type !== 'porte_interieure',
+    exterior: opts.exterior ?? (type !== 'porte_interieure' && type !== 'passage'),
     sectional: opts.sectional ?? false,
   };
 }
@@ -130,6 +130,8 @@ export function demoHouseDossier(catalog: Catalog = createDefaultCatalog()): Dos
     quoteDraft: { packId: 'pack_serenite', adjustments: [], discountIds: [], priceOverrides: [], moved: [], packOverride: null, packTransferred: false, totalOverride: null },
     quotes: [],
     demoValidatedAt: null,
+    generation: null,
+    wizardDraft: null,
   };
   const audit = runAudit(dossier, DEFAULT_RULES_CONFIG, catalog.products);
   dossier.devices = applyProposal([], audit.proposals.volumetrique, catalog.products);
@@ -194,6 +196,8 @@ export function demoApartmentDossier(): Dossier {
     quoteDraft: { packId: 'pack_essentiel', adjustments: [], discountIds: [], priceOverrides: [], moved: [], packOverride: null, packTransferred: false, totalOverride: null },
     quotes: [],
     demoValidatedAt: null,
+    generation: null,
+    wizardDraft: null,
   };
 }
 
@@ -229,5 +233,7 @@ export function emptyDossier(id: string, reference: string): Dossier {
     quoteDraft: { packId: 'pack_essentiel', adjustments: [], discountIds: [], priceOverrides: [], moved: [], packOverride: null, packTransferred: false, totalOverride: null },
     quotes: [],
     demoValidatedAt: null,
+    generation: null,
+    wizardDraft: null,
   };
 }

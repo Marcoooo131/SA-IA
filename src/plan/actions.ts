@@ -52,7 +52,7 @@ export function freeSpot(level: Level, w: number, h: number): { x: number; y: nu
 
 export function removeRoom(level: Level, roomId: string) {
   level.rooms = level.rooms.filter((r) => r.id !== roomId);
-  level.openings = level.openings.filter((o) => !(o.host.kind === 'room' && o.host.roomId === roomId));
+  level.openings = level.openings.filter((o) => !((o.host.kind === 'room' || o.host.kind === 'unplaced') && o.host.roomId === roomId));
 }
 
 export function removeWall(level: Level, wallId: string) {
@@ -62,7 +62,11 @@ export function removeWall(level: Level, wallId: string) {
 
 export function removeOpening(draft: Draft, level: Level, openingId: string) {
   level.openings = level.openings.filter((o) => o.id !== openingId);
-  draft.devices = draft.devices.map((d) => (d.openingId === openingId ? { ...d, openingId: undefined } : d));
+  // suggestion automatique non validée liée à l'ouverture : retirée (pas de détecteur orphelin) ;
+  // équipement ajouté ou validé par le conseiller : conservé et simplement détaché
+  draft.devices = draft.devices
+    .filter((d) => !(d.openingId === openingId && d.origin === 'suggere' && !d.validated))
+    .map((d) => (d.openingId === openingId ? { ...d, openingId: undefined } : d));
 }
 
 export function addWall(level: Level, a: Point, b: Point, thickness = 0.1) {
@@ -82,7 +86,7 @@ export function addOpeningAt(plan: Plan, level: Level, type: OpeningType, p: Poi
   const width = Math.min(OPENING_DEFAULT_WIDTH[type], Math.max(0.4, len - 0.1));
   const offset = clampOffset(cand.offset, width, len);
   let exterior = false;
-  if (type !== 'porte_interieure' && cand.host.kind === 'room') {
+  if (type !== 'porte_interieure' && type !== 'passage' && cand.host.kind === 'room') {
     const proj = projectOnSegment(p, cand.segment);
     exterior = isExteriorAt(level, cand.host.roomId, cand.host.side, proj.point);
   }
