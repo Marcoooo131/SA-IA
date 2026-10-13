@@ -4,11 +4,11 @@
 
 | Point | Situation |
 |---|---|
-| **Capture WASAPI réelle** (loopback, micro, casques USB/Bluetooth, changement de périphérique) | Code écrit d'après la documentation et le code source de PyAudioWPatch ; importé, énuméré et empaqueté sur un runner Windows de GitHub Actions **sans carte son**. **Aucune capture réelle n'a été faite.** → `PROCEDURE_TEST_AUDIO.md` |
+| **Capture WASAPI réelle** (loopback, micro, casques USB/Bluetooth, changement de périphérique) | Code écrit d'après la documentation et le code source de PyAudioWPatch ; sur un runner Windows de GitHub Actions **sans carte son** : WASAPI s'initialise, l'énumération renvoie 0 périphérique (message explicite), les deux `.exe` passent leur auto-test. **Aucune capture réelle n'a été faite.** → `PROCEDURE_TEST_AUDIO.md` |
 | Fenêtre WebView2 (pywebview) | Non lancée (aucun bureau graphique dans la CI). L'interface est testée dans Chromium (Playwright) ; `--browser` sert de solution de repli |
 | Qualité de transcription sur de vrais appels | Mesurée uniquement sur des voix de synthèse (espeak-ng, Piper). Les voix de synthèse ne reproduisent ni les accents, ni la compression téléphonique, ni les chevauchements de parole |
 | Note générée par le vrai modèle d'IA | Chaîne poste → passerelle testée avec le générateur **simulé** de la passerelle ; l'appel réel à Claude est couvert par les tests de `phonecall-agent` avec un client factice, pas avec la clé réelle |
-| Exécutable signé, antivirus, déploiement Intune/GPO | Non réalisés |
+| Exécutable signé, antivirus, déploiement Intune/GPO | Non réalisés. Le paquet non signé produit par la CI pèse ~220 Mo compressé (sans modèle de transcription) |
 
 ## Limites techniques de la capture
 

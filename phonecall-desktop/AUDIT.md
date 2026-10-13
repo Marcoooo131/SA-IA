@@ -67,15 +67,17 @@ L'environnement de développement est un conteneur **Linux sans carte son**. Con
 
 - La capture WASAPI (loopback, micro, casques, Bluetooth, changement de périphérique) **n'a pas pu
   être testée physiquement**. Le code est écrit d'après la documentation et le code source de
-  PyAudioWPatch, il est compilé et importé sur un runner **Windows** de GitHub Actions (énumération
-  des périphériques, démarrage de l'application en auto-test), mais ces machines n'ont pas de carte son.
+  PyAudioWPatch. Vérifié sur un runner **Windows** de GitHub Actions (sans carte son) : tests
+  automatisés, initialisation de WASAPI, énumération (« 0 périphérique » correctement signalé),
+  construction des exécutables PyInstaller et auto-test des deux `.exe` (code de sortie 0).
   → **Procédure de test audio manuelle** : `docs/PROCEDURE_TEST_AUDIO.md` + commande `diag`.
 - Toute la chaîne en aval (traitement du flux, segmentation, transcription, assemblage sans doublon,
   arrêt, finalisation, génération, copie, historique, sécurité de l'interface) est testée
   automatiquement avec des **sources audio simulées** (fichiers WAV synthétiques lus en temps réel).
 - La transcription française réelle (faster-whisper) est mesurée dans la CI Linux sur une
-  conversation **synthétique** (voix de synthèse), Hugging Face n'étant pas accessible depuis le
-  conteneur de développement.
+  conversation **synthétique** (voix espeak-ng et Piper), Hugging Face n'étant pas accessible depuis
+  le conteneur de développement. Résultat : modèle `small` ≈ 4 % d'erreurs sur voix naturelle,
+  texte définitif ~1,7 s après la fin de la phrase (détails : `docs/COUTS.md`).
 
 ## 3. Comparaison des technologies d'application
 

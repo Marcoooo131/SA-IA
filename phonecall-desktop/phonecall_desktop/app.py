@@ -86,6 +86,8 @@ def main(argv: list[str] | None = None) -> int:
     settings = get_settings()
     configure_logging(app_dir("data") / "logs", settings.log_level)
     if args.selftest:
+        if sys.stdout is not None and hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         return selftest()
     try:
         settings, controller, hub, app, sock, port, token = build(settings)
