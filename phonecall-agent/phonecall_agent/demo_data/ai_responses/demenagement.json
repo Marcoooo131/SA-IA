@@ -1,0 +1,23 @@
+{
+  "no_usable_content": false,
+  "category": "demenagement",
+  "category_evidence": ["S2"],
+  "customer_statements": [
+    {"text": "Le client déménage le mois prochain et souhaite conserver son alarme dans le nouveau logement.", "evidence": ["S2"], "to_verify": false},
+    {"text": "Le nouveau logement est une maison, plus grande que l'appartement actuel.", "evidence": ["S4"], "to_verify": false},
+    {"text": "Le client demande le coût d'un éventuel matériel supplémentaire.", "evidence": ["S6"], "to_verify": false}
+  ],
+  "advisor_information": [
+    {"text": "Transfert expliqué : désinstallation dans l'appartement puis installation dans la maison par un technicien ; une étude pourra être nécessaire pour du matériel supplémentaire.", "evidence": ["S5"], "to_verify": false},
+    {"text": "Aucun montant communiqué : il dépendra de l'étude.", "evidence": ["S7"], "to_verify": false}
+  ],
+  "actions_done": [
+    {"text": "Formulaire de déménagement envoyé par e-mail au client.", "evidence": ["S9"], "to_verify": false, "owner": "advisor"}
+  ],
+  "actions_todo": [
+    {"text": "Le client doit retourner le formulaire de déménagement avec la nouvelle adresse.", "evidence": ["S9"], "to_verify": false, "owner": "customer"},
+    {"text": "Rendez-vous technicien proposé mais non fixé : le client rappellera après en avoir parlé avec sa compagne.", "evidence": ["S7", "S8"], "to_verify": false, "owner": "customer"}
+  ],
+  "points_to_verify": [],
+  "phone_call_text": "Appel entrant – Déménagement.\nLe client déménage le mois prochain dans une maison plus grande et souhaite conserver son alarme.\nInformations données : transfert en deux temps (désinstallation puis installation par un technicien), étude possible si du matériel supplémentaire est nécessaire ; aucun montant communiqué, il dépendra de l'étude.\nFait : formulaire de déménagement envoyé par e-mail.\nÀ faire : le client retourne le formulaire avec la nouvelle adresse. Rendez-vous technicien proposé, non fixé : le client rappellera."
+}

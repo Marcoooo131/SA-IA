@@ -1,0 +1,13 @@
+{
+  "provider": "simulated",
+  "language": "fr",
+  "speaker_labels": true,
+  "segments": [
+    {"id": "S1", "start": 0.0, "end": 3.0, "speaker": "advisor", "confidence": 0.94, "text": "Sector Alarm bonjour, je vous écoute."},
+    {"id": "S2", "start": 3.2, "end": 9.0, "speaker": "customer", "confidence": 0.88, "text": "Bonjour, j'ai un problème avec mon détecteur dans le couloir, il sonne sans raison depuis hier soir."},
+    {"id": "S3", "start": 9.2, "end": 14.0, "speaker": "advisor", "confidence": 0.3, "text": "D'accord, est-ce que le voyant"},
+    {"id": "S4", "start": 14.0, "end": 19.0, "speaker": "customer", "confidence": 0.2, "text": ""},
+    {"id": "S5", "start": 19.0, "end": 26.0, "speaker": "advisor", "confidence": 0.35, "text": "on va changer la pile"},
+    {"id": "S6", "start": 26.0, "end": 31.0, "speaker": "customer", "confidence": 0.86, "text": "D'accord, merci, je reste disponible si besoin."}
+  ]
+}

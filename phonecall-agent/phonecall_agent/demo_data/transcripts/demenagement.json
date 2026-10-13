@@ -1,0 +1,18 @@
+{
+  "provider": "simulated",
+  "language": "fr",
+  "speaker_labels": true,
+  "segments": [
+    {"id": "S1", "start": 0.0, "end": 4.2, "speaker": "advisor", "confidence": 0.95, "text": "Sector Alarm bonjour, je vous écoute."},
+    {"id": "S2", "start": 4.5, "end": 11.0, "speaker": "customer", "confidence": 0.93, "text": "Bonjour, je vous appelle parce que je déménage le mois prochain et je voudrais garder mon alarme dans le nouveau logement."},
+    {"id": "S3", "start": 11.3, "end": 15.8, "speaker": "advisor", "confidence": 0.94, "text": "Très bien. Vous déménagez dans une maison ou un appartement ?"},
+    {"id": "S4", "start": 16.0, "end": 20.1, "speaker": "customer", "confidence": 0.92, "text": "Une maison, un peu plus grande que l'appartement actuel."},
+    {"id": "S5", "start": 20.5, "end": 31.0, "speaker": "advisor", "confidence": 0.91, "text": "D'accord. Le transfert se fait en deux temps : la désinstallation dans l'appartement puis l'installation dans la maison par un technicien. Une étude pourra être nécessaire si la maison demande du matériel supplémentaire."},
+    {"id": "S6", "start": 31.2, "end": 35.0, "speaker": "customer", "confidence": 0.9, "text": "Et ça me coûterait combien, le matériel en plus ?"},
+    {"id": "S7", "start": 35.4, "end": 43.0, "speaker": "advisor", "confidence": 0.9, "text": "Ça dépendra de l'étude, je ne peux pas vous donner de montant aujourd'hui. Je peux vous proposer un rendez-vous avec un technicien pour faire le point."},
+    {"id": "S8", "start": 43.3, "end": 48.5, "speaker": "customer", "confidence": 0.89, "text": "Je préfère en parler d'abord avec ma compagne, je vous rappellerai pour le rendez-vous."},
+    {"id": "S9", "start": 48.8, "end": 56.0, "speaker": "advisor", "confidence": 0.93, "text": "Aucun souci. Je viens de vous envoyer par e-mail le formulaire de déménagement, il faudra nous le retourner avec la nouvelle adresse."},
+    {"id": "S10", "start": 56.2, "end": 58.0, "speaker": "customer", "confidence": 0.95, "text": "Parfait, merci beaucoup."},
+    {"id": "S11", "start": 58.2, "end": 60.0, "speaker": "advisor", "confidence": 0.96, "text": "Je vous en prie, bonne journée."}
+  ]
+}

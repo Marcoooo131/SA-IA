@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Appel{% endblock %}
+{% block content %}
+<p><a href="/calls">← Appels</a></p>
+<h1>Appel du {{ call.received_at.strftime('%d/%m/%Y %H:%M') }}
+  <span class="badge s-{{ call.status.value }}">{{ STATUS_LABELS.get(call.status.value) }}</span></h1>
+<p class="muted small">Réf. interne {{ call.id }} · Twilio {{ call.call_sid }} / {{ call.recording_sid }} ·
+  durée {{ call.recording_duration or '?' }} s{% if call.status_detail %} · {{ call.status_detail }}{% endif %}</p>
+
+<div class="grid">
+<section class="card">
+  {% if report %}
+  <h2>Phone Call proposé <small class="muted">v{{ report.version }} · {{ report.generator }}</small></h2>
+  <p>Catégorie : <strong>{{ report.category or '—' }}</strong> ·
+     Indicateur qualité : <strong>{{ report.quality_score }}/100</strong>
+     <span class="muted small">(règles explicites, non calibré)</span></p>
+
+  {% if report.quality_flags %}
+  <ul class="flags">
+    {% for f in report.quality_flags %}
+    <li class="{{ f.severity }}"><strong>{{ 'Bloquant' if f.severity == 'blocking' else 'À vérifier' }}</strong> — {{ f.message }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% set editable = call.status.value in ('needs_review', 'ready') %}
+  <form method="post" action="/calls/{{ call.id }}/approve">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <textarea id="report-text" name="text" rows="12" maxlength="{{ MAX_CHARS }}" {% if not editable %}readonly{% endif %}>{{ report.text }}</textarea>
+    {% if editable and report.quality_flags|selectattr('severity', 'equalto', 'blocking')|list %}
+    <label class="ack"><input type="checkbox" name="ack_blocking" value="1" required>
+      J'ai vérifié chaque point bloquant dans la transcription et corrigé le texte si nécessaire.</label>
+    {% endif %}
+    <div class="actions">
+      <button type="button" class="js-copy" data-target="report-text">Copier le texte</button>
+      {% if editable %}
+        <button class="primary" name="approve" value="1">Valider{% if crm_enabled %} et envoyer au CRM{% endif %}</button>
+        <button name="mark_copied" value="1">Valider et marquer comme saisi dans le CRM</button>
+      {% endif %}
+    </div>
+  </form>
+
+  {% if call.status.value == 'approved' %}
+  <form method="post" action="/calls/{{ call.id }}/copied" class="actions">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="primary">J'ai collé ce texte dans le CRM</button>
+  </form>
+  {% endif %}
+
+  {% if user.role >= Role.SUPERVISOR %}
+  <div class="actions">
+    {% if editable %}
+    <form method="post" action="/calls/{{ call.id }}/reject" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input name="comment" placeholder="Motif du rejet">
+      <button class="danger">Rejeter</button>
+    </form>
+    {% endif %}
+    {% if transcript and call.status.value in ('needs_review', 'ready', 'rejected') %}
+    <form method="post" action="/calls/{{ call.id }}/regenerate" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button>Régénérer</button>
+    </form>
+    {% endif %}
+    {% if crm_enabled and call.status.value in ('approved', 'crm_pending') %}
+    <form method="post" action="/calls/{{ call.id }}/crm-retry" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button>Relancer l'écriture CRM</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if structured %}
+  <h3>Éléments et justifications</h3>
+  {% for key, label in SECTION_LABELS.items() %}
+    {% if structured[key] %}
+    <h4>{{ label }}</h4>
+    <ul class="items">
+      {% for it in structured[key] %}
+      <li>{{ it.text }}
+        {% for e in it.evidence %}<a class="ev" href="#{{ e }}">{{ e }}</a>{% endfor %}
+        {% if it.to_verify %}<span class="badge warn">à vérifier</span>{% endif %}
+        {% if it.owner %}<span class="muted small">({{ it.owner }})</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+  {% endfor %}
+  {% if structured.points_to_verify %}
+    <h4>Points à vérifier</h4>
+    <ul class="items">{% for p in structured.points_to_verify %}<li>{{ p }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% endif %}
+
+  {% else %}
+  <h2>Aucun compte rendu</h2>
+  <p class="muted">{{ call.status_detail or 'Traitement en cours ou appel sans contenu exploitable.' }}</p>
+  {% endif %}
+
+  <h3>Intégration CRM</h3>
+  {% if not crm_enabled %}
+    <p class="notice">Aucune intégration autorisée : copier le texte puis le coller manuellement dans le CRM.</p>
+  {% else %}
+    <p>Connecteur : {{ settings.crm_connector }} {% if not crm_health.available %}— indisponible ({{ crm_health.reason }}){% endif %}</p>
+    {% for w in crm_writes %}
+      <p class="small">Écriture {{ w.status.value }} · tentatives {{ w.attempts }}{% if w.external_ref %} · réf. {{ w.external_ref }}{% endif %}{% if w.verified_at %} · vérifiée le {{ w.verified_at.strftime('%d/%m %H:%M') }}{% endif %}{% if w.last_error %} · {{ w.last_error }}{% endif %}</p>
+    {% endfor %}
+  {% endif %}
+
+  {% if errors %}
+  <h3>Incidents de traitement</h3>
+  <ul class="small">{% for e in errors %}<li>{{ e.created_at.strftime('%d/%m %H:%M') }} · {{ e.stage }} · tentative {{ e.attempt }} · {{ e.error_code }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if reviews %}
+  <h3>Validations</h3>
+  <ul class="small">{% for r in reviews %}<li>{{ r.created_at.strftime('%d/%m %H:%M') }} · {{ r.reviewer }} · {{ r.action }}{% if r.edited %} (modifié à {{ (r.edit_ratio * 100)|round|int }} %){% endif %}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% if user.role >= Role.ADMIN %}
+  <h3>Administration</h3>
+  <form method="post" action="/admin/calls/{{ call.id }}/delete" class="inline">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input name="confirm" placeholder="Tapez SUPPRIMER">
+    <button class="danger">Supprimer toutes les données de cet appel</button>
+  </form>
+  {% endif %}
+</section>
+
+<section class="card">
+  <h2>Transcription</h2>
+  {% if transcript %}
+    {% if not transcript.speaker_labels %}<p class="notice small">Locuteurs non identifiés de manière fiable.</p>{% endif %}
+    <ol class="transcript">
+    {% for s in transcript.segments %}
+      <li id="{{ s.id }}" class="{{ 'uncertain' if s.uncertain }}">
+        <span class="seg">{{ s.id }}</span>
+        <span class="ts">{% if s.start is not none %}{{ '%02d:%02d'|format((s.start // 60)|int, (s.start % 60)|int) }}{% endif %}</span>
+        <span class="spk spk-{{ s.speaker or 'unknown' }}">{{ {'advisor': 'Conseiller', 'customer': 'Client'}.get(s.speaker, 'Inconnu') }}</span>
+        {{ s.text }}{% if s.uncertain %} <span class="badge warn">incertain</span>{% endif %}
+      </li>
+    {% endfor %}
+    </ol>
+  {% elif call.transcript and call.transcript.purged_at %}
+    <p class="muted">Transcription supprimée le {{ call.transcript.purged_at.strftime('%d/%m/%Y') }} (politique de conservation).</p>
+  {% else %}
+    <p class="muted">Pas de transcription.</p>
+  {% endif %}
+</section>
+</div>
+{% endblock %}

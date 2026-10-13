@@ -1,0 +1,67 @@
+# Business configuration — EXAMPLE, NOT VALIDATED.
+# Every value below is a placeholder to be replaced/validated by Sector Alarm
+# (customer service management, DPO, legal). While `validated: false`, every report
+# goes to human review whatever its quality indicator.
+version: "example-0.1"
+validated: false
+language: fr
+
+# Classification. A category is only assigned when the transcript clearly supports it;
+# otherwise the report uses "indetermine". Keywords are a cross-check, not the classifier.
+categories:
+  - key: demenagement
+    label: Déménagement
+    description: Le client déménage et souhaite transférer, suspendre ou adapter son installation.
+    keywords: [déménage, déménagement, nouvelle adresse, nouveau logement]
+  - key: resiliation
+    label: Résiliation
+    description: Le client demande à mettre fin à son contrat (sans maintien obtenu pendant l'appel).
+    keywords: [résilier, résiliation, arrêter le contrat, mettre fin]
+  - key: retention
+    label: Rétention
+    description: Demande de résiliation ou insatisfaction suivie d'une proposition de maintien.
+    keywords: [résilier, résiliation, garder, conserver, offert, geste commercial]
+  - key: administratif
+    label: Demande administrative
+    description: Facturation, coordonnées, documents, moyens de paiement, contrat.
+    keywords: [facture, prélèvement, RIB, attestation, contrat, coordonnées]
+  - key: sav
+    label: Service après-vente
+    description: Panne, fausse alarme, matériel, pile, intervention technique.
+    keywords: [panne, détecteur, pile, sonne, batterie, technicien, centrale, badge]
+  - key: commercial
+    label: Proposition commerciale
+    description: Offre, option ou équipement supplémentaire proposé ou demandé.
+    keywords: [offre, option, caméra, équipement supplémentaire, devis]
+  - key: suivi
+    label: Rappel ou suivi
+    description: Rappel d'un dossier en cours, suivi d'une demande précédente.
+    keywords: [rappel, suite à, je vous rappelle, suivi, dossier]
+  - key: autre
+    label: Autre motif
+    description: Motif identifié mais hors des catégories ci-dessus.
+    keywords: []
+
+report:
+  max_chars: 2000   # to align with the real limit of the CRM free-text field (UNKNOWN)
+  min_chars: 40
+  # To be written from real, anonymised, validated Phone Calls.
+  style_instructions: ""
+  # Anonymised examples validated by the business (few-shot). Leave empty until provided.
+  examples: []
+  # Optional Jinja2 template using the structured report `r`. Empty = AI free text.
+  template: ""
+
+quality:
+  auto_ready_min_score: 80
+  always_human_review: true      # pilot: every report is validated by an advisor
+  min_transcript_words: 15
+  max_uncertain_ratio: 0.25
+
+# Placeholders — the retention policy MUST be decided by the DPO.
+retention:
+  delete_audio_after_transcription: true
+  audio_hours: 24
+  transcript_days: 30
+  report_days: 365
+  purge_interval_minutes: 60
