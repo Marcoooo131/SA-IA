@@ -91,6 +91,11 @@ class Settings(BaseSettings):
     crm_auto_push_ready: bool = False
     metrics_token: SecretStr = SecretStr("")
 
+    # --- Notes API (desktop clients). SHA-256 of the accepted bearer tokens, comma separated.
+    note_api_tokens_sha256: str = ""
+    note_api_rate_per_minute: int = 20
+    note_api_max_chars: int = 200_000
+
     @field_validator("twilio_media_format")
     @classmethod
     def _media_format(cls, v: str) -> str:
@@ -145,6 +150,8 @@ class ReportFormatConfig(BaseModel):
     examples: list[str] = Field(default_factory=list)
     # Optional Jinja2 template rendering the structured report. Empty = use the AI's free text.
     template: str = ""
+    # Versioned system prompt file. Empty = phonecall_agent/prompts/phone_call_v2.md
+    prompt_file: str = ""
 
 
 class QualityConfig(BaseModel):

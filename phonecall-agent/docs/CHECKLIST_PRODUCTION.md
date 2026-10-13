@@ -26,7 +26,7 @@ doit être traité tant que la section A n'est pas entièrement validée.**
 ## D. Qualité
 - [ ] Fournisseur de transcription choisi sur mesures (taux d'erreur sur 50+ appels anonymisés, chiffres et noms propres inclus).
 - [ ] Jeu d'évaluation métier passé (`docs/EVALUATION.md`) : zéro erreur critique sur le jeu de référence, seuils de qualité atteints.
-- [ ] `PROMPT_VERSION` figée ; versions du modèle et du SDK figées.
+- [ ] version du prompt (`version:` de `prompts/phone_call_v2.md`) figée ; versions du modèle et du SDK figées.
 - [ ] `quality.always_human_review: true` pour le pilote.
 
 ## E. Sécurité et exploitation

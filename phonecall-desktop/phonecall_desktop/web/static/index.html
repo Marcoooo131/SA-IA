@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="pcd-token" content="__TOKEN__">
+  <title>Phone Call – prise de notes</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo-dot"></span>Phone Call <small>prise de notes assistée</small></div>
+  <div class="status">
+    <span id="state-badge" class="badge s-ready" role="status" aria-live="polite">Prêt</span>
+    <span id="timer" class="timer" hidden>00:00</span>
+  </div>
+  <button id="btn-history" class="ghost" hidden>Historique</button>
+</header>
+
+<div id="capture-banner" class="capture-banner" hidden role="alert">
+  <span class="rec-dot"></span> CAPTURE EN COURS — l'audio de l'ordinateur et/ou du micro est écouté.
+  Cliquez sur <strong>Fin</strong> pour arrêter immédiatement.
+</div>
+<div id="test-banner" class="test-banner" hidden></div>
+
+<main class="layout">
+  <section class="panel controls" aria-label="Capture">
+    <h2>Sources audio</h2>
+    <div class="source">
+      <label class="check"><input type="checkbox" id="use-system" checked> Son du PC (interlocuteur)</label>
+      <select id="system-device" aria-label="Périphérique de sortie à écouter"></select>
+      <div class="meter"><div class="meter-fill" id="meter-system"></div></div>
+      <div class="meter-label" id="meter-system-label">—</div>
+    </div>
+    <div class="source">
+      <label class="check"><input type="checkbox" id="use-mic" checked> Micro (conseiller)</label>
+      <select id="mic-device" aria-label="Micro"></select>
+      <div class="meter"><div class="meter-fill" id="meter-mic"></div></div>
+      <div class="meter-label" id="meter-mic-label">—</div>
+    </div>
+    <button id="btn-refresh" class="ghost small">Actualiser les périphériques</button>
+    <p class="hint">Choisissez le périphérique sur lequel vous entendez l'appel (souvent le casque).
+      Avec des haut-parleurs, la voix de l'interlocuteur est aussi captée par le micro : préférez un casque.</p>
+
+    <label class="check consent" id="consent-row"><input type="checkbox" id="consent"> <span id="consent-label"></span></label>
+
+    <div class="main-buttons">
+      <button id="btn-start" class="primary big">Démarrer</button>
+      <button id="btn-stop" class="stop big" disabled>Fin</button>
+    </div>
+    <div id="lag" class="hint" hidden></div>
+    <ul id="notices" class="notices" aria-live="polite"></ul>
+  </section>
+
+  <section class="panel transcript" aria-label="Transcription">
+    <h2>Transcription en direct</h2>
+    <div id="transcript" class="transcript-body">
+      <p class="empty" id="transcript-empty">La transcription s'affichera ici pendant l'appel.</p>
+    </div>
+  </section>
+
+  <section class="panel note" aria-label="Note">
+    <h2>Note Phone Call</h2>
+    <div id="note-status" class="hint">La note sera générée à la fin de la conversation.</div>
+    <textarea id="note" readonly aria-label="Note Phone Call" placeholder="Aucune note pour le moment."></textarea>
+    <ul id="flags" class="flags"></ul>
+    <div class="note-buttons">
+      <button id="btn-copy" class="primary" disabled>Copier la note</button>
+      <button id="btn-edit" disabled>Modifier la note</button>
+      <button id="btn-retry" hidden>Relancer la génération</button>
+      <button id="btn-new">Nouvelle conversation</button>
+    </div>
+    <p class="hint">Relisez la note avant de la coller dans le CRM : elle est générée automatiquement et peut contenir des erreurs.</p>
+  </section>
+</main>
+
+<dialog id="history-dialog">
+  <div class="dialog-head"><h2>Historique (local, chiffré)</h2><button id="history-close" class="ghost">Fermer</button></div>
+  <ul id="history-list" class="history"></ul>
+  <textarea id="history-note" readonly hidden></textarea>
+  <div class="note-buttons"><button id="history-delete-all" class="danger">Tout supprimer</button></div>
+</dialog>
+</body>
+</html>

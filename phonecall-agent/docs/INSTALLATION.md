@@ -99,6 +99,6 @@ migrations versionnées (Alembic).
 ## 6. Mise à jour
 
 1. Lancer les tests et le jeu d'évaluation métier (`docs/EVALUATION.md`) sur la nouvelle version.
-2. Toute modification du prompt doit incrémenter `PROMPT_VERSION` ; chaque compte rendu enregistre
+2. Toute modification du prompt doit modifier l'en-tête `version:` du fichier `phonecall_agent/prompts/phone_call_v2.md` ; chaque compte rendu enregistre
    la version du prompt et de la configuration métier qui l'a produit.
 3. Déployer `worker` puis `api` ; les tâches en cours sont reprises grâce aux étapes idempotentes.

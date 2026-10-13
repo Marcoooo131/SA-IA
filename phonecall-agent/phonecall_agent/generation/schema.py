@@ -12,6 +12,8 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 UNDETERMINED = "indetermine"
+SECTIONS = ("call_reason", "customer_statements", "advisor_information", "actions_done",
+            "solutions_proposed", "outcome", "actions_todo")
 
 
 class Item(BaseModel):
@@ -37,16 +39,19 @@ class StructuredReport(BaseModel):
     no_usable_content: bool = Field(description="true si l'appel ne contient aucun échange exploitable.")
     category: str = Field(description="Clé de catégorie configurée, ou 'indetermine' si non étayée.")
     category_evidence: list[str]
-    customer_statements: list[Item] = Field(description="Faits et demandes exprimés par le client.")
+    call_reason: list[Item] = Field(description="Motif de l'appel, tel qu'exprimé (vide s'il n'est pas clair).")
+    customer_statements: list[Item] = Field(description="Demande, situation et besoin exprimés par le client.")
     advisor_information: list[Item] = Field(description="Informations communiquées par le conseiller.")
     actions_done: list[ActionItem] = Field(description="Actions réellement effectuées pendant l'appel.")
+    solutions_proposed: list[Item] = Field(description="Solutions ou offres proposées, acceptées ou non.")
+    outcome: list[Item] = Field(description="Décision du client ou résultat de l'appel, seulement s'il est exprimé.")
     actions_todo: list[ActionItem] = Field(description="Actions restant à effectuer, y compris celles évoquées sans être faites.")
     points_to_verify: list[str] = Field(description="Informations critiques incertaines ou manquantes.")
     phone_call_text: str = Field(description="Texte final du Phone Call, prêt à coller dans le CRM.")
 
     def all_items(self) -> list[tuple[str, Item | ActionItem]]:
         out: list[tuple[str, Item | ActionItem]] = []
-        for section in ("customer_statements", "advisor_information", "actions_done", "actions_todo"):
+        for section in SECTIONS:
             out.extend((section, item) for item in getattr(self, section))
         return out
 

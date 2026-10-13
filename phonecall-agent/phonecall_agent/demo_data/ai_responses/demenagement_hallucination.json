@@ -1,18 +1,50 @@
 {
   "no_usable_content": false,
   "category": "demenagement",
-  "category_evidence": ["S2"],
+  "category_evidence": [
+    "S2"
+  ],
+  "call_reason": [],
   "customer_statements": [
-    {"text": "Le client déménage le mois prochain dans une maison.", "evidence": ["S2", "S4"], "to_verify": false}
+    {
+      "text": "Le client déménage le mois prochain dans une maison.",
+      "evidence": [
+        "S2",
+        "S4"
+      ],
+      "to_verify": false
+    }
   ],
   "advisor_information": [
-    {"text": "Le matériel supplémentaire coûtera 250 €.", "evidence": ["S7"], "to_verify": false}
+    {
+      "text": "Le matériel supplémentaire coûtera 250 €.",
+      "evidence": [
+        "S7"
+      ],
+      "to_verify": false
+    }
   ],
   "actions_done": [
-    {"text": "Rendez-vous technicien fixé.", "evidence": ["S7"], "to_verify": false, "owner": "advisor"}
+    {
+      "text": "Rendez-vous technicien fixé.",
+      "evidence": [
+        "S7"
+      ],
+      "to_verify": false,
+      "owner": "advisor"
+    }
   ],
+  "solutions_proposed": [],
+  "outcome": [],
   "actions_todo": [
-    {"text": "Rendez-vous technicien fixé.", "evidence": ["S7"], "to_verify": false, "owner": "advisor"}
+    {
+      "text": "Rendez-vous technicien fixé.",
+      "evidence": [
+        "S7"
+      ],
+      "to_verify": false,
+      "owner": "advisor"
+    }
   ],
   "points_to_verify": [],
   "phone_call_text": "Déménagement le 15/11. Matériel supplémentaire à 250 €. Rendez-vous technicien fixé, le client est satisfait. Voir segment S42."

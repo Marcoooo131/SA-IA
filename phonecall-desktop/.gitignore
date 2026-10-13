@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+config.env
+build/
+dist/
+*.spec
+stt_benchmark*.json
+*.egg-info/

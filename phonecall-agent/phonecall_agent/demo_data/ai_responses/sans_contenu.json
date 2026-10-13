@@ -2,9 +2,12 @@
   "no_usable_content": true,
   "category": "indetermine",
   "category_evidence": [],
+  "call_reason": [],
   "customer_statements": [],
   "advisor_information": [],
   "actions_done": [],
+  "solutions_proposed": [],
+  "outcome": [],
   "actions_todo": [],
   "points_to_verify": [],
   "phone_call_text": "Appel sans échange exploitable (aucune conversation audible)."

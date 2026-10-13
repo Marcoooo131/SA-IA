@@ -32,6 +32,11 @@ FRENCH_NUMBER_WORDS = {
     "un", "une", "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf", "dix", "onze", "douze",
     "quinze", "vingt", "trente", "quarante", "cinquante", "soixante", "cent", "mille",
 }
+# Judgements about people have no place in a factual note (customer's own words are quoted instead).
+SUBJECTIVE_WORDS = (
+    "agressif", "agressive", "énervé", "énervée", "désagréable", "impoli", "impolie", "de mauvaise foi",
+    "hystérique", "incompétent", "incompétente", "pénible", "borné", "bornée", "menteur", "menteuse",
+)
 NUMBER_RE = re.compile(r"\d+(?:[.,]\d+)?")
 AMOUNT_WORD_RE = re.compile(r"\b([a-zéèû-]+)\s+(euros?|€|mois|jours?|semaines?|ans?)\b", re.I)
 SEGMENT_REF_RE = re.compile(r"\bS\d+\b")
@@ -115,7 +120,7 @@ class ReportValidator:
             ev = [segs[e] for e in item.evidence]
             if all(s.uncertain for s in ev) and not item.to_verify:
                 add("asserted_from_uncertain", BLOCKING, f"Affirmation fondée uniquement sur un passage incertain ({section}) : « {item.text[:80]} »")
-            if section == "customer_statements" and transcript.speaker_labels and not any(s.speaker == "customer" for s in ev):
+            if section in ("customer_statements", "call_reason") and transcript.speaker_labels and not any(s.speaker in ("customer", "remote") for s in ev):
                 add("speaker_mismatch", WARNING, f"Propos attribué au client sans segment du client : « {item.text[:80]} »")
             if section == "advisor_information" and transcript.speaker_labels and not any(s.speaker == "advisor" for s in ev):
                 add("speaker_mismatch", WARNING, f"Information attribuée au conseiller sans segment du conseiller : « {item.text[:80]} »")
@@ -156,6 +161,9 @@ class ReportValidator:
             add("points_to_verify", WARNING, "Des informations doivent être vérifiées par le conseiller.")
 
         # 10. Text hygiene
+        subjective = sorted({w for w in SUBJECTIVE_WORDS if re.search(rf"\b{re.escape(w)}\b", _norm(text))})
+        if subjective:
+            add("subjective_wording", WARNING, f"Appréciation subjective à retirer : {', '.join(subjective)}")
         if SEGMENT_REF_RE.search(text):
             add("internal_reference_in_text", WARNING, "Le texte contient des références internes (S1, S2…).")
         if PHONE_RE.search(text) or EMAIL_RE.search(text):

@@ -1,16 +1,73 @@
 {
   "no_usable_content": false,
   "category": "retention",
-  "category_evidence": ["S2", "S5", "S6"],
+  "category_evidence": [
+    "S2",
+    "S5",
+    "S6"
+  ],
+  "call_reason": [
+    {
+      "text": "Demande de résiliation pour raison de prix.",
+      "evidence": [
+        "S2"
+      ],
+      "to_verify": false
+    }
+  ],
   "customer_statements": [
-    {"text": "Le client souhaitait résilier son contrat en raison du prix de l'abonnement ; le service lui convient.", "evidence": ["S2", "S4"], "to_verify": false},
-    {"text": "Le client accepte l'offre et conserve son contrat.", "evidence": ["S6"], "to_verify": false}
+    {
+      "text": "Le client souhaitait résilier son contrat en raison du prix de l'abonnement ; le service lui convient.",
+      "evidence": [
+        "S2",
+        "S4"
+      ],
+      "to_verify": false
+    },
+    {
+      "text": "Le client accepte l'offre et conserve son contrat.",
+      "evidence": [
+        "S6"
+      ],
+      "to_verify": false
+    }
   ],
   "advisor_information": [
-    {"text": "Offre de fidélisation proposée : deux mois d'abonnement offerts en cas de maintien du contrat.", "evidence": ["S5"], "to_verify": false}
+    {
+      "text": "Offre de fidélisation proposée : deux mois d'abonnement offerts en cas de maintien du contrat.",
+      "evidence": [
+        "S5"
+      ],
+      "to_verify": false
+    }
   ],
   "actions_done": [
-    {"text": "Deux mois offerts appliqués sur le contrat (visibles sur les prochaines factures), selon le conseiller.", "evidence": ["S7"], "to_verify": false, "owner": "advisor"}
+    {
+      "text": "Deux mois offerts appliqués sur le contrat (visibles sur les prochaines factures), selon le conseiller.",
+      "evidence": [
+        "S7"
+      ],
+      "to_verify": false,
+      "owner": "advisor"
+    }
+  ],
+  "solutions_proposed": [
+    {
+      "text": "Deux mois d'abonnement offerts en cas de maintien du contrat.",
+      "evidence": [
+        "S5"
+      ],
+      "to_verify": false
+    }
+  ],
+  "outcome": [
+    {
+      "text": "Le client accepte et conserve son contrat.",
+      "evidence": [
+        "S6"
+      ],
+      "to_verify": false
+    }
   ],
   "actions_todo": [],
   "points_to_verify": [],
