@@ -23,6 +23,7 @@ import {
 } from '@/plan/geometry';
 import { formatArea, formatNumber } from '@/lib/format';
 import type { RulesConfig } from './config';
+import { countOpenings, openingDetectors, openingDevicePoint, roomDetectorCalc, roomOpenings, type JoineryCounts, type RoomDetectorCalc } from '@/plan/joinery';
 
 /**
  * Moteur de règles d'audit : fonction pure, indépendante de l'interface.
@@ -83,7 +84,18 @@ export interface LevelInventory {
   smokeEstimate: number;
 }
 
+export interface RoomJoineryLine {
+  levelId: string;
+  levelName: string;
+  roomId: string;
+  roomName: string;
+  counts: JoineryCounts;
+  calc: RoomDetectorCalc;
+}
+
 export interface AuditResult {
+  /** Menuiseries et calcul indicatif des détecteurs, pièce par pièce. */
+  rooms: RoomJoineryLine[];
   inventory: {
     levels: LevelInventory[];
     totalArea: number;
@@ -162,9 +174,7 @@ function count(devices: SuggestedDevice[]): Partial<Record<ProductCategory, numb
 }
 
 export function shockQuantity(opening: Opening, config: RulesConfig): number {
-  if (opening.sectional && config.shock.skipSectional) return 0;
-  if (opening.type === 'baie') return config.shock.perBay;
-  return config.shock.perOpening;
+  return openingDetectors({ ...opening, exterior: true }, config);
 }
 
 export function runAudit(
@@ -479,20 +489,23 @@ export function runAudit(
       if (scope === 'acces' && !isDoor(opening)) continue;
       const qty = shockQuantity(opening, config);
       if (!qty) continue;
-      const ip = inwardPoint(level, opening, 0.15);
-      if (!ip) continue;
+      // ouverture non positionnée : détecteur placé de façon indicative dans la pièce
+      const ip = opening.host.kind === 'unplaced' ? null : inwardPoint(level, opening, 0.15);
+      const pt = ip ? { x: ip.p.x, y: ip.p.y, rotation: ip.rotation } : openingDevicePoint(level, opening);
+      if (!pt) continue;
       out.push({
         key: `choc:${opening.id}`,
         category: 'detecteur_choc',
         levelId: level.id,
-        x: ip.p.x,
-        y: ip.p.y,
-        rotation: ip.rotation,
+        x: pt.x,
+        y: pt.y,
+        rotation: pt.rotation,
         quantity: qty,
         reason:
-          opening.type === 'baie'
+          (opening.type === 'baie'
             ? `${opening.code} – baie vitrée : quantité indicative ${qty}.`
-            : `${opening.code} – ${OPENING_TYPE_LABELS[opening.type].toLowerCase()} donnant sur l'extérieur.`,
+            : `${opening.code} – ${OPENING_TYPE_LABELS[opening.type].toLowerCase()} donnant sur l'extérieur.`) +
+          (opening.host.kind === 'unplaced' ? ' Position de l’ouverture à définir.' : ''),
         openingId: opening.id,
       });
     }
@@ -758,6 +771,27 @@ export function runAudit(
       });
   }
 
+  // Menuiseries pièce par pièce (source unique : level.openings)
+  const roomLines: RoomJoineryLine[] = levels.flatMap((level) =>
+    level.rooms.map((room) => {
+      const ops = roomOpenings(level, room.id);
+      return { levelId: level.id, levelName: level.name, roomId: room.id, roomName: room.name, counts: countOpenings(ops), calc: roomDetectorCalc(room.name, ops, config) };
+    }),
+  );
+  const unplaced = levels.flatMap((l) => l.openings.filter((o) => o.host.kind === 'unplaced').map((o) => ({ o, l })));
+  if (unplaced.length)
+    add({
+      id: 'menuiseries:a-positionner',
+      ruleId: 'R-MENUISERIES',
+      status: 'manquant',
+      title: `${unplaced.length} ouverture(s) à positionner sur le plan`,
+      reason: `Saisies par quantité, sans position : ${unplaced
+        .slice(0, 6)
+        .map(({ o, l }) => `${o.code} (${l.rooms.find((r) => o.host.kind === 'unplaced' && r.id === o.host.roomId)?.name ?? '?'})`)
+        .join(', ')}${unplaced.length > 6 ? '…' : ''}. Elles sont comptées dans l'audit, mais leur emplacement reste indicatif.`,
+      nextAction: 'Onglet « Pièces & menuiseries » : bouton « Positionner », puis cliquer sur le mur concerné dans le plan 2D.',
+    });
+
   // Validations du conseiller
   for (const a of alerts) {
     const v = dossier.auditValidations[a.id];
@@ -768,6 +802,7 @@ export function runAudit(
   }
 
   return {
+    rooms: roomLines,
     inventory: { levels: inventoryLevels, totalArea, exteriorOpenings, entryPoints },
     proposals,
     alerts,

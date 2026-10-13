@@ -13,20 +13,25 @@ export const roomSchema = z.object({
   w: z.number().positive(),
   h: z.number().positive(),
   openPlan: z.boolean().default(false),
+  comment: z.string().optional(),
 });
 
 const openingSchema = z.object({
   id: z.string(),
   code: z.string(),
-  type: z.enum(['porte', 'fenetre', 'baie', 'porte_garage', 'porte_interieure', 'passage']),
+  type: z.enum(['porte', 'fenetre', 'baie', 'porte_garage', 'porte_interieure', 'passage', 'autre']),
   host: z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('room'), roomId: z.string(), side: z.enum(['N', 'S', 'E', 'W']) }),
     z.object({ kind: z.literal('wall'), wallId: z.string() }),
+    z.object({ kind: z.literal('unplaced'), roomId: z.string() }),
   ]),
   offset: z.number(),
   width: z.number().positive(),
   exterior: z.boolean(),
   sectional: z.boolean().default(false),
+  positionConfirmed: z.boolean().optional(),
+  height: z.number().positive().optional(),
+  comment: z.string().optional(),
 });
 
 const backgroundSchema = z.object({
@@ -199,6 +204,7 @@ const answersSchema = z.object({
   surfaceExact: z.number().nullable(),
   levels: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   bedrooms: z.number().int().min(0),
+  mainRooms: z.number().int().min(1).default(1),
   kitchen: z.enum(['ouverte', 'separee', 'partielle']),
   corridor: z.boolean(),
   garage: z.enum(['aucun', 'attenant', 'separe']),

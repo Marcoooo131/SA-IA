@@ -79,6 +79,7 @@ export const OPENING_TYPE_LABELS: Record<OpeningType, string> = {
   porte_garage: 'Porte de garage',
   porte_interieure: 'Porte intérieure',
   passage: 'Passage ouvert (sans porte)',
+  autre: 'Autre ouverture',
 };
 
 export const OPENING_DEFAULT_WIDTH: Record<OpeningType, number> = {
@@ -88,6 +89,7 @@ export const OPENING_DEFAULT_WIDTH: Record<OpeningType, number> = {
   porte_garage: 2.5,
   porte_interieure: 0.8,
   passage: 1.6,
+  autre: 0.8,
 };
 
 export const CATEGORY_LABELS: Record<ProductCategory, string> = {

@@ -110,7 +110,7 @@ export function mergeWithCorrections(current: Level[], oldGen: PlanGeneration, g
     l.openings = l.openings.filter((o) => !(oldOpenings.has(o.id) && !currentIds.has(o.id)));
     const roomIds = new Set(l.rooms.map((r) => r.id));
     const wallIds = new Set(l.walls.map((w) => w.id));
-    l.openings = l.openings.filter((o) => (o.host.kind === 'room' ? roomIds.has(o.host.roomId) : wallIds.has(o.host.wallId)));
+    l.openings = l.openings.filter((o) => (o.host.kind === 'wall' ? wallIds.has(o.host.wallId) : roomIds.has(o.host.roomId)));
     // codes d'ouverture uniques
     const seen = new Set<string>();
     for (const o of l.openings) {

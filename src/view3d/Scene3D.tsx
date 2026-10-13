@@ -424,6 +424,23 @@ export function Scene3DContent({ dossier, products, options, onSelectDevice, onF
               .map((s) => (
                 <Wall key={s.key} seg={s} height={level.height} mode={options.wallMode} onClick={onWallClick ? () => onWallClick(`${level.id}:${s.key}`) : undefined} />
               ))}
+            {/* Ouvertures saisies par quantité (non positionnées) : repères translucides indicatifs */}
+            {level.rooms.map((r) => {
+              const pending = level.openings.filter((o) => o.host.kind === 'unplaced' && o.host.roomId === r.id);
+              return pending.map((o, i) => {
+                const n = pending.length;
+                const step = Math.min(0.6, (r.w - 0.3) / Math.max(1, n));
+                const x = r.x + r.w / 2 + (i - (n - 1) / 2) * step;
+                const v = openingVertical(o.type, level.height);
+                const h = Math.max(0.3, v.top - v.bottom);
+                return (
+                  <mesh key={`up-${o.id}`} position={[x, v.bottom + h / 2, r.y + r.h - 0.25]}>
+                    <boxGeometry args={[Math.max(0.15, step * 0.7), h, 0.06]} />
+                    <meshStandardMaterial color="#f59e0b" transparent opacity={0.45} depthWrite={false} />
+                  </mesh>
+                );
+              });
+            })}
             {options.showLabels &&
               level.rooms.map((r) => (
                 <Label key={`l-${r.id}`} text={r.name} sub={`${(r.w * r.h).toFixed(1).replace('.', ',')} m²`} position={[r.x + r.w / 2, 0.7, r.y + r.h / 2]} scale={Math.min(1, Math.max(0.6, Math.min(r.w, r.h) / 3))} />

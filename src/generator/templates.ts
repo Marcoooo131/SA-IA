@@ -33,6 +33,7 @@ function answers(partial: Partial<HousingAnswers> & Pick<HousingAnswers, 'housin
   return {
     surfaceBand: '50_80',
     surfaceExact: null,
+    mainRooms: 1 + (partial.bedrooms ?? 2) + (partial.features?.extraRoom ? 1 : 0),
     levels: 1,
     bedrooms: 2,
     kitchen: 'separee',

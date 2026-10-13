@@ -62,8 +62,23 @@ export function hostSegment(level: Level, host: OpeningHost): Segment | null {
     const room = level.rooms.find((r) => r.id === host.roomId);
     return room ? roomSideSegment(room, host.side) : null;
   }
+  if (host.kind === 'unplaced') return null;
   const wall = level.walls.find((w) => w.id === host.wallId);
   return wall ? { a: wall.a, b: wall.b } : null;
+}
+
+/** Pièce de rattachement d'une ouverture (y compris sur cloison libre ou non positionnée). */
+export function openingRoomId(level: Level, o: Opening): string | null {
+  if (o.host.kind === 'room' || o.host.kind === 'unplaced') return o.host.roomId;
+  const pl = openingPlacement(level, o);
+  if (!pl) return null;
+  const n = { x: -Math.sin(pl.angle), y: Math.cos(pl.angle) };
+  for (const d of [0.2, -0.2]) {
+    const p = { x: pl.center.x + n.x * d, y: pl.center.y + n.y * d };
+    const r = level.rooms.find((x) => pointInRoom(p, x));
+    if (r) return r.id;
+  }
+  return null;
 }
 
 export interface OpeningPlacement {

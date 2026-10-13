@@ -328,15 +328,57 @@ export function generateQuotePdf(input: QuotePdfInput): jsPDF {
   // ---------------------------------------------------------------- Ouvertures
   doc.addPage();
   y = 20;
+  sectionTitle('Menuiseries par pièce');
+  const roomLines = audit.rooms.filter((r) => r.counts.total > 0);
+  autoTable(doc, {
+    startY: y,
+    head: [[T('Niveau'), T('Pièce'), T('Portes ext.'), T('Portes int.'), T('Fenêtres'), T('Baies'), T('Autres ext.'), T('Détecteurs'), T('Calcul indicatif')]],
+    body: roomLines.length
+      ? roomLines.map((r) => [
+          T(r.levelName),
+          T(r.roomName),
+          String(r.counts.porte_ext),
+          String(r.counts.porte_int),
+          String(r.counts.fenetre),
+          String(r.counts.baie),
+          String(r.counts.autre_ext),
+          String(r.calc.detectors),
+          T(r.calc.explanation + (r.counts.aPositionner ? ` (${r.counts.aPositionner} ouverture(s) à positionner)` : '')),
+        ])
+      : [[{ content: T('Aucune menuiserie renseignée.'), colSpan: 9 }]],
+    foot: roomLines.length
+      ? [
+          [
+            { content: T('Total'), colSpan: 2 },
+            ...(['porte_ext', 'porte_int', 'fenetre', 'baie', 'autre_ext'] as const).map((k) => String(roomLines.reduce((n, r) => n + r.counts[k], 0))),
+            String(roomLines.reduce((n, r) => n + r.calc.detectors, 0)),
+            '',
+          ],
+        ]
+      : undefined,
+    theme: 'striped',
+    headStyles: { fillColor: NAVY, fontSize: 7.5 },
+    footStyles: { fillColor: [226, 232, 240], textColor: 20, fontSize: 7.5 },
+    styles: { fontSize: 7.5, cellPadding: 1.2 },
+    columnStyles: { 2: { halign: 'center' }, 3: { halign: 'center' }, 4: { halign: 'center' }, 5: { halign: 'center' }, 6: { halign: 'center' }, 7: { halign: 'center' }, 8: { cellWidth: 70 } },
+    margin: { left: MARGIN, right: MARGIN },
+  });
+  y = lastY() + 3;
+  doc.setFontSize(7);
+  doc.setTextColor(100);
+  doc.text(T('Détecteurs indicatifs : 1 par ouverture extérieure, 2 par baie vitrée, aucun automatique sur porte sectionnelle ; ouvertures intérieures exclues.'), MARGIN, y + 2);
+  y += 9;
+
   sectionTitle('Ouvertures extérieures recensées');
   autoTable(doc, {
     startY: y,
-    head: [[T('Identifiant'), T('Niveau'), T('Type'), T('Largeur'), T('Remarque')]],
+    head: [[T('Identifiant'), T('Niveau'), T('Type'), T('Largeur'), T('Position'), T('Remarque')]],
     body: audit.inventory.exteriorOpenings.map(({ opening, level }) => [
       T(opening.code),
       T(level.name),
       T(OPENING_TYPE_LABELS[opening.type]),
       T(`${opening.width.toFixed(2).replace('.', ',')} m`),
+      T(opening.host.kind === 'unplaced' ? 'À positionner' : 'Sur le plan'),
       T(opening.sectional ? 'Sectionnelle : non équipée automatiquement' : opening.type === 'baie' ? 'Baie vitrée : 2 détecteurs indicatifs' : ''),
     ]),
     theme: 'striped',

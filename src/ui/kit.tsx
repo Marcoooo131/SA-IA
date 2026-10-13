@@ -262,3 +262,50 @@ export function Stat({ label, value, sub, tone }: { label: string; value: ReactN
     </div>
   );
 }
+
+/**
+ * Saisie d'un nombre entier positif ou nul : les valeurs négatives, décimales ou
+ * non numériques sont refusées (champ signalé en rouge, valeur précédente conservée).
+ */
+export function IntInput({
+  value,
+  onChange,
+  max = 99,
+  className,
+  ...rest
+}: Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange' | 'max'> & { value: number; onChange: (v: number) => void; max?: number }) {
+  const [text, setText] = useState(String(value));
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    if (!focused) setText(String(value));
+  }, [value, focused]);
+  const valid = /^\d+$/.test(text.trim()) && Number(text) <= max;
+  return (
+    <input
+      {...rest}
+      inputMode="numeric"
+      value={text}
+      aria-invalid={!valid}
+      title={valid ? rest.title : `Nombre entier entre 0 et ${max}`}
+      onFocus={() => setFocused(true)}
+      onBlur={() => {
+        setFocused(false);
+        setText(String(value));
+      }}
+      onChange={(e) => {
+        const t = e.target.value;
+        setText(t);
+        if (/^\d+$/.test(t.trim()) && Number(t) <= max) onChange(Number(t));
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          const n = Math.max(0, Math.min(max, value + (e.key === 'ArrowUp' ? 1 : -1)));
+          onChange(n);
+          setText(String(n));
+        }
+      }}
+      className={cx(inputCls, 'w-16 text-center tabular-nums', !valid && 'border-red-400 bg-red-50 focus:border-red-500 focus:ring-red-100', className)}
+    />
+  );
+}

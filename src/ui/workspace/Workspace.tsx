@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
-import { ArrowLeft, Box, Check, ClipboardCheck, FileText, Home, Map as MapIcon, Package, Sparkles } from 'lucide-react';
+import { ArrowLeft, Box, Check, ClipboardCheck, DoorOpen, FileText, Home, Map as MapIcon, Package, Sparkles } from 'lucide-react';
+import { JoineryTab } from './JoineryTab';
 import { useApp, useActiveDossier, type WorkspaceTab } from '@/state/store';
 import { journeySteps, useAudit } from '@/state/derived';
 import { cx } from '../kit';
@@ -20,6 +21,7 @@ const View3D = lazy(() => import('@/view3d/View3D').then((m) => ({ default: m.Vi
 const TABS: { key: WorkspaceTab; label: string; icon: React.ReactNode }[] = [
   { key: 'logement', label: 'Logement', icon: <Home size={15} /> },
   { key: 'questionnaire', label: 'Questionnaire', icon: <Sparkles size={15} /> },
+  { key: 'menuiseries', label: 'Pièces & menuiseries', icon: <DoorOpen size={15} /> },
   { key: 'plan', label: 'Plan 2D', icon: <MapIcon size={15} /> },
   { key: 'vue3d', label: 'Vue 3D', icon: <Box size={15} /> },
   { key: 'audit', label: 'Audit', icon: <ClipboardCheck size={15} /> },
@@ -172,6 +174,7 @@ export function Workspace() {
       <div className="min-h-0 flex-1">
         {tab === 'logement' && <LogementTab />}
         {tab === 'questionnaire' && <PlanWizard />}
+        {tab === 'menuiseries' && <JoineryTab />}
         {tab === 'plan' && (
           <ThreeColumn
             left={

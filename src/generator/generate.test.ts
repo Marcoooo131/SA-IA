@@ -131,4 +131,26 @@ describe('provenance et régénération', () => {
     expect(all).toContain('manual_win');
     expect(all).not.toContain('gen_0_o_fen_0');
   });
+
+  it('ajoute les pièces principales supplémentaires demandées (bureau…)', () => {
+    const t = getTemplate('maison_plainpied');
+    const base = generatePlan(t, { ...t.defaults, bedrooms: 3, mainRooms: 4 });
+    const more = generatePlan(t, { ...t.defaults, bedrooms: 3, mainRooms: 6 });
+    const offices = (r: typeof base) => r.levels.flatMap((l) => l.rooms).filter((x) => x.type === 'bureau').length;
+    expect(offices(base)).toBe(0);
+    expect(offices(more)).toBe(2);
+    expect(unreachableRooms(more.levels)).toEqual([]);
+    const tooFew = generatePlan(t, { ...t.defaults, bedrooms: 3, mainRooms: 2 });
+    expect(tooFew.levels.flatMap((l) => l.rooms).filter((x) => x.type === 'chambre')).toHaveLength(3);
+    expect(tooFew.warnings.join(' ')).toMatch(/pièces principales/);
+  });
+
+  it('change le nombre de chambres d’une maison à 2 niveaux', () => {
+    const r3 = generatePlan(etage, etage.defaults);
+    const r4 = generatePlan(etage, { ...etage.defaults, bedrooms: 4, mainRooms: 5 });
+    const ch = (r: typeof r3) => r.levels.flatMap((l) => l.rooms).filter((x) => x.type === 'chambre').length;
+    expect(r3.levels).toHaveLength(2);
+    expect(ch(r3)).toBe(3);
+    expect(ch(r4)).toBe(4);
+  });
 });

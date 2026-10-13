@@ -39,6 +39,8 @@ test('questionnaire : de la maison à étage au devis, centrale à 0 €/mois, r
   await expect(page.getByTestId('generation-3d').locator('canvas')).toBeVisible({ timeout: 20_000 });
   await page.screenshot({ path: 'test-results/questionnaire-generation.png' });
   await page.getByRole('button', { name: 'Utiliser ce plan et le vérifier' }).click();
+  await expect(page.getByRole('heading', { name: 'Vérification des pièces et des menuiseries' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Plan 2D' }).click();
 
   // 5. Vérification et correction
   await expect(page.getByTestId('generation-banner')).toContainText('Votre plan a été généré à partir de vos réponses');

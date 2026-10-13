@@ -24,7 +24,7 @@ function op(
   offset: number,
   opts: { width?: number; exterior?: boolean; sectional?: boolean } = {},
 ): Opening {
-  const width = opts.width ?? { porte: 0.9, fenetre: 1.2, baie: 2.4, porte_garage: 2.5, porte_interieure: 0.8, passage: 1.6 }[type];
+  const width = opts.width ?? { porte: 0.9, fenetre: 1.2, baie: 2.4, porte_garage: 2.5, porte_interieure: 0.8, passage: 1.6, autre: 0.8 }[type];
   return {
     id,
     code,

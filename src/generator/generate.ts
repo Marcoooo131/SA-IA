@@ -62,6 +62,7 @@ export function normalizeAnswers(a: HousingAnswers): HousingAnswers {
     ...a,
     levels,
     bedrooms: Math.min(8, Math.max(0, Math.round(a.bedrooms))),
+    mainRooms: Math.min(12, Math.max(1, Math.round(a.mainRooms ?? 1))),
     exteriorAccesses: Math.min(6, Math.max(1, Math.round(a.exteriorAccesses))),
     windows: Math.min(30, Math.max(0, Math.round(a.windows))),
     bays: Math.min(8, Math.max(0, Math.round(a.bays))),
@@ -178,7 +179,21 @@ export function generatePlan(templateOrId: HousingTemplate | string, rawAnswers:
   const entry: Spec = { key: 'entree', type: 'entree', name: 'Entrée', area: A < 45 ? 3 : Math.min(7, A * 0.05), minW: studio ? 1.5 : undefined };
   const bath: Spec = { key: 'sdb', type: 'salle_de_bain', name: studio ? 'Salle d’eau' : 'Salle de bain', area: A > 110 ? 7 : 5 };
   const wc: Spec = { key: 'wc', type: 'wc', name: 'WC', area: 2 };
-  const office: Spec = { key: 'bureau', type: 'bureau', name: 'Bureau', area: 9, fromAnswers: true };
+  // Pièces principales = séjour + chambres + pièces supplémentaires (bureau…)
+  const wantedExtras = Math.max(a.features.extraRoom ? 1 : 0, a.mainRooms - 1 - a.bedrooms);
+  if (a.mainRooms < 1 + a.bedrooms)
+    warnings.push(`Nombre de pièces principales (${a.mainRooms}) inférieur à séjour + chambres (${1 + a.bedrooms}) : le nombre de chambres a été retenu.`);
+  if (studio && wantedExtras > 0)
+    warnings.push('Logement sans chambre : les pièces supplémentaires demandées ne sont pas générées, ajoutez-les dans le tableau des pièces si besoin.');
+  const extras = studio ? 0 : Math.min(3, wantedExtras);
+  if (!studio && wantedExtras > 3) warnings.push('Au-delà de 3 pièces supplémentaires, ajoutez-les dans le tableau des pièces.');
+  const offices: Spec[] = Array.from({ length: extras }, (_, i) => ({
+    key: i === 0 ? 'bureau' : `bureau${i + 1}`,
+    type: 'bureau' as RoomType,
+    name: i === 0 ? 'Bureau' : `Pièce supplémentaire ${i + 1}`,
+    area: 9,
+    fromAnswers: true,
+  }));
   const stairs = (lvl: number): Spec => ({ key: 'escalier', type: 'escalier', name: lvl === 0 ? 'Escalier' : 'Trémie d’escalier', area: STAIR_W * 3, fixedW: STAIR_W, fromAnswers: true });
   const bedroomSpecs = Array.from({ length: a.bedrooms }, (_, i) => ({
     key: `ch${i + 1}`,
@@ -194,7 +209,7 @@ export function generatePlan(templateOrId: HousingTemplate | string, rawAnswers:
   const dayRow = (): Spec[] => (studio ? [living, kitchen] : openKitchen ? [entry, kitchen, living] : [kitchen, entry, living]);
   if (a.levels === 1) {
     const back: Spec[] = studio ? [entry, bath] : [...bedroomSpecs, bath, ...(A >= 60 ? [wc] : [])];
-    if (a.features.extraRoom) back.push(office);
+    back.push(...offices);
     programs.push({ front: dayRow(), back, corridorName: 'Couloir' });
   } else {
     // Chambres réparties sur les étages ; au-delà de 4 par étage, une chambre au rez-de-chaussée
@@ -204,7 +219,7 @@ export function generatePlan(templateOrId: HousingTemplate | string, rawAnswers:
     const rest = bedroomSpecs.slice(groundBedrooms.length);
     programs.push({
       front: dayRow(),
-      back: [stairs(0), wc, ...groundBedrooms, ...(a.features.extraRoom ? [office] : []), { key: 'cellier', type: 'cellier', name: 'Cellier / buanderie', area: 5 }],
+      back: [stairs(0), wc, ...groundBedrooms, ...offices, { key: 'cellier', type: 'cellier', name: 'Cellier / buanderie', area: 5 }],
       corridorName: 'Dégagement',
     });
     for (let u = 0; u < upper; u++) {

@@ -9,7 +9,7 @@ import { IsoThumbnail } from '@/generator/IsoThumbnail';
 import { PlanDrawing } from '@/plan/PlanDrawing';
 import { levelBounds } from '@/plan/geometry';
 import { formatNumber } from '@/lib/format';
-import { Badge, Button, Card, Field, Modal, NumberInput, cx, inputCls } from '../kit';
+import { Badge, Button, Card, Field, IntInput, Modal, NumberInput, cx, inputCls } from '../kit';
 
 const GenerationPreview3D = lazy(() => import('@/view3d/LevelsPreview3D').then((m) => ({ default: m.LevelsPreview3D })));
 
@@ -21,7 +21,8 @@ const PROGRESS: { label: string; tab?: WorkspaceTab }[] = [
   { label: 'Choix du logement' },
   { label: 'Questionnaire' },
   { label: 'Génération du plan' },
-  { label: 'Vérification et correction', tab: 'plan' },
+  { label: 'Vérification des pièces et des menuiseries', tab: 'menuiseries' },
+  { label: 'Vérification et correction du plan', tab: 'plan' },
   { label: 'Visualisation 3D', tab: 'vue3d' },
   { label: 'Audit de sécurité', tab: 'audit' },
   { label: 'Devis', tab: 'devis' },
@@ -176,6 +177,7 @@ function Questionnaire({ answers, onChange }: { answers: HousingAnswers; onChang
   const set = (patch: Partial<HousingAnswers>) => onChange({ ...answers, ...patch });
   const setF = (patch: Partial<HousingAnswers['features']>) => onChange({ ...answers, features: { ...answers.features, ...patch } });
   const appt = answers.housingType === 'appartement';
+  const extras = Math.max(0, answers.mainRooms - 1 - answers.bedrooms);
   return (
     <div data-testid="questionnaire">
       <Question n={1} title="Quel est le type de logement ?">
@@ -207,12 +209,39 @@ function Questionnaire({ answers, onChange }: { answers: HousingAnswers; onChang
         />
       </Question>
       <Question n={4} title="Combien de chambres y a-t-il ?" hint={answers.bedrooms === 0 ? 'Logement sans chambre séparée : plan de type studio.' : undefined}>
-        <Choice name="Chambres" value={Math.min(5, answers.bedrooms)} onChange={(v) => set({ bedrooms: v })} options={[0, 1, 2, 3, 4, 5].map((n) => ({ value: n, label: n === 5 ? '5 ou plus' : String(n) }))} />
+        <Choice name="Chambres" value={Math.min(5, answers.bedrooms)} onChange={(v) => set({ bedrooms: v, mainRooms: 1 + v + extras })} options={[0, 1, 2, 3, 4, 5].map((n) => ({ value: n, label: n === 5 ? '5 ou plus' : String(n) }))} />
         {answers.bedrooms >= 5 && (
-          <NumberInput value={answers.bedrooms} onChange={(v) => v && set({ bedrooms: Math.round(v) })} min={5} max={8} step={1} className="mt-2 w-28" aria-label="Nombre exact de chambres" />
+          <NumberInput value={answers.bedrooms} onChange={(v) => v && set({ bedrooms: Math.round(v), mainRooms: 1 + Math.round(v) + extras })} min={5} max={8} step={1} className="mt-2 w-28" aria-label="Nombre exact de chambres" />
         )}
       </Question>
-      <Question n={5} title="Quelle est la configuration du séjour et de la cuisine ?">
+      <Question
+        n={5}
+        title="Combien de pièces principales (séjour + chambres + bureau…) ?"
+        hint={
+          answers.mainRooms < 1 + answers.bedrooms
+            ? `Au moins ${1 + answers.bedrooms} pièces avec ${answers.bedrooms} chambre(s) : le nombre de chambres sera retenu.`
+            : extras > 0
+              ? `${extras} pièce(s) supplémentaire(s) (bureau…) seront ajoutées au plan.`
+              : 'Hors cuisine, salle de bain, WC, entrée et couloir.'
+        }
+      >
+        <div className="flex items-center gap-2">
+          <IntInput
+            value={answers.mainRooms}
+            min={1}
+            max={12}
+            onChange={(v) => {
+              const ex = Math.max(0, v - 1 - answers.bedrooms);
+              onChange({ ...answers, mainRooms: v, features: { ...answers.features, extraRoom: ex > 0 } });
+            }}
+            aria-label="Nombre de pièces principales"
+            data-testid="q-main-rooms"
+            className="w-20"
+          />
+          <span className="text-xs text-slate-500">pièce(s) principale(s)</span>
+        </div>
+      </Question>
+      <Question n={6} title="Quelle est la configuration du séjour et de la cuisine ?">
         <Choice
           name="Cuisine"
           value={answers.kitchen}
@@ -225,12 +254,12 @@ function Questionnaire({ answers, onChange }: { answers: HousingAnswers; onChang
         />
       </Question>
       {answers.bedrooms > 0 && (
-        <Question n={6} title="Le logement comprend-il un couloir ?" hint={answers.levels > 1 ? 'Un palier est toujours prévu à l’étage.' : undefined}>
+        <Question n={7} title="Le logement comprend-il un couloir ?" hint={answers.levels > 1 ? 'Un palier est toujours prévu à l’étage.' : undefined}>
           <Choice name="Couloir" value={answers.corridor ? 'oui' : 'non'} onChange={(v) => set({ corridor: v === 'oui' })} options={[{ value: 'oui', label: 'Oui' }, { value: 'non', label: 'Non' }]} />
         </Question>
       )}
       {!appt && (
-        <Question n={7} title="Le logement comprend-il un garage ?">
+        <Question n={8} title="Le logement comprend-il un garage ?">
           <Choice
             name="Garage"
             value={answers.garage}
@@ -243,10 +272,10 @@ function Questionnaire({ answers, onChange }: { answers: HousingAnswers; onChang
           />
         </Question>
       )}
-      <Question n={8} title="Combien y a-t-il d'accès extérieurs ?" hint="Porte d'entrée comprise (hors porte de garage).">
+      <Question n={9} title="Combien y a-t-il d'accès extérieurs ?" hint="Porte d'entrée comprise (hors porte de garage).">
         <Choice name="Accès extérieurs" value={Math.min(4, answers.exteriorAccesses)} onChange={(v) => set({ exteriorAccesses: v })} options={[1, 2, 3, 4].map((n) => ({ value: n, label: n === 4 ? '4 ou plus' : String(n) }))} />
       </Question>
-      <Question n={9} title="Combien de fenêtres et de baies vitrées environ ?">
+      <Question n={10} title="Combien de fenêtres et de baies vitrées environ ?">
         <div className="grid max-w-lg grid-cols-3 gap-3">
           <Field label="Fenêtres">
             <NumberInput value={answers.windows} onChange={(v) => v !== null && set({ windows: Math.round(v) })} min={0} max={30} step={1} aria-label="Nombre de fenêtres" />
@@ -259,7 +288,7 @@ function Questionnaire({ answers, onChange }: { answers: HousingAnswers; onChang
           </Field>
         </div>
       </Question>
-      <Question n={10} title="Existe-t-il des particularités ?">
+      <Question n={11} title="Existe-t-il des particularités ?">
         <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm">
           {(
             [
@@ -277,7 +306,15 @@ function Questionnaire({ answers, onChange }: { answers: HousingAnswers; onChang
                 className="h-4 w-4 accent-brand-700"
                 checked={answers.features[k]}
                 disabled={k === 'stairs' && answers.levels > 1}
-                onChange={(e) => setF({ [k]: e.target.checked })}
+                onChange={(e) =>
+                  k === 'extraRoom'
+                    ? onChange({
+                        ...answers,
+                        mainRooms: 1 + answers.bedrooms + (e.target.checked ? Math.max(1, extras) : 0),
+                        features: { ...answers.features, extraRoom: e.target.checked },
+                      })
+                    : setF({ [k]: e.target.checked })
+                }
               />
               {label}
             </label>
@@ -332,9 +369,9 @@ export function PlanWizard() {
   const apply = (mode: 'remplacer' | 'conserver') => {
     const notes = applyGeneration({ answers: normalizeAnswers(effective), result, mode });
     setConfirm(null);
-    toast('success', 'Plan généré. Vérifiez les dimensions, les ouvertures et la disposition des pièces avant de commencer l’audit.');
+    toast('success', 'Plan généré. Vérifiez maintenant les pièces et les menuiseries, puis le plan 2D, avant de commencer l’audit.');
     notes.forEach((n) => toast('info', n));
-    setTab('plan');
+    setTab('menuiseries');
   };
   const onUsePlan = () => {
     if (dossier.generation && hasManualChanges(dossier.plan.levels, dossier.generation)) setConfirm('regenerer');
@@ -538,8 +575,9 @@ export function GenerationBanner() {
         variant="success"
         icon={<Check size={13} />}
         onClick={() => {
-          validate();
-          toast('success', 'Plan vérifié par le conseiller : il peut servir de base à l’audit.');
+          const res = validate();
+          if (res.ok) toast('success', 'Plan vérifié par le conseiller : il peut servir de base à l’audit.');
+          else toast('error', `${res.unplaced} ouverture(s) restent à positionner sur le plan avant validation (onglet « Pièces & menuiseries »).`);
         }}
       >
         Valider le plan

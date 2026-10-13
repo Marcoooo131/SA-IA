@@ -76,6 +76,7 @@ export interface Room {
   h: number;
   /** Pièce ouverte sur une pièce voisine (ex. cuisine ouverte sur séjour). */
   openPlan: boolean;
+  comment?: string;
 }
 
 /** Cloison ou mur libre (segment). */
@@ -88,12 +89,19 @@ export interface Wall {
 
 export type RoomSide = 'N' | 'S' | 'E' | 'W';
 
+/**
+ * Support d'une ouverture :
+ *  - `room` : sur un côté de pièce (position connue) ;
+ *  - `wall` : sur une cloison libre ;
+ *  - `unplaced` : rattachée à une pièce, position encore inconnue (saisie par quantité).
+ */
 export type OpeningHost =
   | { kind: 'room'; roomId: Id; side: RoomSide }
-  | { kind: 'wall'; wallId: Id };
+  | { kind: 'wall'; wallId: Id }
+  | { kind: 'unplaced'; roomId: Id };
 
 /** `passage` : ouverture libre sans porte (ex. cuisine ouverte sur le séjour). */
-export type OpeningType = 'porte' | 'fenetre' | 'baie' | 'porte_garage' | 'porte_interieure' | 'passage';
+export type OpeningType = 'porte' | 'fenetre' | 'baie' | 'porte_garage' | 'porte_interieure' | 'passage' | 'autre';
 
 export interface Opening {
   id: Id;
@@ -108,6 +116,11 @@ export interface Opening {
   exterior: boolean;
   /** Porte de garage sectionnelle : jamais équipée automatiquement. */
   sectional: boolean;
+  /** Position vérifiée par le conseiller (les positions générées ou estimées restent à confirmer). */
+  positionConfirmed?: boolean;
+  /** Hauteur facultative (m). */
+  height?: number;
+  comment?: string;
 }
 
 export interface BackgroundImage {
@@ -338,6 +351,8 @@ export interface HousingAnswers {
   surfaceExact: number | null;
   levels: 1 | 2 | 3;
   bedrooms: number;
+  /** Pièces principales (séjour + chambres + bureaux / pièces supplémentaires). */
+  mainRooms: number;
   kitchen: KitchenLayout;
   corridor: boolean;
   garage: GarageOption;

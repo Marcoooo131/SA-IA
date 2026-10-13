@@ -21,6 +21,7 @@ import { uid } from '@/lib/id';
 import { formatNumber } from '@/lib/format';
 import { OPENING_TYPE_LABELS } from '@/domain/labels';
 import { useAssetUrl } from '../useAsset';
+import { placeOpeningAt } from '@/plan/joinery';
 import { PROVENANCE_COLORS, PROVENANCE_LABELS, provenanceMap, type Provenance } from '@/generator/provenance';
 import { Button, Modal, NumberInput, Field } from '../kit';
 
@@ -48,6 +49,7 @@ const TOOL_HINT: Record<string, string> = {
   porte_interieure: 'Cliquez sur une cloison pour placer une porte intérieure.',
   passage: 'Cliquez sur une cloison pour créer un passage ouvert (sans porte).',
   device: "Cliquez sur le plan pour placer l'équipement sélectionné dans la bibliothèque.",
+  place_opening: "Cliquez sur le mur de la pièce où se trouve l'ouverture à positionner (Échap pour annuler).",
   calibrate: "Cliquez deux points d'une dimension connue sur le plan importé (ex. largeur d'une porte).",
 };
 
@@ -314,6 +316,28 @@ export function PlanEditor() {
         } else setCalib(pts);
         break;
       }
+      case 'place_opening': {
+        const id = ed.placingOpeningId;
+        const target = id ? level.openings.find((o) => o.id === id) : undefined;
+        if (!id || !target) {
+          toast('error', "L'ouverture à positionner n'existe pas sur ce niveau.");
+          useEditor.getState().setTool('select');
+          return;
+        }
+        const maxD = 12 / view.scale + 0.4;
+        const probe = structuredClone({ plan: dossier.plan, devices: dossier.devices });
+        if (!placeOpeningAt(probe, level.id, id, raw, maxD)) {
+          toast('info', `Cliquez plus près d'un mur pour positionner ${target.code}.`);
+          return;
+        }
+        mutate((d) => {
+          placeOpeningAt(d, level.id, id, raw, maxD);
+        });
+        select({ kind: 'opening', id });
+        useEditor.getState().setTool('select');
+        toast('success', `${target.code} positionnée sur le plan.`);
+        break;
+      }
       case 'porte':
       case 'fenetre':
       case 'baie':
@@ -431,7 +455,10 @@ export function PlanEditor() {
         mutate((d) => {
           const l = findLevel(d, level.id);
           const o = l.openings.find((x) => x.id === dr.id);
-          if (o) moveOpeningTo(l, o, raw);
+          if (o && o.host.kind !== 'unplaced') {
+            moveOpeningTo(l, o, raw);
+            o.positionConfirmed = true;
+          }
         }, { history: false });
         markMoved();
         break;

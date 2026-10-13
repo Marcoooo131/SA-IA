@@ -21,11 +21,12 @@ import { uid } from '@/lib/id';
 import type { HousingAnswers } from '@/domain/types';
 import type { GenerationResult } from '@/generator/generate';
 import { mergeWithCorrections } from '@/generator/provenance';
+import { syncSuggestedOpeningDevices } from '@/plan/joinery';
 import { levelHabitableArea } from '@/plan/geometry';
 import { createLocalRepository, type PersistedState, type Repository } from '@/persistence/storage';
 
 export type View = 'dashboard' | 'workspace' | 'catalog';
-export type WorkspaceTab = 'logement' | 'questionnaire' | 'plan' | 'vue3d' | 'audit' | 'equipements' | 'devis';
+export type WorkspaceTab = 'logement' | 'questionnaire' | 'menuiseries' | 'plan' | 'vue3d' | 'audit' | 'equipements' | 'devis';
 
 export type Selection =
   | { kind: 'room'; id: string }
@@ -91,7 +92,8 @@ export interface AppState {
   // plan généré par questionnaire
   saveWizardDraft(templateId: string | null, answers: HousingAnswers | null): void;
   applyGeneration(input: { answers: HousingAnswers; result: GenerationResult; mode: 'remplacer' | 'conserver' }): string[];
-  validateGeneratedPlan(): void;
+  /** Valide le plan généré ; refusé tant que des ouvertures restent à positionner. */
+  validateGeneratedPlan(): { ok: boolean; unplaced: number };
 
   // plan & équipements (avec historique)
   checkpoint(): void;
@@ -312,8 +314,16 @@ export const useApp = create<AppState>()((set, get) => {
       set({ activeLevelId: levels[0]?.id ?? null, selection: null });
       return notes;
     },
-    validateGeneratedPlan: () =>
-      updateActive((d) => (d.generation ? { ...d, generation: { ...d.generation, validatedAt: new Date().toISOString() } } : d)),
+    validateGeneratedPlan: () => {
+      const d = active();
+      if (!d) return { ok: false, unplaced: 0 };
+      const unplaced = d.plan.levels.reduce((s, l) => s + l.openings.filter((o) => o.host.kind === 'unplaced').length, 0);
+      if (unplaced) return { ok: false, unplaced };
+      // les positions présentes sont désormais vérifiées par le conseiller
+      get().mutate((draft) => draft.plan.levels.forEach((l) => l.openings.forEach((o) => (o.positionConfirmed = true))));
+      updateActive((x) => (x.generation ? { ...x, generation: { ...x.generation, validatedAt: new Date().toISOString() } } : x));
+      return { ok: true, unplaced: 0 };
+    },
     validateDemo: () =>
       updateActive((d) => ({ ...d, status: 'proposition_validee', demoValidatedAt: new Date().toISOString() })),
 
@@ -334,6 +344,8 @@ export const useApp = create<AppState>()((set, get) => {
       if (opts.history !== false) get().checkpoint();
       const draft: Snapshot = structuredClone({ plan: d.plan, devices: d.devices });
       fn(draft);
+      // Détecteurs suggérés toujours alignés sur les ouvertures (type, suppression) : pas de double comptage
+      syncSuggestedOpeningDevices(draft, get().rules);
       // Les équipements d'un niveau supprimé disparaissent avec lui
       const levelIds = new Set(draft.plan.levels.map((l) => l.id));
       draft.devices = draft.devices.filter((x) => levelIds.has(x.levelId));

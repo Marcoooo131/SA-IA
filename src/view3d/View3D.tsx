@@ -184,6 +184,7 @@ export function View3D() {
         </button>
       </div>
       <div className="relative min-h-0 flex-1 bg-gradient-to-b from-slate-200 to-slate-100" data-testid="view3d">
+        <OpeningsLegend />
         {!glOk ? (
           <div className="flex h-full items-center justify-center p-6 text-sm text-slate-600">
             WebGL n'est pas disponible dans ce navigateur : la vue 3D ne peut pas être affichée. Le plan 2D et le devis restent utilisables.
@@ -258,6 +259,28 @@ export function View3D() {
           {armed && <span className="ml-1 font-medium text-brand-700">· Cliquez sur un sol pour placer l'équipement</span>}
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Récapitulatif des menuiseries représentées dans la 3D (positionnées / indicatives). */
+function OpeningsLegend() {
+  const dossier = useActiveDossier();
+  if (!dossier) return null;
+  const all = dossier.plan.levels.flatMap((l) => l.openings);
+  const placed = all.filter((o) => o.host.kind !== 'unplaced').length;
+  const pending = all.length - placed;
+  return (
+    <div className="pointer-events-none absolute right-2 top-2 z-10 rounded border bg-white/90 px-2 py-1 text-[11px] text-slate-700 shadow-sm" data-testid="view3d-openings">
+      <span data-testid="view3d-openings-placed">{placed}</span> menuiserie(s) positionnée(s)
+      {pending > 0 && (
+        <>
+          {' · '}
+          <span className="text-amber-700">
+            <span data-testid="view3d-openings-pending">{pending}</span> à positionner (repères orange translucides, indicatifs)
+          </span>
+        </>
+      )}
     </div>
   );
 }

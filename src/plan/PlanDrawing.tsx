@@ -338,7 +338,7 @@ export function PlanDrawing({
       })}
 
       {/* Ouvertures */}
-      {level.openings.map((o) => {
+      {level.openings.filter((o) => o.host.kind !== 'unplaced').map((o) => {
         const pl = openingPlacement(level, o);
         return (
           <g key={o.id} onPointerDown={down({ kind: 'opening', id: o.id })} style={{ cursor: interactive ? 'pointer' : undefined }} data-testid={`opening-${o.code}`}>
@@ -351,6 +351,59 @@ export function PlanDrawing({
                 {o.code}
               </text>
             )}
+          </g>
+        );
+      })}
+
+      {/* Ouvertures saisies par quantité, pas encore positionnées : repères indicatifs */}
+      {level.rooms.map((room) => {
+        const pending = level.openings.filter((o) => o.host.kind === 'unplaced' && o.host.roomId === room.id);
+        if (!pending.length) return null;
+        const bw = Math.max(0.55, 30 / px);
+        const bh = Math.max(0.28, 14 / px);
+        const gap = 0.08;
+        const perRow = Math.max(1, Math.floor((room.w - 0.2 + gap) / (bw + gap)));
+        return (
+          <g key={`unplaced-${room.id}`} data-testid={`unplaced-${room.name}`}>
+            {pending.map((o, i) => {
+              const x = room.x + 0.1 + (i % perRow) * (bw + gap);
+              const y = room.y + room.h - 0.1 - bh - Math.floor(i / perRow) * (bh + gap);
+              const sel = isSel('opening', o.id);
+              return (
+                <g
+                  key={o.id}
+                  onPointerDown={down({ kind: 'opening', id: o.id })}
+                  style={{ cursor: interactive ? 'pointer' : undefined }}
+                  data-testid={`opening-${o.code}`}
+                  data-unplaced="true"
+                >
+                  <title>{`${o.code} – à positionner sur le plan`}</title>
+                  <rect
+                    x={x}
+                    y={y}
+                    width={bw}
+                    height={bh}
+                    rx={0.05}
+                    fill={sel ? '#fde68a' : '#fffbeb'}
+                    stroke="#d97706"
+                    strokeWidth={1.2 / px}
+                    strokeDasharray={`${3 / px} ${2 / px}`}
+                  />
+                  <text
+                    x={x + bw / 2}
+                    y={y + bh / 2}
+                    dy={3 / px}
+                    fontSize={Math.min(8 / px, bh * 0.7)}
+                    textAnchor="middle"
+                    fill="#92400e"
+                    fontFamily="Inter, Helvetica, Arial, sans-serif"
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    {o.code}
+                  </text>
+                </g>
+              );
+            })}
           </g>
         );
       })}
