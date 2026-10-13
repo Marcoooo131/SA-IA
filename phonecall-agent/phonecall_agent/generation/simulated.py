@@ -30,7 +30,9 @@ class SimulatedReportGenerator(ReportGenerator):
         if self.fail_next > 0:
             self.fail_next -= 1
             raise GenerationFailed("simulated model outage")
-        raw = load_ai_response_fixture(self._fixture_for(ctx.metadata.get("_recording_sid", "")))
+        sid = ctx.metadata.get("_recording_sid", "")
+        name = self._fixture_for(sid) if sid in self.mapping or not transcript.segments else _closest_fixture(transcript, self.default)
+        raw = load_ai_response_fixture(name)
         structured = parse_structured(raw)
         return GenerationResult(
             structured=structured,
@@ -38,3 +40,23 @@ class SimulatedReportGenerator(ReportGenerator):
             generator=self.name,
             model="simulated",
         )
+
+
+def _closest_fixture(transcript: TranscriptResult, default: str) -> str:
+    """Picks the synthetic scenario whose transcript is closest to the received one (demo / tests of
+    the notes API, where no recording SID exists)."""
+    import difflib
+
+    from ..demo_data import ai_response_fixture_names, load_transcript_fixture
+
+    text = transcript.full_text().lower()
+    best, best_ratio = default, 0.0
+    for name in ai_response_fixture_names():
+        try:
+            ref = " ".join(s["text"] for s in load_transcript_fixture(name)["segments"]).lower()
+        except FileNotFoundError:
+            continue
+        ratio = difflib.SequenceMatcher(None, text, ref).ratio()
+        if ratio > best_ratio:
+            best, best_ratio = name, ratio
+    return best if best_ratio >= 0.5 else default

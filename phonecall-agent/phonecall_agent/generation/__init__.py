@@ -1,6 +1,6 @@
 from ..config import Settings
 from .base import GenerationResult, ReportGenerator
-from .prompt import PROMPT_VERSION, GenerationContext
+from .prompt import GenerationContext, prompt_version
 
 
 def build_generator(settings: Settings) -> ReportGenerator:
@@ -15,4 +15,4 @@ def build_generator(settings: Settings) -> ReportGenerator:
     raise ValueError(f"unknown generation provider {settings.generation_provider!r}")
 
 
-__all__ = ["PROMPT_VERSION", "GenerationContext", "GenerationResult", "ReportGenerator", "build_generator"]
+__all__ = ["prompt_version", "GenerationContext", "GenerationResult", "ReportGenerator", "build_generator"]

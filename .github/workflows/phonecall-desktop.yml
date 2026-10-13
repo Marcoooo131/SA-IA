@@ -1,0 +1,71 @@
+# Poste conseiller (phonecall-desktop) : tests Linux + interface, benchmark de transcription
+# réelle (voix de synthèse), et vérifications sous Windows (WASAPI, paquet .exe).
+name: Phone Call Desktop
+
+on:
+  push:
+    paths: ["phonecall-desktop/**", "phonecall-agent/**", ".github/workflows/phonecall-desktop.yml"]
+  pull_request:
+    paths: ["phonecall-desktop/**", "phonecall-agent/**", ".github/workflows/phonecall-desktop.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests-linux:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: phonecall-desktop } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e ".[dev]" -e ../phonecall-agent
+      - run: python -m playwright install --with-deps chromium
+      - run: python -m pytest
+
+  stt-benchmark:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: phonecall-desktop } }
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [base, small]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: sudo apt-get update && sudo apt-get install -y espeak-ng
+      - run: pip install -e .
+      - run: python scripts/benchmark_stt.py --model ${{ matrix.model }} --out stt_benchmark_${{ matrix.model }}.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: stt-benchmark-${{ matrix.model }}
+          path: phonecall-desktop/stt_benchmark_${{ matrix.model }}.json
+
+  windows:
+    runs-on: windows-latest
+    defaults: { run: { working-directory: phonecall-desktop, shell: pwsh } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e ".[dev,build]" -e ../phonecall-agent
+      - name: Unit and integration tests (Windows)
+        run: python -m pytest
+        env: { PCD_SKIP_UI_TESTS: "1" }
+      - name: WASAPI device enumeration (runners usually have no audio device)
+        run: python -m phonecall_desktop.diag; exit 0
+      - name: Self-test with the WASAPI backend
+        run: python -m phonecall_desktop --selftest
+        env: { PCD_ENVIRONMENT: dev, PCD_AUDIO_BACKEND: wasapi, PCD_NOTES_CLIENT: simulated }
+      - name: Build the Windows package
+        run: ./packaging/build_windows.ps1
+      - name: Self-test of the packaged executable
+        run: ./dist/PhoneCallDiag/PhoneCallDiag.exe --selftest
+        env: { PCD_ENVIRONMENT: dev, PCD_AUDIO_BACKEND: wasapi, PCD_NOTES_CLIENT: simulated }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PhoneCallDesktop-windows-unsigned
+          path: phonecall-desktop/dist/
+          retention-days: 7

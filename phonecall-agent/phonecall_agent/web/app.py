@@ -74,6 +74,9 @@ def create_app(container: Container | None = None) -> FastAPI:
     )
     auth = Authenticator(settings)
     app.state.container = c
+    from ..notes_api import build_notes_router
+
+    app.include_router(build_notes_router(c))
 
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
@@ -88,7 +91,7 @@ def create_app(container: Container | None = None) -> FastAPI:
 
     @app.exception_handler(HTTPException)
     async def http_error(request: Request, exc: HTTPException):
-        if exc.status_code == 401 and request.method == "GET" and not request.url.path.startswith(("/twilio", "/metrics")):
+        if exc.status_code == 401 and request.method == "GET" and not request.url.path.startswith(("/twilio", "/metrics", "/api/")):
             return RedirectResponse("/login", status_code=303)
         return PlainTextResponse(str(exc.detail), status_code=exc.status_code)
 

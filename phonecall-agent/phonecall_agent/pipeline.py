@@ -19,7 +19,7 @@ from sqlalchemy import or_, update
 from .container import Container
 from .db import session_scope
 from .errors import InvalidAIResponse, PermanentError, PipelineError, RecordingUnavailable
-from .generation import PROMPT_VERSION, GenerationContext
+from .generation import GenerationContext, prompt_version
 from .logging_setup import safe_error_message
 from .models import (
     TERMINAL_STATUSES,
@@ -241,7 +241,7 @@ def _stage_generate(s, call: Call, c: Container) -> None:
         version=len(call.reports) + 1,
         generator=gen.generator,
         model=gen.model,
-        prompt_version=PROMPT_VERSION,
+        prompt_version=prompt_version(c.business),
         business_config_version=c.business.version,
         text=gen.text,
         structured_json=gen.structured.model_dump_json(),

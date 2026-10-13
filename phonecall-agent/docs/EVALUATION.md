@@ -40,5 +40,5 @@ autorisés**.
 2. Exporter textes, signaux et indicateurs ; faire noter à l'aveugle.
 3. Calculer : taux d'erreurs critiques, moyennes, corrélation entre l'indicateur qualité et la note
    des experts (calibrage), rappel du validateur sur les cas pièges.
-4. Rejouer à chaque changement de prompt (`PROMPT_VERSION`), de modèle, de fournisseur de
+4. Rejouer à chaque changement de prompt (en-tête `version:` du fichier de prompt), de modèle, de fournisseur de
    transcription ou de configuration métier. Conserver les résultats pour comparaison.

@@ -27,6 +27,16 @@ def cmd_hash_password(args) -> None:
     print(f"{args.login}:{args.role}:{hash_password(password)}")
 
 
+def cmd_new_note_token(args) -> None:
+    """Creates a bearer token for a desktop client. Give the token to the user (once); put the hash
+    in PCA_NOTE_API_TOKENS_SHA256 on the server. Revoke by removing the hash."""
+    import hashlib
+
+    token = "pcn_" + secrets.token_urlsafe(32)
+    print(f"Jeton (à remettre à {args.label}, une seule fois) : {token}")
+    print(f"Empreinte à ajouter à PCA_NOTE_API_TOKENS_SHA256 : {hashlib.sha256(token.encode()).hexdigest()}")
+
+
 def cmd_init_db(_args) -> None:
     from .db import init_db
     from .logging_setup import configure_logging
@@ -170,6 +180,9 @@ def main(argv: list[str] | None = None) -> None:
     hp.add_argument("role")
     hp.set_defaults(func=cmd_hash_password)
     sub.add_parser("init-db").set_defaults(func=cmd_init_db)
+    nt = sub.add_parser("new-note-token", help="token for a desktop client of the notes API")
+    nt.add_argument("label")
+    nt.set_defaults(func=cmd_new_note_token)
     sv = sub.add_parser("serve")
     sv.add_argument("--host", default="0.0.0.0")
     sv.add_argument("--port", type=int, default=8000)

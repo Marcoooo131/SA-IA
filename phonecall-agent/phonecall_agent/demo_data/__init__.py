@@ -19,3 +19,7 @@ def load_ai_response_fixture(name: str) -> str:
 
 def transcript_fixture_names() -> list[str]:
     return sorted(p.stem for p in (_DIR / "transcripts").glob("*.json"))
+
+
+def ai_response_fixture_names() -> list[str]:
+    return sorted(p.stem for p in (_DIR / "ai_responses").glob("*.json"))
