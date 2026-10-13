@@ -23,6 +23,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from .. import secrets_store
 from ..errors import AppError, ErrorCode
 from ..session import SessionController, StartRequest, State
 
@@ -41,6 +42,11 @@ class StartBody(BaseModel):
 
 class NoteBody(BaseModel):
     text: str = Field(max_length=20_000)
+
+
+class AIKeyBody(BaseModel):
+    key: str = Field(max_length=2_000)
+    check: bool = True
 
 
 class Hub:
@@ -159,6 +165,42 @@ def create_app(controller: SessionController, token: str, port_getter, hub: Hub)
     def new():
         controller.new_conversation()
         return controller.snapshot()
+
+    # The AI key is write-only: the interface can save, check or delete it, never read it back.
+
+    def direct_client():
+        client = controller.note_client
+        if getattr(client, "name", None) != "anthropic":
+            raise AppError(ErrorCode.INVALID_STATE, "le mode « clé API dans l'application » n'est pas activé")
+        return client
+
+    def ai_key_status() -> dict:
+        settings = controller.settings
+        return {"mode": settings.notes_client, "model": settings.anthropic_model,
+                "configured": settings.notes_client == "anthropic" and bool(secrets_store.get_ai_key(settings))}
+
+    @app.get("/api/ai-key")
+    def ai_key_get():
+        return ai_key_status()
+
+    @app.put("/api/ai-key")
+    def ai_key_put(body: AIKeyBody):
+        client = direct_client()
+        from ..notes.direct import validate_key_format
+
+        key = validate_key_format(body.key)
+        if body.check:
+            client.check_key(key)
+        secrets_store.set_ai_key(key)
+        log.info("AI key saved in the credential vault")
+        return ai_key_status()
+
+    @app.delete("/api/ai-key")
+    def ai_key_delete():
+        direct_client()
+        secrets_store.delete_ai_key()
+        log.info("AI key deleted from the credential vault")
+        return ai_key_status()
 
     @app.get("/api/history")
     def history_list():

@@ -99,7 +99,10 @@ function renderState(s) {
   const status = { finalizing: "Transcription des derniers mots…", generating: "Génération de la note en cours…",
     done: "Note générée : relisez-la avant de la copier.", ready: "La note sera générée à la fin de la conversation." };
   $("note-status").textContent = st === "error" && current.error ? current.error.message : (status[st] || "");
-  if (st === "error" && current.error) notice("error", current.error.message);
+  if (st === "error" && current.error) {
+    notice("error", current.error.message);
+    if (String(current.error.code).startsWith("ai_key")) { loadAIKey(); openAIKey(); }
+  }
 }
 
 function renderSegment(seg) {
@@ -272,6 +275,55 @@ async function openHistory() {
   if (!$("history-dialog").open) $("history-dialog").showModal();
 }
 
+// ------------------------------------------------------------------ AI key (write-only)
+
+async function loadAIKey() {
+  try {
+    const s = await api("/api/ai-key");
+    const direct = s.mode === "anthropic";
+    $("btn-ai-key").hidden = !direct;
+    $("ai-key-banner").hidden = !(direct && !s.configured);
+    $("ai-key-status").textContent = s.configured
+      ? `Une clé est enregistrée sur ce PC (modèle : ${s.model}). Saisissez-en une nouvelle pour la remplacer.`
+      : "Aucune clé enregistrée sur ce PC.";
+    $("ai-key-delete").disabled = !s.configured;
+  } catch (e) { /* the button stays hidden */ }
+}
+
+function openAIKey() {
+  $("ai-key-error").hidden = true;
+  $("ai-key-input").value = "";
+  if (!$("ai-key-dialog").open) $("ai-key-dialog").showModal();
+  $("ai-key-input").focus();
+}
+
+async function saveAIKey() {
+  const key = $("ai-key-input").value.trim();
+  if (!key) return;
+  const btn = $("ai-key-save");
+  btn.disabled = true; btn.textContent = "Vérification…";
+  try {
+    await api("/api/ai-key", { method: "PUT", body: JSON.stringify({ key }) });
+    $("ai-key-input").value = "";
+    $("ai-key-dialog").close();
+    notice("info", "Clé API vérifiée et enregistrée dans le coffre Windows.");
+    if (current.state === "error" && current.error && current.error.retryable) notice("info", "Cliquez sur « Relancer la génération » pour rédiger la note.");
+  } catch (e) {
+    $("ai-key-error").hidden = false;
+    $("ai-key-error").textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = "Vérifier et enregistrer";
+    loadAIKey();
+  }
+}
+
+async function deleteAIKey() {
+  if (!confirm("Supprimer la clé API de ce PC ?")) return;
+  try { await api("/api/ai-key", { method: "DELETE" }); notice("info", "Clé API supprimée de ce PC."); }
+  catch (e) { notice("error", e.message); }
+  loadAIKey();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   $("btn-start").onclick = start;
   $("btn-stop").onclick = stop;
@@ -286,6 +338,13 @@ document.addEventListener("DOMContentLoaded", () => {
   $("history-delete-all").onclick = async () => { if (confirm("Supprimer tout l'historique ?")) { await api("/api/history/all", { method: "DELETE" }); openHistory(); } };
   // Escape key = immediate stop of the capture
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && current.state === "capturing") stop(); });
+  $("btn-ai-key").onclick = openAIKey;
+  $("ai-key-banner-btn").onclick = openAIKey;
+  $("ai-key-close").onclick = () => $("ai-key-dialog").close();
+  $("ai-key-save").onclick = saveAIKey;
+  $("ai-key-input").onkeydown = (e) => { if (e.key === "Enter") saveAIKey(); };
+  $("ai-key-delete").onclick = deleteAIKey;
   loadDevices();
+  loadAIKey();
   connect();
 });

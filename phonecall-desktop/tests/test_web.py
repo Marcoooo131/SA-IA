@@ -106,11 +106,11 @@ except ImportError:
     HAS_PLAYWRIGHT = False
 
 
-@pytest.fixture
-def running_app(tmp_path):
+def launch_app(tmp_path, notes_client):
     env = {**os.environ, "PCD_ENVIRONMENT": "dev", "PCD_AUDIO_BACKEND": "test-files", "PCD_RECOGNIZER": "scripted",
-           "PCD_NOTES_CLIENT": "simulated", "PCD_TEST_AUDIO_DIR": str(tmp_path / "audio"), "PCD_TEST_AUDIO_SPEED": "4",
-           "PCD_NO_SIGNAL_WARN_S": "60", "HOME": str(tmp_path)}
+           "PCD_NOTES_CLIENT": notes_client, "PCD_TEST_AUDIO_DIR": str(tmp_path / "audio"), "PCD_TEST_AUDIO_SPEED": "4",
+           "PCD_NO_SIGNAL_WARN_S": "60", "HOME": str(tmp_path), "PYTHON_KEYRING_BACKEND": "keyring.backends.fail.Keyring"}
+    env.pop("PCD_ANTHROPIC_API_KEY", None)
     port_file = tmp_path / "port"
     proc = subprocess.Popen([sys.executable, "-m", "phonecall_desktop", "--port-file", str(port_file)], env=env)
     end = time.time() + 30
@@ -121,6 +121,16 @@ def running_app(tmp_path):
     yield f"http://127.0.0.1:{port}/?t={token}", proc
     proc.terminate()
     proc.wait(10)
+
+
+@pytest.fixture
+def running_app(tmp_path):
+    yield from launch_app(tmp_path, "simulated")
+
+
+@pytest.fixture
+def running_app_direct(tmp_path):
+    yield from launch_app(tmp_path, "anthropic")
 
 
 @pytest.mark.skipif(not HAS_PLAYWRIGHT or os.environ.get("PCD_SKIP_UI_TESTS") == "1", reason="UI tests disabled")
@@ -197,3 +207,46 @@ def test_closing_the_interface_stops_capture(running_app):
             break
         time.sleep(0.5)
     assert state != "capturing"
+
+
+@pytest.mark.skipif(not HAS_PLAYWRIGHT or os.environ.get("PCD_SKIP_UI_TESTS") == "1", reason="UI tests disabled")
+def test_ui_direct_mode_asks_for_the_key(running_app_direct, tmp_path):
+    """Direct mode without a key: banner, bad key refused locally (no network), and at the end of
+    the call the key dialog opens and the generation can be relaunched. No call to the real API."""
+    from playwright.sync_api import expect, sync_playwright
+
+    url, _ = running_app_direct
+    with sync_playwright() as p:
+        browser = p.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_page(viewport={"width": 1400, "height": 900})
+        page.goto(url)
+        expect(page.locator("#ai-key-banner")).to_be_visible()
+        expect(page.locator("#btn-ai-key")).to_be_visible()
+        page.click("#ai-key-banner-btn")
+        expect(page.locator("#ai-key-dialog")).to_be_visible()
+        expect(page.locator("#ai-key-input")).to_have_attribute("type", "password")
+        page.fill("#ai-key-input", "pas-une-cle")
+        page.click("#ai-key-save")
+        expect(page.locator("#ai-key-error")).to_contain_text("n'est pas une clé API Claude")
+        page.screenshot(path=str(tmp_path / "ai_key_dialog.png"))
+        page.click("#ai-key-close")
+        page.check("#consent")
+        page.click("#btn-start")
+        expect(page.locator("#transcript .seg").first).to_be_visible(timeout=15000)
+        page.wait_for_timeout(3000)
+        page.click("#btn-stop")
+        expect(page.locator("#state-badge")).to_have_text("Erreur", timeout=20000)
+        expect(page.locator("#ai-key-dialog")).to_be_visible()  # opened automatically
+        expect(page.locator("#note-status")).to_contain_text("Aucune clé API Claude")
+        page.click("#ai-key-close")
+        expect(page.locator("#btn-retry")).to_be_visible()
+        assert page.locator("#transcript .seg").count() > 0  # transcript kept
+        page.screenshot(path=str(tmp_path / "ai_key_missing.png"))
+        browser.close()
+    out = os.environ.get("PCD_SCREENSHOT_DIR")
+    if out:
+        import shutil
+
+        Path(out).mkdir(parents=True, exist_ok=True)
+        for f in ("ai_key_dialog.png", "ai_key_missing.png"):
+            shutil.copy(tmp_path / f, Path(out) / f)

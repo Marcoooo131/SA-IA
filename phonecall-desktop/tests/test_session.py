@@ -174,7 +174,10 @@ def test_production_config_refuses_test_components():
     s = Settings(environment=Environment.PRODUCTION, audio_backend="test-files", notes_client="simulated", gateway_url="http://x")
     with pytest.raises(AppError) as exc:
         s.assert_safe()
-    assert "audio_backend" in exc.value.detail and "gateway_url" in exc.value.detail
+    assert "audio_backend" in exc.value.detail and "notes_client" in exc.value.detail
+    with pytest.raises(AppError) as exc:
+        Settings(environment=Environment.PRODUCTION, notes_client="gateway", gateway_url="http://x").assert_safe()
+    assert "gateway_url" in exc.value.detail
 
 
 def test_history_retention_and_encryption(tmp_path):

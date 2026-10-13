@@ -13,7 +13,7 @@
 | Mémoire | 8 Go (le modèle `small` int8 occupe ~1 Go en mémoire) |
 | Disque | ~1,5 Go (application + modèle `small`) |
 | Casque | recommandé (USB ou Bluetooth) ; micro autorisé dans *Paramètres › Confidentialité › Microphone* pour les applications de bureau |
-| Réseau | HTTPS vers la passerelle de l'entreprise uniquement (aucun accès Internet nécessaire si le modèle est déployé par la DSI) |
+| Réseau | HTTPS vers `api.anthropic.com` (mode clé dans l'application) ou vers la passerelle de l'entreprise ; téléchargement du modèle de transcription au premier lancement, sauf s'il est déployé par la DSI |
 
 ## 2. Installation pour un poste de test (Python)
 
@@ -21,7 +21,7 @@
 # Python 3.12 x64 depuis python.org (cocher « Add to PATH »)
 git clone <dépôt> ; cd SA-IA\phonecall-desktop
 py -3.12 -m venv .venv ; .\.venv\Scripts\Activate.ps1
-pip install -e ".[dev]"
+pip install -e ".[dev]" -e ..\phonecall-agent      # moteur de note partagé avec la passerelle
 python -m phonecall_desktop.diag                     # liste les périphériques WASAPI
 ```
 

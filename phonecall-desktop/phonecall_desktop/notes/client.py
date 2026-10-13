@@ -2,7 +2,8 @@
 
 ``GatewayNoteClient`` calls the company gateway (``phonecall-agent``: ``POST /api/v1/notes``),
 which holds the AI provider key, applies the versioned prompt and the anti-invention checks.
-The desktop never talks to the AI provider directly and never holds its key.
+``direct.DirectAINoteClient`` runs the same code inside the app, with a key stored in the
+Windows Credential Manager (chosen for a small number of workstations).
 """
 
 from __future__ import annotations
@@ -45,6 +46,22 @@ def segments_payload(segments: list[Segment]) -> list[dict]:
          "uncertain": s.uncertain}
         for s in segments
     ]
+
+
+def note_from_payload(data: dict) -> NoteResult:
+    """Payload of ``POST /api/v1/notes`` (gateway) or of ``phonecall_agent.note_service`` (direct mode)."""
+    quality = data.get("quality") or {}
+    return NoteResult(
+        text=data.get("note_text", ""),
+        no_usable_content=bool(data.get("no_usable_content")),
+        category=data.get("category"),
+        flags=list(quality.get("flags") or []),
+        points_to_verify=list(data.get("points_to_verify") or []),
+        quality_score=quality.get("score"),
+        prompt_version=data.get("prompt_version"),
+        model=data.get("model"),
+        cost_usd=float(data.get("cost_usd") or 0.0),
+    )
 
 
 class NoteClient(ABC):
@@ -100,18 +117,7 @@ class GatewayNoteClient(NoteClient):
 
     @staticmethod
     def _parse(data: dict) -> NoteResult:
-        quality = data.get("quality") or {}
-        return NoteResult(
-            text=data.get("note_text", ""),
-            no_usable_content=bool(data.get("no_usable_content")),
-            category=data.get("category"),
-            flags=list(quality.get("flags") or []),
-            points_to_verify=list(data.get("points_to_verify") or []),
-            quality_score=quality.get("score"),
-            prompt_version=data.get("prompt_version"),
-            model=data.get("model"),
-            cost_usd=float(data.get("cost_usd") or 0.0),
-        )
+        return note_from_payload(data)
 
     def health(self) -> bool:
         token = self.token_provider()

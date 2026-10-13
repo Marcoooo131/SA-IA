@@ -8,7 +8,7 @@ from .audio.devices import build_backend
 from .config import Settings, app_dir
 from .history import History, keyring_key
 from .notes.client import GatewayNoteClient, NoteClient, SimulatedNoteClient
-from .secrets_store import get_gateway_token
+from .secrets_store import get_ai_key, get_gateway_token
 from .session import SessionController
 from .stt.base import Recognizer
 from .synthetic import ensure_test_audio
@@ -36,6 +36,10 @@ def build_recognizer(settings: Settings, test_audio_dir: Path | None = None) -> 
 def build_note_client(settings: Settings) -> NoteClient:
     if settings.notes_client == "simulated":
         return SimulatedNoteClient()
+    if settings.notes_client == "anthropic":
+        from .notes.direct import DirectAINoteClient
+
+        return DirectAINoteClient(settings, lambda: get_ai_key(settings))
     if not settings.gateway_url:
         from .errors import AppError, ErrorCode
 

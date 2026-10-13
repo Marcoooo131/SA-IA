@@ -34,7 +34,7 @@ build-backend = "setuptools.build_meta"
 include = ["phonecall_agent*"]
 
 [tool.setuptools.package-data]
-phonecall_agent = ["web/templates/*.html", "web/static/*", "demo_data/*/*.json"]
+phonecall_agent = ["web/templates/*.html", "web/static/*", "demo_data/*/*.json", "prompts/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

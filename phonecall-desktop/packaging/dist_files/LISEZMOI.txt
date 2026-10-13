@@ -1,16 +1,18 @@
-PHONE CALL — prise de notes assistée (VERSION DE TEST, NON OFFICIELLE)
-=====================================================================
+PHONE CALL — prise de notes assistée
+====================================
 
-Utiliser UNIQUEMENT avec des conversations fictives tant que l'outil n'a pas été validé
-par l'entreprise (DPO, sécurité informatique).
+Pendant l'appel : transcription en direct, calculée sur le PC (l'audio ne quitte jamais le PC).
+À la fin de l'appel : la transcription (texte seulement) est envoyée à Claude (Anthropic), qui
+rédige la note Phone Call. Relisez toujours la note avant de la coller dans le CRM.
 
 1. Démarrer
    - Double-cliquez sur PhoneCallDesktop.exe.
    - Si Windows affiche « Windows a protégé votre ordinateur » (application non signée) :
      cliquez sur « Informations complémentaires » puis « Exécuter quand même ».
    - Au premier lancement, le moteur de transcription (~500 Mo) est téléchargé : laissez
-     l'application ouverte quelques minutes (message bleu dans la fenêtre). Une connexion
-     Internet est nécessaire cette première fois uniquement.
+     l'application ouverte quelques minutes (message bleu dans la fenêtre).
+   - Internet est nécessaire pour ce premier téléchargement, puis à chaque fin d'appel
+     pour la rédaction de la note par Claude.
 
 2. Autoriser le micro (une seule fois)
    - Paramètres Windows › Confidentialité et sécurité › Microphone :
@@ -19,19 +21,30 @@ par l'entreprise (DPO, sécurité informatique).
    - Le son du PC (voix de l'interlocuteur) ne demande aucune autorisation : il est capté
      sur le périphérique choisi dans l'application.
 
-3. Utiliser
+3. Enregistrer la clé API Claude (une seule fois par PC et par session Windows)
+   - Créez la clé sur console.anthropic.com › API Keys (compte de l'entreprise).
+   - Dans l'application : bouton « Clé API » (en haut à droite), collez la clé, cliquez
+     « Vérifier et enregistrer ». La clé est vérifiée puis rangée dans le coffre Windows
+     (Gestionnaire d'identification › Informations d'identification Windows › PhoneCallDesktop).
+   - Ne collez jamais la clé dans un fichier, un e-mail ou une conversation.
+   - Pour la retirer : bouton « Clé API » › « Supprimer la clé de ce PC ».
+
+4. Utiliser
    - Choisissez « Son du PC » = le périphérique où vous entendez l'appel (souvent le casque),
      et « Micro » = le micro du casque.
    - Cochez la case d'information, cliquez Démarrer. Le bandeau rouge indique que l'écoute est active.
-   - Cliquez Fin (ou touche Échap) : l'écoute s'arrête, la note s'affiche.
+   - Cliquez Fin (ou touche Échap) : l'écoute s'arrête ; la note est rédigée par Claude
+     en quelques secondes, avec les points à vérifier.
    - Relisez, modifiez si besoin, Copier la note, collez dans le CRM.
 
-4. Outils
-   - « Mode demonstration.bat » : conversation fictive, sans micro ni IA.
+5. Outils
+   - « Mode demonstration.bat » : conversation fictive, sans micro ni IA (note simulée).
    - « Diagnostic audio.bat » : vérifie en 10 s que le son du PC et le micro sont captés.
 
-5. Limites de cette version
-   - La note est SIMULÉE (aucune IA) tant qu'aucune passerelle n'est configurée dans config.env.
+6. Limites de cette version
+   - Sans clé API enregistrée, la transcription fonctionne mais la note ne peut pas être rédigée.
+   - Chaque note est facturée sur le compte Anthropic de la clé (quelques centimes par appel).
+   - La note peut contenir des erreurs : elle est une proposition à relire, jamais validée seule.
    - Avec des haut-parleurs (sans casque), la voix de l'interlocuteur peut apparaître en double.
    - Aucun son n'est enregistré sur le disque ; la transcription est effacée par « Nouvelle conversation ».
 

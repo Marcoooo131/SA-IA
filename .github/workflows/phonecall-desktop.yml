@@ -73,6 +73,9 @@ jobs:
           }
           $code = Run-App '--selftest --report selftest.txt' 120000
           Get-Content selftest.txt; Write-Host "selftest exit code: $code"; if ($code -ne 0) { exit $code }
+          # Claude note engine bundled: SDK, versioned prompt, schema, business.yaml (no API call)
+          if (-not (Select-String -Path selftest.txt -Pattern "note engine ok: .*categories=[1-9]" -Quiet)) { Write-Host "note engine missing"; exit 1 }
+          if (-not (Select-String -Path selftest.txt -Pattern "environment: production" -Quiet)) { Write-Host "packaged profile is not production"; exit 1 }
           $code = Run-App '--diag 0 --report diag.txt' 60000
           Get-Content diag.txt; Write-Host "diag exit code: $code (1 = no audio device on CI runners)"
           $code = Run-App '--selftest-recognizer tiny --report recognizer.txt' 600000
@@ -108,15 +111,16 @@ jobs:
           make_latest: true
           files: PhoneCallDesktop-windows.zip
           body: |
-            Version de **test** du poste conseiller Phone Call (prototype, non officiel, non signé).
+            Poste conseiller Phone Call (application Windows non signée).
+            Transcription en direct calculée sur le PC ; note rédigée par Claude à la fin de l'appel.
 
             1. Téléchargez `PhoneCallDesktop-windows.zip`, clic droit › Extraire tout.
             2. Ouvrez le dossier `PhoneCallDesktop` et lisez `LISEZMOI.txt`.
             3. Double-cliquez sur `PhoneCallDesktop.exe` (si Windows le bloque : « Informations complémentaires » › « Exécuter quand même »).
             4. Autorisez le micro : Paramètres › Confidentialité et sécurité › Microphone › « Autoriser les applications de bureau ».
+            5. Bouton « Clé API » : collez votre clé Anthropic (console.anthropic.com › API Keys). Elle est rangée dans le coffre Windows.
 
             Au premier lancement, le moteur de transcription (~500 Mo) est téléchargé.
-            La note est **simulée** (aucune IA) tant qu'aucune passerelle n'est configurée dans `config.env`.
-            Utiliser uniquement avec des conversations fictives.
+            Seule la transcription (texte) est envoyée à Claude, à la fin de l'appel ; l'audio ne quitte pas le PC.
 
             Commit : ${{ github.sha }}

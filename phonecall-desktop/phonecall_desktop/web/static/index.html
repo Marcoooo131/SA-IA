@@ -15,6 +15,7 @@
     <span id="state-badge" class="badge s-ready" role="status" aria-live="polite">Prêt</span>
     <span id="timer" class="timer" hidden>00:00</span>
   </div>
+  <button id="btn-ai-key" class="ghost" hidden>Clé API</button>
   <button id="btn-history" class="ghost" hidden>Historique</button>
 </header>
 
@@ -23,6 +24,8 @@
   Cliquez sur <strong>Fin</strong> pour arrêter immédiatement.
 </div>
 <div id="test-banner" class="test-banner" hidden></div>
+<div id="ai-key-banner" class="test-banner" hidden>Aucune clé API Claude enregistrée : la transcription fonctionne,
+  mais la note ne pourra pas être rédigée. <button id="ai-key-banner-btn" class="small">Saisir la clé</button></div>
 
 <main class="layout">
   <section class="panel controls" aria-label="Capture">
@@ -82,6 +85,21 @@
   <ul id="history-list" class="history"></ul>
   <textarea id="history-note" readonly hidden></textarea>
   <div class="note-buttons"><button id="history-delete-all" class="danger">Tout supprimer</button></div>
+</dialog>
+<dialog id="ai-key-dialog">
+  <div class="dialog-head"><h2>Clé API Claude</h2><button id="ai-key-close" class="ghost">Fermer</button></div>
+  <p id="ai-key-status"></p>
+  <label for="ai-key-input">Nouvelle clé (elle commence par « sk-ant- »)</label>
+  <input id="ai-key-input" type="password" autocomplete="off" spellcheck="false">
+  <p class="hint">La clé est vérifiée auprès d'Anthropic, puis rangée dans le coffre Windows
+    (Gestionnaire d'identification). Elle n'est jamais réaffichée ni écrite dans un fichier.
+    À la fin de chaque appel, seule la transcription (texte) est envoyée à Claude pour rédiger la note :
+    l'audio ne quitte jamais le PC.</p>
+  <p id="ai-key-error" class="error-text" hidden role="alert"></p>
+  <div class="note-buttons">
+    <button id="ai-key-save" class="primary">Vérifier et enregistrer</button>
+    <button id="ai-key-delete" class="danger">Supprimer la clé de ce PC</button>
+  </div>
 </dialog>
 </body>
 </html>

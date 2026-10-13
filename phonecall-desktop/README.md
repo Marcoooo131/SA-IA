@@ -2,7 +2,7 @@
 
 Application de bureau Windows qui **capte la conversation sur l'ordinateur** (son joué par le PC
 via WASAPI loopback + micro du conseiller), la **transcrit en direct en français, localement**, puis
-fait **générer une note « Phone Call »** par la passerelle IA de l'entreprise, à relire et à copier
+fait **rédiger une note « Phone Call » par Claude** (clé API saisie dans l'application, ou passerelle IA de l'entreprise), à relire et à copier
 dans le CRM. Indépendante de Twilio.
 
 > ⚠️ **Prototype.** Testé automatiquement avec des sources audio simulées et des conversations
@@ -41,7 +41,7 @@ du micro (aucun son n'est enregistré).
 | [AUDIT.md](AUDIT.md) | audit du projet existant, possibilités réelles de capture, comparaison Electron / Tauri / web, plan |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | architecture cible justifiée, flux, états, sécurité |
 | [docs/INSTALLATION_WINDOWS.md](docs/INSTALLATION_WINDOWS.md) | installation, paquet, mise à jour, désinstallation |
-| [docs/CONFIGURATION_CLES.md](docs/CONFIGURATION_CLES.md) | clés et jetons (aucune clé d'IA sur le poste) |
+| [docs/CONFIGURATION_CLES.md](docs/CONFIGURATION_CLES.md) | clé Claude (coffre Windows ou passerelle) et jetons |
 | [docs/PROCEDURE_TEST_AUDIO.md](docs/PROCEDURE_TEST_AUDIO.md) | tests audio à réaliser sur poste réel |
 | [docs/COUTS.md](docs/COUTS.md) | mesures (qualité, latence) et coût par heure et par appel |
 | [docs/LIMITATIONS.md](docs/LIMITATIONS.md) | limitations connues et ce qui n'a pas été vérifié |
@@ -55,7 +55,8 @@ phonecall_desktop/
   audio/        sources (WASAPI, fichiers de test), périphériques, capture supervisée, traitement du flux
   stt/          segmentation, transcription en flux, faster-whisper, reconnaisseur scripté (tests)
   transcript/   assemblage : ordre, doublons, écho
-  notes/        client de la passerelle IA (phonecall-agent : POST /api/v1/notes)
+  notes/        note : client direct Claude (clé du coffre Windows) ou client de la passerelle
+                (même moteur : phonecall_agent.note_service)
   web/          serveur local sécurisé + interface (HTML/CSS/JS sans dépendance externe)
   session.py    cycle de vie d'une conversation (états, arrêt garanti)
   history.py    historique optionnel chiffré

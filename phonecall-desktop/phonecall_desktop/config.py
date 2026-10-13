@@ -2,7 +2,8 @@
 
 Sources (highest priority first): environment variables ``PCD_*``, then the file
 ``%APPDATA%\\PhoneCallDesktop\\config.env`` (Windows) / ``~/.config/phonecall-desktop/config.env``.
-No secret is stored here: the gateway token lives in the Windows Credential Manager (keyring).
+No secret is stored here: the gateway token and the AI API key live in the Windows Credential
+Manager (keyring).
 """
 
 from __future__ import annotations
@@ -71,10 +72,15 @@ class Settings(BaseSettings):
     transcription_finish_timeout_s: float = 120.0
 
     # --- Notes
-    notes_client: str = "gateway"  # gateway | simulated (tests)
+    notes_client: str = "gateway"  # gateway | anthropic (direct, key in the Windows vault) | simulated (tests)
     gateway_url: str = ""
     gateway_timeout_s: float = 90.0
     gateway_ca_bundle: Path | None = None  # company CA if TLS inspection is used
+    # Direct mode: the transcript is sent to Anthropic (approval of the data-protection team required)
+    anthropic_model: str = "claude-opus-5-5"
+    anthropic_effort: str = "medium"
+    anthropic_timeout_s: float = 120.0
+    business_config: Path | None = None  # categories / report format; default: business.yaml next to the .exe
 
     # --- Session & privacy
     require_consent_confirmation: bool = True
@@ -95,9 +101,9 @@ class Settings(BaseSettings):
             problems.append("audio_backend must be wasapi")
         if self.recognizer == "scripted":
             problems.append("scripted recognizer is for tests only")
-        if self.notes_client != "gateway":
-            problems.append("notes_client must be gateway")
-        if not self.gateway_url.startswith("https://"):
+        if self.notes_client not in ("gateway", "anthropic"):
+            problems.append("notes_client must be gateway or anthropic")
+        if self.notes_client == "gateway" and not self.gateway_url.startswith("https://"):
             problems.append("gateway_url must be https://")
         if problems:
             raise AppError(ErrorCode.CONFIG, "; ".join(problems))

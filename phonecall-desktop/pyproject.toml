@@ -13,6 +13,8 @@ dependencies = [
   "cryptography>=42",
   "keyring>=25",
   "faster-whisper>=1.1",
+  # Note engine (prompt, schema, checks) shared with the gateway: install ../phonecall-agent too
+  "anthropic>=1.13",
   "PyAudioWPatch>=0.2.12; sys_platform == 'win32'",
   "pywebview>=5.0; sys_platform == 'win32'",
 ]

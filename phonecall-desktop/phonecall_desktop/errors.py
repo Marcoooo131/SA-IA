@@ -22,6 +22,9 @@ class ErrorCode(str, Enum):
     NOTE_REJECTED = "note_rejected"
     NOTE_SERVER = "note_server"
     NOTE_TIMEOUT = "note_timeout"
+    AI_KEY_MISSING = "ai_key_missing"
+    AI_KEY_INVALID = "ai_key_invalid"
+    AI_KEY_FORMAT = "ai_key_format"
     CONFIG = "config"
     INTERNAL = "internal"
 
@@ -43,6 +46,9 @@ USER_MESSAGES = {
     ErrorCode.NOTE_REJECTED: "Le service de génération a refusé la demande.",
     ErrorCode.NOTE_SERVER: "Le service de génération a rencontré une erreur. Réessayez.",
     ErrorCode.NOTE_TIMEOUT: "Le service de génération n'a pas répondu à temps. Réessayez.",
+    ErrorCode.AI_KEY_MISSING: "Aucune clé API Claude enregistrée : cliquez sur « Clé API » pour la saisir, puis relancez la génération.",
+    ErrorCode.AI_KEY_INVALID: "Clé API Claude refusée (invalide, révoquée ou sans accès au modèle) : vérifiez-la dans « Clé API ».",
+    ErrorCode.AI_KEY_FORMAT: "Ce texte n'est pas une clé API Claude : une clé commence par « sk-ant- » (console.anthropic.com › API Keys).",
     ErrorCode.CONFIG: "Configuration invalide.",
     ErrorCode.INTERNAL: "Erreur interne.",
 }

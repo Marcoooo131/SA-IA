@@ -79,6 +79,10 @@ def selftest() -> int:
                   + (f" error={devices['error']['code']}" if devices.get("error") else ""))
             for d in devices["devices"]:
                 print(f"  - [{d['channel']}] {d['name']}{' (défaut)' if d['is_default'] else ''}")
+        print(f"notes: {settings.notes_client}")
+        if hasattr(controller.note_client, "describe"):
+            info = controller.note_client.describe()
+            print("note engine ok: " + " ".join(f"{k}={v}" for k, v in info.items()))
         return 0
     finally:
         server.should_exit = True

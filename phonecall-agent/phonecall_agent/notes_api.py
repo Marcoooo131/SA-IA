@@ -21,13 +21,11 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from .container import Container
 from .errors import InvalidAIResponse, PermanentError, PipelineError
-from .generation import GenerationContext, prompt_version
-from .quality import ReportValidator
-from .transcription.base import Segment, TranscriptResult, normalise
+from .generation import prompt_version
+from .note_service import NO_CONTENT_TEXT, NoteSegment  # noqa: F401 - NO_CONTENT_TEXT re-exported
+from .note_service import generate_note as build_note
 
 log = logging.getLogger(__name__)
-
-NO_CONTENT_TEXT = "Appel sans échange exploitable (aucune conversation reconnue)."
 
 
 class SegmentIn(BaseModel):
@@ -118,42 +116,15 @@ def build_notes_router(c: Container) -> APIRouter:
         total_chars = sum(len(s.text) for s in body.segments)
         if total_chars > settings.note_api_max_chars:
             raise HTTPException(413, "transcript too long")
-
-        transcript = normalise(TranscriptResult(
-            provider="client",
-            language="fr",
-            segments=[Segment(id=f"S{i}", text=s.text, start=s.start, end=s.end, speaker=s.speaker,
-                              uncertain=s.uncertain) for i, s in enumerate(body.segments, start=1)],
-            speaker_labels=body.speaker_labels,
-        ))
         log.info("note request", extra={"stage": "notes"})  # no content in logs
-        version = prompt_version(c.business)
-
-        if transcript.word_count < c.business.quality.min_transcript_words:
-            counters["no_content"] += 1
-            result = {
-                "note_text": NO_CONTENT_TEXT, "no_usable_content": True, "category": None,
-                "quality": {"score": None, "needs_review": True, "flags": []}, "points_to_verify": [],
-                "structured": None, "prompt_version": version, "model": None, "generator": None, "cost_usd": 0.0,
-            }
-            if cache_key:
-                cache.put(cache_key, result)
-            return result
-
-        ctx = GenerationContext(
-            business=c.business,
-            metadata={"durée de l'appel (s)": body.duration_s or "inconnue", "source": "poste du conseiller"},
-        )
-        gen = None
         try:
-            for _ in range(max(1, settings.ai_max_attempts)):
-                try:
-                    gen = c.generator.generate(transcript, ctx)
-                    break
-                except InvalidAIResponse:
-                    continue
-            if gen is None:
-                raise InvalidAIResponse("invalid AI response after retries")
+            result = build_note(
+                c.generator, c.business,
+                [NoteSegment(text=s.text, start=s.start, end=s.end, speaker=s.speaker, uncertain=s.uncertain)
+                 for s in body.segments],
+                speaker_labels=body.speaker_labels, duration_s=body.duration_s,
+                ai_max_attempts=settings.ai_max_attempts,
+            )
         except InvalidAIResponse as exc:
             counters["errors"] += 1
             raise HTTPException(502, exc.code) from exc
@@ -163,21 +134,7 @@ def build_notes_router(c: Container) -> APIRouter:
         except PipelineError as exc:
             counters["errors"] += 1
             raise HTTPException(503, exc.code) from exc
-
-        quality = ReportValidator(c.business).validate(gen.structured, gen.text, transcript)
-        counters["generated"] += 1
-        result = {
-            "note_text": gen.text,
-            "no_usable_content": gen.structured.no_usable_content,
-            "category": gen.structured.category,
-            "quality": {"score": quality.score, "needs_review": True, "flags": quality.flags_as_dicts()},
-            "points_to_verify": gen.structured.points_to_verify,
-            "structured": gen.structured.model_dump(),
-            "prompt_version": version,
-            "model": gen.model,
-            "generator": gen.generator,
-            "cost_usd": gen.cost_usd,
-        }
+        counters["no_content" if result["generator"] is None else "generated"] += 1
         if cache_key:
             cache.put(cache_key, result)
         return result
