@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Appels{% endblock %}
+{% block content %}
+<h1>Appels traités</h1>
+{% if not crm.available %}
+<p class="notice">Intégration CRM : <strong>non active</strong>. {{ crm.reason }}</p>
+{% endif %}
+<form method="get" class="filters">
+  <label>Statut
+    <select name="status">
+      <option value="">Tous</option>
+      {% for key, label in STATUS_LABELS.items() %}
+      <option value="{{ key }}" {% if status == key %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button>Filtrer</button>
+</form>
+<table class="list">
+  <thead><tr><th>Reçu le</th><th>Statut</th><th>Catégorie</th><th>Durée</th><th>Indicateur qualité*</th><th></th></tr></thead>
+  <tbody>
+  {% for c in items %}
+    <tr>
+      <td>{{ c.received_at.strftime('%d/%m/%Y %H:%M') }}</td>
+      <td><span class="badge s-{{ c.status }}">{{ STATUS_LABELS.get(c.status, c.status) }}</span>
+        {% if c.detail %}<div class="muted small">{{ c.detail }}</div>{% endif %}</td>
+      <td>{{ c.category or '—' }}</td>
+      <td>{{ c.duration ~ ' s' if c.duration is not none else '—' }}</td>
+      <td>{{ c.score if c.score is not none else '—' }}</td>
+      <td><a href="/calls/{{ c.id }}">Ouvrir</a></td>
+    </tr>
+  {% else %}
+    <tr><td colspan="6" class="muted">Aucun appel.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p class="muted small">* Indicateur calculé par des règles explicites (voir ARCHITECTURE.md). Ce n'est pas une probabilité calibrée.</p>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Connexion{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Connexion</h1>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <form method="post" action="/login">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Identifiant <input name="login" autocomplete="username" required></label>
+    <label>Mot de passe <input name="password" type="password" autocomplete="current-password" required></label>
+    <button class="primary">Se connecter</button>
+  </form>
+</section>
+{% endblock %}

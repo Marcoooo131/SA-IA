@@ -1,0 +1,57 @@
+# Reference deployment (staging / small production). Secrets come from the env file
+# generated from your secret manager — never commit it.
+# Put a TLS-terminating reverse proxy (nginx, Traefik, load balancer) in front of "api".
+name: phonecall-agent
+
+x-app: &app
+  build: ..
+  env_file: ../.env
+  environment:
+    PCA_DATABASE_URL: postgresql+psycopg://phonecall:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/phonecall
+    PCA_REDIS_URL: redis://redis:6379/0
+    PCA_QUEUE_BACKEND: rq
+    PCA_AUDIO_TEMP_DIR: /app/var/audio
+  volumes:
+    - audio:/app/var/audio
+  depends_on:
+    postgres: { condition: service_healthy }
+    redis: { condition: service_healthy }
+  restart: unless-stopped
+  read_only: true
+  tmpfs: [/tmp]
+  security_opt: ["no-new-privileges:true"]
+
+services:
+  api:
+    <<: *app
+    ports: ["127.0.0.1:8000:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 30s
+  worker:
+    <<: *app
+    command: ["python", "-m", "phonecall_agent.cli", "worker"]
+    deploy: { replicas: 2 }
+  maintenance:
+    <<: *app
+    command: ["python", "-m", "phonecall_agent.cli", "maintenance", "--loop"]
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: phonecall
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: phonecall
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U phonecall"], interval: 10s }
+    restart: unless-stopped
+  redis:
+    image: redis:7
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redisdata:/data]
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 10s }
+    restart: unless-stopped
+
+volumes:
+  audio:
+  pgdata:
+  redisdata:

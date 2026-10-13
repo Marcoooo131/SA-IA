@@ -9,6 +9,10 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > hypothèses de configuration** à valider par les responsables métier. Toutes les données préchargées
 > sont fictives. Aucune intégration à un système interne n'existe.
 
+> 📞 **Nouveau : `phonecall-agent/`** — prototype distinct (Python / FastAPI) de génération automatique des
+> Phone Call à partir des enregistrements Twilio. Voir [`phonecall-agent/README.md`](phonecall-agent/README.md)
+> et [`phonecall-agent/AUDIT.md`](phonecall-agent/AUDIT.md).
+
 ---
 
 ## 1. Démarrage rapide

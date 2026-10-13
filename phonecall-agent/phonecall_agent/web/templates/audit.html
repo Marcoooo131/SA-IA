@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Journal d'audit{% endblock %}
+{% block content %}
+<h1>Journal d'audit</h1>
+<form method="post" action="/admin/purge" class="actions">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <button>Appliquer maintenant la politique de conservation</button>
+</form>
+<table class="list">
+  <thead><tr><th>Date</th><th>Acteur</th><th>Action</th><th>Cible</th><th>Détails</th></tr></thead>
+  <tbody>
+  {% for e in entries %}
+  <tr><td>{{ e.at.strftime('%d/%m/%Y %H:%M:%S') }}</td><td>{{ e.actor }}</td><td>{{ e.action }}</td><td class="small">{{ e.target or '' }}</td><td class="small">{{ e.details }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Phone Call Agent{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="dot"></span> Phone Call Agent <small>prototype</small></div>
+  {% if user %}
+  <nav>
+    <a href="/calls">Appels</a>
+    {% if user.role >= Role.SUPERVISOR %}<a href="/dashboard">Indicateurs</a>{% endif %}
+    {% if user.role >= Role.ADMIN %}<a href="/admin/audit">Journal d'audit</a>{% endif %}
+    <span class="who">{{ user.login }} · {{ user.role.name|lower }}</span>
+    <form method="post" action="/logout" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="link">Déconnexion</button>
+    </form>
+  </nav>
+  {% endif %}
+</header>
+{% if settings.environment.value in ('dev', 'test') %}
+<div class="banner sim">Environnement de {{ settings.environment.value }} — données synthétiques uniquement.
+  {% if settings.crm_connector == 'simulated' %} Connecteur CRM <strong>SIMULÉ</strong> : aucune écriture dans le vrai CRM.{% endif %}
+  {% if settings.transcription_provider == 'simulated' or settings.generation_provider == 'simulated' %} Transcription / IA <strong>simulées</strong>.{% endif %}
+</div>
+{% endif %}
+<main>{% block content %}{% endblock %}</main>
+</body>
+</html>

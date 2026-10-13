@@ -1,0 +1,17 @@
+{
+  "no_usable_content": false,
+  "category": "sav",
+  "category_evidence": ["S2"],
+  "customer_statements": [
+    {"text": "Le détecteur du couloir se déclenche sans raison depuis la veille au soir.", "evidence": ["S2"], "to_verify": false}
+  ],
+  "advisor_information": [
+    {"text": "Un changement de pile a été évoqué (passage partiellement inaudible).", "evidence": ["S5"], "to_verify": true}
+  ],
+  "actions_done": [],
+  "actions_todo": [
+    {"text": "Solution à confirmer : changement de pile évoqué, modalités inaudibles.", "evidence": ["S5"], "to_verify": true, "owner": "unknown"}
+  ],
+  "points_to_verify": ["Solution apportée et prochaine étape : passages S3 à S5 inaudibles ou incertains."],
+  "phone_call_text": "Appel entrant – SAV.\nLe client signale que le détecteur du couloir se déclenche sans raison depuis la veille au soir.\nUn changement de pile a été évoqué ; la suite de l'échange est en partie inaudible.\nÀ vérifier : solution apportée et prochaine étape."
+}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Indicateurs{% endblock %}
+{% block content %}
+<h1>Indicateurs</h1>
+{% macro pct(v) %}{{ '%.1f %%'|format(v * 100) if v is not none else '—' }}{% endmacro %}
+<div class="tiles">
+  <div class="tile"><span>Appels reçus</span><strong>{{ m.calls_received }}</strong></div>
+  <div class="tile"><span>Taux de réussite</span><strong>{{ pct(m.success_rate) }}</strong></div>
+  <div class="tile"><span>Durée moyenne de traitement</span><strong>{{ m.avg_processing_seconds ~ ' s' if m.avg_processing_seconds is not none else '—' }}</strong></div>
+  <div class="tile"><span>Coût moyen par appel (estimé)</span><strong>{{ '%.4f $'|format(m.avg_cost_usd_per_call) if m.avg_cost_usd_per_call is not none else '—' }}</strong></div>
+  <div class="tile"><span>Taux de validation humaine</span><strong>{{ pct(m.human_review_rate) }}</strong></div>
+  <div class="tile"><span>Taux de correction</span><strong>{{ pct(m.correction_rate) }}</strong></div>
+  <div class="tile"><span>Doublons évités</span><strong>{{ m.duplicates_avoided }}</strong></div>
+  <div class="tile"><span>Écritures CRM vérifiées</span><strong>{{ m.crm_writes_confirmed }}</strong></div>
+</div>
+<h2>Répartition par statut</h2>
+<table class="list"><tbody>
+{% for k, v in m.calls_by_status.items() %}<tr><td>{{ STATUS_LABELS.get(k, k) }}</td><td>{{ v }}</td></tr>{% endfor %}
+</tbody></table>
+{% endblock %}
