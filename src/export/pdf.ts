@@ -170,7 +170,7 @@ export function generateQuotePdf(input: QuotePdfInput): jsPDF {
     doc.text(
       T(
         result.pack.transferred
-          ? `${result.pack.name} : abonnement transféré dans le cadre du déménagement (0 € de frais matériel, 0 €/mois).`
+          ? `${result.pack.name} : abonnement transféré dans le cadre du déménagement (0 € de frais matériel, mensualité conservée).`
           : `${result.pack.name} : forfait de ${formatEuro(result.pack.initial)} de frais matériel et ${formatMonthly(result.pack.monthly)}${result.pack.overridden ? ' (prix ajusté pour ce devis)' : ''}. Le forfait n'est pas la somme des prix unitaires.`,
       ),
       MARGIN,
@@ -188,7 +188,7 @@ export function generateQuotePdf(input: QuotePdfInput): jsPDF {
     T(formatEuro(l.unitInitial)),
     T(formatMonthly(l.unitMonthly)),
     T(l.extra - l.bundled - l.moved > 0 ? (l.extraInitial === null ? 'À confirmer' : formatEuro(l.extraInitial)) : l.moved ? '0 €' : '-'),
-    T(l.extra - l.bundled - l.moved > 0 ? (l.extraMonthly === null ? 'À confirmer' : formatMonthly(l.extraMonthly)) : l.moved ? '0 €/mois' : '-'),
+    T(l.extra - l.bundled - l.moved > 0 || l.moved ? (l.extraMonthly === null ? 'À confirmer' : formatMonthly(l.extraMonthly)) : '-'),
   ]);
   for (const b of result.bundles)
     body.push([T(b.name), T(b.reference), `${b.count} lot(s)`, '-', `${b.covers} unités`, T(formatEuro(b.unitInitial)), T(formatMonthly(b.unitMonthly)), T(formatEuro(b.initial)), T(formatMonthly(b.monthly))]);
@@ -208,7 +208,7 @@ export function generateQuotePdf(input: QuotePdfInput): jsPDF {
   const totals: string[][] = [];
   if (result.pack) totals.push([T(`Forfait ${result.pack.name}`), T(formatEuro(result.pack.initial)), T(formatMonthly(result.pack.monthly))]);
   totals.push([T('Équipements supplémentaires'), T(formatEuro(result.extras.initial)), T(formatMonthly(result.extras.monthly))]);
-  if (result.movedCount) totals.push([T(`Équipements repris (déménagement) : ${result.movedCount}`), T('0 €'), T('0 €/mois')]);
+  if (result.movedCount) totals.push([T(`Équipements repris (déménagement) : ${result.movedCount}`), T('0 € (matériel)'), T('mensualité conservée')]);
   totals.push([T("Frais d'installation"), T(result.installation === null ? 'À confirmer' : formatEuro(result.installation)), '-']);
   for (const d of result.discounts)
     totals.push([T(`Remise : ${d.label}`), d.target === 'mensuel_total' ? '-' : T(`- ${formatEuro(d.amount)}`), d.target === 'mensuel_total' ? T(`- ${formatMonthly(d.amount)}`) : '-']);

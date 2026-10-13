@@ -149,7 +149,7 @@ export function QuoteTab() {
               <div>
                 <div className="font-semibold text-amber-900">Déménagement</div>
                 <div className="text-[11px] text-amber-800">
-                  Équipements repris du logement précédent et abonnement transféré : 0 € et 0 €/mois.
+                  Équipements repris du logement précédent et abonnement transféré : frais matériels à 0 €, la mensualité reste due.
                   {quote.movedCount > 0 && ` ${quote.movedCount} équipement(s) repris.`}
                   {quote.pack?.transferred && ' Abonnement transféré.'}
                 </div>
@@ -198,7 +198,6 @@ export function QuoteTab() {
                       suffix="€/m"
                       placeholder={formatNumber(quote.pack.catalogMonthly)}
                       className="w-28"
-                      disabled={quote.pack.transferred}
                       aria-label="Mensualité du forfait"
                     />
                     {quote.pack.overridden && (
@@ -216,7 +215,7 @@ export function QuoteTab() {
                       </Badge>
                     ))}
                   </div>
-                  <Toggle checked={quote.pack.transferred} onChange={setPackTransferred} label="Abonnement transféré (0 € / 0 €/mois)" />
+                  <Toggle checked={quote.pack.transferred} onChange={setPackTransferred} label="Abonnement transféré (frais matériels à 0 €, mensualité conservée)" />
                 </div>
                 <p className="mt-1 text-[11px] text-slate-500">
                   Appliqué : <strong>{formatEuro(quote.pack.initial)}</strong> · <strong>{formatMonthly(quote.pack.monthly)}</strong>
@@ -334,11 +333,14 @@ export function QuoteTab() {
                             <div className="text-xs text-slate-500">{l.extraMonthly === null ? 'Mensuel à confirmer' : formatMonthly(l.extraMonthly)}</div>
                           </>
                         ) : l.moved > 0 ? (
-                          <span className="text-xs text-amber-700">Repris : 0 €</span>
+                          <>
+                            <span className="text-xs text-amber-700">Repris : 0 €</span>
+                            <div className="text-xs text-slate-500">{l.extraMonthly === null ? 'Mensuel à confirmer' : formatMonthly(l.extraMonthly)}</div>
+                          </>
                         ) : (
                           <span className="text-slate-400">—</span>
                         )}
-                        {billable > 0 && l.moved > 0 && <div className="text-[10px] text-amber-700">{l.moved} repris à 0 €</div>}
+                        {billable > 0 && l.moved > 0 && <div className="text-[10px] text-amber-700">{l.moved} repris : matériel à 0 €, mensualité conservée</div>}
                       </td>
                     </tr>
                   );
@@ -413,7 +415,7 @@ export function QuoteTab() {
                 {quote.movedCount > 0 && (
                   <div className="flex justify-between text-amber-800">
                     <dt>Équipements repris (déménagement) : {quote.movedCount}</dt>
-                    <dd className="tabular-nums">0 € · 0 €/mois</dd>
+                    <dd className="tabular-nums">matériel 0 € · mensualité conservée</dd>
                   </div>
                 )}
                 <div className="flex justify-between">

@@ -154,7 +154,7 @@ Indépendant de l'interface (fonction pure `runAudit`) et paramétrable dans *Ca
 - **Centrale : supplément mensuel toujours à 0 €** (règle métier validée) – verrouillé dans le catalogue et le devis ; un import Excel indiquant une autre valeur affiche une alerte, exige une confirmation et conserve 0 €.
 - **Prix modifiables dans le devis** (prix matériel, supplément mensuel, prix du forfait) sans changer le catalogue ; « Prix du catalogue » pour revenir à la valeur d'origine.
 - **Montants finaux modifiables** : frais initiaux et mensualité du devis saisissables à la main, avec un motif ; l'écart avec le calcul apparaît comme « ajustement » dans le récapitulatif et le PDF.
-- **Déménagement** : équipements repris du logement précédent (case par ligne, quantité réglable) et abonnement transféré à **0 € et 0 €/mois** ; bouton « Tout passer en déménagement ». Repris dans le PDF et l'historique.
+- **Déménagement** : équipements repris du logement précédent (case par ligne, quantité réglable) et abonnement transféré : **frais matériels à 0 €, mensualité conservée** ; bouton « Tout passer en déménagement ». Repris dans le PDF et l'historique.
 - Regroupement automatique en pack périmétrique lorsque c'est moins cher (sans augmenter le mensuel).
 - Calculs en centimes (aucune erreur d'arrondi), ajustements de quantités, recalcul instantané.
 - Comparateur : configuration retenue (plan), standard (volumétrique), alternative (périmétrique) × Pack Essentiel, Pack Sérénité, sans forfait.
