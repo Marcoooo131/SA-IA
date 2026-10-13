@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { AlertTriangle, CheckCircle2, Info, X } from 'lucide-react';
 import { useApp } from './state/store';
 import { Header } from './ui/Header';
-import { Dashboard } from './ui/Dashboard';
+import { AuditsView, Dashboard, DossiersView } from './ui/Dashboard';
 import { Workspace } from './ui/workspace/Workspace';
 import { CatalogAdmin } from './ui/catalog/CatalogAdmin';
 import { ErrorBoundary } from './ui/ErrorBoundary';
@@ -16,14 +16,14 @@ function Toasts() {
         <div
           key={t.id}
           role={t.kind === 'error' ? 'alert' : 'status'}
-          className="pointer-events-auto flex items-start gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm shadow-lg"
+          className="pointer-events-auto flex items-start gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-sm shadow-lg"
         >
           {t.kind === 'error' ? (
-            <AlertTriangle size={16} className="mt-0.5 shrink-0 text-red-600" />
+            <AlertTriangle size={16} className="mt-0.5 shrink-0 text-brand-600" />
           ) : t.kind === 'success' ? (
             <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-emerald-600" />
           ) : (
-            <Info size={16} className="mt-0.5 shrink-0 text-brand-600" />
+            <Info size={16} className="mt-0.5 shrink-0 text-slate-900" />
           )}
           <span className="flex-1 text-slate-700">{t.text}</span>
           <button onClick={() => dismiss(t.id)} className="text-slate-400 hover:text-slate-600" aria-label="Fermer">
@@ -44,13 +44,16 @@ export function App() {
   }, [loadErrors, toast]);
 
   return (
-    <div className="flex h-full min-w-[1180px] flex-col">
+    <div className="flex h-full min-w-[760px] flex-col">
       <Header />
       <main className="min-h-0 flex-1">
         <ErrorBoundary>
           {view === 'dashboard' && <Dashboard />}
+          {view === 'dossiers' && <DossiersView />}
+          {view === 'audits' && <AuditsView />}
           {view === 'workspace' && <Workspace />}
-          {view === 'catalog' && <CatalogAdmin />}
+          {view === 'catalog' && <CatalogAdmin mode="catalogue" />}
+          {view === 'settings' && <CatalogAdmin mode="parametres" key="parametres" />}
         </ErrorBoundary>
       </main>
       <Toasts />

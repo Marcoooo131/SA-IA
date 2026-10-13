@@ -8,6 +8,7 @@ import { clampOffset, hostSegment, isOpeningExteriorByGeometry, roomArea, segmen
 import { formatEuro, formatMonthly, formatNumber } from '@/lib/format';
 import { Badge, Button, Field, NumberInput, PanelSection, Select, TextInput, Toggle } from '../kit';
 import { CategoryDot } from './LeftPanels';
+import { FurnitureProperties, JoineryFields, RoomFurnitureSection } from './FurniturePanel';
 
 function Grid2({ children }: { children: React.ReactNode }) {
   return <div className="grid grid-cols-2 gap-2">{children}</div>;
@@ -36,13 +37,20 @@ export function PropertiesPanel() {
 
   const edit = (fn: (l: Level) => void, history = true) => mutate((d) => fn(findLevel(d, level.id)), { history });
 
+  if (selection.kind === 'furniture') return <FurnitureProperties level={level} id={selection.id} />;
+
   if (selection.kind === 'room') {
     const room = level.rooms.find((r) => r.id === selection.id);
     if (!room) return null;
     const upd = (patch: Partial<typeof room>) =>
       edit((l) => {
         const r = l.rooms.find((x) => x.id === room.id);
-        if (r) Object.assign(r, patch);
+        if (!r) return;
+        // le mobilier suit un déplacement de la pièce
+        const dx = patch.x !== undefined ? patch.x - r.x : 0;
+        const dy = patch.y !== undefined ? patch.y - r.y : 0;
+        Object.assign(r, patch);
+        if (dx || dy) for (const f of l.furniture ?? []) if (f.roomId === r.id) Object.assign(f, { x: f.x + dx, y: f.y + dy });
       });
     return (
       <PanelSection title="Pièce">
@@ -102,6 +110,7 @@ export function PropertiesPanel() {
               Supprimer
             </Button>
           </div>
+          <RoomFurnitureSection level={level} room={room} />
         </div>
       </PanelSection>
     );
@@ -131,7 +140,7 @@ export function PropertiesPanel() {
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center justify-between">
             <span className="font-mono text-sm font-semibold text-slate-800">{o.code}</span>
-            {o.exterior ? <Badge tone="teal">Donne sur l'extérieur</Badge> : <Badge>Intérieure</Badge>}
+            {o.exterior ? <Badge tone="red">Donne sur l'extérieur</Badge> : <Badge>Intérieure</Badge>}
           </div>
           {unplaced ? (
             <div className="flex flex-col gap-1.5 rounded border border-amber-300 bg-amber-50 p-2 text-[11px] text-amber-900" data-testid="prop-opening-unplaced">
@@ -144,7 +153,7 @@ export function PropertiesPanel() {
             </div>
           ) : (
             !o.positionConfirmed && (
-              <p className="rounded bg-sky-50 px-2 py-1 text-[11px] text-sky-800">Position proposée automatiquement : à vérifier (validée avec le plan).</p>
+              <p className="rounded bg-slate-100 px-2 py-1 text-[11px] text-slate-700">Position proposée automatiquement : à vérifier (validée avec le plan).</p>
             )
           )}
           <p className="text-xs text-slate-500">
@@ -184,6 +193,7 @@ export function PropertiesPanel() {
               </Field>
             )}
           </Grid2>
+          <JoineryFields level={level} opening={o} />
           <Toggle checked={o.exterior} onChange={(v) => upd({ exterior: v })} label="Donne sur l'extérieur" disabled={o.type === 'porte_interieure' || o.type === 'passage'} />
           {!unplaced && o.exterior !== geomExterior && o.type !== 'porte_interieure' && o.type !== 'passage' && (
             <p className="rounded bg-amber-50 px-2 py-1 text-[11px] text-amber-800">

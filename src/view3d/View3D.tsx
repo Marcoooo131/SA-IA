@@ -11,6 +11,9 @@ import { Scene3DContent, cameraPreset, type LevelLayout, type WallMode } from '.
 import { cx } from '@/ui/kit';
 import { ErrorBoundary } from '@/ui/ErrorBoundary';
 import { setLastViewSnapshot } from './lastView';
+import { useEditor } from '@/state/editor';
+import { moveFurniture } from '@/furniture/actions';
+import { findLevel } from '@/plan/actions';
 
 type Preset = 'iso' | 'dessus' | 'face';
 
@@ -65,6 +68,8 @@ export function View3D() {
   const mutate = useApp((s) => s.mutate);
   const toast = useApp((s) => s.toast);
   const setActiveLevel = useApp((s) => s.setActiveLevel);
+  const show3dFurniture = useEditor((s) => s.show3dFurniture);
+  const show3dDevices = useEditor((s) => s.show3dDevices);
   const [preset, setPreset] = useState<Preset>('iso');
   const [nonce, setNonce] = useState(0);
   const [levelFilter, setLevelFilter] = useState<string>('tous');
@@ -81,6 +86,7 @@ export function View3D() {
   if (!dossier) return null;
   const levels = [...dossier.plan.levels].sort((a, b) => a.index - b.index);
   const selectedDeviceId = selection?.kind === 'device' ? selection.id : null;
+  const selectedFurnitureId = selection?.kind === 'furniture' ? selection.id : null;
   const usedCats = Array.from(new Set(dossier.devices.map((d) => products.find((p) => p.id === d.productId)?.category).filter(Boolean))) as ProductCategory[];
 
   const onFloorClick = (levelId: string, x: number, y: number) => {
@@ -96,6 +102,12 @@ export function View3D() {
       select({ kind: 'device', id });
       setActiveLevel(levelId);
       toast('success', `${product.name} placé en 3D (visible aussi sur le plan 2D).`);
+      return;
+    }
+    if (moveMode && selectedFurnitureId) {
+      // déplacement du meuble sélectionné au point cliqué (même donnée que le plan 2D)
+      const level = levels.find((l) => (l.furniture ?? []).some((f) => f.id === selectedFurnitureId));
+      if (level && level.id === levelId) mutate((d) => moveFurniture(findLevel(d, levelId), selectedFurnitureId, Math.round(x * 100) / 100, Math.round(y * 100) / 100));
       return;
     }
     if (moveMode && selectedDeviceId) {
@@ -116,7 +128,7 @@ export function View3D() {
       aria-pressed={active}
       className={cx(
         'flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium',
-        active ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+        active ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
       )}
     >
       {icon}
@@ -222,6 +234,15 @@ export function View3D() {
                     motionAngle: rules.motion.angleDeg,
                     motionRange: rules.motion.rangeM,
                     selectedDeviceId,
+                    selectedFurnitureId,
+                    showFurniture: show3dFurniture,
+                    showDevices: show3dDevices,
+                  }}
+                  onSelectFurniture={(id) => {
+                    const lvl = dossier.plan.levels.find((l) => (l.furniture ?? []).some((f) => f.id === id));
+                    if (lvl) setActiveLevel(lvl.id);
+                    select({ kind: 'furniture', id });
+                    armProduct(null);
                   }}
                   onSelectDevice={(id) => {
                     if (!id) return select(null);

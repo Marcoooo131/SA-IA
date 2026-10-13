@@ -25,14 +25,15 @@ import { syncSuggestedOpeningDevices } from '@/plan/joinery';
 import { levelHabitableArea } from '@/plan/geometry';
 import { createLocalRepository, type PersistedState, type Repository } from '@/persistence/storage';
 
-export type View = 'dashboard' | 'workspace' | 'catalog';
-export type WorkspaceTab = 'logement' | 'questionnaire' | 'menuiseries' | 'plan' | 'vue3d' | 'audit' | 'equipements' | 'devis';
+export type View = 'dashboard' | 'dossiers' | 'audits' | 'workspace' | 'catalog' | 'settings';
+export type WorkspaceTab = 'logement' | 'modele' | 'questionnaire' | 'menuiseries' | 'plan' | 'vue3d' | 'audit' | 'equipements' | 'proposition' | 'devis';
 
 export type Selection =
   | { kind: 'room'; id: string }
   | { kind: 'opening'; id: string }
   | { kind: 'wall'; id: string }
   | { kind: 'device'; id: string }
+  | { kind: 'furniture'; id: string }
   | { kind: 'background' }
   | null;
 

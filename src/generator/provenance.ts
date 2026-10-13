@@ -1,5 +1,6 @@
 import type { Level, Opening, PlanGeneration, Room } from '@/domain/types';
 import { roomsOverlap } from '@/plan/geometry';
+import { furnishOptions, furnishRoom } from '@/furniture/placement';
 
 /**
  * Provenance des éléments d'un plan généré :
@@ -59,6 +60,7 @@ export function hasManualChanges(levels: Level[], gen: PlanGeneration | null): b
   if (!gen) return levels.some((l) => l.rooms.length > 0);
   const prov = provenanceMap(levels, gen);
   if ([...prov.values()].includes('conseiller')) return true;
+  if (levels.some((l) => (l.furniture ?? []).some((f) => f.origin === 'manuel'))) return true;
   // éléments supprimés
   const ids = new Set(levels.flatMap((l) => [...l.rooms.map((r) => r.id), ...l.openings.map((o) => o.id)]));
   return gen.baseline.some((l) => l.rooms.some((r) => !ids.has(r.id)) || l.openings.some((o) => !ids.has(o.id))) || levels.length !== gen.baseline.length;
@@ -117,6 +119,18 @@ export function mergeWithCorrections(current: Level[], oldGen: PlanGeneration, g
       if (seen.has(o.code)) o.code = `${o.code}b`;
       seen.add(o.code);
     }
+  }
+  // mobilier : pièces aménagées à la main conservées telles quelles, les autres réaménagées
+  const fopts = furnishOptions(levels);
+  for (const l of levels) {
+    const cur = current.find((c) => c.index === l.index);
+    const curFurniture = cur?.furniture ?? [];
+    const customized = new Set(curFurniture.filter((f) => f.origin === 'manuel').map((f) => f.roomId));
+    const roomIds = new Set(l.rooms.map((r) => r.id));
+    l.furniture = [
+      ...curFurniture.filter((f) => customized.has(f.roomId) && (f.roomId === null || roomIds.has(f.roomId))).map((f) => structuredClone(f)),
+      ...l.rooms.filter((r) => !customized.has(r.id)).flatMap((r) => furnishRoom(l, r, fopts)),
+    ];
   }
   return { levels, notes };
 }

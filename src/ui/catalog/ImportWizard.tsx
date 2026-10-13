@@ -215,7 +215,7 @@ export function ImportWizard() {
                             </div>
                           ))}
                           {r.changes.map((c) => (
-                            <div key={c.field} className="text-blue-700">
+                            <div key={c.field} className="text-slate-900">
                               {c.field} : {fmtValue(c.before)} → {fmtValue(c.after)}
                             </div>
                           ))}

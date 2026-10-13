@@ -34,6 +34,7 @@ export function joineryKind(o: Opening): JoineryKind | null {
     case 'porte_interieure':
       return 'porte_int';
     case 'fenetre':
+    case 'porte_fenetre':
       return 'fenetre';
     case 'baie':
       return 'baie';
@@ -121,6 +122,7 @@ const plural = (n: number, one: string, many: string) => (n > 1 ? many : one);
 const TYPE_NOUN: Record<OpeningType, [string, string]> = {
   porte: ['porte extérieure', 'portes extérieures'],
   fenetre: ['fenêtre', 'fenêtres'],
+  porte_fenetre: ['porte-fenêtre', 'portes-fenêtres'],
   baie: ['baie vitrée', 'baies vitrées'],
   porte_garage: ['porte de garage', 'portes de garage'],
   porte_interieure: ['porte intérieure', 'portes intérieures'],
@@ -316,6 +318,11 @@ export function duplicateRoomWithOpenings(draft: Draft, levelId: string, roomId:
     if (clone.host.kind === 'unplaced') clone.positionConfirmed = false;
     level.openings.push(clone);
   }
+  // mobilier recopié au même emplacement relatif
+  const dx = copy.x - src.x;
+  const dy = copy.y - src.y;
+  const furniture = (level.furniture ?? []).filter((f) => f.roomId === src.id);
+  level.furniture = [...(level.furniture ?? []), ...furniture.map((f) => ({ ...structuredClone(f), id: uid('fur'), roomId: copy.id, x: f.x + dx, y: f.y + dy }))];
   return copy;
 }
 
@@ -340,5 +347,6 @@ export function copyLevelConfiguration(draft: Draft, fromId: string, toId: strin
       o.host.kind === 'wall' ? { kind: 'wall', wallId: wallMap.get(o.host.wallId)! } : { ...o.host, roomId: roomMap.get(o.host.roomId)! };
     to.openings.push({ ...structuredClone(o), id: uid('op'), code: nextOpeningCode(draft.plan, to), host });
   }
+  to.furniture = (from.furniture ?? []).map((f) => ({ ...structuredClone(f), id: uid('fur'), roomId: f.roomId ? (roomMap.get(f.roomId) ?? null) : null }));
   draft.devices = draft.devices.filter((d) => d.levelId !== to.id || !(d.openingId && removed.has(d.openingId)));
 }

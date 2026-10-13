@@ -101,7 +101,7 @@ export type OpeningHost =
   | { kind: 'unplaced'; roomId: Id };
 
 /** `passage` : ouverture libre sans porte (ex. cuisine ouverte sur le séjour). */
-export type OpeningType = 'porte' | 'fenetre' | 'baie' | 'porte_garage' | 'porte_interieure' | 'passage' | 'autre';
+export type OpeningType = 'porte' | 'fenetre' | 'porte_fenetre' | 'baie' | 'porte_garage' | 'porte_interieure' | 'passage' | 'autre';
 
 export interface Opening {
   id: Id;
@@ -121,6 +121,35 @@ export interface Opening {
   /** Hauteur facultative (m). */
   height?: number;
   comment?: string;
+  /** Nombre de vantaux (fenêtre simple = 1, double = 2). Par défaut selon la largeur. */
+  leaves?: 1 | 2;
+  /** Sens d'ouverture : côté des paumelles vu depuis la pièce hôte. */
+  hinge?: 'gauche' | 'droite';
+  /** Porte d'entrée principale du logement. */
+  entry?: boolean;
+}
+
+/** Objet de mobilier générique (visualisation uniquement, sans effet sur l'audit). */
+export interface FurnitureItem {
+  id: Id;
+  /** Référence du modèle dans la bibliothèque (src/furniture/models.ts). */
+  modelId: string;
+  /** Pièce de rattachement (null : hors pièce). */
+  roomId: Id | null;
+  /** Centre de l'objet (m). */
+  x: number;
+  y: number;
+  /** Orientation (degrés) : 0 = face avant tournée vers +y (sud du plan). */
+  rotation: number;
+  /** Dimensions (m) : largeur, profondeur, hauteur. */
+  w: number;
+  d: number;
+  h: number;
+  variant?: string;
+  /** Couleur principale personnalisée. */
+  color?: string;
+  /** `genere` : mobilier générique posé automatiquement ; `manuel` : ajouté ou modifié par le conseiller. */
+  origin: 'genere' | 'manuel';
 }
 
 export interface BackgroundImage {
@@ -151,6 +180,8 @@ export interface Level {
   walls: Wall[];
   openings: Opening[];
   background: BackgroundImage | null;
+  /** Mobilier générique (facultatif, absent des anciens dossiers). */
+  furniture?: FurnitureItem[];
 }
 
 export interface Plan {

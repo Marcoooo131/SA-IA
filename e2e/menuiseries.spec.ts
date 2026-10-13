@@ -26,7 +26,7 @@ test('menuiseries par pièce : du modèle à étage au devis, sans double compta
   const dialog = page.getByRole('dialog');
   await dialog.locator('input[name="clientName"]').fill('Client démo menuiseries');
   await dialog.getByRole('button', { name: /Créer et répondre au questionnaire/ }).click();
-  await page.getByTestId('template-maison_etage').getByRole('button', { name: 'Choisir', exact: true }).click();
+  await page.getByTestId('template-maison_etage').getByRole('button', { name: 'Choisir ce modèle', exact: true }).click();
   await page.getByRole('button', { name: 'Continuer vers le questionnaire' }).click();
 
   // 3. Nombre de chambres : 4 (le nombre de pièces principales suit)
@@ -80,14 +80,14 @@ test('menuiseries par pièce : du modèle à étage au devis, sans double compta
   await page.screenshot({ path: 'test-results/menuiseries-plan.png' });
 
   // 8. Visible en 3D (aucune ouverture restant à positionner)
-  await page.getByRole('tab', { name: 'Vue 3D' }).click();
+  await page.getByRole('tab', { name: 'Visualisation 3D', exact: true }).click();
   await expect(page.getByTestId('view3d').locator('canvas')).toBeVisible({ timeout: 20_000 });
   if (pendingBefore > 1) await expect(page.getByTestId('view3d-openings-pending')).toHaveText(String(pendingBefore - 1));
   else await expect(page.getByTestId('view3d-openings-pending')).toHaveCount(0);
   await page.screenshot({ path: 'test-results/menuiseries-3d.png' });
 
   // 10. Changement du type d'une ouverture : fenêtre -> baie vitrée
-  await page.getByRole('tab', { name: 'Pièces & menuiseries' }).click();
+  await page.getByRole('tab', { name: 'Pièces et menuiseries', exact: true }).click();
   await expect(page.getByTestId('total-Fenêtres')).toHaveText(String(totalFen + 1));
   const det2 = await num(page, 'detectors-Séjour');
   await page.getByTestId('joinery-room-Séjour').getByRole('button', { name: 'Détail des menuiseries' }).click();
@@ -98,7 +98,7 @@ test('menuiseries par pièce : du modèle à étage au devis, sans double compta
   const totalDetectors = await sumDetectors(page);
 
   // 11. Audit mis à jour, sans double comptage
-  await page.getByRole('tab', { name: 'Audit' }).click();
+  await page.getByRole('tab', { name: 'Audit et équipements', exact: true }).click();
   await expect(page.getByTestId('audit-joinery-detectors')).toHaveText(String(totalDetectors));
   await expect(page.getByTestId('count-perimetrique-detecteur_choc')).toHaveText(String(totalDetectors));
   await page.getByTestId('mode-perimetrique').getByRole('button', { name: 'Appliquer sur le plan' }).click();
@@ -107,7 +107,7 @@ test('menuiseries par pièce : du modèle à étage au devis, sans double compta
   else await expect(page.getByTestId('alert-menuiseries:a-positionner')).toHaveCount(0);
 
   // 12. Génération du devis
-  await page.getByRole('tab', { name: 'Devis' }).click();
+  await page.getByRole('tab', { name: 'Devis', exact: true }).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Générer le devis PDF' }).click();
   const pdf = await download;
@@ -117,24 +117,24 @@ test('menuiseries par pièce : du modèle à étage au devis, sans double compta
   const recordText = (await record.textContent())!;
 
   // Modification après le devis : suppression d'une ouverture, le devis émis reste inchangé
-  await page.getByRole('tab', { name: 'Pièces & menuiseries' }).click();
+  await page.getByRole('tab', { name: 'Pièces et menuiseries', exact: true }).click();
   const ch1Det = await num(page, 'detectors-Chambre 1');
   await page.getByLabel('Baies vitrées – Chambre 1', { exact: true }).fill('0');
   await expect(page.getByTestId('detectors-Chambre 1')).toHaveText(String(ch1Det - 2));
-  await page.getByRole('tab', { name: 'Audit' }).click();
+  await page.getByRole('tab', { name: 'Audit et équipements', exact: true }).click();
   await expect(page.getByTestId('audit-joinery-detectors')).toHaveText(String(totalDetectors - 2));
-  await page.getByRole('tab', { name: 'Devis' }).click();
+  await page.getByRole('tab', { name: 'Devis', exact: true }).click();
   await expect(record).toHaveText(recordText);
 
   // 13. Enregistrement et rechargement
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await page.getByRole('button', { name: 'Enregistrer', exact: true }).click();
   await page.reload();
   await page.getByRole('button', { name: /MOV-\d{4}-\d{4}/ }).first().click();
-  await page.getByRole('tab', { name: 'Pièces & menuiseries' }).click();
+  await page.getByRole('tab', { name: 'Pièces et menuiseries', exact: true }).click();
   await expect(page.getByLabel('Fenêtres – Séjour', { exact: true })).toHaveValue(String(fenBefore));
   await expect(page.getByLabel('Baies vitrées – Chambre 1', { exact: true })).toHaveValue('0');
   await expect(page.getByLabel('Portes intérieures – Chambre 2', { exact: true })).toHaveValue('1');
-  await page.getByRole('tab', { name: 'Devis' }).click();
+  await page.getByRole('tab', { name: 'Devis', exact: true }).click();
   await expect(page.locator('[data-testid^="quote-record-DEV-"]')).toHaveCount(1);
   expect(errors).toEqual([]);
 });

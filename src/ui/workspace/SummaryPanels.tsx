@@ -11,7 +11,7 @@ import { CATEGORY_SHORT } from '@/domain/labels';
 export const STATUS_ICON: Record<AlertStatus, React.ReactNode> = {
   manquant: <CircleHelp size={14} className="text-red-600" />,
   a_verifier: <AlertCircle size={14} className="text-amber-600" />,
-  suggestion: <Lightbulb size={14} className="text-blue-600" />,
+  suggestion: <Lightbulb size={14} className="text-slate-900" />,
   valide: <CheckCircle2 size={14} className="text-emerald-600" />,
 };
 
@@ -74,8 +74,8 @@ export function PriceSummary() {
             {formatEuro(quote.totals.initial)}
           </div>
         </div>
-        <div className="rounded-md bg-brand-700 px-2 py-1.5 text-white">
-          <div className="text-[10px] text-brand-100 uppercase">Mensuel</div>
+        <div className="rounded-md bg-slate-900 px-2 py-1.5 text-white">
+          <div className="text-[10px] text-slate-300 uppercase">Mensuel</div>
           <div className="text-base font-semibold tabular-nums" data-testid="summary-monthly">
             {formatMonthly(quote.totals.monthly)}
           </div>

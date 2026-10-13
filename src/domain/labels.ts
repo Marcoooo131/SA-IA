@@ -75,6 +75,7 @@ export const ROOM_COLORS: Record<RoomType, string> = {
 export const OPENING_TYPE_LABELS: Record<OpeningType, string> = {
   porte: 'Porte',
   fenetre: 'Fenêtre',
+  porte_fenetre: 'Porte-fenêtre',
   baie: 'Baie vitrée',
   porte_garage: 'Porte de garage',
   porte_interieure: 'Porte intérieure',
@@ -85,6 +86,7 @@ export const OPENING_TYPE_LABELS: Record<OpeningType, string> = {
 export const OPENING_DEFAULT_WIDTH: Record<OpeningType, number> = {
   porte: 0.9,
   fenetre: 1.2,
+  porte_fenetre: 1.4,
   baie: 2.4,
   porte_garage: 2.5,
   porte_interieure: 0.8,

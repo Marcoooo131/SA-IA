@@ -4,6 +4,9 @@ import { CATEGORY_COLORS, CATEGORY_GLYPH, ROOM_COLORS } from '@/domain/labels';
 import { adjacentRooms, buildWallSegments, openingPlacement, roomArea, type WallSegment } from './geometry';
 import { formatNumber } from '@/lib/format';
 import { PROVENANCE_COLORS, type Provenance } from '@/generator/provenance';
+import { joineryModelOf, openingLeaves } from '@/furniture/joineryModels';
+import { FurnitureGlyph } from '@/furniture/Furniture2D';
+import { getFurnitureModel } from '@/furniture/models';
 
 const PROV_LETTER: Record<Provenance, string> = { questionnaire: 'Q', genere: 'G', conseiller: 'C' };
 
@@ -12,6 +15,7 @@ export type PlanTarget =
   | { kind: 'opening'; id: string }
   | { kind: 'wall'; id: string; handle?: 'a' | 'b' | 'move' }
   | { kind: 'device'; id: string }
+  | { kind: 'furniture'; id: string }
   | { kind: 'background' };
 
 export interface PlanDrawingProps {
@@ -31,6 +35,12 @@ export interface PlanDrawingProps {
   onTargetDown?: (target: PlanTarget, e: ReactPointerEvent) => void;
   /** Provenance des éléments d'un plan généré (questionnaire / généré / corrigé). */
   provenance?: Map<string, Provenance>;
+  /** Afficher le mobilier générique (plan meublé). */
+  showFurniture?: boolean;
+  /** Mobilier atténué (ex. PDF : équipements de sécurité mis en avant). */
+  fadeFurniture?: boolean;
+  /** Équipements de sécurité affichés (par défaut : oui). */
+  showDevices?: boolean;
 }
 
 const DOOR = '#334155';
@@ -69,47 +79,101 @@ export function OpeningShape({ level, opening, selected, px }: { level: Level; o
   const w = Math.hypot(end.x - start.x, end.y - start.y);
   const deg = (angle * 180) / Math.PI;
   const lw = 1.5 / px;
-  const color = opening.exterior ? '#0f766e' : DOOR;
+  const model = joineryModelOf(opening);
+  const color = opening.exterior ? '#d7001e' : DOOR;
+  // Repère local : x le long du mur, y = normale. Le battant s'ouvre vers l'intérieur de la pièce hôte.
+  const s = opening.host.kind === 'room' ? (opening.host.side === 'N' || opening.host.side === 'E' ? 1 : -1) : 1;
+  // sens d'ouverture : paumelles à gauche (par défaut) ou à droite
+  const flip = opening.hinge === 'droite' ? -1 : 1;
+  const leaf = (x0: number, len: number, dir: 1 | -1, c: string, weight = 1.4) => {
+    // battant pivotant autour de (x0, 0), longueur len, vers x0 + dir*len une fois fermé
+    const sweep = (s > 0) === (dir > 0) ? 0 : 1;
+    return (
+      <g>
+        <line x1={x0} y1={0} x2={x0} y2={s * len} stroke={c} strokeWidth={lw * weight} />
+        <path d={`M ${x0} ${s * len} A ${len} ${len} 0 0 ${sweep} ${x0 + dir * len} 0`} fill="none" stroke={c} strokeWidth={lw} strokeDasharray={`${3 / px} ${2 / px}`} />
+      </g>
+    );
+  };
+  const glass = (t: number) => <rect x={-w / 2} y={-t / 2} width={w} height={t} fill="#e0f2fe" stroke="#0369a1" strokeWidth={lw} />;
   let body: ReactNode;
-  if (opening.type === 'passage') {
-    body = (
-      <g>
-        <rect x={-w / 2} y={-0.07} width={w} height={0.14} fill="#ffffff" stroke="none" />
-        <line x1={-w / 2} y1={-0.07} x2={w / 2} y2={-0.07} stroke="#94a3b8" strokeWidth={lw} strokeDasharray={`${4 / px} ${3 / px}`} />
-        <line x1={-w / 2} y1={0.07} x2={w / 2} y2={0.07} stroke="#94a3b8" strokeWidth={lw} strokeDasharray={`${4 / px} ${3 / px}`} />
-      </g>
-    );
-  } else if (opening.type === 'fenetre' || opening.type === 'baie') {
-    const t = opening.type === 'baie' ? 0.16 : 0.12;
-    body = (
-      <g>
-        <rect x={-w / 2} y={-t / 2} width={w} height={t} fill="#e0f2fe" stroke="#0369a1" strokeWidth={lw} />
-        <line x1={-w / 2} y1={0} x2={w / 2} y2={0} stroke="#0369a1" strokeWidth={lw} />
-        {opening.type === 'baie' && <line x1={0} y1={-t / 2} x2={0} y2={t / 2} stroke="#0369a1" strokeWidth={lw} />}
-      </g>
-    );
-  } else if (opening.type === 'porte_garage') {
-    body = (
-      <g>
-        <rect x={-w / 2} y={-0.08} width={w} height={0.16} fill="#f1f5f9" stroke={color} strokeWidth={lw} strokeDasharray={`${4 / px} ${3 / px}`} />
-      </g>
-    );
-  } else {
-    // Porte : battant + arc d'ouverture vers l'intérieur de la pièce hôte
-    // Repère local : x le long du mur, y = normale à gauche. Le battant s'ouvre vers l'intérieur de la pièce hôte.
-    const s = opening.host.kind === 'room' ? (opening.host.side === 'N' || opening.host.side === 'E' ? 1 : -1) : 1;
-    body = (
-      <g>
-        <rect x={-w / 2} y={-0.06} width={w} height={0.12} fill="#ffffff" stroke="none" />
-        <line x1={-w / 2} y1={0} x2={-w / 2} y2={s * w} stroke={color} strokeWidth={lw * 1.4} />
-        <path d={`M ${-w / 2} ${s * w} A ${w} ${w} 0 0 ${s > 0 ? 0 : 1} ${w / 2} 0`} fill="none" stroke={color} strokeWidth={lw} strokeDasharray={`${3 / px} ${2 / px}`} />
-      </g>
-    );
+  switch (model) {
+    case 'passage':
+      body = (
+        <g>
+          <rect x={-w / 2} y={-0.07} width={w} height={0.14} fill="#ffffff" stroke="none" />
+          <line x1={-w / 2} y1={-0.07} x2={w / 2} y2={-0.07} stroke="#94a3b8" strokeWidth={lw} strokeDasharray={`${4 / px} ${3 / px}`} />
+          <line x1={-w / 2} y1={0.07} x2={w / 2} y2={0.07} stroke="#94a3b8" strokeWidth={lw} strokeDasharray={`${4 / px} ${3 / px}`} />
+        </g>
+      );
+      break;
+    case 'fenetre_simple':
+    case 'fenetre_double':
+      body = (
+        <g>
+          {glass(0.12)}
+          <line x1={-w / 2} y1={0} x2={w / 2} y2={0} stroke="#0369a1" strokeWidth={lw} />
+          {model === 'fenetre_double' && <line x1={0} y1={-0.06} x2={0} y2={0.06} stroke="#0369a1" strokeWidth={lw * 1.5} />}
+        </g>
+      );
+      break;
+    case 'baie':
+      body = (
+        <g>
+          {glass(0.16)}
+          <line x1={-w / 2} y1={-0.035} x2={w * 0.05} y2={-0.035} stroke="#0369a1" strokeWidth={lw * 1.3} />
+          <line x1={-w * 0.05} y1={0.035} x2={w / 2} y2={0.035} stroke="#0369a1" strokeWidth={lw * 1.3} />
+        </g>
+      );
+      break;
+    case 'porte_fenetre': {
+      const two = openingLeaves(opening) === 2;
+      body = (
+        <g transform={`scale(${flip} 1)`}>
+          {glass(0.12)}
+          {two ? (
+            <>
+              {leaf(-w / 2, w / 2, 1, '#0369a1', 1.2)}
+              {leaf(w / 2, w / 2, -1, '#0369a1', 1.2)}
+            </>
+          ) : (
+            leaf(-w / 2, w, 1, '#0369a1', 1.2)
+          )}
+        </g>
+      );
+      break;
+    }
+    case 'porte_garage':
+      body = (
+        <g>
+          <rect x={-w / 2} y={-0.08} width={w} height={0.16} fill="#f1f5f9" stroke={color} strokeWidth={lw} strokeDasharray={`${4 / px} ${3 / px}`} />
+          <line x1={-w / 2} y1={0} x2={w / 2} y2={0} stroke={color} strokeWidth={lw * 0.8} />
+        </g>
+      );
+      break;
+    case 'autre':
+      body = (
+        <g>
+          <rect x={-w / 2} y={-0.07} width={w} height={0.14} fill="#fef3c7" stroke="#b45309" strokeWidth={lw} />
+          <line x1={-w / 2} y1={-0.07} x2={w / 2} y2={0.07} stroke="#b45309" strokeWidth={lw * 0.8} />
+        </g>
+      );
+      break;
+    default: {
+      const entry = model === 'porte_entree';
+      body = (
+        <g transform={`scale(${flip} 1)`}>
+          <rect x={-w / 2} y={-0.06} width={w} height={0.12} fill="#ffffff" stroke="none" />
+          {leaf(-w / 2, w, 1, entry ? '#7c2d12' : color, entry ? 2.4 : 1.4)}
+          {entry && <rect x={-w / 2} y={-0.07} width={w} height={0.04} fill="#7c2d12" />}
+        </g>
+      );
+    }
   }
   return (
-    <g transform={`translate(${center.x} ${center.y}) rotate(${deg})`}>
+    <g transform={`translate(${center.x} ${center.y}) rotate(${deg})`} data-joinery={model}>
       {body}
-      {selected && <rect x={-w / 2 - 0.08} y={-0.2} width={w + 0.16} height={0.4} fill="none" stroke="#2563eb" strokeWidth={2 / px} />}
+      {selected && <rect x={-w / 2 - 0.08} y={-0.2} width={w + 0.16} height={0.4} fill="none" stroke="#d7001e" strokeWidth={2 / px} />}
     </g>
   );
 }
@@ -158,7 +222,7 @@ export function DeviceGlyph({ device, product, px, selected }: { device: PlacedD
           </text>
         </g>
       )}
-      {selected && <circle cx={device.x} cy={device.y} r={r + 6 / px} fill="none" stroke="#2563eb" strokeWidth={2 / px} />}
+      {selected && <circle cx={device.x} cy={device.y} r={r + 6 / px} fill="none" stroke="#d7001e" strokeWidth={2 / px} />}
     </g>
   );
 }
@@ -207,8 +271,12 @@ export function PlanDrawing({
   motionRange = 10,
   onTargetDown,
   provenance,
+  showFurniture = true,
+  fadeFurniture = false,
+  showDevices = true,
 }: PlanDrawingProps) {
   const px = pxPerMeter;
+  if (!showDevices) devices = [];
   const segments = buildWallSegments(level);
   const productMap = new Map(products.map((p) => [p.id, p]));
   const isSel = (kind: string, id?: string) =>
@@ -248,13 +316,32 @@ export function PlanDrawing({
           height={room.h}
           fill={ROOM_COLORS[room.type]}
           fillOpacity={bg && bg.visible ? 0.55 : 1}
-          stroke={isSel('room', room.id) ? '#2563eb' : '#cbd5e1'}
+          stroke={isSel('room', room.id) ? '#d7001e' : '#cbd5e1'}
           strokeWidth={(isSel('room', room.id) ? 2 : 0.8) / px}
           onPointerDown={down({ kind: 'room', id: room.id, handle: 'move' })}
           style={{ cursor: interactive ? 'move' : undefined }}
           data-testid={`room-${room.name}`}
         />
       ))}
+
+      {/* Mobilier générique (mêmes données que la maquette 3D) */}
+      {showFurniture && (level.furniture ?? []).length > 0 && (
+        <g data-testid="furniture-layer">
+          {[...(level.furniture ?? [])]
+            .sort((a, b) => (getFurnitureModel(a.modelId)?.layer === 'haut' ? 1 : 0) - (getFurnitureModel(b.modelId)?.layer === 'haut' ? 1 : 0))
+            .map((f) => (
+              <g
+                key={f.id}
+                onPointerDown={down({ kind: 'furniture', id: f.id })}
+                style={{ cursor: interactive ? 'move' : undefined }}
+                data-testid={`furniture-${f.modelId}-${f.id}`}
+                data-model={f.modelId}
+              >
+                <FurnitureGlyph item={f} px={px} selected={isSel('furniture', f.id)} faded={fadeFurniture} />
+              </g>
+            ))}
+        </g>
+      )}
 
       {/* Zones de détection théoriques (indicatives) */}
       {showCoverage && (
@@ -325,12 +412,12 @@ export function PlanDrawing({
               style={{ cursor: interactive ? 'move' : undefined }}
             />
             {pieces.map((p, i) => (
-              <line key={i} x1={p.a.x} y1={p.a.y} x2={p.b.x} y2={p.b.y} stroke={sel ? '#2563eb' : '#64748b'} strokeWidth={w.thickness} strokeLinecap="square" style={{ pointerEvents: 'none' }} />
+              <line key={i} x1={p.a.x} y1={p.a.y} x2={p.b.x} y2={p.b.y} stroke={sel ? '#d7001e' : '#64748b'} strokeWidth={w.thickness} strokeLinecap="square" style={{ pointerEvents: 'none' }} />
             ))}
             {sel && interactive && (
               <>
-                <circle cx={w.a.x} cy={w.a.y} r={handle} fill="#fff" stroke="#2563eb" strokeWidth={2 / px} onPointerDown={down({ kind: 'wall', id: w.id, handle: 'a' })} style={{ cursor: 'crosshair' }} />
-                <circle cx={w.b.x} cy={w.b.y} r={handle} fill="#fff" stroke="#2563eb" strokeWidth={2 / px} onPointerDown={down({ kind: 'wall', id: w.id, handle: 'b' })} style={{ cursor: 'crosshair' }} />
+                <circle cx={w.a.x} cy={w.a.y} r={handle} fill="#fff" stroke="#d7001e" strokeWidth={2 / px} onPointerDown={down({ kind: 'wall', id: w.id, handle: 'a' })} style={{ cursor: 'crosshair' }} />
+                <circle cx={w.b.x} cy={w.b.y} r={handle} fill="#fff" stroke="#d7001e" strokeWidth={2 / px} onPointerDown={down({ kind: 'wall', id: w.id, handle: 'b' })} style={{ cursor: 'crosshair' }} />
               </>
             )}
           </g>
@@ -347,7 +434,7 @@ export function PlanDrawing({
               <rect x={pl.center.x - 0.3} y={pl.center.y - 0.3} width={0.6} height={0.6} fill="transparent" />
             )}
             {showLabels && pl && o.exterior && (
-              <text x={pl.center.x} y={pl.center.y} dy={-14 / px} fontSize={9 / px} textAnchor="middle" fill="#0f766e" fontFamily="Inter, Helvetica, Arial, sans-serif" style={{ pointerEvents: 'none' }}>
+              <text x={pl.center.x} y={pl.center.y} dy={-14 / px} fontSize={9 / px} textAnchor="middle" fill="#b40019" fontFamily="Inter, Helvetica, Arial, sans-serif" style={{ pointerEvents: 'none' }}>
                 {o.code}
               </text>
             )}
@@ -417,10 +504,10 @@ export function PlanDrawing({
           const dimsFs = Math.min(10 / px, (room.w * 0.9) / (dims.length * 0.56));
           return (
             <g key={`lbl-${room.id}`} style={{ pointerEvents: 'none' }} fontFamily="Inter, Helvetica, Arial, sans-serif">
-              <text x={room.x + room.w / 2} y={room.y + room.h / 2} fontSize={nameFs} fontWeight={600} textAnchor="middle" fill="#0f172a">
+              <text x={room.x + room.w / 2} y={room.y + room.h / 2} fontSize={nameFs} fontWeight={600} textAnchor="middle" fill="#0f172a" stroke="#ffffff" strokeWidth={3 / px} strokeOpacity={0.85} paintOrder="stroke">
                 {room.name}
               </text>
-              <text x={room.x + room.w / 2} y={room.y + room.h / 2} dy={nameFs * 1.2} fontSize={dimsFs} textAnchor="middle" fill="#475569">
+              <text x={room.x + room.w / 2} y={room.y + room.h / 2} dy={nameFs * 1.2} fontSize={dimsFs} textAnchor="middle" fill="#475569" stroke="#ffffff" strokeWidth={3 / px} strokeOpacity={0.85} paintOrder="stroke">
                 {dims}
               </text>
             </g>
@@ -488,7 +575,7 @@ export function PlanDrawing({
                 width={handle * 2}
                 height={handle * 2}
                 fill="#ffffff"
-                stroke="#2563eb"
+                stroke="#d7001e"
                 strokeWidth={2 / px}
                 onPointerDown={down({ kind: 'room', id: r.id, handle: h.h })}
                 style={{ cursor: h.c }}

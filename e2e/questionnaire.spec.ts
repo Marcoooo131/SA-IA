@@ -17,12 +17,12 @@ test('questionnaire : de la maison à étage au devis, centrale à 0 €/mois, r
   await dialog.locator('input[name="clientName"]').fill('Client démo questionnaire');
   await dialog.locator('input[name="address"]').fill('8 chemin Fictif, 00000 Démo');
   await dialog.getByRole('button', { name: /Créer et répondre au questionnaire/ }).click();
-  await expect(page.getByRole('heading', { name: 'Créer mon plan en quelques questions' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Choisissez le modèle de logement' })).toBeVisible();
 
   // 1. Modèle « Maison à étage » (vignettes 2D + 3D)
   const card = page.getByTestId('template-maison_etage');
   await expect(card.locator('svg[aria-label="Miniature 3D du modèle"]')).toBeVisible();
-  await card.getByRole('button', { name: 'Choisir', exact: true }).click();
+  await card.getByRole('button', { name: 'Choisir ce modèle', exact: true }).click();
   await page.getByRole('button', { name: 'Continuer vers le questionnaire' }).click();
 
   // 2. Questionnaire : surface, 3 chambres, cuisine ouverte, garage
@@ -40,7 +40,7 @@ test('questionnaire : de la maison à étage au devis, centrale à 0 €/mois, r
   await page.screenshot({ path: 'test-results/questionnaire-generation.png' });
   await page.getByRole('button', { name: 'Utiliser ce plan et le vérifier' }).click();
   await expect(page.getByRole('heading', { name: 'Vérification des pièces et des menuiseries' })).toBeVisible();
-  await page.getByRole('tab', { name: 'Plan 2D' }).click();
+  await page.getByRole('tab', { name: 'Plan 2D meublé', exact: true }).click();
 
   // 5. Vérification et correction
   await expect(page.getByTestId('generation-banner')).toContainText('Votre plan a été généré à partir de vos réponses');
@@ -64,7 +64,7 @@ test('questionnaire : de la maison à étage au devis, centrale à 0 €/mois, r
 
   // ajout d'une fenêtre sur le mur nord du séjour
   const openingsBefore = await page.locator('[data-testid^="opening-"]').count();
-  await page.getByRole('button', { name: 'Fenêtre' }).click();
+  await page.getByRole('button', { name: 'Fenêtre', exact: true }).click();
   const room = (await page.getByTestId('room-Séjour').boundingBox())!;
   await page.mouse.click(room.x + room.width * 0.75, room.y + 1);
   await expect(page.locator('[data-testid^="opening-"]')).toHaveCount(openingsBefore + 1);
@@ -73,19 +73,19 @@ test('questionnaire : de la maison à étage au devis, centrale à 0 €/mois, r
   await expect(page.getByTestId('generation-banner')).toHaveCount(0);
 
   // 7. Rendu 3D actualisé
-  await page.getByRole('tab', { name: 'Vue 3D' }).click();
+  await page.getByRole('tab', { name: 'Visualisation 3D', exact: true }).click();
   await expect(page.getByTestId('view3d').locator('canvas')).toBeVisible({ timeout: 20_000 });
   await page.waitForTimeout(1200);
   await page.screenshot({ path: 'test-results/questionnaire-3d.png' });
 
   // 8. Audit + 9. équipements
-  await page.getByRole('tab', { name: 'Audit' }).click();
+  await page.getByRole('tab', { name: 'Audit et équipements', exact: true }).click();
   await page.getByTestId('mode-volumetrique').getByRole('button', { name: 'Appliquer sur le plan' }).click();
-  await page.getByRole('tab', { name: 'Équipements' }).click();
+  await page.getByRole('tab', { name: 'Équipements', exact: true }).click();
   await expect(page.locator('[data-testid^="equipment-row-"]').first()).toBeVisible();
 
   // 10. Devis + 11. centrale à 0 €/mois (sans forfait, la centrale est facturée à l'unité)
-  await page.getByRole('tab', { name: 'Devis' }).click();
+  await page.getByRole('tab', { name: 'Proposition commerciale', exact: true }).click();
   await page.getByLabel('Offre du devis').selectOption({ label: 'Sans forfait (à la carte)' });
   const centrale = page.getByTestId('quote-line-DEMO-CENT-01');
   await expect(centrale.getByLabel('Mensualité DEMO-CENT-01')).toBeDisabled();
@@ -111,6 +111,7 @@ test('questionnaire : de la maison à étage au devis, centrale à 0 €/mois, r
   await page.getByTestId('moving-bar').getByRole('switch').click();
   await expect(page.getByTestId('quote-initial')).not.toHaveText(/^0\s?€/);
 
+  await page.getByRole('tab', { name: 'Devis', exact: true }).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Générer le devis PDF' }).click();
   const pdf = await download;
@@ -118,7 +119,7 @@ test('questionnaire : de la maison à étage au devis, centrale à 0 €/mois, r
   await pdf.saveAs('test-results/questionnaire-devis.pdf');
 
   // 12. Import Excel + modification manuelle d'un tarif
-  await page.getByRole('button', { name: 'Catalogue & règles' }).click();
+  await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
   await page.getByRole('button', { name: 'Import / export Excel' }).click();
   await page.getByTestId('catalog-import-input').setInputFiles('demo-assets/catalogue-exemple.xlsx');
   await expect(page.getByTestId('import-summary')).toBeVisible();
@@ -130,17 +131,17 @@ test('questionnaire : de la maison à étage au devis, centrale à 0 €/mois, r
   await price.blur();
 
   // 13. Enregistrement et rechargement
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await page.getByRole('button', { name: 'Enregistrer', exact: true }).click();
   await page.reload();
   await page.getByRole('button', { name: /MOV-\d{4}-\d{4}/ }).first().click();
-  await page.getByRole('tab', { name: 'Plan 2D' }).click();
+  await page.getByRole('tab', { name: 'Plan 2D meublé', exact: true }).click();
   await expect(page.getByTestId('room-Séjour')).toBeVisible();
   await expect(page.getByTestId('generation-banner')).toHaveCount(0);
   await page.getByTestId('level-Étage (R+1)').click();
   await expect(page.getByTestId('room-Chambre 3')).toBeVisible();
-  await page.getByRole('tab', { name: 'Devis' }).click();
+  await page.getByRole('tab', { name: 'Devis', exact: true }).click();
   await expect(page.locator('[data-testid^="quote-record-DEV-"]')).toHaveCount(1);
-  await page.getByRole('button', { name: 'Catalogue & règles' }).click();
+  await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
   await expect(page.getByLabel('Prix matériel DEMO-SIR-INT')).toHaveValue('159');
   expect(errors).toEqual([]);
 });
@@ -153,7 +154,7 @@ test('import Excel : une mensualité non nulle pour la centrale exige une confir
   ws.addRow(['DEMO-CENT-01', 'Centrale', 'Centrale', '', 459, 3, 'Unitaire', 1, 'Actif', '']);
   const buffer = Buffer.from(await wb.xlsx.writeBuffer());
   await page.goto('/');
-  await page.getByRole('button', { name: 'Catalogue & règles' }).click();
+  await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
   await page.getByRole('button', { name: 'Import / export Excel' }).click();
   await page.getByTestId('catalog-import-input').setInputFiles({ name: 'centrale.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer });
   await expect(page.getByTestId('centrale-alert')).toContainText('0 €/mois');

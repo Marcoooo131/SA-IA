@@ -1,4 +1,6 @@
 import type { Catalog, Dossier, Level, Opening, OpeningType, Room, RoomSide, RoomType } from '@/domain/types';
+import { OPENING_DEFAULT_WIDTH } from '@/domain/labels';
+import { furnishLevel, furnishOptions } from '@/furniture/placement';
 import { DEFAULT_RULES_CONFIG } from '@/rules/config';
 import { runAudit } from '@/rules/engine';
 import { applyProposal } from '@/rules/apply';
@@ -24,7 +26,7 @@ function op(
   offset: number,
   opts: { width?: number; exterior?: boolean; sectional?: boolean } = {},
 ): Opening {
-  const width = opts.width ?? { porte: 0.9, fenetre: 1.2, baie: 2.4, porte_garage: 2.5, porte_interieure: 0.8, passage: 1.6, autre: 0.8 }[type];
+  const width = opts.width ?? OPENING_DEFAULT_WIDTH[type];
   return {
     id,
     code,
@@ -98,7 +100,11 @@ export function demoHousePlan(): Level[] {
       op('o_int_bureau', 'R1-O10', 'porte_interieure', 'r_bureau', 'N', 1.25),
     ],
   };
-  return [rdc, r1];
+  // mobilier générique (visualisation uniquement)
+  const levels = [rdc, r1];
+  const fopts = furnishOptions(levels);
+  for (const l of levels) l.furniture = furnishLevel(l, fopts);
+  return levels;
 }
 
 export function demoHouseDossier(catalog: Catalog = createDefaultCatalog()): Dossier {
@@ -170,6 +176,7 @@ export function demoApartmentDossier(): Dossier {
       op('ao_baie', 'RDC-O02', 'baie', 'a_sejour', 'E', 2.25, { width: 2 }),
     ],
   };
+  level.furniture = furnishLevel(level, furnishOptions([level]));
   return {
     id: 'dos_demo_appart',
     schemaVersion: SCHEMA_VERSION,
@@ -224,7 +231,7 @@ export function emptyDossier(id: string, reference: string): Dossier {
     updatedAt: now,
     plan: {
       levels: [
-        { id: `${id}_lvl0`, name: 'Rez-de-chaussée', index: 0, height: 2.5, rooms: [], walls: [], openings: [], background: null },
+        { id: `${id}_lvl0`, name: 'Rez-de-chaussée', index: 0, height: 2.5, rooms: [], walls: [], openings: [], background: null, furniture: [] },
       ],
     },
     devices: [],

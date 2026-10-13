@@ -46,22 +46,39 @@ Le bouton **« Réinitialiser la démo »** du tableau de bord restaure ces donn
 
 ---
 
-## 2. Parcours guidé (6 étapes)
+## 2. Parcours guidé (9 étapes)
 
-L'en-tête de chaque dossier affiche l'étape en cours, les étapes terminées (✓) et les informations
-manquantes (pastille orange + bandeau « Pour poursuivre… »).
+Navigation principale : **Tableau de bord**, **Dossiers**, **Audits**, **Catalogue**, **Paramètres**.
+Dans un dossier, une barre de progression rouge et noire affiche l'étape active (rouge), les étapes terminées (✓ noir)
+et les étapes restantes ; chaque étape reste accessible à tout moment, sans perte de données, et un bandeau indique ce
+qu'il reste à compléter. Boutons « Précédent / Continuer » en bas des étapes de formulaire.
 
-| Étape | Onglet | Ce que fait le conseiller |
-|---|---|---|
-| 1. Création du dossier | Tableau de bord → *Nouvel audit*, puis **Logement** | référence, client fictif, adresse, type, surface, étages, pièces, dates, animaux, usage de nuit, commentaires |
-| 2. Création / import du plan | **Plan 2D** | dessin des pièces, murs, portes, fenêtres, baies ; import d'un plan (PNG, JPG, photo, capture, PDF) et calibrage de l'échelle |
-| 3. Visualisation 2D / 3D | **Plan 2D** / **Vue 3D** | maquette générée depuis la géométrie corrigée, vues isométrique / dessus / face, niveau seul, murs coupés ou masqués |
-| 4. Audit et placement | **Audit** / **Équipements** | propositions volumétrique et périmétrique, alertes, placement et validation des équipements |
-| 5. Choix et comparaison des offres | **Devis** (comparateur) | configuration retenue / standard / alternative × Pack Essentiel / Pack Sérénité / à la carte |
-| 6. Devis PDF | **Devis** | ajustements, remises, génération du PDF, historique avec prix figés |
+| Étape | Ce que fait le conseiller |
+|---|---|
+| 1. Informations du logement | référence, client fictif, adresse, type, surface, étages, dates, animaux, usage de nuit, commentaires |
+| 2. Modèle ou import du plan | galerie de 16 modèles (vignettes 2D et 3D issues du plan réellement généré, type, niveaux, surface), import d'un plan / d'une photo ou dessin libre |
+| 3. Questionnaire | réponses par cartes de choix et compteurs, aperçu en direct, génération du plan 2D et de la maquette 3D |
+| 4. Pièces et menuiseries | tableau par pièce, ouvertures à positionner, détecteurs indicatifs |
+| 5. Plan 2D meublé | édition du plan, mobilier, menuiseries, équipements ; modes plan architectural / meublé |
+| 6. Visualisation 3D | maquette meublée, avec ou sans équipements, vues isométrique / dessus / face |
+| 7. Audit et équipements | propositions volumétrique et périmétrique, alertes, placement et validation des équipements |
+| 8. Proposition commerciale | comparateur des offres, forfait, ajustements, déménagement, remises |
+| 9. Devis | synthèse (logement, équipements inclus / supplémentaires, frais initiaux et mensuels séparés, points à valider), génération du PDF, historique |
 
-Écran de travail : **à gauche** niveaux, pièces, outils et bibliothèque d'équipements ; **au centre** le plan
-2D ou la scène 3D ; **à droite** les propriétés de l'objet sélectionné, la synthèse d'audit et la synthèse tarifaire.
+Écran de conception : **à gauche** niveaux, pièces, bibliothèques (mobilier, menuiseries, équipements de sécurité) ;
+**au centre** le plan 2D ou la scène 3D ; **à droite** les propriétés de l'objet sélectionné, la synthèse d'audit et la
+synthèse tarifaire. Les panneaux latéraux se replient (tablette) ; la barre d'affichage bascule 2D / 3D, affiche ou
+masque le mobilier et les équipements, et enregistre.
+
+### Direction artistique
+Interface blanche, noire et rouge, sobre et professionnelle (inspiration : principes de parcours guidé et de mise en
+avant des actions ; aucun visuel, code ou texte propriétaire repris). Le thème est **centralisé** dans
+`src/index.css` (variables `--color-brand-*` pour le rouge d'action, gris neutres, alias `--sa-red`, `--sa-ink`) et
+`src/theme.ts` (mêmes valeurs pour le SVG, la 3D et le PDF). **La valeur du rouge est provisoire** : la remplacer à cet
+endroit par la valeur de la charte officielle dès qu'elle est fournie. Aucun logo officiel n'est reproduit (identité
+typographique temporaire) ; les illustrations d'équipements sont des dessins génériques à remplacer par les visuels
+produits autorisés. Composants communs dans `src/ui/kit.tsx` (boutons principal / secondaire / noir, champs, cartes de
+sélection, compteurs, badges, modales, barres de progression, états vides et de chargement).
 
 ---
 
@@ -103,6 +120,14 @@ Les trois modes de création (questionnaire, dessin, import) alimentent le même
 - **Positionnement** : bouton « Positionner » puis clic sur un mur de la pièce dans le plan 2D. Une ouverture non positionnée apparaît en **repère pointillé orange** dans sa pièce (2D) et en **repère translucide** (3D) ; elle est déjà comptée dans l'audit et signalée « à positionner » ; le plan ne peut pas être validé tant qu'il en reste. Une ouverture déplacée à la main ou positionnée a une position **confirmée**.
 - **Détecteurs indicatifs** (règles configurables) : 1 par ouverture extérieure, 2 par baie vitrée, aucun automatique sur porte de garage sectionnelle, ouvertures intérieures exclues ; explication par pièce, par ex. « Séjour : 2 fenêtres × 1 détecteur + 1 baie vitrée × 2 détecteurs = 4 détecteurs indicatifs. ». Un changement de type ou une suppression met à jour les détecteurs **suggérés non validés** liés à l'ouverture (jamais les équipements manuels ou validés) : pas de double comptage. Les devis déjà émis ne changent pas.
 - Synthèse dans l'onglet **Audit** et tableau « Menuiseries par pièce » dans le **PDF**.
+
+### Mobilier et menuiseries génériques 2D/3D (`src/furniture/`)
+Chaque logement généré (questionnaire ou modèle) est **meublé automatiquement** ; le mobilier sert à visualiser l'aménagement, **sans effet sur l'audit** ni sur la couverture des détecteurs.
+- **Bibliothèque** (`models.ts`) : ~35 modèles génériques (canapé, table basse, meuble TV, téléviseur, tables à manger, meubles bas / hauts, évier, plaque et four, réfrigérateur, lit avec variantes 160 / 140 / 90, chevets, armoire / dressing, commode, bureau, vasque, miroir, douche, baignoire, WC, lave-mains, meuble à chaussures, porte-manteau, console, voiture, étagères, établi, lave-linge, sèche-linge, plante, salon de véranda…). Chaque modèle est décrit **une seule fois** par des volumes simples (dimensions, ancrage, orientation, couleur, variantes) : le **symbole 2D** (vue de dessus) et la **géométrie 3D** procédurale en sont dérivés, avec les mêmes dimensions et la même position.
+- **Placement automatique déterministe** (`placement.ts`) : recette par type de pièce (séjour : meuble TV face au canapé, table basse entre les deux, fauteuil, espace repas ; cuisine : linéaire réfrigérateur / évier / cuisson / meubles bas et hauts, table si la cuisine est fermée ; chambre : lit adapté à la pièce et orienté, chevets, armoire, bureau / commode si la surface le permet ; salle de bain : **douche + baignoire** seulement si la surface et les dimensions le permettent, sinon douche ; WC ; entrée ; couloir dégagé ; garage avec voiture face à la porte, étagères, établi ; buanderie ; bureau ; véranda). Contrôles : objets dans les murs, sans chevauchement, débattement des portes et passages préservé, rien de haut devant les fenêtres. Une pièce trop petite reçoit une variante plus petite ou moins d'objets ; ses dimensions ne sont jamais modifiées. Pièce sans modèle (ex. extension « autre ») : laissée vide avec une invitation à choisir son mobilier.
+- **Menuiseries** (`joineryModels.ts`) : porte intérieure, porte d'entrée, porte extérieure, porte-fenêtre, fenêtre simple / double, baie coulissante, porte de garage, autre ouverture, passage. Symbole architectural en 2D (battant et sens d'ouverture, vantaux, coulissants) et, en 3D, menuiserie **intégrée dans le mur** (cadre, vitrage, meneau, ouvrant, poignée, appui). Une menuiserie reste une ouverture unique rattachée à sa pièce : l'audit, les quantités et le devis restent synchronisés.
+- **Édition** : sélectionner, glisser (2D), pivoter (R), dupliquer (Ctrl+D), supprimer, changer de variante, de dimensions (si autorisé), de couleur ; ajouter un objet depuis la bibliothèque (recherche, miniatures, ajout dans la pièce sélectionnée ou par clic) ; **réinitialiser le mobilier d'une pièce** sans toucher aux autres ; aménager les pièces vides d'un plan dessiné ou importé ; **verrouiller la structure** pendant l'aménagement. En 3D, un clic sélectionne l'objet et « Déplacer au clic » le repositionne.
+- **Modes d'affichage** : plan architectural, plan meublé, 3D meublée, 3D + équipements de sécurité, 3D sans mobilier (sans perte des modifications). Le PDF reprend le plan meublé avec un mobilier atténué pour que les équipements restent lisibles.
 
 ### Plan 2D
 - Pièces rectangulaires typées (séjour, cuisine, chambre, couloir, entrée, garage, salle de bain…), pièce ouverte (cuisine ouverte).
@@ -174,6 +199,7 @@ React 19 · TypeScript · Vite · Tailwind CSS 4 · Three.js / React Three Fiber
 ```
 src/
   domain/        modèle de données (types.ts), schémas Zod, libellés
+  furniture/     mobilier et menuiseries génériques : modèles, placement automatique, rendus 2D/3D, actions
   plan/          menuiseries par pièce (joinery.ts), géométrie (murs, ouvertures, alignement, doublons), actions d'édition, rendu SVG partagé, import d'image/PDF
   view3d/        scène 3D (génération depuis le plan), vue interactive, capture hors écran pour le PDF
   rules/         moteur de règles d'audit (pur) + application des propositions sur le plan

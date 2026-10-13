@@ -46,6 +46,7 @@ Toutes les règles sont des **hypothèses de configuration** issues des données
 | Hauteurs | Hauteur sous plafond par niveau, allèges / linteaux standards | Pas d'escaliers, trémies ni toitures |
 | Plans générés par questionnaire | Disposition générique en bandes ou en L, pièces rectangulaires, dimensions indicatives ; ne représente pas le logement réel tant que le conseiller ne l'a pas vérifié et validé |
 | Menuiseries saisies par quantité | Ouvertures « à positionner » sans position ni dimension relevée ; emplacement 2D/3D indicatif | À positionner sur le plan avant validation ; pas de vérification de chevauchement entre deux ouvertures d'un même mur |
+| Mobilier générique | Volumes simples, placement par règles déterministes ; ne reproduit pas les meubles du client et ne sert pas à garantir la couverture des détecteurs | Visualisation uniquement ; corriger à la main si besoin |
 | Analyse d'image | **Non développée** : pas de reconnaissance automatique des murs | Le conseiller trace la géométrie sur le fond calibré ; une analyse automatique ne pourrait proposer qu'une première interprétation à corriger |
 | Import PDF | Première page uniquement, rendue en image | Plans multi-pages : importer la page utile |
 | Couverture de détection | Secteur 110° / 10 m découpé à la pièce, **sans** calcul d'obstacles ni de hauteur | Simulation indicative uniquement, clairement libellée |

@@ -29,7 +29,7 @@ test.beforeEach(async ({ page }) => {
 
 test('parcours complet : dossier → plan importé → 3D → équipements → offres → PDF', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Tableau de bord des audits' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Bienvenue sur Sector Alarm Movers' })).toBeVisible();
 
   // 1. Création du dossier
   await page.getByTestId('start-import').click();
@@ -38,7 +38,7 @@ test('parcours complet : dossier → plan importé → 3D → équipements → o
   await dialog.locator('input[name="address"]').fill('5 impasse Fictive, 00000 Démo');
   await dialog.locator('input[name="surface"]').fill('75');
   await dialog.getByRole('button', { name: /Créer et importer le plan/ }).click();
-  await expect(page.getByRole('tab', { name: 'Plan 2D' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: 'Plan 2D meublé', exact: true })).toHaveAttribute('aria-selected', 'true');
 
   // 2. Import d'une image de plan comme fond de référence
   await page.getByTestId('plan-import-input').setInputFiles('demo-assets/plan-exemple.png');
@@ -74,10 +74,10 @@ test('parcours complet : dossier → plan importé → 3D → équipements → o
   await expect(page.getByText('Surface : 10,80 m²').or(page.getByText(/Surface : /))).toBeVisible();
 
   // 6. Ajout d'une porte d'entrée sur le mur extérieur du séjour
-  await page.getByRole('button', { name: 'Porte extérieure' }).click();
+  await page.getByRole('button', { name: 'Porte extérieure', exact: true }).click();
   await page.mouse.click(...Object.values(await bgPoint(page, 300, 660)) as [number, number]);
   await expect(page.getByText("Donne sur l'extérieur").first()).toBeVisible();
-  await page.getByRole('button', { name: 'Fenêtre' }).click();
+  await page.getByRole('button', { name: 'Fenêtre', exact: true }).click();
   await page.mouse.click(...Object.values(await bgPoint(page, 800, 100)) as [number, number]);
   await expect(page.getByTestId('opening-RDC-O02')).toBeVisible();
 
@@ -89,15 +89,15 @@ test('parcours complet : dossier → plan importé → 3D → équipements → o
   await expect(page.getByTestId('opening-RDC-O02')).toBeVisible();
 
   // 7. Audit : application de la proposition volumétrique
-  await page.getByRole('tab', { name: 'Audit' }).click();
+  await page.getByRole('tab', { name: 'Audit et équipements', exact: true }).click();
   await page.getByTestId('mode-volumetrique').getByRole('button', { name: 'Appliquer sur le plan' }).click();
-  await page.getByRole('tab', { name: 'Équipements' }).click();
+  await page.getByRole('tab', { name: 'Équipements', exact: true }).click();
   await expect(page.locator('[data-testid^="equipment-row-"]').first()).toBeVisible();
   const deviceCount = await page.locator('[data-testid^="equipment-row-"]').count();
   expect(deviceCount).toBeGreaterThanOrEqual(4);
 
   // 8. Vue 3D générée depuis la géométrie corrigée
-  await page.getByRole('tab', { name: 'Vue 3D' }).click();
+  await page.getByRole('tab', { name: 'Visualisation 3D', exact: true }).click();
   await expect(page.getByTestId('view3d').locator('canvas')).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: 'Dessus' }).click();
   await page.getByLabel('Affichage des murs').selectOption('coupe');
@@ -105,7 +105,7 @@ test('parcours complet : dossier → plan importé → 3D → équipements → o
   await page.screenshot({ path: 'test-results/parcours-3d.png' });
 
   // 9. Ajout manuel d'un équipement sur le plan 2D, puis suppression
-  await page.getByRole('tab', { name: 'Plan 2D' }).click();
+  await page.getByRole('tab', { name: 'Plan 2D meublé', exact: true }).click();
   await page.getByTestId('library-DEMO-SIR-EXT').click();
   await page.mouse.click(...Object.values(await bgPoint(page, 300, 300)) as [number, number]);
   await expect(page.getByText('Placé manuellement')).toBeVisible();
@@ -116,7 +116,7 @@ test('parcours complet : dossier → plan importé → 3D → équipements → o
   await expect(page.getByText('Placé manuellement')).toBeVisible();
 
   // 10. Comparaison des offres et choix du pack
-  await page.getByRole('tab', { name: 'Devis' }).click();
+  await page.getByRole('tab', { name: 'Proposition commerciale', exact: true }).click();
   await expect(page.getByTestId('comparator')).toBeVisible();
   await page.locator('[data-testid="cell-plan-pack_essentiel"]').click();
   const initialEssentiel = await page.getByTestId('quote-initial').textContent();
@@ -127,17 +127,19 @@ test('parcours complet : dossier → plan importé → 3D → équipements → o
   // 11. Modification d'un tarif dans le catalogue -> recalcul du devis
   await page.locator('[data-testid="cell-plan-pack_essentiel"]').click();
   const before = await page.getByTestId('quote-initial').textContent();
-  await page.getByRole('button', { name: 'Catalogue & règles' }).click();
+  await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
   const price = page.getByLabel('Prix matériel DEMO-SIR-INT');
   await price.fill('199');
   await price.blur();
   await page.getByRole('button', { name: 'Tableau de bord' }).click();
   await page.getByTestId('dossier-row-' + (await page.locator('[data-testid^="dossier-row-MOV-"]').first().getAttribute('data-testid'))!.replace('dossier-row-', '')).getByRole('button', { name: 'Devis' }).click();
+  await page.getByRole('tab', { name: 'Proposition commerciale', exact: true }).click();
   const after = await page.getByTestId('quote-initial').textContent();
   const num = (s: string | null) => Number(s!.replace(/[^\d,]/g, '').replace(',', '.'));
   expect(num(after) - num(before)).toBe(50);
 
   // 12. Génération du devis PDF
+  await page.getByRole('tab', { name: 'Devis', exact: true }).click();
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Générer le devis PDF' }).click();
   const download = await downloadPromise;
@@ -156,7 +158,7 @@ test('parcours complet : dossier → plan importé → 3D → équipements → o
 
 test('import Excel du catalogue : aperçu, doublons, validation des prix, confirmation explicite', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Catalogue & règles' }).click();
+  await page.getByRole('button', { name: 'Catalogue', exact: true }).click();
   await page.getByRole('button', { name: 'Import / export Excel' }).click();
   await page.getByTestId('catalog-import-input').setInputFiles('demo-assets/catalogue-exemple.xlsx');
   const summary = page.getByTestId('import-summary');
@@ -180,26 +182,26 @@ test('import Excel du catalogue : aperçu, doublons, validation des prix, confir
 test('scénario de démonstration préchargé : PDF importé, 3D par niveau, comparaison des modes', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'MOV-DEMO-0001' }).click();
-  await page.getByRole('tab', { name: 'Plan 2D' }).click();
+  await page.getByRole('tab', { name: 'Plan 2D meublé', exact: true }).click();
   await page.getByTestId('level-Étage (R+1)').click();
   await page.getByTestId('plan-import-input').setInputFiles('demo-assets/plan-exemple.pdf');
   await expect(page.getByTestId('plan-background')).toBeVisible({ timeout: 20_000 });
   await page.screenshot({ path: 'test-results/demo-plan-pdf.png' });
   await page.getByRole('button', { name: 'Retirer le fond' }).click();
 
-  await page.getByRole('tab', { name: 'Audit' }).click();
+  await page.getByRole('tab', { name: 'Audit et équipements', exact: true }).click();
   await expect(page.getByTestId('mode-perimetrique')).toContainText('13');
   await page.getByTestId('mode-perimetrique').getByRole('button', { name: 'Appliquer sur le plan' }).click();
   await expect(page.getByTestId('mode-perimetrique')).toContainText('Mode retenu');
 
-  await page.getByRole('tab', { name: 'Vue 3D' }).click();
+  await page.getByRole('tab', { name: 'Visualisation 3D', exact: true }).click();
   await expect(page.getByTestId('view3d').locator('canvas')).toBeVisible({ timeout: 20_000 });
   await page.getByLabel('Niveau affiché').selectOption({ label: 'Rez-de-chaussée seul' });
   await page.waitForTimeout(1000);
   await page.screenshot({ path: 'test-results/demo-3d-rdc.png' });
   await page.getByRole('button', { name: 'Utiliser cette vue pour le devis' }).click();
 
-  await page.getByRole('tab', { name: 'Devis' }).click();
+  await page.getByRole('tab', { name: 'Devis', exact: true }).click();
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Générer le devis PDF' }).click();
   const download = await downloadPromise;

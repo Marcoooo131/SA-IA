@@ -81,7 +81,7 @@ export function EquipmentTab() {
                     const opening = level.openings.find((o) => o.id === d.openingId);
                     const sel = selection?.kind === 'device' && selection.id === d.id;
                     return (
-                      <tr key={d.id} className={cx('border-t border-slate-100', sel && 'bg-blue-50/60')} data-testid={`equipment-row-${d.id}`}>
+                      <tr key={d.id} className={cx('border-t border-slate-100', sel && 'bg-brand-50/60')} data-testid={`equipment-row-${d.id}`}>
                         <td className="px-4 py-1.5">
                           <div className="flex items-center gap-2">
                             {p && <CategoryDot category={p.category} suggested={d.origin === 'suggere' && !d.validated} />}
