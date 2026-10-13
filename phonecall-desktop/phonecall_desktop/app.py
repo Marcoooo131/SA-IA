@@ -27,7 +27,9 @@ log = logging.getLogger("phonecall_desktop")
 def _serve(app, sock):
     import uvicorn
 
-    server = uvicorn.Server(uvicorn.Config(app, log_level="warning", access_log=False, ws_ping_interval=None))
+    # log_config=None: keep our own logging (uvicorn's default config needs a console)
+    server = uvicorn.Server(uvicorn.Config(app, log_level="warning", access_log=False, ws_ping_interval=None,
+                                           log_config=None))
     thread = threading.Thread(target=server.run, kwargs={"sockets": [sock]}, daemon=True, name="ui-server")
     thread.start()
     deadline = time.monotonic() + 15

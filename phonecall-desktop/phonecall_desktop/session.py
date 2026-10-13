@@ -240,11 +240,12 @@ class SessionController:
             self.metrics["capture"] = self.capture.stats()
             log.info("capture stopped after %ss", self.duration_s)
             self._set_state(State.FINALIZING)
+            snapshot = self.snapshot_state()  # state at the moment of the stop
         worker = threading.Thread(target=self._finalize, daemon=True, name="finalize")
         worker.start()
         if wait:
             worker.join()
-        return self.snapshot_state()
+        return snapshot
 
     def emergency_stop(self) -> None:
         """Window closed / application exit: stop listening immediately, no finalisation."""

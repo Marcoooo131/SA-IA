@@ -46,6 +46,7 @@ jobs:
 
   windows:
     runs-on: windows-latest
+    timeout-minutes: 30
     defaults: { run: { working-directory: phonecall-desktop, shell: pwsh } }
     steps:
       - uses: actions/checkout@v4
@@ -66,7 +67,8 @@ jobs:
         run: |
           ./dist/PhoneCallDiag/PhoneCallDiag.exe --selftest
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $p = Start-Process ./dist/PhoneCallDesktop/PhoneCallDesktop.exe -ArgumentList '--selftest' -Wait -PassThru
+          $p = Start-Process ./dist/PhoneCallDesktop/PhoneCallDesktop.exe -ArgumentList '--selftest' -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); Write-Host "PhoneCallDesktop.exe --selftest timed out"; exit 1 }
           Write-Host "PhoneCallDesktop.exe --selftest exit code: $($p.ExitCode)"
           if ($p.ExitCode -ne 0) { exit $p.ExitCode }
           ./dist/PhoneCallDiag/PhoneCallDiag.exe ; exit 0
