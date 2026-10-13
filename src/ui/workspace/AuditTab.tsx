@@ -27,7 +27,7 @@ function ModeComparison() {
       Object.fromEntries(
         modes.map((m) => [
           m,
-          computeQuote(proposalBom(audit.proposals[m], catalog.products), { ...dossier.quoteDraft, adjustments: [], discountIds: [], moved: [], packTransferred: false, totalOverride: null }, catalog),
+          computeQuote(proposalBom(audit.proposals[m], catalog.products), { ...dossier.quoteDraft, adjustments: [], discountIds: [], moved: [], packTransferred: false, totalOverride: null, pdfVariants: [] }, catalog),
         ]),
       ) as Record<ProtectionMode, ReturnType<typeof computeQuote>>,
     // eslint-disable-next-line react-hooks/exhaustive-deps

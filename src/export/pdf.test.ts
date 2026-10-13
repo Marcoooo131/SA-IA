@@ -4,7 +4,7 @@ import { createDefaultCatalog } from '@/catalog/defaultCatalog';
 import { demoHouseDossier } from '@/demo/demoData';
 import { runAudit } from '@/rules/engine';
 import { DEFAULT_RULES_CONFIG } from '@/rules/config';
-import { buildComparison, quoteForDossier } from '@/quote/compare';
+import { buildComparison, quoteForDossier, selectedVariants, variantKey } from '@/quote/compare';
 import { createQuoteRecord } from '@/quote/snapshot';
 import { renderLevelSvg } from './planImage';
 
@@ -49,5 +49,53 @@ describe('génération du devis PDF', () => {
     expect(svg).toContain('RDC-O01');
     expect(width).toBeGreaterThan(500);
     expect(height).toBeGreaterThan(300);
+  });
+
+  it('n’affiche les variantes du comparateur que si elles sont sélectionnées', async () => {
+    const catalog = createDefaultCatalog();
+    const dossier = demoHouseDossier(catalog);
+    const audit = runAudit(dossier, DEFAULT_RULES_CONFIG, catalog.products);
+    const comparison = buildComparison(dossier, catalog, audit);
+    const result = quoteForDossier(dossier, catalog);
+    const record = createQuoteRecord(dossier, result, catalog);
+    expect(selectedVariants(comparison, dossier)).toEqual([]);
+
+    // texte des flux PDF (compressés) décodés
+    const inflate = async (bytes: Uint8Array<ArrayBuffer>) =>
+      new Uint8Array(await new Response(new Response(bytes).body!.pipeThrough(new DecompressionStream('deflate'))).arrayBuffer());
+    const render = async (variants: ReturnType<typeof selectedVariants>) => {
+      const raw = new Uint8Array(generateQuotePdf({ dossier, catalog, record, result, audit, comparison, variants, planImages: [], view3d: null }).output('arraybuffer'));
+      const latin1 = new TextDecoder('latin1');
+      const src = latin1.decode(raw);
+      const out: string[] = [];
+      let i = 0;
+      while ((i = src.indexOf('stream', i)) !== -1) {
+        let start = i + 6;
+        if (src[start] === '\r') start++;
+        if (src[start] === '\n') start++;
+        const end = src.indexOf('endstream', start);
+        let stop = end;
+        while (src[stop - 1] === '\n' || src[stop - 1] === '\r') stop--;
+        try {
+          out.push(latin1.decode(await inflate(raw.slice(start, stop))));
+        } catch {
+          /* flux non compressé ou image */
+        }
+        i = end + 9;
+      }
+      return out.join('\n');
+    };
+    expect(await render([])).not.toContain('Variantes proposées');
+
+    // l'offre retenue n'est jamais une « variante » ; une variante cochée est affichée
+    const withVariant = {
+      ...dossier,
+      quoteDraft: { ...dossier.quoteDraft, pdfVariants: [variantKey('plan', dossier.quoteDraft.packId), variantKey('perimetrique', 'pack_essentiel')] },
+    };
+    const variants = selectedVariants(comparison, withVariant);
+    expect(variants.map((v) => variantKey(v.config, v.packId))).toEqual([variantKey('perimetrique', 'pack_essentiel')]);
+    const text = await render(variants);
+    expect(text).toContain('Variantes proposées');
+    expect(text).toContain('Configuration alternative - périmétrique');
   });
 });

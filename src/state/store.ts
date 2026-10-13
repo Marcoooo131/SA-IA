@@ -117,6 +117,7 @@ export interface AppState {
   setMovingAll(on: boolean, lines: { productId: string; quantity: number }[]): void;
   setTotalOverride(patch: { initial?: number | null; monthly?: number | null; note?: string } | null): void;
   toggleDiscount(discountId: string): void;
+  togglePdfVariant(key: string): void;
   addQuoteRecord(record: QuoteRecord): void;
 
   // catalogue
@@ -472,6 +473,11 @@ export const useApp = create<AppState>()((set, get) => {
       updateActive((d) => {
         const others = d.quoteDraft.adjustments.filter((a) => a.productId !== productId);
         return { ...d, quoteDraft: { ...d.quoteDraft, adjustments: delta ? [...others, { productId, delta }] : others } };
+      }),
+    togglePdfVariant: (key) =>
+      updateActive((d) => {
+        const list = d.quoteDraft.pdfVariants ?? [];
+        return { ...d, quoteDraft: { ...d.quoteDraft, pdfVariants: list.includes(key) ? list.filter((x) => x !== key) : [...list, key] } };
       }),
     toggleDiscount: (discountId) =>
       updateActive((d) => {

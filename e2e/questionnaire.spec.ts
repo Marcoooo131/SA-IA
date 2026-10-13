@@ -92,6 +92,15 @@ test('questionnaire : de la maison à étage au devis, centrale à 0 €/mois, r
   await expect(centrale.getByLabel('Mensualité DEMO-CENT-01')).toHaveValue('0');
   await expect(centrale).toContainText('499 €');
   await expect(centrale).toContainText('0 €/mois');
+  // Variantes : aucune n'est affichée sur le devis tant qu'elle n'est pas cochée
+  await expect(page.getByTestId('variants-count')).toContainText('aucune variante sur le devis');
+  const variant = page.getByTestId('variant-perimetrique:pack_essentiel');
+  await expect(variant).not.toBeChecked();
+  await variant.check();
+  await expect(page.getByTestId('variants-count')).toContainText('1 variante(s) affichée(s) sur le devis');
+  await variant.uncheck();
+  await expect(page.getByTestId('variants-count')).toContainText('aucune variante sur le devis');
+
   // Déménagement : seuls les frais matériels passent à 0 €, la mensualité est conservée
   await page.getByLabel('Offre du devis').selectOption({ label: 'Pack Essentiel' });
   const monthlyBefore = await page.getByTestId('quote-monthly').innerText();

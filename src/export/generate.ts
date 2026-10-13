@@ -1,7 +1,7 @@
 import type { Catalog, Dossier } from '@/domain/types';
 import type { RulesConfig } from '@/rules/config';
 import { runAudit } from '@/rules/engine';
-import { buildComparison, quoteForDossier } from '@/quote/compare';
+import { buildComparison, quoteForDossier, selectedVariants } from '@/quote/compare';
 import { createQuoteRecord } from '@/quote/snapshot';
 import { generateQuotePdf, type PdfImage } from './pdf';
 import { renderLevelSvg, svgToPng } from './planImage';
@@ -20,6 +20,7 @@ export async function generateQuoteForDossier(
   const result = quoteForDossier(dossier, catalog);
   const record = createQuoteRecord(dossier, result, catalog);
   const comparison = buildComparison(dossier, catalog, audit);
+  const variants = selectedVariants(comparison, dossier);
 
   const planImages: PdfImage[] = [];
   for (const level of [...dossier.plan.levels].sort((a, b) => a.index - b.index)) {
@@ -54,7 +55,7 @@ export async function generateQuoteForDossier(
     }
   }
 
-  const doc = generateQuotePdf({ dossier, catalog, record, result, audit, comparison, planImages, view3d });
+  const doc = generateQuotePdf({ dossier, catalog, record, result, audit, comparison, variants, planImages, view3d });
   const blob = doc.output('blob');
   return { record, blob, result };
 }

@@ -309,6 +309,8 @@ export interface QuoteDraft {
   packTransferred: boolean;
   /** Montants finaux saisis manuellement par le conseiller (remplacent le calcul). */
   totalOverride: { initial?: number; monthly?: number; note: string } | null;
+  /** Variantes du comparateur à afficher dans le PDF (clés `config:packId|none`). Aucune par défaut. */
+  pdfVariants: string[];
 }
 
 export interface QuoteRecord {
