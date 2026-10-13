@@ -56,7 +56,16 @@ def build(settings=None):
 
 def selftest() -> int:
     """Non-interactive check used by CI and by IT after installation (no audio recorded)."""
+    from pathlib import Path
+
     import httpx
+
+    from .config import config_files, install_dir
+
+    print(f"install dir: {install_dir()}  (frozen={getattr(sys, 'frozen', False)}, executable={sys.executable})")
+    for f in config_files():
+        print(f"config file: {f} -> {'found' if Path(f).exists() else 'absent'}")
+    print(f"environment: {get_settings().environment.value}")
 
     settings, controller, hub, app, sock, port, token = build()
     server, thread = _serve(app, sock)

@@ -48,7 +48,8 @@ class Environment(str, Enum):
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="PCD_", env_file=config_files(), extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="PCD_", env_file=config_files(), env_file_encoding="utf-8",
+                                      extra="ignore")
 
     environment: Environment = Environment.PRODUCTION
 
