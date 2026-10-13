@@ -75,7 +75,7 @@ export interface QuoteResult {
         catalogInitial: number;
         catalogMonthly: number;
         overridden: boolean;
-        /** Abonnement transféré (déménagement) : 0 € et 0 €/mois. */
+        /** Abonnement transféré (déménagement) : frais matériels à 0 €, mensualité conservée. */
         transferred: boolean;
         items: { productId: string; name: string; quantity: number; used: number }[];
       })
@@ -189,10 +189,12 @@ export function computeQuote(bom: Map<string, number>, draft: QuoteDraft, catalo
       catalogMonthly: p.monthly,
       overridden: o !== undefined && (o.initial !== undefined || o.monthly !== undefined),
       extraInitial: unitInitial !== null ? fromCents(billable * toCents(unitInitial)) : null,
-      extraMonthly: unitMonthly !== null ? fromCents(billable * toCents(unitMonthly)) : null,
+      // Déménagement : seuls les frais matériels sont offerts, la mensualité reste due
+      extraMonthly: unitMonthly !== null ? fromCents(extra * toCents(unitMonthly)) : null,
       priceKnown: unitInitial !== null && unitMonthly !== null,
     });
-    if (billable > 0 && missing.length) unpriced.push({ productId, name: p.name, quantity: billable, missing });
+    const missingNow = missing.filter((m) => (m === 'materiel' ? billable > 0 : extra > 0));
+    if (missingNow.length) unpriced.push({ productId, name: p.name, quantity: missingNow.includes('materiel') ? billable : extra, missing: missingNow });
   }
 
   // Regroupement en lots (ex. pack périmétrique) lorsque c'est plus avantageux
@@ -218,7 +220,7 @@ export function computeQuote(bom: Map<string, number>, draft: QuoteDraft, catalo
         const rem = billable - covers;
         line.bundled = covers;
         line.extraInitial = fromCents(rem * toCents(line.unitInitial!));
-        line.extraMonthly = fromCents(rem * toCents(line.unitMonthly!));
+        line.extraMonthly = fromCents((rem + line.moved) * toCents(line.unitMonthly!));
         bundles.push({
           productId: b.id,
           reference: b.reference,
@@ -254,7 +256,7 @@ export function computeQuote(bom: Map<string, number>, draft: QuoteDraft, catalo
   const installation = catalog.settings.installationFee;
   const transferred = !!pack && !!draft.packTransferred;
   const packInitial = pack ? (transferred ? 0 : (draft.packOverride?.initial ?? pack.initial)) : 0;
-  const packMonthly = pack ? (transferred ? 0 : (draft.packOverride?.monthly ?? pack.monthly)) : 0;
+  const packMonthly = pack ? (draft.packOverride?.monthly ?? pack.monthly) : 0;
   const packInitialC = toCents(packInitial);
   const packMonthlyC = toCents(packMonthly);
   const initialBeforeC = packInitialC + extrasInitialC + (installation !== null ? toCents(installation) : 0);
@@ -331,7 +333,7 @@ export function computeQuote(bom: Map<string, number>, draft: QuoteDraft, catalo
           monthly: packMonthly,
           catalogInitial: pack.initial,
           catalogMonthly: pack.monthly,
-          overridden: !transferred && !!draft.packOverride && (draft.packOverride.initial !== undefined || draft.packOverride.monthly !== undefined),
+          overridden: !!draft.packOverride && ((!transferred && draft.packOverride.initial !== undefined) || draft.packOverride.monthly !== undefined),
           transferred,
           items: pack.items.map((i) => ({
             productId: i.productId,

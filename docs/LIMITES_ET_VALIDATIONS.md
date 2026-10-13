@@ -17,7 +17,7 @@ valider avant toute utilisation réelle. Il doit accompagner toute présentation
 |---|---|
 | Prix matériel et suppléments mensuels des produits | Valeurs communiquées pour le prototype, **non officielles** |
 | Prix individuels de la centrale et du clavier | Centrale 499 € (prix matériel configurable) et **0 €/mois** (règle validée, imposée par le calculateur) ; clavier 149 € sans supplément mensuel |
-| Déménagement (reprise d'équipements, transfert d'abonnement à 0 €) | Règle commerciale à confirmer (conditions, frais éventuels de déplacement/réinstallation) |
+| Déménagement (reprise d'équipements, transfert d'abonnement) | Remise sur les **frais matériels uniquement** (0 €) ; la **mensualité est conservée** (règle communiquée). Conditions et frais éventuels de déplacement/réinstallation à confirmer |
 | Composition et prix des Packs Essentiel et Sérénité | Valeurs communiquées, modifiables dans le catalogue |
 | Pack périmétrique (5 détecteurs) : règles d'utilisation | Regroupement automatique quand c'est moins cher (désactivable) – à confirmer commercialement |
 | Base HT / TTC et taux de TVA | **Inconnus** → aucune TVA calculée tant qu'elle n'est pas renseignée |

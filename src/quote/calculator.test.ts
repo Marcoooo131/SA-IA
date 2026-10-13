@@ -100,13 +100,15 @@ describe('calculateur de devis', () => {
     expect(catalog.products.find((p) => p.id === 'prd_fumee')!.priceInitial).toBe(149);
   });
 
-  it('met les équipements repris et l’abonnement transféré à 0 € et 0 €/mois (déménagement)', () => {
+  it('déménagement : frais matériels à 0 €, mensualité conservée (équipements repris et abonnement transféré)', () => {
     const base = bom({ prd_centrale: 1, prd_clavier: 1, prd_mouvement: 5, prd_fumee: 2 });
     const partial = computeQuote(base, draft('pack_serenite', { moved: [{ productId: 'prd_mouvement', quantity: 1 }] }), catalog);
     // 2 détecteurs de mouvement supplémentaires dont 1 repris -> 1 facturé
     expect(partial.lines.find((l) => l.productId === 'prd_mouvement')!.moved).toBe(1);
     expect(partial.extras.initial).toBe(149 + 149);
     expect(partial.movedCount).toBe(1);
+    const none = computeQuote(base, draft('pack_serenite'), catalog);
+    expect(partial.totals.monthly).toBe(none.totals.monthly);
     const all = computeQuote(
       base,
       draft('pack_serenite', {
@@ -120,7 +122,10 @@ describe('calculateur de devis', () => {
     );
     expect(all.pack!.transferred).toBe(true);
     expect(all.totals.initial).toBe(0);
-    expect(all.totals.monthly).toBe(0);
+    // mensualité conservée : forfait Sérénité + 2 mouvements + 1 fumée supplémentaires
+    expect(all.pack!.monthly).toBe(43.9);
+    expect(all.totals.monthly).toBe(none.totals.monthly);
+    expect(all.totals.monthly).toBeCloseTo(43.9 + 3 * 2);
     // la reprise ne dépasse jamais la quantité supplémentaire
     expect(all.lines.find((l) => l.productId === 'prd_fumee')!.moved).toBe(1);
   });

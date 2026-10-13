@@ -92,6 +92,16 @@ test('questionnaire : de la maison à étage au devis, centrale à 0 €/mois, r
   await expect(centrale.getByLabel('Mensualité DEMO-CENT-01')).toHaveValue('0');
   await expect(centrale).toContainText('499 €');
   await expect(centrale).toContainText('0 €/mois');
+  // Déménagement : seuls les frais matériels passent à 0 €, la mensualité est conservée
+  await page.getByLabel('Offre du devis').selectOption({ label: 'Pack Essentiel' });
+  const monthlyBefore = await page.getByTestId('quote-monthly').innerText();
+  await page.getByTestId('moving-bar').getByRole('switch').click();
+  await expect(page.getByTestId('quote-initial')).toHaveText(/^0\s?€/);
+  await expect(page.getByTestId('quote-monthly')).toHaveText(monthlyBefore);
+  await expect(page.getByTestId('quote-monthly')).not.toHaveText(/^0\s?€/);
+  await page.getByTestId('moving-bar').getByRole('switch').click();
+  await expect(page.getByTestId('quote-initial')).not.toHaveText(/^0\s?€/);
+
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Générer le devis PDF' }).click();
   const pdf = await download;
