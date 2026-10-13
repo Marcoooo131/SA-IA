@@ -160,8 +160,7 @@ def test_cannot_start_twice_and_new_conversation_blocked_during_capture(audio_di
 
 
 def test_max_duration_auto_stop(audio_dir):
-    ctl, events = make(audio_dir, speed=1.0, max_session_minutes=0)
-    ctl.settings.max_session_minutes = 0.01  # 0.6 s
+    ctl, events = make(audio_dir, speed=1.0, max_session_minutes=0.01)  # 0.6 s
     ctl.start(StartRequest(consent=True))
     wait_state(ctl, {State.FINALIZING, State.GENERATING, State.DONE, State.ERROR}, timeout=5)
     assert any(t == "notice" and "automatiquement" in p["message"] for t, p in events)

@@ -174,11 +174,12 @@ class SessionController:
                 raise
             self.started_at = time.time()
             self.session_id = new_request_id()
+            log.info("capture started channels=%s", ",".join(c.value for c in channels))
+            self._set_state(State.CAPTURING)
+            # started after the state change: an early expiry must find the capture running
             self._timer = threading.Timer(self.settings.max_session_minutes * 60, self._auto_stop, args=("durée maximale atteinte",))
             self._timer.daemon = True
             self._timer.start()
-            log.info("capture started channels=%s", ",".join(c.value for c in channels))
-            self._set_state(State.CAPTURING)
             if len(self.opened_devices) < len(channels):
                 missing = {c.value for c in channels} - set(self.opened_devices)
                 self._notice("warning", f"Source non ouverte : {', '.join(missing)}. La transcription sera partielle.")
@@ -225,7 +226,9 @@ class SessionController:
     # ------------------------------------------------------------------ stop & finalisation
 
     def _auto_stop(self, reason: str) -> None:
-        if self.state == State.CAPTURING:
+        with self._lock:  # waits for a start() still in progress
+            if self.state != State.CAPTURING:
+                return
             self._notice("warning", f"Capture arrêtée automatiquement : {reason}.")
             self.stop()
 

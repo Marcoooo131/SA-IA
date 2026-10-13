@@ -64,7 +64,7 @@ class Settings(BaseSettings):
     # --- Session & privacy
     require_consent_confirmation: bool = True
     consent_label: str = "L'interlocuteur a été informé de la prise de notes assistée, conformément aux consignes de l'entreprise."
-    max_session_minutes: int = 120
+    max_session_minutes: float = 120
     ui_disconnect_stop_s: float = 20.0
     history_enabled: bool = False
     history_retention_days: int = 7
