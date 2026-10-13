@@ -48,7 +48,7 @@ python -c "import getpass, phonecall_desktop.secrets_store as s; s.set_gateway_t
 ou, en déploiement, par un script d'installation exécuté dans la session de l'utilisateur
 (`cmdkey` n'est pas adapté : utiliser l'API Credential Manager / keyring).
 
-Contrôle : `PhoneCallDiag.exe --selftest` puis, dans l'application, une génération sur le mode
+Contrôle : `PhoneCallDesktop.exe --selftest --report selftest.txt` puis, dans l'application, une génération sur le mode
 test. Une erreur « Accès au service de génération refusé » indique un jeton absent, faux ou révoqué.
 
 Effacer le jeton :

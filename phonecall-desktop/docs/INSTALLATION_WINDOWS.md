@@ -41,9 +41,9 @@ python -m phonecall_desktop     # le modèle est téléchargé au premier lancem
 
 ## 3. Paquet pour un déploiement (DSI)
 
-1. Construire le paquet (ou récupérer l'artefact `PhoneCallDesktop-windows-unsigned` de la CI) :
+1. Construire le paquet (ou récupérer la dernière **Release GitHub** « Phone Call Desktop » (fichier `PhoneCallDesktop-windows.zip`)) :
    ```powershell
-   .\packaging\build_windows.ps1    # → dist\PhoneCallDesktop\PhoneCallDesktop.exe et dist\PhoneCallDiag\PhoneCallDiag.exe
+   .\packaging\build_windows.ps1    # → dist\PhoneCallDesktop\ et dist\PhoneCallDesktop-windows.zip
    ```
 2. **Signer** les exécutables avec le certificat de signature de code de l'entreprise (sinon
    SmartScreen / l'antivirus peut les bloquer) et les faire analyser par l'équipe sécurité.
@@ -54,7 +54,7 @@ python -m phonecall_desktop     # le modèle est téléchargé au premier lancem
 4. Copier `config.example.env` en `%APPDATA%\PhoneCallDesktop\config.env` (ou pousser les variables
    `PCD_*` par GPO / Intune) et renseigner `PCD_GATEWAY_URL`.
 5. Installer le jeton de la passerelle pour chaque utilisateur : voir `CONFIGURATION_CLES.md`.
-6. Vérifier : `PhoneCallDiag.exe --selftest` puis `PhoneCallDiag.exe --record 10` (procédure audio).
+6. Vérifier : « Diagnostic audio.bat » (fourni dans le dossier) ou `PhoneCallDesktop.exe --diag 10 --report diag.txt`.
 7. Raccourci : `PhoneCallDesktop.exe` (fenêtre unique ; fermer la fenêtre arrête toute capture).
 
 ## 4. Mise à jour

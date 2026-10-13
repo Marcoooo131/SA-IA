@@ -63,18 +63,60 @@ jobs:
         env: { PCD_ENVIRONMENT: dev, PCD_AUDIO_BACKEND: wasapi, PCD_NOTES_CLIENT: simulated }
       - name: Build the Windows package
         run: ./packaging/build_windows.ps1
-      - name: Self-test of the packaged executables
+      - name: Checks of the packaged application (as delivered, with its config.env)
+        working-directory: phonecall-desktop/dist/PhoneCallDesktop
         run: |
-          ./dist/PhoneCallDiag/PhoneCallDiag.exe --selftest
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          $p = Start-Process ./dist/PhoneCallDesktop/PhoneCallDesktop.exe -ArgumentList '--selftest' -PassThru
-          if (-not $p.WaitForExit(120000)) { $p.Kill(); Write-Host "PhoneCallDesktop.exe --selftest timed out"; exit 1 }
-          Write-Host "PhoneCallDesktop.exe --selftest exit code: $($p.ExitCode)"
-          if ($p.ExitCode -ne 0) { exit $p.ExitCode }
-          ./dist/PhoneCallDiag/PhoneCallDiag.exe ; exit 0
-        env: { PCD_ENVIRONMENT: dev, PCD_AUDIO_BACKEND: wasapi, PCD_NOTES_CLIENT: simulated }
+          function Run-App($argList, $timeoutMs) {
+            $p = Start-Process ./PhoneCallDesktop.exe -ArgumentList $argList -PassThru
+            if (-not $p.WaitForExit($timeoutMs)) { $p.Kill(); Write-Host "TIMEOUT: $argList"; exit 1 }
+            return $p.ExitCode
+          }
+          $code = Run-App '--selftest --report selftest.txt' 120000
+          Get-Content selftest.txt; Write-Host "selftest exit code: $code"; if ($code -ne 0) { exit $code }
+          $code = Run-App '--diag 0 --report diag.txt' 60000
+          Get-Content diag.txt; Write-Host "diag exit code: $code (1 = no audio device on CI runners)"
+          $code = Run-App '--selftest-recognizer tiny --report recognizer.txt' 600000
+          Get-Content recognizer.txt; Write-Host "recognizer exit code: $code"; if ($code -ne 0) { exit $code }
+          $code = Run-App '--smoke-window 3' 180000
+          Write-Host "WebView2 window exit code: $code (0 = page loaded in the native window)"
+          if ($code -ne 0) { Get-Content "$env:LOCALAPPDATA\PhoneCallDesktop\logs\phonecall-desktop.log" -Tail 30; exit $code }
+          Remove-Item selftest.txt, diag.txt, recognizer.txt
+      - name: Re-create the zip without test outputs
+        run: Compress-Archive -Path dist\PhoneCallDesktop -DestinationPath dist\PhoneCallDesktop-windows.zip -Force
       - uses: actions/upload-artifact@v4
         with:
-          name: PhoneCallDesktop-windows-unsigned
-          path: phonecall-desktop/dist/
+          name: PhoneCallDesktop-windows-zip
+          path: phonecall-desktop/dist/PhoneCallDesktop-windows.zip
           retention-days: 7
+
+  release:
+    # Publishes the tested Windows package as a GitHub Release (permanent download link).
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [windows, tests-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: PhoneCallDesktop-windows-zip }
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: desktop-v0.1.${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: Phone Call Desktop 0.1.${{ github.run_number }} (version de test)
+          prerelease: true
+          make_latest: true
+          files: PhoneCallDesktop-windows.zip
+          body: |
+            Version de **test** du poste conseiller Phone Call (prototype, non officiel, non signé).
+
+            1. Téléchargez `PhoneCallDesktop-windows.zip`, clic droit › Extraire tout.
+            2. Ouvrez le dossier `PhoneCallDesktop` et lisez `LISEZMOI.txt`.
+            3. Double-cliquez sur `PhoneCallDesktop.exe` (si Windows le bloque : « Informations complémentaires » › « Exécuter quand même »).
+            4. Autorisez le micro : Paramètres › Confidentialité et sécurité › Microphone › « Autoriser les applications de bureau ».
+
+            Au premier lancement, le moteur de transcription (~500 Mo) est téléchargé.
+            La note est **simulée** (aucune IA) tant qu'aucune passerelle n'est configurée dans `config.env`.
+            Utiliser uniquement avec des conversations fictives.
+
+            Commit : ${{ github.sha }}

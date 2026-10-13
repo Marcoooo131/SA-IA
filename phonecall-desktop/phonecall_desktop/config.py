@@ -27,6 +27,20 @@ def app_dir(kind: str = "config") -> Path:
     return Path.home() / (".config" if kind == "config" else ".local/share") / "phonecall-desktop"
 
 
+def install_dir() -> Path | None:
+    """Folder of the packaged executable (None when running from the sources)."""
+    return Path(sys.executable).resolve().parent if getattr(sys, "frozen", False) else None
+
+
+def config_files() -> tuple[str, ...]:
+    """Packaged defaults next to the .exe first, then the user's own file (which wins)."""
+    files = []
+    if (d := install_dir()) is not None:
+        files.append(str(d / "config.env"))
+    files.append(str(app_dir() / "config.env"))
+    return tuple(files)
+
+
 class Environment(str, Enum):
     DEV = "dev"
     TEST = "test"
@@ -34,7 +48,7 @@ class Environment(str, Enum):
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="PCD_", env_file=str(app_dir() / "config.env"), extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="PCD_", env_file=config_files(), extra="ignore")
 
     environment: Environment = Environment.PRODUCTION
 

@@ -1,0 +1,39 @@
+PHONE CALL — prise de notes assistée (VERSION DE TEST, NON OFFICIELLE)
+=====================================================================
+
+Utiliser UNIQUEMENT avec des conversations fictives tant que l'outil n'a pas été validé
+par l'entreprise (DPO, sécurité informatique).
+
+1. Démarrer
+   - Double-cliquez sur PhoneCallDesktop.exe.
+   - Si Windows affiche « Windows a protégé votre ordinateur » (application non signée) :
+     cliquez sur « Informations complémentaires » puis « Exécuter quand même ».
+   - Au premier lancement, le moteur de transcription (~500 Mo) est téléchargé : laissez
+     l'application ouverte quelques minutes (message bleu dans la fenêtre). Une connexion
+     Internet est nécessaire cette première fois uniquement.
+
+2. Autoriser le micro (une seule fois)
+   - Paramètres Windows › Confidentialité et sécurité › Microphone :
+       « Accès au microphone » = Activé
+       « Autoriser les applications de bureau à accéder à votre microphone » = Activé
+   - Le son du PC (voix de l'interlocuteur) ne demande aucune autorisation : il est capté
+     sur le périphérique choisi dans l'application.
+
+3. Utiliser
+   - Choisissez « Son du PC » = le périphérique où vous entendez l'appel (souvent le casque),
+     et « Micro » = le micro du casque.
+   - Cochez la case d'information, cliquez Démarrer. Le bandeau rouge indique que l'écoute est active.
+   - Cliquez Fin (ou touche Échap) : l'écoute s'arrête, la note s'affiche.
+   - Relisez, modifiez si besoin, Copier la note, collez dans le CRM.
+
+4. Outils
+   - « Mode demonstration.bat » : conversation fictive, sans micro ni IA.
+   - « Diagnostic audio.bat » : vérifie en 10 s que le son du PC et le micro sont captés.
+
+5. Limites de cette version
+   - La note est SIMULÉE (aucune IA) tant qu'aucune passerelle n'est configurée dans config.env.
+   - Avec des haut-parleurs (sans casque), la voix de l'interlocuteur peut apparaître en double.
+   - Aucun son n'est enregistré sur le disque ; la transcription est effacée par « Nouvelle conversation ».
+
+Journaux techniques (sans contenu des conversations) :
+   %LOCALAPPDATA%\PhoneCallDesktop\logs

@@ -1,4 +1,4 @@
-# Construit PhoneCallDesktop (dossier dist\PhoneCallDesktop) avec PyInstaller.
+# Construit Phone Call (dossier dist\PhoneCallDesktop + dist\PhoneCallDesktop-windows.zip) avec PyInstaller.
 # Prérequis : Python 3.12 x64, exécuté depuis phonecall-desktop\
 $ErrorActionPreference = "Stop"
 python -m pip install --upgrade pip
@@ -10,9 +10,7 @@ pyinstaller --noconfirm --clean --name PhoneCallDesktop --windowed --paths . `
   --collect-data phonecall_desktop `
   --hidden-import pyaudiowpatch `
   packaging\launcher.py
-# Version console pour le diagnostic et l'auto-test
-pyinstaller --noconfirm --name PhoneCallDiag --console --paths . `
-  --collect-submodules phonecall_desktop `
-  --collect-data phonecall_desktop --hidden-import pyaudiowpatch `
-  packaging\diag_launcher.py
-Write-Host "OK : dist\PhoneCallDesktop\PhoneCallDesktop.exe et dist\PhoneCallDiag\PhoneCallDiag.exe"
+# Files delivered next to the executable (configuration, README, shortcuts)
+Copy-Item -Path packaging\dist_files\* -Destination dist\PhoneCallDesktop\ -Recurse -Force
+Compress-Archive -Path dist\PhoneCallDesktop -DestinationPath dist\PhoneCallDesktop-windows.zip -Force
+Write-Host "OK : dist\PhoneCallDesktop\PhoneCallDesktop.exe et dist\PhoneCallDesktop-windows.zip"

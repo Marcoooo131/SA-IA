@@ -92,6 +92,7 @@ class SessionController:
         self._timer: threading.Timer | None = None
         self.metrics: dict = {}
         self.recognizer_ready = False
+        self.recognizer_status = "idle"  # idle | loading | ready | error
 
     # ------------------------------------------------------------------ helpers
 
@@ -115,6 +116,7 @@ class SessionController:
             "started_at": self.started_at,
             "duration_s": self.duration_s,
             "recognizer_ready": self.recognizer_ready,
+            "recognizer_status": self.recognizer_status,
         }
 
     def snapshot(self) -> dict:
@@ -136,12 +138,18 @@ class SessionController:
         }
 
     def warmup(self) -> None:
-        """Load the recognition model in the background at application start."""
+        """Load the recognition model in the background at application start (the first time,
+        faster-whisper downloads it: several minutes)."""
+        self.recognizer_status = "loading"
+        self.emit("state", self.snapshot_state())
         try:
             self.recognizer.warmup()
             self.recognizer_ready = True
+            self.recognizer_status = "ready"
         except AppError as exc:
-            self._notice("error", exc.user_message, exc.code.value)
+            self.recognizer_status = "error"
+            self._notice("error", exc.user_message + " Vérifiez la connexion Internet au premier lancement "
+                         "(téléchargement du modèle), puis relancez l'application.", exc.code.value)
         self.emit("state", self.snapshot_state())
 
     # ------------------------------------------------------------------ start

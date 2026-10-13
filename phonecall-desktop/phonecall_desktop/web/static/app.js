@@ -81,7 +81,9 @@ function renderState(s) {
   $("capture-banner").hidden = !capturing;
   document.title = capturing ? "● CAPTURE – Phone Call" : "Phone Call – prise de notes";
   const busy = ["capturing", "finalizing", "generating"].includes(st);
-  $("btn-start").disabled = busy || (current.consent_required && !$("consent").checked);
+  const loading = current.recognizer_status === "loading";
+  $("btn-start").disabled = busy || loading || (current.consent_required && !$("consent").checked);
+  $("engine-status").hidden = !loading;
   $("btn-stop").disabled = !capturing;
   for (const id of ["use-system", "use-mic", "system-device", "mic-device", "btn-refresh", "consent"]) $(id).disabled = busy;
   $("btn-new").disabled = busy;
