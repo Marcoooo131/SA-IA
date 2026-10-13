@@ -4,7 +4,7 @@ import type { Catalog, Dossier, ProductCategory, QuoteRecord } from '@/domain/ty
 import type { QuoteResult } from '@/quote/calculator';
 import type { AuditResult } from '@/rules/engine';
 import { ALERT_STATUS_LABELS } from '@/rules/engine';
-import type { Comparison } from '@/quote/compare';
+import { CONFIG_LABELS, type Comparison, type ScenarioCell } from '@/quote/compare';
 import { CATEGORY_COLORS, CATEGORY_LABELS, HOUSING_TYPE_LABELS, MODE_LABELS, OPENING_TYPE_LABELS } from '@/domain/labels';
 import { formatArea, formatDate, formatEuro, formatMonthly } from '@/lib/format';
 
@@ -22,6 +22,8 @@ export interface QuotePdfInput {
   result: QuoteResult;
   audit: AuditResult;
   comparison: Comparison | null;
+  /** Variantes choisies par le conseiller pour figurer sur le devis (aucune = section absente). */
+  variants?: ScenarioCell[];
   planImages: PdfImage[];
   view3d: PdfImage | null;
 }
@@ -51,7 +53,7 @@ export function pdfText(s: string): string {
 }
 
 export function generateQuotePdf(input: QuotePdfInput): jsPDF {
-  const { dossier, record, result, audit, comparison, catalog } = input;
+  const { dossier, record, result, audit, comparison, catalog, variants = [] } = input;
   const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
@@ -388,31 +390,41 @@ export function generateQuotePdf(input: QuotePdfInput): jsPDF {
   });
   y = lastY() + 8;
 
-  // ---------------------------------------------------------------- Comparaison
-  if (comparison) {
-    sectionTitle('Comparaison des propositions');
-    const head = [T('Configuration'), ...comparison.offers.map((o) => T(o.name))];
-    const rows = comparison.configs.map((c) => [
-      T(`${c.label} (${c.total} équipements)`),
-      ...comparison.offers.map((o) => {
-        const cell = comparison.cells.find((x) => x.config === c.key && x.packId === o.packId)!;
-        return T(`${formatEuro(cell.result.totals.initial)}\n${formatMonthly(cell.result.totals.monthly)}${cell.result.hasUnpricedItems ? '\n+ éléments à confirmer' : ''}`);
-      }),
-    ]);
+  // ---------------------------------------------------------------- Variantes (uniquement si sélectionnées)
+  if (comparison && variants.length) {
+    sectionTitle('Variantes proposées');
+    const offerLabel = (packId: string | null, name: string) => (packId ? name : 'Sans forfait (à la carte)');
+    const configOf = (key: string) => comparison.configs.find((c) => c.key === key);
+    const rows = [
+      [
+        { content: T(`Offre retenue - ${CONFIG_LABELS.plan}`), styles: { fontStyle: 'bold' as const } },
+        T(offerLabel(record.packId, record.packName)),
+        String(configOf('plan')?.total ?? '-'),
+        T(formatEuro(result.totals.initial)),
+        T(formatMonthly(result.totals.monthly)),
+      ],
+      ...variants.map((v) => [
+        T(CONFIG_LABELS[v.config]),
+        T(offerLabel(v.packId, v.packName)),
+        String(configOf(v.config)?.total ?? '-'),
+        T(formatEuro(v.result.totals.initial) + (v.result.hasUnpricedItems ? ' + à confirmer' : '')),
+        T(formatMonthly(v.result.totals.monthly)),
+      ]),
+    ];
     autoTable(doc, {
       startY: y,
-      head: [head],
+      head: [[T('Configuration'), T('Offre'), T('Équipements'), T('Frais initiaux'), T('Mensualité')]],
       body: rows,
       theme: 'grid',
       headStyles: { fillColor: NAVY, fontSize: 8 },
       styles: { fontSize: 8, cellPadding: 1.6 },
-      columnStyles: { 0: { cellWidth: 58 } },
+      columnStyles: { 2: { halign: 'center' }, 3: { halign: 'right' }, 4: { halign: 'right' } },
       margin: { left: MARGIN, right: MARGIN },
     });
     y = lastY() + 3;
     doc.setFontSize(7.5);
     doc.setTextColor(...SLATE);
-    doc.text(T('Frais initiaux / mensualité. Remises sélectionnées appliquées. Les configurations volumétrique et périmétrique sont des propositions du moteur de règles (hypothèses à valider).'), MARGIN, y, { maxWidth: W - MARGIN * 2 });
+    doc.text(T('Variantes indicatives, à titre de comparaison. Remises sélectionnées appliquées ; les configurations volumétrique et périmétrique sont des propositions du moteur de règles (hypothèses à valider).'), MARGIN, y, { maxWidth: W - MARGIN * 2 });
     y += 9;
   }
 

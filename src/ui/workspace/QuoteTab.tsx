@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { BadgeCheck, Download, FileDown, Loader2, Minus, Plus, RotateCcw, Settings2 } from 'lucide-react';
 import { useApp, useActiveDossier } from '@/state/store';
 import { useAudit, useQuote } from '@/state/derived';
-import { buildComparison } from '@/quote/compare';
+import { buildComparison, variantKey } from '@/quote/compare';
 import { formatDateTime, formatEuro, formatMonthly, formatNumber } from '@/lib/format';
 import { DISCOUNT_TARGET_LABELS } from '@/domain/labels';
 import { Badge, Button, Card, IconButton, NumberInput, Select, TextInput, Toggle, cx } from '../kit';
@@ -18,9 +18,23 @@ function Comparator() {
   const audit = useAudit(dossier)!;
   const catalog = useApp((s) => s.catalog);
   const setPack = useApp((s) => s.setQuotePack);
+  const toggleVariant = useApp((s) => s.togglePdfVariant);
+  const shownKeys = new Set(dossier.quoteDraft.pdfVariants ?? []);
   const comparison = useMemo(() => buildComparison(dossier, catalog, audit), [dossier, catalog, audit]);
   return (
-    <Card title="Comparateur d'offres" actions={<span className="text-xs text-slate-500">Frais initiaux · mensualité (remises sélectionnées incluses)</span>} bodyClassName="p-0">
+    <Card
+      title="Comparateur d'offres"
+      actions={
+        <span className="text-xs text-slate-500" data-testid="variants-count">
+          Frais initiaux · mensualité (remises incluses) ·{' '}
+          {(() => {
+            const n = comparison.cells.filter((c) => shownKeys.has(variantKey(c.config, c.packId)) && !(c.config === 'plan' && c.packId === dossier.quoteDraft.packId)).length;
+            return n ? `${n} variante(s) affichée(s) sur le devis` : 'aucune variante sur le devis';
+          })()}
+        </span>
+      }
+      bodyClassName="p-0"
+    >
       <table className="w-full text-sm" data-testid="comparator">
         <thead className="bg-slate-50 text-left text-xs text-slate-500">
           <tr>
@@ -42,8 +56,9 @@ function Comparator() {
               {comparison.offers.map((o) => {
                 const cell = comparison.cells.find((x) => x.config === c.key && x.packId === o.packId)!;
                 const selected = c.key === 'plan' && dossier.quoteDraft.packId === o.packId;
+                const key = variantKey(c.key, o.packId);
                 return (
-                  <td key={o.packId ?? 'none'} className="px-2 py-1.5">
+                  <td key={o.packId ?? 'none'} className="px-2 py-1.5 align-top">
                     <button
                       disabled={c.key !== 'plan'}
                       onClick={() => setPack(o.packId)}
@@ -62,6 +77,18 @@ function Comparator() {
                       )}
                       {selected && <div className="mt-0.5 text-[10px] font-semibold text-brand-700">Offre retenue</div>}
                     </button>
+                    {!selected && (
+                      <label className="mt-1 flex items-center gap-1 px-1 text-[10px] text-slate-600">
+                        <input
+                          type="checkbox"
+                          className="h-3 w-3 accent-brand-700"
+                          checked={shownKeys.has(key)}
+                          onChange={() => toggleVariant(key)}
+                          data-testid={`variant-${key}`}
+                        />
+                        Afficher sur le devis
+                      </label>
+                    )}
                   </td>
                 );
               })}
@@ -70,7 +97,8 @@ function Comparator() {
         </tbody>
       </table>
       <p className="px-4 py-2 text-[11px] text-slate-500">
-        Cliquez sur une case de la ligne « Configuration retenue » pour choisir l'offre du devis. Le prix d'un pack est un forfait : il n'est jamais calculé comme la somme des
+        Cliquez sur une case de la ligne « Configuration retenue » pour choisir l'offre du devis. Les autres variantes n'apparaissent dans le PDF que si vous cochez
+        « Afficher sur le devis ». Le prix d'un pack est un forfait : il n'est jamais calculé comme la somme des
         prix unitaires, et un équipement inclus n'est jamais facturé deux fois.
       </p>
     </Card>

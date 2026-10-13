@@ -15,6 +15,7 @@ const draft = (packId: string | null, extra: Partial<QuoteDraft> = {}): QuoteDra
   packOverride: null,
   packTransferred: false,
   totalOverride: null,
+  pdfVariants: [],
   ...extra,
 });
 

@@ -157,7 +157,7 @@ Indépendant de l'interface (fonction pure `runAudit`) et paramétrable dans *Ca
 - **Déménagement** : équipements repris du logement précédent (case par ligne, quantité réglable) et abonnement transféré : **frais matériels à 0 €, mensualité conservée** ; bouton « Tout passer en déménagement ». Repris dans le PDF et l'historique.
 - Regroupement automatique en pack périmétrique lorsque c'est moins cher (sans augmenter le mensuel).
 - Calculs en centimes (aucune erreur d'arrondi), ajustements de quantités, recalcul instantané.
-- Comparateur : configuration retenue (plan), standard (volumétrique), alternative (périmétrique) × Pack Essentiel, Pack Sérénité, sans forfait.
+- Comparateur : configuration retenue (plan), standard (volumétrique), alternative (périmétrique) × Pack Essentiel, Pack Sérénité, sans forfait. Les variantes ne figurent **pas** sur le devis PDF, sauf celles cochées « Afficher sur le devis » (section « Variantes proposées », à côté de l'offre retenue).
 
 ### Devis PDF (`src/export/`)
 Référence, date, validité, dossier, descriptif du logement, plans 2D de chaque niveau, vue 3D, liste des équipements (quantités, inclus, suppléments, prix unitaires connus), détail du pack, récapitulatif initial / mensuel, remises, TVA, ouvertures extérieures, comparaison des propositions, réserves (informations manquantes, points à vérifier, prix à confirmer), conditions commerciales et mentions « non contractuel ». Le PDF est conservé localement et peut être retéléchargé ; la copie des prix appliqués est stockée avec le devis.

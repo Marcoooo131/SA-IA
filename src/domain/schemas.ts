@@ -270,6 +270,7 @@ export const dossierSchema = z.object({
       .object({ initial: z.number().min(0).optional(), monthly: z.number().min(0).optional(), note: z.string().default('') })
       .nullable()
       .default(null),
+    pdfVariants: z.array(z.string()).default([]),
   }),
   quotes: z.array(quoteRecordSchema),
   demoValidatedAt: z.string().nullable(),
