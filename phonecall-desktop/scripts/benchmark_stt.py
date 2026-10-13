@@ -61,9 +61,10 @@ def load(wav: Path):
     return rate, data
 
 
-def run(model: str, scenario: str, speed: float, stop_at: float | None, workdir: Path) -> dict:
-    wav, script_path = generate_wav(scenario, workdir, tts=True)
-    script = json.loads(script_path.read_text())["segments"]
+def run(model: str, scenario: str, speed: float, stop_at: float | None, workdir: Path, voice: str) -> dict:
+    tts = "piper" if voice == "piper" else True
+    wav, script_path = generate_wav(scenario, workdir, tts=tts, piper_dir=workdir / "voices")
+    script = json.loads(script_path.read_text(encoding="utf-8"))["segments"]
     rate, data = load(wav)
     rec = WhisperRecognizer(model=model, hotwords="Sector Alarm")
     t0 = time.monotonic()
@@ -126,7 +127,7 @@ def run(model: str, scenario: str, speed: float, stop_at: float | None, workdir:
     ref_all = " ".join(t["ref"] for t in per_turn)
     hyp_all = " ".join(t["hyp"] for t in per_turn)
     return {
-        "model": model, "scenario": scenario, "speed": speed, "stopped_at_s": stop_at,
+        "model": model, "voice": voice, "scenario": scenario, "speed": speed, "stopped_at_s": stop_at,
         "audio_seconds": round(audio_s, 1), "model_load_s": round(load_s, 1),
         "wer_global": round(wer(ref_all, hyp_all), 3),
         "latency_final_median_s": round(float(np.median(latencies)), 2) if latencies else None,
@@ -136,6 +137,7 @@ def run(model: str, scenario: str, speed: float, stop_at: float | None, workdir:
         "real_time_factor": round(st.stats["recognition_seconds"] / audio_s, 2),
         "partials_shown": partials, "partials_skipped": st.stats["partials_skipped"],
         "duplicates_ignored": asm.duplicates_ignored,
+        "repetitions_collapsed": st.stats["repetitions_collapsed"],
         "turns": per_turn,
     }
 
@@ -146,18 +148,32 @@ def main() -> int:
     ap.add_argument("--scenario", default="demenagement")
     ap.add_argument("--speed", type=float, default=1.0)
     ap.add_argument("--out", default="stt_benchmark.json")
+    ap.add_argument("--voice", choices=["espeak", "piper"], default="espeak")
     args = ap.parse_args()
     with tempfile.TemporaryDirectory() as tmp:
-        full = run(args.model, args.scenario, args.speed, None, Path(tmp))
+        tmp = Path(tmp)
+        if args.voice == "piper":
+            import subprocess
+
+            from phonecall_desktop.synthetic import PIPER_VOICES
+
+            (tmp / "voices").mkdir()
+            for v in set(PIPER_VOICES.values()):
+                subprocess.run([sys.executable, "-m", "piper.download_voices", v, "--data-dir", str(tmp / "voices")], check=True)
+        full = run(args.model, args.scenario, args.speed, None, tmp, args.voice)
         # stop in the middle of the 4th turn: are the last words kept?
-        script = json.loads((Path(tmp) / f"{args.scenario}_tts.script.json").read_text())["segments"]
+        suffix = "_piper" if args.voice == "piper" else "_tts"
+        script = json.loads((tmp / f"{args.scenario}{suffix}.script.json").read_text(encoding="utf-8"))["segments"]
         cut = script[3]["start"] + (script[3]["end"] - script[3]["start"]) * 0.6
-        stopped = run(args.model, args.scenario, args.speed, round(cut, 2), Path(tmp))
+        stopped = run(args.model, args.scenario, args.speed, round(cut, 2), tmp, args.voice)
     report = {"full_call": full, "stop_mid_sentence": stopped}
     Path(args.out).write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
     for name, r in report.items():
-        print(f"{name}: model={r['model']} WER={r['wer_global']:.1%} latency median={r['latency_final_median_s']}s "
-              f"p90={r['latency_final_p90_s']}s RTF={r['real_time_factor']} finish={r['finish_after_stop_s']}s")
+        print(f"{name}: model={r['model']} voice={r['voice']} WER={r['wer_global']:.1%} latency median={r['latency_final_median_s']}s "
+              f"p90={r['latency_final_p90_s']}s RTF={r['real_time_factor']} finish={r['finish_after_stop_s']}s "
+              f"repetitions_collapsed={r['repetitions_collapsed']}")
+        for t in r["turns"]:
+            print(f"   [{t['channel']:6}] WER={t['wer']:.0%}  ref={t['ref']!r}\n{'':20}hyp={t['hyp']!r}")
     last = stopped["turns"][-1]
     print(f"last words before stop: ref='{last['ref']}' hyp='{last['hyp']}'")
     return 0

@@ -168,7 +168,15 @@ class CaptureManager:
         def on_error(exc: Exception, st=state) -> None:
             log.warning("source error on %s: %s", st.channel.value, type(exc).__name__)
 
-        source.start(on_data, on_error)
+        try:
+            source.start(on_data, on_error)
+        except Exception as exc:  # PortAudio/WASAPI error: device busy, removed, access denied...
+            try:
+                source.stop()
+            except Exception:  # noqa: BLE001
+                pass
+            code = ErrorCode.MIC_ACCESS_DENIED if state.channel == Channel.MIC and "denied" in str(exc).lower() else ErrorCode.DEVICE_UNAVAILABLE
+            raise AppError(code, f"{source.device_name} : {type(exc).__name__}") from exc
         state.source = source
         state.last_data_wall = self.clock()
         state.failed = False

@@ -42,7 +42,7 @@ def test_segmenter_finds_each_turn(call):
     _, wav, script = call
     import json
 
-    expected = [s for s in json.loads(script.read_text())["segments"] if s["channel"] == "system"]
+    expected = [s for s in json.loads(script.read_text(encoding="utf-8"))["segments"] if s["channel"] == "system"]
     seg = Segmenter(Channel.SYSTEM)
     finals = []
     for chunk in chunks_from_wav(wav, 0, Channel.SYSTEM):
@@ -98,7 +98,7 @@ def test_streaming_produces_every_turn_once(call):
 
     events, _, st = run_transcriber(call)
     finals = [e for e in events if e.kind == "final" and e.text]
-    expected = json.loads(call[2].read_text())["segments"]
+    expected = json.loads(call[2].read_text(encoding="utf-8"))["segments"]
     assert sorted(e.text for e in finals) == sorted(s["text"] for s in expected)
     ids = [e.utterance_id for e in events if e.kind == "final"]
     assert len(ids) == len(set(ids))  # no duplicate final
@@ -189,3 +189,28 @@ def test_file_backend_plays_whole_file(call):
     assert backend.open(None, Channel.MIC).channel_index == 1
     with pytest.raises(AppError):
         backend.open("file:../../etc/passwd#0", Channel.SYSTEM)
+
+
+def test_repetition_loops_are_collapsed():
+    from phonecall_desktop.stt.streaming import collapse_repetitions
+
+    assert collapse_repetitions("Non, non, non, non, non, non, non.") == ("Non,", True)
+    assert collapse_repetitions("je vous dis je vous dis je vous dis je vous dis bonjour") == ("je vous dis bonjour", True)
+    assert collapse_repetitions("Oui oui, d'accord.") == ("Oui oui, d'accord.", False)  # two is natural
+    assert collapse_repetitions("C'est très très bien.") == ("C'est très très bien.", False)
+
+
+def test_repetition_marks_final_uncertain():
+    class Looping(Recognizer):
+        def transcribe(self, audio, **kw):
+            return RecognitionResult("Non, non, non, non, mais non.")
+
+    from fakes import silence, tone
+
+    events = []
+    st = StreamingTranscriber(Looping(), events.append, [Channel.MIC])
+    st.feed(AudioChunk(Channel.MIC, np.concatenate([tone(1.0, 16000)[:, 0], silence(1.0, 16000)[:, 0]]), 0.0))
+    st.finish(timeout=5)
+    st.close()
+    final = [e for e in events if e.kind == "final"][0]
+    assert final.uncertain and final.text == "Non, mais non."

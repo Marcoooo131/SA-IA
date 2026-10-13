@@ -7,3 +7,4 @@ build/
 dist/
 *.spec
 stt_benchmark*.json
+*.egg-info/

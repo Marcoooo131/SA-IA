@@ -74,8 +74,30 @@ def _espeak(text: str, rate: int) -> np.ndarray:
     return (data * 0.8).astype(np.float32)
 
 
-def generate_wav(scenario: str, out_dir: str | Path, rate: int = 22_050, tts: bool = False,
-                 noise_dbfs: float = -60.0, seed: int = 1) -> tuple[Path, Path]:
+PIPER_VOICES = {"system": "fr_FR-siwis-medium", "mic": "fr_FR-tom-medium"}
+
+
+def _piper(text: str, rate: int, voice: str, data_dir: Path) -> np.ndarray:
+    """Neural French voice (piper-tts, local). Voices are downloaded beforehand with
+    ``python -m piper.download_voices <voice> --data-dir <dir>``."""
+    import sys
+
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / "tts.wav"
+        subprocess.run([sys.executable, "-m", "piper", "-m", voice, "--data-dir", str(data_dir), "-f", str(out), "--", text],
+                       check=True, capture_output=True)
+        with wave.open(str(out), "rb") as w:
+            sr, n = w.getframerate(), w.getnframes()
+            data = np.frombuffer(w.readframes(n), dtype="<i2").astype(np.float32) / 32768.0
+    if sr != rate:
+        import soxr
+
+        data = soxr.resample(data, sr, rate)
+    return (data * 0.8).astype(np.float32)
+
+
+def generate_wav(scenario: str, out_dir: str | Path, rate: int = 22_050, tts: bool | str = False,
+                 noise_dbfs: float = -60.0, seed: int = 1, piper_dir: Path | None = None) -> tuple[Path, Path]:
     """Returns (wav_path, script_path)."""
     rng = np.random.default_rng(seed)
     turns = SCENARIOS[scenario]
@@ -83,8 +105,12 @@ def generate_wav(scenario: str, out_dir: str | Path, rate: int = 22_050, tts: bo
     t = 1.0
     for who, text in turns:
         ch = 0 if who == "system" else 1
-        audio = _espeak(text, rate) if tts else _voice_like(len(text.split()) * SECONDS_PER_WORD, rate,
-                                                              130.0 if ch else 210.0, rng)
+        if tts == "piper":
+            audio = _piper(text, rate, PIPER_VOICES[who], piper_dir or Path("."))
+        elif tts:
+            audio = _espeak(text, rate)
+        else:
+            audio = _voice_like(len(text.split()) * SECONDS_PER_WORD, rate, 130.0 if ch else 210.0, rng)
         pieces.append((ch, t, audio, text))
         t += len(audio) / rate + GAP_S
     total = int((t + 1.0) * rate)
@@ -99,7 +125,7 @@ def generate_wav(scenario: str, out_dir: str | Path, rate: int = 22_050, tts: bo
                        "end": round(start + len(audio) / rate, 3), "text": text})
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    suffix = "_tts" if tts else ""
+    suffix = "_piper" if tts == "piper" else "_tts" if tts else ""
     wav_path = out_dir / f"{scenario}{suffix}.wav"
     pcm = (np.clip(data, -1, 1) * 32767).astype("<i2")
     with wave.open(str(wav_path), "wb") as w:

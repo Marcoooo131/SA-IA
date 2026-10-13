@@ -30,18 +30,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        model: [base, small]
+        model: [base, small, medium]
+        voice: [espeak, piper]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       - run: sudo apt-get update && sudo apt-get install -y espeak-ng
-      - run: pip install -e .
-      - run: python scripts/benchmark_stt.py --model ${{ matrix.model }} --out stt_benchmark_${{ matrix.model }}.json
+      - run: pip install -e . piper-tts
+      - run: python scripts/benchmark_stt.py --model ${{ matrix.model }} --voice ${{ matrix.voice }} --out stt_benchmark_${{ matrix.model }}_${{ matrix.voice }}.json
       - uses: actions/upload-artifact@v4
         with:
-          name: stt-benchmark-${{ matrix.model }}
-          path: phonecall-desktop/stt_benchmark_${{ matrix.model }}.json
+          name: stt-benchmark-${{ matrix.model }}-${{ matrix.voice }}
+          path: phonecall-desktop/stt_benchmark_${{ matrix.model }}_${{ matrix.voice }}.json
 
   windows:
     runs-on: windows-latest

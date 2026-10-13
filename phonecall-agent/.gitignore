@@ -6,3 +6,4 @@ __pycache__/
 var/
 .pytest_cache/
 dump.rdb
+*.egg-info/

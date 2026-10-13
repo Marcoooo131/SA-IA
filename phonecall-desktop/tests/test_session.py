@@ -77,7 +77,7 @@ def test_stop_mid_sentence_keeps_last_words(audio_dir):
     ctl, _ = make(audio_dir, speed=1.0)
     import json
 
-    turn = json.loads((audio_dir / "demenagement.script.json").read_text())["segments"][1]
+    turn = json.loads((audio_dir / "demenagement.script.json").read_text(encoding="utf-8"))["segments"][1]
     assert turn["channel"] == "system" and turn["end"] - turn["start"] > 3
     ctl.start(StartRequest(consent=True))
     time.sleep(turn["start"] + 1.5)  # stop in the middle of the remote party's sentence

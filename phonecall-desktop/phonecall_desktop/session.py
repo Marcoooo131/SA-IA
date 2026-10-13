@@ -210,7 +210,9 @@ class SessionController:
         label = {"system": "Son du PC", "mic": "Micro"}.get(payload.get("channel", ""), "")
         messages = {
             "no_signal": ("warning", f"{label} : aucun son détecté depuis {payload.get('seconds')} s. "
-                          "Vérifiez le périphérique sélectionné et que l'appel est bien en cours."),
+                          "Vérifiez le périphérique sélectionné et que l'appel est bien en cours"
+                          + (" ; vérifiez aussi que Windows autorise l'accès au micro (Paramètres › Confidentialité)."
+                             if payload.get("channel") == "mic" else ".")),
             "signal_back": ("info", f"{label} : son de nouveau détecté."),
             "device_lost": ("warning", f"{label} : périphérique perdu ({payload.get('device')}). Reconnexion…"),
             "device_reconnected": ("info", f"{label} : capture reprise sur « {payload.get('device')} »"

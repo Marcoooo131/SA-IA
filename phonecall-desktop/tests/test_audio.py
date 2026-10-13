@@ -191,3 +191,27 @@ def test_silence_fill_keeps_timeline_moving_without_data():
     time.sleep(0.8)
     mgr.stop()
     assert sum(c.duration for c in chunks) >= 0.3  # silence pushed although the source sent nothing
+
+
+def test_source_failing_to_open_gives_clear_error():
+    backend = FakeBackend()
+    original_open = backend.open
+
+    def failing_open(device_id, channel):
+        src = original_open(device_id, channel)
+        if channel == Channel.MIC:
+            def boom(on_data, on_error):
+                raise OSError("[Errno -9999] Unanticipated host error: access denied")
+            src.start = boom
+        return src
+
+    backend.open = failing_open
+    mgr, cfg, _, events = make_manager(backend)
+    assert mgr.start(cfg) == {"system": "Casque"}
+    warning = next(p for t, p in events if t == "warning")
+    assert warning["channel"] == "mic" and "micro" in warning["message"].lower()
+    mgr.stop()
+    mgr2, cfg2, _, _ = make_manager(backend, channels={Channel.MIC: None})
+    with pytest.raises(AppError) as exc:
+        mgr2.start(cfg2)
+    assert exc.value.code == ErrorCode.NO_SOURCE and "Windows bloque" in str(exc.value)

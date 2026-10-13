@@ -9,6 +9,7 @@ Scheduling rules (CPU is limited on an advisor's PC):
 from __future__ import annotations
 
 import heapq
+import re
 import itertools
 import logging
 import threading
@@ -26,6 +27,38 @@ HALLUCINATIONS = (
     "sous-titres réalisés par", "sous-titrage", "merci d'avoir regardé", "amara.org", "abonnez-vous",
     "sous-titres par", "merci de votre attention.",
 )
+
+
+def collapse_repetitions(text: str, max_repeat: int = 2) -> tuple[str, bool]:
+    """Whisper sometimes loops on cut or noisy audio ("Non, non, non, non, non").
+    Runs of the same word or short phrase repeated more than ``max_repeat`` times are reduced to
+    one occurrence; the caller marks the segment as uncertain."""
+    tokens = text.split()
+    norm = [re.sub(r"[^\w']", "", t.lower()) for t in tokens]
+    out: list[str] = []
+    out_norm: list[str] = []
+    changed = False
+    i = 0
+    while i < len(tokens):
+        collapsed = False
+        for n in (1, 2, 3):  # phrase length
+            unit = norm[i : i + n]
+            if len(unit) < n or not all(unit):
+                continue
+            reps = 1
+            while norm[i + reps * n : i + (reps + 1) * n] == unit:
+                reps += 1
+            if reps > max_repeat:
+                out.extend(tokens[i : i + n])
+                out_norm.extend(unit)
+                i += reps * n
+                changed = collapsed = True
+                break
+        if not collapsed:
+            out.append(tokens[i])
+            out_norm.append(norm[i])
+            i += 1
+    return " ".join(out), changed
 
 
 def is_hallucination(text: str) -> bool:
@@ -50,7 +83,7 @@ class StreamingTranscriber:
         self._closed = False
         self.audio_position: dict[Channel, float] = {ch: 0.0 for ch in channels}
         self.last_final_end: dict[Channel, float] = {ch: 0.0 for ch in channels}
-        self.stats = {"finals": 0, "partials": 0, "partials_skipped": 0, "dropped_hallucinations": 0,
+        self.stats = {"finals": 0, "partials": 0, "partials_skipped": 0, "dropped_hallucinations": 0, "repetitions_collapsed": 0,
                       "recognition_seconds": 0.0, "audio_seconds_final": 0.0, "final_latency_s": []}
         self._worker = threading.Thread(target=self._run, daemon=True, name="stt-worker")
         self._worker.start()
@@ -113,9 +146,15 @@ class StreamingTranscriber:
         elapsed = time.monotonic() - t0
         self.stats["recognition_seconds"] += elapsed
         text = res.text.strip()
+        uncertain = res.uncertain
         if text and is_hallucination(text):
             self.stats["dropped_hallucinations"] += 1
             text = ""
+        if text:
+            text, repeated = collapse_repetitions(text)
+            if repeated:
+                self.stats["repetitions_collapsed"] += 1
+                uncertain = True
         if utt.final:
             self.stats["finals"] += 1
             self.stats["audio_seconds_final"] += len(utt.audio) / 16_000
@@ -125,7 +164,7 @@ class StreamingTranscriber:
                 self._last_text[utt.channel] = text
             # an empty final still closes the utterance (removes its partial in the UI)
             self.on_event(TranscriptEvent("final", utt.channel, utt.id, utt.t_start, utt.t_end, text,
-                                          res.uncertain, res.confidence))
+                                          uncertain, res.confidence))
         else:
             self.stats["partials"] += 1
             if text:
