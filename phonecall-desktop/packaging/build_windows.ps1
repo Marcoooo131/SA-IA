@@ -12,5 +12,6 @@ pyinstaller --noconfirm --clean --name PhoneCallDesktop --windowed --paths . `
   packaging\launcher.py
 # Files delivered next to the executable (configuration, README, shortcuts)
 Copy-Item -Path packaging\dist_files\* -Destination dist\PhoneCallDesktop\ -Recurse -Force
+if (-not (Test-Path dist\PhoneCallDesktop\config.env)) { throw "config.env absent du paquet (packaging\dist_files\config.env)" }
 Compress-Archive -Path dist\PhoneCallDesktop -DestinationPath dist\PhoneCallDesktop-windows.zip -Force
 Write-Host "OK : dist\PhoneCallDesktop\PhoneCallDesktop.exe et dist\PhoneCallDesktop-windows.zip"

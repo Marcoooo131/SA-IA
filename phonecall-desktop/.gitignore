@@ -8,3 +8,5 @@ dist/
 *.spec
 stt_benchmark*.json
 *.egg-info/
+# Profil de test livré avec le paquet (aucun secret) :
+!packaging/dist_files/config.env
