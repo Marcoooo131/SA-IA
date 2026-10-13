@@ -15,6 +15,8 @@ import { AuditTab } from './AuditTab';
 import { EquipmentTab } from './EquipmentTab';
 import { QuoteTab } from './QuoteTab';
 import { GenerationBanner, PlanWizard } from './PlanWizard';
+import { FurnitureLibrary } from './FurniturePanel';
+import { DisplayModeBar } from './DisplayModeBar';
 
 const View3D = lazy(() => import('@/view3d/View3D').then((m) => ({ default: m.View3D })));
 
@@ -181,12 +183,14 @@ export function Workspace() {
               <>
                 <LevelsPanel />
                 <RoomsPanel />
+                <FurnitureLibrary />
                 <EquipmentLibrary />
               </>
             }
             center={
               <>
                 <PlanToolbar />
+                <DisplayModeBar />
                 <GenerationBanner />
                 <div className="min-h-0 flex-1">
                   <PlanEditor />
@@ -201,11 +205,13 @@ export function Workspace() {
             left={
               <>
                 <LevelsPanel />
+                <FurnitureLibrary />
                 <EquipmentLibrary />
               </>
             }
             center={
               <>
+                <DisplayModeBar />
                 <GenerationBanner />
                 <Suspense fallback={<div className="p-6 text-sm text-slate-500">Chargement du moteur 3D…</div>}>
                   <View3D />

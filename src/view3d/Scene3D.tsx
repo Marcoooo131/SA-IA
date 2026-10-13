@@ -4,6 +4,9 @@ import { useThree, type ThreeEvent } from '@react-three/fiber';
 import type { Dossier, Level, OpeningType, PlacedDevice, Product, ProductCategory, Room } from '@/domain/types';
 import { CATEGORY_COLORS, ROOM_COLORS } from '@/domain/labels';
 import { adjacentRooms, buildWallSegments, levelBounds, type WallSegment } from '@/plan/geometry';
+import { joineryVertical } from '@/furniture/joineryModels';
+import { Joinery3D } from '@/furniture/Joinery3D';
+import { FurnitureMesh } from '@/furniture/Furniture3D';
 
 /**
  * Scène 3D générée à partir de la géométrie corrigée du plan (pièces, murs, ouvertures)
@@ -23,6 +26,11 @@ export interface Scene3DOptions {
   motionAngle: number;
   motionRange: number;
   selectedDeviceId?: string | null;
+  /** Mobilier générique visible (par défaut : oui). */
+  showFurniture?: boolean;
+  /** Équipements de sécurité visibles (par défaut : oui). */
+  showDevices?: boolean;
+  selectedFurnitureId?: string | null;
 }
 
 export interface Scene3DProps {
@@ -32,6 +40,7 @@ export interface Scene3DProps {
   onSelectDevice?: (id: string | null) => void;
   onFloorClick?: (levelId: string, x: number, y: number) => void;
   onWallClick?: (key: string) => void;
+  onSelectFurniture?: (id: string) => void;
 }
 
 const SLAB = 0.2;
@@ -70,20 +79,6 @@ export function deviceHeight(category: ProductCategory, levelHeight: number, ope
   }
 }
 
-function openingVertical(type: OpeningType, height: number): { bottom: number; top: number } {
-  switch (type) {
-    case 'fenetre':
-      return { bottom: 0.95, top: Math.min(2.15, height - 0.2) };
-    case 'baie':
-      return { bottom: 0.02, top: Math.min(2.2, height - 0.15) };
-    case 'porte_garage':
-      return { bottom: 0, top: Math.min(2.2, height - 0.15) };
-    case 'passage':
-      return { bottom: 0, top: Math.min(2.2, height - 0.15) };
-    default:
-      return { bottom: 0, top: Math.min(2.1, height - 0.2) };
-  }
-}
 
 const wallMaterialCache = new Map<string, THREE.Material>();
 function mat(key: string, make: () => THREE.Material) {
@@ -131,7 +126,7 @@ function Wall({ seg, height, mode, onClick }: { seg: WallSegment; height: number
   let cur = 0;
   seg.cuts.forEach((c, i) => {
     if (c.t0 > cur) pieces.push(<WallBox key={`s${i}`} a={at(cur)} b={at(c.t0)} y0={0} y1={top} thickness={seg.thickness} color={color} onClick={handle} />);
-    const v = openingVertical(c.opening.type, height);
+    const v = joineryVertical(c.opening, height);
     if (v.bottom > 0.01) pieces.push(<WallBox key={`b${i}`} a={at(c.t0)} b={at(c.t1)} y0={0} y1={Math.min(v.bottom, top)} thickness={seg.thickness} color={color} onClick={handle} />);
     if (top > v.top) pieces.push(<WallBox key={`t${i}`} a={at(c.t0)} b={at(c.t1)} y0={v.top} y1={top} thickness={seg.thickness} color={color} onClick={handle} />);
     // Menuiserie
@@ -141,19 +136,10 @@ function Wall({ seg, height, mode, onClick }: { seg: WallSegment; height: number
     const yTop = Math.min(v.top, mode === 'coupe' ? Math.max(top, v.bottom + 0.3) : v.top);
     const h = yTop - v.bottom;
     if (h > 0.05 && c.opening.type !== 'passage') {
-      const t = c.opening.type;
-      const isGlass = t === 'fenetre' || t === 'baie';
       pieces.push(
-        <mesh key={`o${i}`} position={[mid.x, v.bottom + h / 2, mid.y]} rotation={[0, -angle, 0]}>
-          <boxGeometry args={[w * 0.98, h, isGlass ? 0.03 : 0.05]} />
-          {isGlass ? (
-            <meshStandardMaterial color="#9fd3ee" transparent opacity={0.45} roughness={0.1} metalness={0.1} />
-          ) : t === 'porte_garage' ? (
-            <meshStandardMaterial color="#9aa5b1" roughness={0.6} />
-          ) : (
-            <meshStandardMaterial color={c.opening.exterior ? '#7c5a3c' : '#b08a63'} roughness={0.7} />
-          )}
-        </mesh>,
+        <group key={`o${i}`} position={[mid.x, v.bottom, mid.y]} rotation={[0, -angle, 0]}>
+          <Joinery3D opening={c.opening} w={w} h={h} thickness={seg.thickness} />
+        </group>,
       );
       if (c.opening.exterior) {
         // liseré de repérage des accès extérieurs
@@ -364,7 +350,7 @@ export function levelPlacements(levels: Level[], layout: LevelLayout, levelFilte
   return { visible, placements: map, bounds };
 }
 
-export function Scene3DContent({ dossier, products, options, onSelectDevice, onFloorClick, onWallClick }: Scene3DProps) {
+export function Scene3DContent({ dossier, products, options, onSelectDevice, onFloorClick, onWallClick, onSelectFurniture }: Scene3DProps) {
   const gl = useThree((s) => s.gl);
   useEffect(() => {
     gl.localClippingEnabled = true;
@@ -431,7 +417,7 @@ export function Scene3DContent({ dossier, products, options, onSelectDevice, onF
                 const n = pending.length;
                 const step = Math.min(0.6, (r.w - 0.3) / Math.max(1, n));
                 const x = r.x + r.w / 2 + (i - (n - 1) / 2) * step;
-                const v = openingVertical(o.type, level.height);
+                const v = joineryVertical(o, level.height);
                 const h = Math.max(0.3, v.top - v.bottom);
                 return (
                   <mesh key={`up-${o.id}`} position={[x, v.bottom + h / 2, r.y + r.h - 0.25]}>
@@ -448,7 +434,11 @@ export function Scene3DContent({ dossier, products, options, onSelectDevice, onF
             {layout === 'cote' && visible.length > 1 && lb && (
               <Label text={level.name} position={[(lb.minX + lb.maxX) / 2, 3.2, lb.minY - 0.6]} scale={1.6} />
             )}
-            {devices.map((d) => {
+            {options.showFurniture !== false &&
+              (level.furniture ?? []).map((f) => (
+                <FurnitureMesh key={f.id} item={f} selected={options.selectedFurnitureId === f.id} onSelect={onSelectFurniture} />
+              ))}
+            {options.showDevices !== false && devices.map((d) => {
               const opening = d.openingId ? level.openings.find((o) => o.id === d.openingId)?.type : undefined;
               return (
                 <DeviceMesh
@@ -463,7 +453,7 @@ export function Scene3DContent({ dossier, products, options, onSelectDevice, onF
                 />
               );
             })}
-            {options.showCoverage &&
+            {options.showCoverage && options.showDevices !== false &&
               devices
                 .filter((d) => productMap.get(d.productId)?.category === 'detecteur_mouvement')
                 .map((d) => (

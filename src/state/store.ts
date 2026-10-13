@@ -33,6 +33,7 @@ export type Selection =
   | { kind: 'opening'; id: string }
   | { kind: 'wall'; id: string }
   | { kind: 'device'; id: string }
+  | { kind: 'furniture'; id: string }
   | { kind: 'background' }
   | null;
 

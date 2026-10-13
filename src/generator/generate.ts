@@ -2,6 +2,7 @@ import type { HousingAnswers, Level, Opening, OpeningType, Plan, Room, RoomSide,
 import { OPENING_DEFAULT_WIDTH, ROOM_TYPE_LABELS } from '@/domain/labels';
 import { isExteriorAt, levelHabitableArea, nextOpeningCode, roomArea, roomsOverlap, roomSideSegment, sideNormal } from '@/plan/geometry';
 import { bestTemplateFor, getTemplate, targetSurface, type HousingTemplate } from './templates';
+import { furnishLevel, furnishOptions } from '@/furniture/placement';
 
 /**
  * Générateur de plans DÉTERMINISTE (aucun aléatoire) :
@@ -529,6 +530,12 @@ export function generatePlan(templateOrId: HousingTemplate | string, rawAnswers:
     warnings.push(`Surface obtenue ${habitable.toFixed(0)} m² pour ${A} m² demandés : ajuster les dimensions si nécessaire.`);
   if (a.comment.trim()) warnings.push(`Particularité à reporter manuellement : « ${a.comment.trim()} ».`);
   if (a.features.other) warnings.push('Particularité « autre » signalée : à compléter manuellement sur le plan.');
+
+  // porte d'entrée principale + mobilier générique (déterministe, recalculé à chaque génération)
+  const entryDoor = levels[0]?.openings.find((o) => o.id === 'gen_0_o_entree');
+  if (entryDoor) entryDoor.entry = true;
+  const fopts = furnishOptions(levels);
+  for (const l of levels) l.furniture = furnishLevel(l, fopts);
 
   const needsManualFix = warnings.some((w) => w.includes('chevauchent') || w.includes("n'est reliée") || w.includes('Porte d\'entrée non placée'));
   return {

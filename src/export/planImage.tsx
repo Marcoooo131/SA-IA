@@ -9,7 +9,7 @@ export function renderLevelSvg(
   level: Level,
   devices: PlacedDevice[],
   products: Product[],
-  opts: { pxPerMeter?: number; motionAngle?: number; motionRange?: number; backgroundUrl?: string } = {},
+  opts: { pxPerMeter?: number; motionAngle?: number; motionRange?: number; backgroundUrl?: string; showFurniture?: boolean } = {},
 ): { svg: string; width: number; height: number } {
   const px = opts.pxPerMeter ?? 60;
   const b = levelBounds(level) ?? { minX: 0, minY: 0, maxX: 10, maxY: 8 };
@@ -33,6 +33,8 @@ export function renderLevelSvg(
         motionAngle={opts.motionAngle}
         motionRange={opts.motionRange}
         backgroundUrl={opts.backgroundUrl}
+        showFurniture={opts.showFurniture ?? true}
+        fadeFurniture
       />
       {/* Échelle graphique */}
       <g transform={`translate(${vx + 0.5} ${vy + vh - 0.5})`} fontFamily="Helvetica, Arial, sans-serif">
@@ -59,7 +61,9 @@ export function svgToPng(svg: string, width: number, height: number, maxWidth = 
       const canvas = document.createElement('canvas');
       canvas.width = w;
       canvas.height = h;
-      const ctx = canvas.getContext('2d');
+      // canvas logiciel : rendu fiable des groupes semi-transparents (mobilier atténué),
+      // indépendamment de l'accélération graphique du poste
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
       if (!ctx) {
         URL.revokeObjectURL(url);
         reject(new Error('Canvas indisponible'));

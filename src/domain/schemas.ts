@@ -19,7 +19,7 @@ export const roomSchema = z.object({
 const openingSchema = z.object({
   id: z.string(),
   code: z.string(),
-  type: z.enum(['porte', 'fenetre', 'baie', 'porte_garage', 'porte_interieure', 'passage', 'autre']),
+  type: z.enum(['porte', 'fenetre', 'porte_fenetre', 'baie', 'porte_garage', 'porte_interieure', 'passage', 'autre']),
   host: z.discriminatedUnion('kind', [
     z.object({ kind: z.literal('room'), roomId: z.string(), side: z.enum(['N', 'S', 'E', 'W']) }),
     z.object({ kind: z.literal('wall'), wallId: z.string() }),
@@ -32,6 +32,24 @@ const openingSchema = z.object({
   positionConfirmed: z.boolean().optional(),
   height: z.number().positive().optional(),
   comment: z.string().optional(),
+  leaves: z.union([z.literal(1), z.literal(2)]).optional(),
+  hinge: z.enum(['gauche', 'droite']).optional(),
+  entry: z.boolean().optional(),
+});
+
+const furnitureSchema = z.object({
+  id: z.string(),
+  modelId: z.string(),
+  roomId: z.string().nullable(),
+  x: z.number(),
+  y: z.number(),
+  rotation: z.number(),
+  w: z.number().positive(),
+  d: z.number().positive(),
+  h: z.number().positive(),
+  variant: z.string().optional(),
+  color: z.string().optional(),
+  origin: z.enum(['genere', 'manuel']),
 });
 
 const backgroundSchema = z.object({
@@ -57,6 +75,7 @@ const levelSchema = z.object({
   walls: z.array(z.object({ id: z.string(), a: point, b: point, thickness: z.number().positive() })),
   openings: z.array(openingSchema),
   background: backgroundSchema.nullable(),
+  furniture: z.array(furnitureSchema).default([]),
 });
 
 const deviceSchema = z.object({

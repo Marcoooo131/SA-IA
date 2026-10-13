@@ -22,12 +22,16 @@ import { formatNumber } from '@/lib/format';
 import { OPENING_TYPE_LABELS } from '@/domain/labels';
 import { useAssetUrl } from '../useAsset';
 import { placeOpeningAt } from '@/plan/joinery';
+import { addFurniture, duplicateFurniture, findFurniture, moveFurniture, removeFurniture, rotateFurniture } from '@/furniture/actions';
+import { getJoineryModel } from '@/furniture/joineryModels';
+import { getFurnitureModel } from '@/furniture/models';
 import { PROVENANCE_COLORS, PROVENANCE_LABELS, provenanceMap, type Provenance } from '@/generator/provenance';
 import { Button, Modal, NumberInput, Field } from '../kit';
 
 type Drag =
   | { kind: 'pan'; sx: number; sy: number; vx: number; vy: number }
-  | { kind: 'room-move'; id: string; start: Room; p0: Point; moved: boolean }
+  | { kind: 'room-move'; id: string; start: Room; p0: Point; moved: boolean; furn: { id: string; x: number; y: number }[] }
+  | { kind: 'furniture-move'; id: string; x: number; y: number; p0: Point; moved: boolean }
   | { kind: 'room-resize'; id: string; start: Room; p0: Point; handle: Exclude<NonNullable<Extract<PlanTarget, { kind: 'room' }>['handle']>, 'move'>; moved: boolean }
   | { kind: 'wall-move'; id: string; a: Point; b: Point; p0: Point; moved: boolean }
   | { kind: 'wall-end'; id: string; end: 'a' | 'b'; moved: boolean }
@@ -49,6 +53,7 @@ const TOOL_HINT: Record<string, string> = {
   porte_interieure: 'Cliquez sur une cloison pour placer une porte intérieure.',
   passage: 'Cliquez sur une cloison pour créer un passage ouvert (sans porte).',
   device: "Cliquez sur le plan pour placer l'équipement sélectionné dans la bibliothèque.",
+  furniture: "Cliquez dans une pièce pour poser l'objet choisi dans la bibliothèque (Échap pour annuler).",
   place_opening: "Cliquez sur le mur de la pièce où se trouve l'ouverture à positionner (Échap pour annuler).",
   calibrate: "Cliquez deux points d'une dimension connue sur le plan importé (ex. largeur d'une porte).",
 };
@@ -166,6 +171,7 @@ export function PlanEditor() {
         findLevel(d, level.id).background = null;
       });
     } else if (sel.kind === 'device') mutate((d) => void (d.devices = d.devices.filter((x) => x.id !== sel.id)));
+    else if (sel.kind === 'furniture') mutate((d) => removeFurniture(findLevel(d, level.id), sel.id));
     else
       mutate((d) => {
         const l = findLevel(d, level.id);
@@ -198,6 +204,20 @@ export function PlanEditor() {
         setCalib([]);
         useEditor.getState().setTool('select');
         useApp.getState().armProduct(null);
+      } else if ((e.key === 'r' || e.key === 'R') && !mod) {
+        const sel = useApp.getState().selection;
+        if (sel?.kind === 'furniture' && level) {
+          e.preventDefault();
+          mutate((d) => rotateFurniture(findLevel(d, level.id), sel.id, e.shiftKey ? -90 : 90));
+        }
+      } else if (mod && e.key.toLowerCase() === 'd') {
+        const sel = useApp.getState().selection;
+        if (sel?.kind === 'furniture' && level) {
+          e.preventDefault();
+          let id = '';
+          mutate((d) => void (id = duplicateFurniture(findLevel(d, level.id), sel.id)?.id ?? ''));
+          if (id) select({ kind: 'furniture', id });
+        }
       } else if (e.key.startsWith('Arrow')) {
         const sel = useApp.getState().selection;
         if (!sel || !level || sel.kind === 'background') return;
@@ -208,8 +228,15 @@ export function PlanEditor() {
         mutate((d) => {
           const l = findLevel(d, level.id);
           if (sel.kind === 'room') {
+            if (useEditor.getState().lockStructure) return;
             const r = l.rooms.find((x) => x.id === sel.id);
-            if (r) Object.assign(r, { x: r.x + dx, y: r.y + dy });
+            if (r) {
+              Object.assign(r, { x: r.x + dx, y: r.y + dy });
+              for (const f of l.furniture ?? []) if (f.roomId === r.id) Object.assign(f, { x: f.x + dx, y: f.y + dy });
+            }
+          } else if (sel.kind === 'furniture') {
+            const f = findFurniture(l, sel.id);
+            if (f) moveFurniture(l, f.id, f.x + dx, f.y + dy);
           } else if (sel.kind === 'device') {
             const dv = d.devices.find((x) => x.id === sel.id);
             if (dv) Object.assign(dv, { x: dv.x + dx, y: dv.y + dy });
@@ -222,7 +249,7 @@ export function PlanEditor() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [undo, redo, deleteSelection, level, mutate]);
+  }, [undo, redo, deleteSelection, level, mutate, select]);
 
   if (!dossier || !level) return null;
 
@@ -259,11 +286,32 @@ export function PlanEditor() {
     e.stopPropagation();
     (e.target as Element).setPointerCapture?.(e.pointerId);
     const p = toWorld(e);
+    if (t.kind === 'furniture') {
+      const f = findFurniture(level, t.id);
+      if (!f) return;
+      select({ kind: 'furniture', id: t.id });
+      setDrag({ kind: 'furniture-move', id: t.id, x: f.x, y: f.y, p0: p, moved: false });
+      return;
+    }
+    // Structure verrouillée pendant l'aménagement : sélection seulement, aucun déplacement
+    if (ed.lockStructure && t.kind !== 'device') {
+      if (t.kind === 'background') select({ kind: 'background' });
+      else select({ kind: t.kind, id: t.id });
+      return;
+    }
     if (t.kind === 'room') {
       const room = level.rooms.find((r) => r.id === t.id)!;
       select({ kind: 'room', id: t.id });
       if (t.handle && t.handle !== 'move') setDrag({ kind: 'room-resize', id: t.id, start: { ...room }, p0: p, handle: t.handle, moved: false });
-      else setDrag({ kind: 'room-move', id: t.id, start: { ...room }, p0: p, moved: false });
+      else
+        setDrag({
+          kind: 'room-move',
+          id: t.id,
+          start: { ...room },
+          p0: p,
+          moved: false,
+          furn: (level.furniture ?? []).filter((f) => f.roomId === t.id).map((f) => ({ id: f.id, x: f.x, y: f.y })),
+        });
     } else if (t.kind === 'wall') {
       const w = level.walls.find((x) => x.id === t.id)!;
       select({ kind: 'wall', id: t.id });
@@ -304,6 +352,18 @@ export function PlanEditor() {
       case 'device':
         placeDevice(raw);
         break;
+      case 'furniture': {
+        const modelId = ed.armedFurnitureId;
+        if (!modelId) {
+          toast('info', "Choisissez d'abord un objet dans la bibliothèque « Mobilier et menuiseries ».");
+          return;
+        }
+        let id = '';
+        mutate((d) => void (id = addFurniture(findLevel(d, level.id), modelId, { at: snapP(raw) })?.id ?? ''));
+        if (id) select({ kind: 'furniture', id });
+        useEditor.getState().setTool('select');
+        break;
+      }
       case 'calibrate': {
         if (!level.background) {
           toast('error', "Importez d'abord un plan ou une photo sur ce niveau.");
@@ -352,8 +412,14 @@ export function PlanEditor() {
           toast('info', `Cliquez plus près d'un mur pour placer : ${OPENING_TYPE_LABELS[tool].toLowerCase()}.`);
           return;
         }
+        const preset = ed.openingPreset ? getJoineryModel(ed.openingPreset) : null;
         mutate((d) => {
           const o = addOpeningAt(d.plan, findLevel(d, level.id), tool, raw, 12 / view.scale + 0.25);
+          if (o && preset && preset.type === tool) {
+            Object.assign(o, preset.preset);
+            // largeur du modèle, sans dépasser la largeur déjà admise sur ce mur
+            o.width = Math.min(preset.width, o.width);
+          }
           createdId = o?.id ?? null;
         });
         if (createdId) select({ kind: 'opening', id: createdId });
@@ -403,9 +469,22 @@ export function PlanEditor() {
         }
         setGuides(g);
         mutate((d) => {
-          const r = findLevel(d, level.id).rooms.find((x) => x.id === dr.id);
+          const l = findLevel(d, level.id);
+          const r = l.rooms.find((x) => x.id === dr.id);
           if (r) Object.assign(r, { x: rect.x, y: rect.y });
+          // le mobilier de la pièce suit la pièce
+          for (const s0 of dr.furn) {
+            const f = (l.furniture ?? []).find((x) => x.id === s0.id);
+            if (f) Object.assign(f, { x: s0.x + rect.x - dr.start.x, y: s0.y + rect.y - dr.start.y });
+          }
         }, { history: false });
+        markMoved();
+        break;
+      }
+      case 'furniture-move': {
+        const nx = ed.snap ? snapValue(dr.x + raw.x - dr.p0.x, 0.05) : dr.x + raw.x - dr.p0.x;
+        const ny = ed.snap ? snapValue(dr.y + raw.y - dr.p0.y, 0.05) : dr.y + raw.y - dr.p0.y;
+        mutate((d) => moveFurniture(findLevel(d, level.id), dr.id, nx, ny), { history: false });
         markMoved();
         break;
       }
@@ -533,7 +612,14 @@ export function PlanEditor() {
 
   const preview = drag && (drag.kind === 'room-create' || drag.kind === 'wall-create') ? drag : null;
   const toolCursor = ed.tool === 'select' ? 'default' : ed.tool === 'pan' ? 'grab' : 'crosshair';
-  const hint = ed.tool === 'device' && armedProductId ? `Placer : ${products.find((p) => p.id === armedProductId)?.name}. ${TOOL_HINT.device}` : TOOL_HINT[ed.tool];
+  const hint =
+    ed.tool === 'device' && armedProductId
+      ? `Placer : ${products.find((p) => p.id === armedProductId)?.name}. ${TOOL_HINT.device}`
+      : ed.tool === 'furniture' && ed.armedFurnitureId
+        ? `Poser : ${getFurnitureModel(ed.armedFurnitureId)?.name}. ${TOOL_HINT.furniture}`
+        : ed.openingPreset
+          ? `${getJoineryModel(ed.openingPreset).name} : ${TOOL_HINT[ed.tool] ?? ''}`
+          : TOOL_HINT[ed.tool];
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-white" ref={containerRef} data-testid="plan-editor">
@@ -565,6 +651,7 @@ export function PlanEditor() {
             motionRange={rules.motion.rangeM}
             onTargetDown={onTargetDown}
             provenance={provenance}
+            showFurniture={ed.show2dFurniture}
           />
           {/* Guides d'alignement */}
           {guides.x.map((x) => (

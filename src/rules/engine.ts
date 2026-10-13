@@ -408,6 +408,7 @@ export function runAudit(
   }
 
   const mainDoor =
+    exteriorOpenings.find(({ opening }) => opening.type === 'porte' && opening.entry) ??
     exteriorOpenings.find(({ opening, level }) => {
       if (opening.type !== 'porte' || opening.host.kind !== 'room') return false;
       const hostRoomId = opening.host.roomId;

@@ -74,10 +74,10 @@ test('parcours complet : dossier → plan importé → 3D → équipements → o
   await expect(page.getByText('Surface : 10,80 m²').or(page.getByText(/Surface : /))).toBeVisible();
 
   // 6. Ajout d'une porte d'entrée sur le mur extérieur du séjour
-  await page.getByRole('button', { name: 'Porte extérieure' }).click();
+  await page.getByRole('button', { name: 'Porte extérieure', exact: true }).click();
   await page.mouse.click(...Object.values(await bgPoint(page, 300, 660)) as [number, number]);
   await expect(page.getByText("Donne sur l'extérieur").first()).toBeVisible();
-  await page.getByRole('button', { name: 'Fenêtre' }).click();
+  await page.getByRole('button', { name: 'Fenêtre', exact: true }).click();
   await page.mouse.click(...Object.values(await bgPoint(page, 800, 100)) as [number, number]);
   await expect(page.getByTestId('opening-RDC-O02')).toBeVisible();
 

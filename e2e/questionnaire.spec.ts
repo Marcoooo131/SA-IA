@@ -64,7 +64,7 @@ test('questionnaire : de la maison à étage au devis, centrale à 0 €/mois, r
 
   // ajout d'une fenêtre sur le mur nord du séjour
   const openingsBefore = await page.locator('[data-testid^="opening-"]').count();
-  await page.getByRole('button', { name: 'Fenêtre' }).click();
+  await page.getByRole('button', { name: 'Fenêtre', exact: true }).click();
   const room = (await page.getByTestId('room-Séjour').boundingBox())!;
   await page.mouse.click(room.x + room.width * 0.75, room.y + 1);
   await expect(page.locator('[data-testid^="opening-"]')).toHaveCount(openingsBefore + 1);

@@ -53,6 +53,7 @@ export function freeSpot(level: Level, w: number, h: number): { x: number; y: nu
 export function removeRoom(level: Level, roomId: string) {
   level.rooms = level.rooms.filter((r) => r.id !== roomId);
   level.openings = level.openings.filter((o) => !((o.host.kind === 'room' || o.host.kind === 'unplaced') && o.host.roomId === roomId));
+  if (level.furniture) level.furniture = level.furniture.filter((f) => f.roomId !== roomId);
 }
 
 export function removeWall(level: Level, wallId: string) {
@@ -122,6 +123,7 @@ export function addLevel(plan: Plan): Level {
     walls: [],
     openings: [],
     background: null,
+    furniture: [],
   };
   plan.levels.push(level);
   return level;
