@@ -34,7 +34,10 @@ class RedactingFilter(logging.Filter):
 
 def configure_logging(log_dir: Path | None, level: str = "INFO") -> None:
     fmt = logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
-    handlers: list[logging.Handler] = [logging.StreamHandler()]
+    import sys
+
+    # Windowed executable: no console (sys.stderr is None)
+    handlers: list[logging.Handler] = [logging.StreamHandler()] if sys.stderr is not None else []
     if log_dir is not None:
         log_dir.mkdir(parents=True, exist_ok=True)
         handlers.append(logging.handlers.RotatingFileHandler(log_dir / "phonecall-desktop.log", maxBytes=2_000_000,

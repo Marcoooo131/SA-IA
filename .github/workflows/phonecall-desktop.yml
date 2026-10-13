@@ -62,8 +62,14 @@ jobs:
         env: { PCD_ENVIRONMENT: dev, PCD_AUDIO_BACKEND: wasapi, PCD_NOTES_CLIENT: simulated }
       - name: Build the Windows package
         run: ./packaging/build_windows.ps1
-      - name: Self-test of the packaged executable
-        run: ./dist/PhoneCallDiag/PhoneCallDiag.exe --selftest
+      - name: Self-test of the packaged executables
+        run: |
+          ./dist/PhoneCallDiag/PhoneCallDiag.exe --selftest
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $p = Start-Process ./dist/PhoneCallDesktop/PhoneCallDesktop.exe -ArgumentList '--selftest' -Wait -PassThru
+          Write-Host "PhoneCallDesktop.exe --selftest exit code: $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { exit $p.ExitCode }
+          ./dist/PhoneCallDiag/PhoneCallDiag.exe ; exit 0
         env: { PCD_ENVIRONMENT: dev, PCD_AUDIO_BACKEND: wasapi, PCD_NOTES_CLIENT: simulated }
       - uses: actions/upload-artifact@v4
         with:

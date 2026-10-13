@@ -10,6 +10,10 @@ manuelle.
 > n'existe : le connecteur est désactivé et l'interface propose la copie manuelle. Ne traiter
 > aucun enregistrement réel avant les validations listées dans `docs/CHECKLIST_PRODUCTION.md`.
 
+Il sert aussi de **passerelle IA** pour le poste conseiller [`phonecall-desktop`](../phonecall-desktop/README.md) :
+`POST /api/v1/notes` reçoit une transcription (sans audio, sans Twilio), applique le prompt versionné
+`phonecall_agent/prompts/phone_call_v2.md` et le contrôle anti-invention, et renvoie la note. Rien n'est stocké.
+
 ## Démarrage rapide
 
 ```bash
