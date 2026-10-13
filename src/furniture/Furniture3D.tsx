@@ -58,7 +58,7 @@ export function FurnitureMesh({ item, selected, onSelect }: { item: FurnitureIte
       })}
       {selected && (
         <mesh position={[0, item.h / 2, 0]} scale={[item.w + 0.08, item.h + 0.08, item.d + 0.08]} geometry={BOX}>
-          <meshBasicMaterial color="#2563eb" wireframe />
+          <meshBasicMaterial color="#d7001e" wireframe />
         </mesh>
       )}
     </group>

@@ -418,7 +418,7 @@ export function JoineryTab() {
                 Copier un étage vers un autre
               </Button>
             )}
-            <Button variant="primary" icon={<ArrowRight size={14} />} onClick={() => setTab('plan')}>
+            <Button icon={<ArrowRight size={14} />} onClick={() => setTab('plan')}>
               Vérifier le plan 2D
             </Button>
           </div>

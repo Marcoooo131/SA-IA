@@ -1,8 +1,12 @@
-import { BookOpen, LayoutDashboard, Save, ShieldCheck } from 'lucide-react';
-import { useApp } from '@/state/store';
+import { BookOpen, ClipboardCheck, FolderOpen, LayoutDashboard, Save, Settings } from 'lucide-react';
+import { useApp, type View } from '@/state/store';
 import { cx } from './kit';
 import { formatDateTime } from '@/lib/format';
 
+/**
+ * Barre de navigation : identité typographique temporaire (aucun logo officiel n'est
+ * reproduit tant qu'un fichier autorisé n'est pas fourni), rubrique active soulignée en rouge.
+ */
 export function Header() {
   const view = useApp((s) => s.view);
   const setView = useApp((s) => s.setView);
@@ -10,36 +14,45 @@ export function Header() {
   const saveNow = useApp((s) => s.saveNow);
   const toast = useApp((s) => s.toast);
 
-  const nav = (key: 'dashboard' | 'catalog', label: string, icon: React.ReactNode) => (
-    <button
-      onClick={() => setView(key)}
-      className={cx(
-        'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors',
-        view === key ? 'bg-white/15 text-white' : 'text-brand-100 hover:bg-white/10 hover:text-white',
-      )}
-    >
-      {icon}
-      {label}
-    </button>
-  );
+  const items: { key: View; label: string; icon: React.ReactNode; active: boolean }[] = [
+    { key: 'dashboard', label: 'Tableau de bord', icon: <LayoutDashboard size={16} />, active: view === 'dashboard' },
+    { key: 'dossiers', label: 'Dossiers', icon: <FolderOpen size={16} />, active: view === 'dossiers' || view === 'workspace' },
+    { key: 'audits', label: 'Audits', icon: <ClipboardCheck size={16} />, active: view === 'audits' },
+    { key: 'catalog', label: 'Catalogue', icon: <BookOpen size={16} />, active: view === 'catalog' },
+    { key: 'settings', label: 'Paramètres', icon: <Settings size={16} />, active: view === 'settings' },
+  ];
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-4 bg-brand-800 px-4 text-white shadow">
-      <button className="flex items-center gap-2.5" onClick={() => setView('dashboard')}>
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-600">
-          <ShieldCheck size={18} />
-        </span>
+    <header className="flex h-14 shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-4 lg:gap-6 lg:px-6">
+      <button className="flex shrink-0 items-center gap-2.5" onClick={() => setView('dashboard')} aria-label="Sector Alarm Movers – accueil">
+        <span className="h-6 w-1.5 rounded-full bg-brand-600" aria-hidden />
         <span className="text-left leading-tight">
-          <span className="block text-sm font-semibold">Audit Movers</span>
-          <span className="block text-[11px] text-brand-200">Prototype de démonstration – non officiel</span>
+          <span className="block text-[15px] font-bold tracking-tight text-slate-900">
+            Sector Alarm <span className="font-semibold text-brand-600">Movers</span>
+          </span>
+          <span className="hidden text-[10px] font-medium tracking-wide text-slate-500 uppercase sm:block">Prototype interne · non officiel</span>
         </span>
       </button>
-      <nav className="ml-4 flex items-center gap-1">
-        {nav('dashboard', 'Tableau de bord', <LayoutDashboard size={15} />)}
-        {nav('catalog', 'Catalogue & règles', <BookOpen size={15} />)}
+      <nav className="flex h-full items-stretch gap-0.5 lg:gap-1" aria-label="Navigation principale">
+        {items.map((it) => (
+          <button
+            key={it.key}
+            onClick={() => setView(it.key)}
+            aria-current={it.active ? 'page' : undefined}
+            title={it.label}
+            className={cx(
+              'relative flex items-center gap-1.5 px-2.5 text-sm font-medium lg:px-3',
+              it.active ? 'text-slate-900' : 'text-slate-500 hover:text-slate-900',
+            )}
+          >
+            {it.icon}
+            <span className="hidden md:inline">{it.label}</span>
+            {it.active && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-brand-600" />}
+          </button>
+        ))}
       </nav>
       <div className="ml-auto flex items-center gap-3 text-xs">
-        <span className={cx('hidden md:inline', saveState.error ? 'text-red-300' : 'text-brand-200')} title="Données enregistrées dans ce navigateur uniquement">
+        <span className={cx('hidden xl:inline', saveState.error ? 'text-brand-700' : 'text-slate-500')} title="Données enregistrées dans ce navigateur uniquement">
           {saveState.error
             ? saveState.error
             : saveState.lastSavedAt
@@ -51,7 +64,7 @@ export function Header() {
             const ok = saveNow();
             toast(ok ? 'success' : 'error', ok ? 'Travail enregistré dans ce navigateur.' : "L'enregistrement a échoué.");
           }}
-          className="flex items-center gap-1.5 rounded-md bg-white/10 px-2.5 py-1.5 font-medium hover:bg-white/20"
+          className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-medium text-slate-800 hover:bg-slate-50"
         >
           <Save size={14} /> Enregistrer
         </button>

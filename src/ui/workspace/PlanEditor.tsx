@@ -652,6 +652,7 @@ export function PlanEditor() {
             onTargetDown={onTargetDown}
             provenance={provenance}
             showFurniture={ed.show2dFurniture}
+            showDevices={ed.show2dDevices}
           />
           {/* Guides d'alignement */}
           {guides.x.map((x) => (
@@ -670,7 +671,7 @@ export function PlanEditor() {
                 height={Math.abs(preview.p1.y - preview.p0.y)}
                 fill="#bfdbfe"
                 fillOpacity={0.5}
-                stroke="#2563eb"
+                stroke="#d7001e"
                 strokeWidth={2 / view.scale}
               />
               <text
@@ -687,7 +688,7 @@ export function PlanEditor() {
           )}
           {preview?.kind === 'wall-create' && (
             <g>
-              <line x1={preview.p0.x} y1={preview.p0.y} x2={preview.p1.x} y2={preview.p1.y} stroke="#2563eb" strokeWidth={0.1} strokeLinecap="square" />
+              <line x1={preview.p0.x} y1={preview.p0.y} x2={preview.p1.x} y2={preview.p1.y} stroke="#d7001e" strokeWidth={0.1} strokeLinecap="square" />
               <text x={(preview.p0.x + preview.p1.x) / 2} y={(preview.p0.y + preview.p1.y) / 2 - 0.25} fontSize={13 / view.scale} textAnchor="middle" fill="#1e3a8a" fontWeight={600}>
                 {formatNumber(wallLength({ id: '', a: preview.p0, b: preview.p1, thickness: 0 }))} m
               </text>

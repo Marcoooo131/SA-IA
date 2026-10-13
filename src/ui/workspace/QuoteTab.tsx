@@ -1,15 +1,12 @@
-import { useMemo, useState } from 'react';
-import { BadgeCheck, Download, FileDown, Loader2, Minus, Plus, RotateCcw, Settings2 } from 'lucide-react';
+import { useMemo } from 'react';
+import { ArrowRight, Minus, Plus, RotateCcw, Settings2 } from 'lucide-react';
 import { useApp, useActiveDossier } from '@/state/store';
 import { useAudit, useQuote } from '@/state/derived';
 import { buildComparison, variantKey } from '@/quote/compare';
-import { formatDateTime, formatEuro, formatMonthly, formatNumber } from '@/lib/format';
+import { formatEuro, formatMonthly, formatNumber } from '@/lib/format';
 import { DISCOUNT_TARGET_LABELS } from '@/domain/labels';
 import { Badge, Button, Card, IconButton, NumberInput, Select, TextInput, Toggle, cx } from '../kit';
 import { CategoryDot } from './LeftPanels';
-import { downloadBlob } from '@/catalog/excel';
-import { getAsset, putAsset } from '@/persistence/assets';
-import { getLastViewSnapshot } from '@/view3d/lastView';
 
 const signed = (v: number) => `${v >= 0 ? '+' : '-'} ${formatEuro(Math.abs(v))}`;
 
@@ -81,7 +78,7 @@ function Comparator() {
                       <label className="mt-1 flex items-center gap-1 px-1 text-[10px] text-slate-600">
                         <input
                           type="checkbox"
-                          className="h-3 w-3 accent-brand-700"
+                          className="h-3 w-3 accent-brand-600"
                           checked={shownKeys.has(key)}
                           onChange={() => toggleVariant(key)}
                           data-testid={`variant-${key}`}
@@ -109,7 +106,6 @@ export function QuoteTab() {
   const dossier = useActiveDossier();
   const quote = useQuote(dossier);
   const catalog = useApp((s) => s.catalog);
-  const rules = useApp((s) => s.rules);
   const setPack = useApp((s) => s.setQuotePack);
   const setAdjustment = useApp((s) => s.setAdjustment);
   const setPriceOverride = useApp((s) => s.setPriceOverride);
@@ -119,46 +115,24 @@ export function QuoteTab() {
   const setMovingAll = useApp((s) => s.setMovingAll);
   const setTotalOverride = useApp((s) => s.setTotalOverride);
   const toggleDiscount = useApp((s) => s.toggleDiscount);
-  const addQuoteRecord = useApp((s) => s.addQuoteRecord);
-  const validateDemo = useApp((s) => s.validateDemo);
   const setView = useApp((s) => s.setView);
-  const toast = useApp((s) => s.toast);
-  const [busy, setBusy] = useState(false);
-  const [include3d, setInclude3d] = useState(true);
+  const setTab = useApp((s) => s.setTab);
   if (!dossier || !quote) return null;
   const adj = (productId: string) => dossier.quoteDraft.adjustments.find((a) => a.productId === productId)?.delta ?? 0;
   const addable = catalog.products.filter((p) => p.active && p.billing !== 'lot' && !quote.lines.some((l) => l.productId === p.id));
 
-  const generate = async () => {
-    setBusy(true);
-    try {
-      const { generateQuoteForDossier } = await import('@/export/generate');
-      const { record, blob } = await generateQuoteForDossier(dossier, catalog, rules, { view3d: getLastViewSnapshot(dossier.id), include3d });
-      const dataUrl: string = await new Promise((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(String(r.result));
-        r.onerror = () => reject(r.error);
-        r.readAsDataURL(blob);
-      });
-      await putAsset(`pdf:${record.id}`, dataUrl);
-      addQuoteRecord(record);
-      downloadBlob(blob, `${record.reference}.pdf`);
-      toast('success', `Devis ${record.reference} généré. Les prix appliqués sont conservés dans l'historique.`);
-    } catch (e) {
-      toast('error', `Génération du PDF impossible : ${(e as Error).message}`);
-    } finally {
-      setBusy(false);
-    }
-  };
-
   return (
     <div className="scroll-thin h-full overflow-auto">
-      <div className="mx-auto flex max-w-7xl flex-col gap-5 p-6">
+      <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-6 lg:px-8">
+        <div>
+          <h2 className="text-xl font-bold text-slate-900">Proposition commerciale</h2>
+          <p className="text-sm text-slate-600">Comparez les offres, choisissez le forfait et ajustez la configuration. Les prix manquants restent « à confirmer », jamais inventés.</p>
+        </div>
         <Comparator />
-        <div className="grid grid-cols-3 gap-5">
+        <div className="grid gap-5 xl:grid-cols-3">
           <Card
             title="Devis – configuration retenue"
-            className="col-span-2"
+            className="xl:col-span-2"
             actions={
               <Select value={dossier.quoteDraft.packId ?? ''} onChange={(e) => setPack(e.target.value || null)} className="w-56" aria-label="Offre du devis">
                 {catalog.packs
@@ -280,7 +254,7 @@ export function QuoteTab() {
                             <div className="font-medium text-slate-800">{l.name}</div>
                             <div className="text-[11px] text-slate-500">
                               {l.reference}
-                              {l.overridden && <span className="ml-1 font-medium text-blue-700">· prix modifié</span>}
+                              {l.overridden && <span className="ml-1 font-medium text-slate-900">· prix modifié</span>}
                             </div>
                           </div>
                         </div>
@@ -348,7 +322,7 @@ export function QuoteTab() {
                             aria-label={`Mensualité ${l.reference}`}
                           />
                           {l.overridden && (
-                            <button className="text-right text-[10px] text-blue-700 hover:underline" onClick={() => setPriceOverride(l.productId, { initial: null, monthly: null })}>
+                            <button className="text-right text-[10px] text-slate-900 hover:underline" onClick={() => setPriceOverride(l.productId, { initial: null, monthly: null })}>
                               Prix du catalogue
                             </button>
                           )}
@@ -457,7 +431,7 @@ export function QuoteTab() {
                   </div>
                 ))}
                 {quote.manualAdjustment && (quote.manualAdjustment.initial !== null || quote.manualAdjustment.monthly !== null) && (
-                  <div className="flex justify-between text-blue-800" data-testid="manual-adjustment">
+                  <div className="flex justify-between text-slate-900" data-testid="manual-adjustment">
                     <dt>Ajustement manuel{quote.manualAdjustment.note ? ` : ${quote.manualAdjustment.note}` : ''}</dt>
                     <dd className="text-right tabular-nums">
                       {quote.manualAdjustment.initial !== null && <div>{signed(quote.manualAdjustment.initial)}</div>}
@@ -466,11 +440,11 @@ export function QuoteTab() {
                   </div>
                 )}
               </dl>
-              <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50/60 p-2.5">
+              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-2.5">
                 <div className="mb-1.5 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-blue-900">Modifier manuellement les montants du devis</span>
+                  <span className="text-xs font-semibold text-slate-900">Modifier manuellement les montants du devis</span>
                   {dossier.quoteDraft.totalOverride && (
-                    <button className="text-[11px] text-blue-700 hover:underline" onClick={() => setTotalOverride(null)}>
+                    <button className="text-[11px] text-slate-900 hover:underline" onClick={() => setTotalOverride(null)}>
                       Revenir au calcul
                     </button>
                   )}
@@ -504,7 +478,7 @@ export function QuoteTab() {
                   onChange={(e) => setTotalOverride({ note: e.target.value })}
                   aria-label="Motif de l'ajustement"
                 />
-                <p className="mt-1 text-[10px] text-blue-900/70">
+                <p className="mt-1 text-[10px] text-slate-500">
                   Calculé : {formatEuro(quote.totals.initialComputed)} · {formatMonthly(quote.totals.monthlyComputed)}. Laisser vide pour garder le calcul.
                 </p>
               </div>
@@ -515,8 +489,8 @@ export function QuoteTab() {
                     {formatEuro(quote.totals.initial)}
                   </div>
                 </div>
-                <div className="rounded-lg bg-brand-700 px-3 py-2 text-white">
-                  <div className="text-[10px] text-brand-100 uppercase">Mensuel</div>
+                <div className="rounded-lg bg-slate-900 px-3 py-2 text-white">
+                  <div className="text-[10px] text-slate-300 uppercase">Mensuel</div>
                   <div className="text-xl font-semibold tabular-nums" data-testid="quote-monthly">
                     {formatMonthly(quote.totals.monthly)}
                   </div>
@@ -556,77 +530,15 @@ export function QuoteTab() {
                   ))
               )}
             </Card>
-            <Card title="Génération du devis PDF">
-              <Toggle checked={include3d} onChange={setInclude3d} label="Inclure la maquette 3D" />
-              <p className="mt-1 mb-3 text-[11px] text-slate-500">
-                {getLastViewSnapshot(dossier.id) ? 'La vue 3D choisie dans l’onglet Vue 3D sera utilisée.' : 'Une vue isométrique sera générée automatiquement.'}
-              </p>
-              <Button variant="primary" className="w-full" icon={busy ? <Loader2 size={15} className="animate-spin" /> : <FileDown size={15} />} onClick={generate} disabled={busy}>
-                {busy ? 'Génération…' : 'Générer le devis PDF'}
-              </Button>
-              <Button
-                className="mt-2 w-full"
-                icon={<BadgeCheck size={15} />}
-                disabled={!dossier.quotes.length}
-                onClick={() => {
-                  validateDemo();
-                  toast('success', 'Proposition marquée « validée » (action de démonstration, sans intégration).');
-                }}
-              >
-                Marquer la proposition validée (démo)
+            <Card title="Étape suivante">
+              <p className="mb-3 text-xs text-slate-600">Vérifiez la synthèse de la proposition, puis générez le devis PDF.</p>
+              <Button variant="primary" className="w-full" icon={<ArrowRight size={15} />} onClick={() => setTab('devis')}>
+                Voir la synthèse et le devis
               </Button>
             </Card>
           </div>
         </div>
 
-        <Card title="Historique des devis" bodyClassName="p-0">
-          {dossier.quotes.length === 0 ? (
-            <p className="px-4 py-4 text-sm text-slate-500">Aucun devis généré pour ce dossier.</p>
-          ) : (
-            <table className="w-full text-sm">
-              <thead className="text-left text-xs text-slate-500">
-                <tr>
-                  <th className="px-4 py-2 font-medium">Référence</th>
-                  <th className="px-4 py-2 font-medium">Date</th>
-                  <th className="px-4 py-2 font-medium">Offre</th>
-                  <th className="px-4 py-2 text-right font-medium">Initial (prix figés)</th>
-                  <th className="px-4 py-2 text-right font-medium">Mensuel (prix figés)</th>
-                  <th className="px-4 py-2 font-medium">Catalogue</th>
-                  <th className="px-4 py-2" />
-                </tr>
-              </thead>
-              <tbody>
-                {dossier.quotes.map((q) => (
-                  <tr key={q.id} className="border-t border-slate-100" data-testid={`quote-record-${q.reference}`}>
-                    <td className="px-4 py-2 font-mono text-xs">{q.reference}</td>
-                    <td className="px-4 py-2">{formatDateTime(q.createdAt)}</td>
-                    <td className="px-4 py-2">{q.packName}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{formatEuro(q.totals.initial)}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">{formatMonthly(q.totals.monthly)}</td>
-                    <td className="px-4 py-2 text-xs text-slate-500">
-                      v{q.priceSnapshot.catalogVersion}
-                      {q.priceSnapshot.catalogVersion !== catalog.version && <span className="ml-1 text-amber-700">(catalogue modifié depuis)</span>}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      <Button
-                        size="sm"
-                        icon={<Download size={13} />}
-                        onClick={async () => {
-                          const url = await getAsset(`pdf:${q.id}`);
-                          if (!url) return toast('error', 'PDF introuvable dans ce navigateur (stockage effacé ?).');
-                          const blob = await (await fetch(url)).blob();
-                          downloadBlob(blob, `${q.reference}.pdf`);
-                        }}
-                      >
-                        PDF
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Card>
       </div>
     </div>
   );

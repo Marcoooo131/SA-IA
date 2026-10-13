@@ -1,8 +1,7 @@
-import { ArrowRight } from 'lucide-react';
 import { useApp, useActiveDossier } from '@/state/store';
 import { useAudit } from '@/state/derived';
 import { DossierForm } from '../DossierForm';
-import { Button, Card } from '../kit';
+import { Card } from '../kit';
 import { formatArea, formatDate } from '@/lib/format';
 import { OPENING_TYPE_LABELS } from '@/domain/labels';
 
@@ -10,18 +9,12 @@ export function LogementTab() {
   const dossier = useActiveDossier();
   const audit = useAudit(dossier);
   const updateInfo = useApp((s) => s.updateInfo);
-  const setTab = useApp((s) => s.setTab);
   if (!dossier || !audit) return null;
   return (
     <div className="scroll-thin h-full overflow-auto">
-      <div className="mx-auto grid max-w-7xl grid-cols-3 gap-5 p-6">
-        <Card title="Informations du dossier" className="col-span-2" actions={<span className="text-xs text-slate-500">Créé le {formatDate(dossier.info.createdAt)}</span>}>
+      <div className="mx-auto grid max-w-7xl gap-5 px-4 py-6 lg:grid-cols-3 lg:px-8">
+        <Card title="Informations du logement" className="lg:col-span-2" actions={<span className="text-xs text-slate-500">Créé le {formatDate(dossier.info.createdAt)}</span>}>
           <DossierForm info={dossier.info} onChange={updateInfo} />
-          <div className="mt-4 flex justify-end">
-            <Button variant="primary" icon={<ArrowRight size={15} />} onClick={() => setTab('plan')}>
-              Étape suivante : plan du logement
-            </Button>
-          </div>
         </Card>
         <div className="flex flex-col gap-5">
           <Card title="Descriptif du logement (issu du plan)">

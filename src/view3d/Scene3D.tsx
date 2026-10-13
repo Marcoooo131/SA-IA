@@ -142,11 +142,11 @@ function Wall({ seg, height, mode, onClick }: { seg: WallSegment; height: number
         </group>,
       );
       if (c.opening.exterior) {
-        // liseré de repérage des accès extérieurs
+        // liseré discret de repérage des ouvertures extérieures concernées par l'audit
         pieces.push(
-          <mesh key={`f${i}`} position={[mid.x, v.bottom + h + 0.03, mid.y]} rotation={[0, -angle, 0]}>
-            <boxGeometry args={[w, 0.05, seg.thickness + 0.04]} />
-            <meshStandardMaterial color="#0f766e" />
+          <mesh key={`f${i}`} position={[mid.x, v.bottom + h + 0.02, mid.y]} rotation={[0, -angle, 0]}>
+            <boxGeometry args={[w, 0.025, seg.thickness + 0.02]} />
+            <meshStandardMaterial color="#d7001e" />
           </mesh>,
         );
       }
@@ -240,12 +240,12 @@ function DeviceMesh({ device, product, level, elevation, selected, onSelect, ope
     >
       <mesh position={[device.x, y, device.y]} rotation={[0, rot, 0]} castShadow userData={{ deviceId: device.id }}>
         {geom}
-        <meshStandardMaterial color={color} transparent={suggested} opacity={suggested ? 0.6 : 1} emissive={selected ? '#2563eb' : '#000000'} emissiveIntensity={selected ? 0.6 : 0} />
+        <meshStandardMaterial color={color} transparent={suggested} opacity={suggested ? 0.6 : 1} emissive={selected ? '#d7001e' : '#000000'} emissiveIntensity={selected ? 0.6 : 0} />
       </mesh>
       {/* repère au sol : position lisible depuis toutes les vues */}
       <mesh position={[device.x, elevation + 0.09, device.y]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.16, selected ? 0.3 : 0.24, 32]} />
-        <meshBasicMaterial color={selected ? '#2563eb' : color} transparent opacity={suggested ? 0.45 : 0.9} side={THREE.DoubleSide} />
+        <meshBasicMaterial color={selected ? '#d7001e' : color} transparent opacity={suggested ? 0.45 : 0.9} side={THREE.DoubleSide} />
       </mesh>
       <mesh position={[device.x, (elevation + 0.09 + y) / 2, device.y]}>
         <cylinderGeometry args={[0.012, 0.012, Math.max(0.01, y - elevation - 0.09), 6]} />

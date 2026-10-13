@@ -28,9 +28,11 @@ export interface QuotePdfInput {
   view3d: PdfImage | null;
 }
 
-const NAVY: [number, number, number] = [15, 61, 94];
-const SLATE: [number, number, number] = [71, 85, 105];
-const LIGHT: [number, number, number] = [241, 245, 249];
+// Direction artistique : anthracite + rouge (valeur provisoire, cf. src/index.css)
+const NAVY: [number, number, number] = [22, 22, 22];
+const RED: [number, number, number] = [215, 0, 30];
+const SLATE: [number, number, number] = [82, 82, 82];
+const LIGHT: [number, number, number] = [245, 245, 245];
 const MARGIN = 14;
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -69,7 +71,7 @@ export function generateQuotePdf(input: QuotePdfInput): jsPDF {
     doc.setFontSize(12);
     doc.setTextColor(...NAVY);
     doc.text(T(title), MARGIN, y);
-    doc.setDrawColor(...NAVY);
+    doc.setDrawColor(...RED);
     doc.setLineWidth(0.4);
     doc.line(MARGIN, y + 1.5, W - MARGIN, y + 1.5);
     y += 7;
@@ -82,6 +84,8 @@ export function generateQuotePdf(input: QuotePdfInput): jsPDF {
   // ---------------------------------------------------------------- En-tête
   doc.setFillColor(...NAVY);
   doc.rect(0, 0, W, 30, 'F');
+  doc.setFillColor(...RED);
+  doc.rect(0, 30, W, 1.2, 'F');
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);

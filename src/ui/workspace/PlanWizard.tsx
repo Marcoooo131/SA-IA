@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowLeft, ArrowRight, Check, Eye, RotateCcw, Sparkles, Wand2 } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Building2, Check, Eye, HelpCircle, Home, ImageUp, PencilRuler, RotateCcw, Sparkles, Wand2 } from 'lucide-react';
 import type { HousingAnswers, Level } from '@/domain/types';
-import { useApp, useActiveDossier, type WorkspaceTab } from '@/state/store';
+import { useEditor } from '@/state/editor';
+import { useApp, useActiveDossier } from '@/state/store';
 import { TEMPLATES, SURFACE_BANDS, getTemplate, targetSurface, type HousingTemplate } from '@/generator/templates';
 import { generatePlan, normalizeAnswers, type GenerationResult } from '@/generator/generate';
 import { hasManualChanges } from '@/generator/provenance';
@@ -9,58 +10,12 @@ import { IsoThumbnail } from '@/generator/IsoThumbnail';
 import { PlanDrawing } from '@/plan/PlanDrawing';
 import { levelBounds } from '@/plan/geometry';
 import { formatNumber } from '@/lib/format';
-import { Badge, Button, Card, Field, IntInput, Modal, NumberInput, cx, inputCls } from '../kit';
+import { Badge, Button, Card, Counter, Modal, NumberInput, cx, inputCls } from '../kit';
 
 const GenerationPreview3D = lazy(() => import('@/view3d/LevelsPreview3D').then((m) => ({ default: m.LevelsPreview3D })));
 
 // ---------------------------------------------------------------------------
 // Progression globale
-// ---------------------------------------------------------------------------
-
-const PROGRESS: { label: string; tab?: WorkspaceTab }[] = [
-  { label: 'Choix du logement' },
-  { label: 'Questionnaire' },
-  { label: 'Génération du plan' },
-  { label: 'Vérification des pièces et des menuiseries', tab: 'menuiseries' },
-  { label: 'Vérification et correction du plan', tab: 'plan' },
-  { label: 'Visualisation 3D', tab: 'vue3d' },
-  { label: 'Audit de sécurité', tab: 'audit' },
-  { label: 'Devis', tab: 'devis' },
-];
-
-function Progress({ step, onStep, generated }: { step: number; onStep: (i: number) => void; generated: boolean }) {
-  const setTab = useApp((s) => s.setTab);
-  return (
-    <ol className="flex flex-wrap items-center gap-1" aria-label="Progression de la création du plan">
-      {PROGRESS.map((p, i) => {
-        const enabled = i <= 2 ? i <= step || generated : generated;
-        const current = i === step;
-        return (
-          <li key={p.label} className="flex items-center gap-1">
-            <button
-              disabled={!enabled}
-              onClick={() => (p.tab ? setTab(p.tab) : onStep(i))}
-              className={cx(
-                'flex items-center gap-1.5 rounded-full py-1 pr-3 pl-1 text-xs font-medium transition-colors disabled:opacity-40',
-                current ? 'bg-brand-700 text-white' : 'text-slate-600 hover:bg-slate-100',
-              )}
-              aria-current={current ? 'step' : undefined}
-            >
-              <span className={cx('flex h-5 w-5 items-center justify-center rounded-full text-[10px]', current ? 'bg-white text-brand-700' : i < step ? 'bg-emerald-500 text-white' : 'bg-slate-200')}>
-                {i < step ? <Check size={11} /> : i + 1}
-              </span>
-              {p.label}
-            </button>
-            {i < PROGRESS.length - 1 && <span className="h-px w-3 bg-slate-300" />}
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Vignettes
 // ---------------------------------------------------------------------------
 
 export function PlanThumb({ level, width, height, labels = false }: { level: Level; width: number; height: number; labels?: boolean }) {
@@ -77,35 +32,45 @@ export function PlanThumb({ level, width, height, labels = false }: { level: Lev
 }
 
 function TemplateCard({ t, selected, onSelect, onPreview }: { t: HousingTemplate; selected: boolean; onSelect: () => void; onPreview: () => void }) {
+  // vignettes issues du plan réellement généré par le modèle
   const result = useMemo(() => generatePlan(t, t.defaults), [t]);
   return (
     <div
-      className={cx('flex flex-col overflow-hidden rounded-lg border bg-white transition-shadow', selected ? 'border-brand-500 ring-2 ring-brand-100' : 'border-slate-200 hover:shadow-md')}
+      className={cx(
+        'flex flex-col overflow-hidden rounded-xl border bg-white transition-colors',
+        selected ? 'border-brand-600 bg-brand-50/40 ring-1 ring-brand-600' : 'border-slate-200 hover:border-slate-400',
+      )}
       data-testid={`template-${t.id}`}
+      data-selected={selected || undefined}
     >
-      <button onClick={onSelect} className="grid grid-cols-2 gap-1 bg-slate-50 p-2" aria-label={`Choisir le modèle ${t.name}`}>
-        <div className="flex items-center justify-center rounded bg-white">
+      <button onClick={onSelect} className="grid grid-cols-2 gap-1.5 p-2" aria-label={`Choisir le modèle ${t.name}`}>
+        <div className="flex items-center justify-center rounded-lg bg-slate-50">
           <PlanThumb level={result.levels[0]} width={130} height={95} />
         </div>
-        <div className="flex items-center justify-center rounded bg-white">
+        <div className="flex items-center justify-center rounded-lg bg-slate-50">
           <IsoThumbnail levels={result.levels} width={130} height={95} />
         </div>
       </button>
-      <div className="flex flex-1 flex-col gap-1 p-3">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-semibold text-slate-800">{t.name}</span>
-          {selected && <Badge tone="blue">Sélectionné</Badge>}
+      <div className="flex flex-1 flex-col gap-1.5 px-3 pt-1 pb-3">
+        <div className="flex items-start justify-between gap-2">
+          <span className="text-sm font-semibold text-slate-900">{t.name}</span>
+          {selected && <Check size={16} className="shrink-0 text-brand-600" aria-label="Modèle sélectionné" />}
         </div>
-        <p className="text-xs text-slate-500">{t.description}</p>
-        <p className="text-[11px] text-slate-400">
-          ≈ {formatNumber(result.stats.habitableArea, 0)} m² · {result.levels.length} niveau(x) · {t.defaults.bedrooms} chambre(s)
-        </p>
+        <div className="flex flex-wrap gap-1 text-[11px]">
+          <Badge>{t.defaults.housingType === 'appartement' ? 'Appartement' : 'Maison'}</Badge>
+          <Badge>
+            {result.levels.length} niveau{result.levels.length > 1 ? 'x' : ''}
+          </Badge>
+          <Badge>≈ {formatNumber(result.stats.habitableArea, 0)} m²</Badge>
+          <Badge>{t.defaults.bedrooms} ch.</Badge>
+        </div>
+        <p className="text-xs leading-relaxed text-slate-500">{t.description}</p>
         <div className="mt-auto flex gap-2 pt-1">
           <Button size="sm" icon={<Eye size={13} />} onClick={onPreview}>
             Aperçu
           </Button>
-          <Button size="sm" variant={selected ? 'primary' : 'secondary'} onClick={onSelect}>
-            {selected ? 'Modèle choisi' : 'Choisir'}
+          <Button size="sm" variant={selected ? 'primary' : 'secondary'} onClick={onSelect} className="flex-1">
+            {selected ? 'Modèle choisi' : 'Choisir ce modèle'}
           </Button>
         </div>
       </div>
@@ -150,7 +115,7 @@ function Choice<T extends string | number>({ value, options, onChange, name }: {
           onClick={() => onChange(o.value)}
           className={cx(
             'rounded-md border px-3 py-1.5 text-sm transition-colors',
-            value === o.value ? 'border-brand-600 bg-brand-700 text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-400',
+            value === o.value ? 'border-brand-600 bg-brand-50 text-brand-700 ring-1 ring-brand-600' : 'border-slate-300 bg-white text-slate-700 hover:border-slate-500',
           )}
         >
           {o.label}
@@ -162,10 +127,10 @@ function Choice<T extends string | number>({ value, options, onChange, name }: {
 
 function Question({ n, title, hint, children }: { n: number; title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div className="flex gap-3 border-b border-slate-100 py-3 last:border-0">
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700">{n}</span>
+    <div className="flex gap-3 border-b border-slate-100 py-4 last:border-0">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white">{n}</span>
       <div className="flex-1">
-        <div className="mb-1.5 text-sm font-medium text-slate-800">{title}</div>
+        <div className="mb-2 text-sm font-semibold text-slate-900">{title}</div>
         {children}
         {hint && <p className="mt-1 text-[11px] text-slate-500">{hint}</p>}
       </div>
@@ -181,16 +146,29 @@ function Questionnaire({ answers, onChange }: { answers: HousingAnswers; onChang
   return (
     <div data-testid="questionnaire">
       <Question n={1} title="Quel est le type de logement ?">
-        <Choice
-          name="Type de logement"
-          value={answers.housingType}
-          onChange={(v) => set({ housingType: v, ...(v === 'appartement' ? { garage: 'aucun' as const } : {}) })}
-          options={[
-            { value: 'appartement', label: 'Appartement' },
-            { value: 'maison', label: 'Maison' },
-            { value: 'autre', label: 'Autre logement' },
-          ]}
-        />
+        <div className="grid max-w-xl grid-cols-3 gap-2" role="radiogroup" aria-label="Type de logement">
+          {(
+            [
+              ['appartement', 'Appartement', <Building2 key="a" size={20} />],
+              ['maison', 'Maison', <Home key="m" size={20} />],
+              ['autre', 'Autre logement', <HelpCircle key="o" size={20} />],
+            ] as const
+          ).map(([v, label, icon]) => (
+            <button
+              key={v}
+              role="radio"
+              aria-checked={answers.housingType === v}
+              onClick={() => set({ housingType: v, ...(v === 'appartement' ? { garage: 'aucun' as const } : {}) })}
+              className={cx(
+                'flex flex-col items-center gap-1.5 rounded-xl border px-3 py-3 text-sm font-medium',
+                answers.housingType === v ? 'border-brand-600 bg-brand-50 text-brand-700 ring-1 ring-brand-600' : 'border-slate-200 bg-white text-slate-800 hover:border-slate-500',
+              )}
+            >
+              {icon}
+              {label}
+            </button>
+          ))}
+        </div>
       </Question>
       <Question n={2} title="Quelle est la surface approximative ?">
         <div className="flex flex-wrap items-center gap-2">
@@ -226,7 +204,7 @@ function Questionnaire({ answers, onChange }: { answers: HousingAnswers; onChang
         }
       >
         <div className="flex items-center gap-2">
-          <IntInput
+          <Counter
             value={answers.mainRooms}
             min={1}
             max={12}
@@ -234,9 +212,8 @@ function Questionnaire({ answers, onChange }: { answers: HousingAnswers; onChang
               const ex = Math.max(0, v - 1 - answers.bedrooms);
               onChange({ ...answers, mainRooms: v, features: { ...answers.features, extraRoom: ex > 0 } });
             }}
-            aria-label="Nombre de pièces principales"
-            data-testid="q-main-rooms"
-            className="w-20"
+            label="Nombre de pièces principales"
+            testId="q-main-rooms"
           />
           <span className="text-xs text-slate-500">pièce(s) principale(s)</span>
         </div>
@@ -276,16 +253,19 @@ function Questionnaire({ answers, onChange }: { answers: HousingAnswers; onChang
         <Choice name="Accès extérieurs" value={Math.min(4, answers.exteriorAccesses)} onChange={(v) => set({ exteriorAccesses: v })} options={[1, 2, 3, 4].map((n) => ({ value: n, label: n === 4 ? '4 ou plus' : String(n) }))} />
       </Question>
       <Question n={10} title="Combien de fenêtres et de baies vitrées environ ?">
-        <div className="grid max-w-lg grid-cols-3 gap-3">
-          <Field label="Fenêtres">
-            <NumberInput value={answers.windows} onChange={(v) => v !== null && set({ windows: Math.round(v) })} min={0} max={30} step={1} aria-label="Nombre de fenêtres" />
-          </Field>
-          <Field label="Baies vitrées">
-            <NumberInput value={answers.bays} onChange={(v) => v !== null && set({ bays: Math.round(v) })} min={0} max={8} step={1} aria-label="Nombre de baies vitrées" />
-          </Field>
-          <Field label="Portes ext. supplémentaires">
-            <NumberInput value={answers.extraDoors} onChange={(v) => v !== null && set({ extraDoors: Math.round(v) })} min={0} max={4} step={1} aria-label="Portes extérieures supplémentaires" />
-          </Field>
+        <div className="flex flex-wrap gap-5">
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-slate-700">Fenêtres</span>
+            <Counter value={answers.windows} onChange={(v) => set({ windows: v })} max={30} label="Nombre de fenêtres" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-slate-700">Baies vitrées</span>
+            <Counter value={answers.bays} onChange={(v) => set({ bays: v })} max={8} label="Nombre de baies vitrées" />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-slate-700">Portes ext. supplémentaires</span>
+            <Counter value={answers.extraDoors} onChange={(v) => set({ extraDoors: v })} max={4} label="Portes extérieures supplémentaires" />
+          </div>
         </div>
       </Question>
       <Question n={11} title="Existe-t-il des particularités ?">
@@ -303,7 +283,7 @@ function Questionnaire({ answers, onChange }: { answers: HousingAnswers; onChang
             <label key={k} className="flex items-center gap-1.5">
               <input
                 type="checkbox"
-                className="h-4 w-4 accent-brand-700"
+                className="h-4 w-4 accent-brand-600"
                 checked={answers.features[k]}
                 disabled={k === 'stairs' && answers.levels > 1}
                 onChange={(e) =>
@@ -337,14 +317,23 @@ function Questionnaire({ answers, onChange }: { answers: HousingAnswers; onChang
 // Assistant complet
 // ---------------------------------------------------------------------------
 
-export function PlanWizard() {
+export function PlanWizard({ mode = 'modele' }: { mode?: 'modele' | 'questionnaire' }) {
   const dossier = useActiveDossier();
   const saveDraft = useApp((s) => s.saveWizardDraft);
   const applyGeneration = useApp((s) => s.applyGeneration);
   const setTab = useApp((s) => s.setTab);
   const toast = useApp((s) => s.toast);
   const draft = dossier?.wizardDraft ?? null;
-  const [step, setStep] = useState<number>(() => (dossier?.generation ? 1 : draft?.templateId ? 1 : 0));
+  // étape 2 du parcours (choix du modèle) ou étape 3 (questionnaire puis génération)
+  const [subStep, setSubStep] = useState<1 | 2>(1);
+  const step = mode === 'modele' ? 0 : subStep;
+  const setStep = (n: number) => {
+    if (n === 0) setTab('modele');
+    else {
+      setSubStep(n as 1 | 2);
+      if (mode === 'modele') setTab('questionnaire');
+    }
+  };
   const [templateId, setTemplateId] = useState<string | null>(draft?.templateId ?? dossier?.generation?.templateId ?? null);
   const [answers, setAnswers] = useState<HousingAnswers | null>(draft?.answers ?? dossier?.generation?.answers ?? null);
   const [preview, setPreview] = useState<HousingTemplate | null>(null);
@@ -384,32 +373,69 @@ export function PlanWizard() {
   return (
     <div className="scroll-thin h-full overflow-auto">
       <div className="mx-auto flex max-w-7xl flex-col gap-4 p-6">
-        <div className="flex flex-col gap-2 rounded-lg border border-brand-100 bg-white px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Sparkles size={18} className="text-brand-600" />
-            <h2 className="text-base font-semibold text-slate-900">Créer mon plan en quelques questions</h2>
-            {dossier.generation && <Badge tone="violet">Plan déjà généré – vous pouvez modifier les réponses et régénérer</Badge>}
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">{step === 0 ? 'Choisissez le modèle de logement' : step === 1 ? 'Créer mon plan en quelques questions' : 'Plan généré'}</h2>
+            <p className="mt-0.5 max-w-3xl text-sm text-slate-600">
+              {step === 0
+                ? "Chaque modèle est un vrai plan modifiable (pièces, murs, menuiseries, mobilier) : vous l'adapterez avec le questionnaire puis dans l'éditeur."
+                : step === 1
+                  ? 'Les réponses mettent à jour l’aperçu en direct. Rien n’est enregistré sur le plan tant que vous ne l’utilisez pas.'
+                  : 'Vérifiez le plan 2D et la maquette 3D avant de l’utiliser.'}
+            </p>
           </div>
-          <Progress step={step} onStep={setStep} generated={!!dossier.generation} />
+          {dossier.generation && <Badge tone="violet">Plan déjà généré – modifiez les réponses pour le régénérer</Badge>}
         </div>
 
         {step === 0 && (
           <>
-            <p className="text-sm text-slate-600">
-              Choisissez le modèle le plus proche du logement. Chaque modèle est un vrai plan modifiable (pièces, murs, ouvertures) : vous l'adapterez ensuite avec le questionnaire puis
-              dans l'éditeur.
-            </p>
+            <div className="grid gap-3 md:grid-cols-2">
+              <button
+                onClick={() => {
+                  setTab('plan');
+                  useEditor.getState().set({ highlightImport: true });
+                  toast('info', 'Cliquez sur « Importer un plan » (PNG, JPG, photo ou PDF) pour l’afficher en fond, puis définissez l’échelle.');
+                }}
+                className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left hover:border-slate-900"
+                data-testid="choose-import"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-800">
+                  <ImageUp size={18} />
+                </span>
+                <span>
+                  <span className="block text-sm font-semibold text-slate-900">Importer un plan ou une photo</span>
+                  <span className="block text-xs text-slate-500">Plan existant en fond, à calibrer puis à retracer.</span>
+                </span>
+              </button>
+              <button
+                onClick={() => {
+                  setTab('plan');
+                  useEditor.getState().setTool('room');
+                }}
+                className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 text-left hover:border-slate-900"
+                data-testid="choose-draw"
+              >
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-800">
+                  <PencilRuler size={18} />
+                </span>
+                <span>
+                  <span className="block text-sm font-semibold text-slate-900">Dessiner le logement</span>
+                  <span className="block text-xs text-slate-500">Tracé libre des pièces sur une grille magnétique.</span>
+                </span>
+              </button>
+            </div>
             {groups.map((g) => (
               <section key={g}>
-                <h3 className="mb-2 text-xs font-semibold tracking-wide text-slate-500 uppercase">{g}</h3>
-                <div className="grid grid-cols-4 gap-3">
+                <h3 className="mb-2 text-[11px] font-semibold tracking-[0.08em] text-slate-900 uppercase">{g}</h3>
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-4">
                   {TEMPLATES.filter((t) => t.group === g).map((t) => (
                     <TemplateCard key={t.id} t={t} selected={templateId === t.id} onSelect={() => chooseTemplate(t)} onPreview={() => setPreview(t)} />
                   ))}
                 </div>
               </section>
             ))}
-            <div className="sticky bottom-0 flex justify-end border-t border-slate-200 bg-slate-100/95 py-3">
+            <div className="sticky bottom-0 flex items-center justify-between gap-3 border-t border-slate-200 bg-white/95 px-1 py-3 backdrop-blur-sm">
+              <span className="text-sm text-slate-600">{templateId ? <>Modèle choisi : <strong className="text-slate-900">{template.name}</strong></> : 'Aucun modèle choisi'}</span>
               <Button variant="primary" icon={<ArrowRight size={15} />} disabled={!templateId} onClick={() => setStep(1)}>
                 Continuer vers le questionnaire
               </Button>
@@ -418,10 +444,10 @@ export function PlanWizard() {
         )}
 
         {step === 1 && (
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid gap-4 lg:grid-cols-5">
             <Card
               title={`Questionnaire – modèle « ${template.name} »`}
-              className="col-span-3"
+              className="lg:col-span-3"
               actions={
                 <Button size="sm" icon={<RotateCcw size={13} />} onClick={() => setAnswers(structuredClone(template.defaults))}>
                   Réponses du modèle
@@ -430,7 +456,7 @@ export function PlanWizard() {
             >
               <Questionnaire answers={effective} onChange={setAnswers} />
             </Card>
-            <div className="col-span-2 flex flex-col gap-3">
+            <div className="flex flex-col gap-3 lg:col-span-2">
               <Card title="Aperçu en direct" bodyClassName="p-3">
                 <GeneratedView result={result} compact />
                 <p className="mt-2 text-xs text-slate-500">
@@ -500,7 +526,7 @@ export function PlanWizard() {
                 onClick={() => {
                   chooseTemplate(preview);
                   setPreview(null);
-                  setStep(1);
+                  setTab('questionnaire');
                 }}
               >
                 Choisir ce modèle

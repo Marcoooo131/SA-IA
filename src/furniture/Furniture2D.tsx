@@ -54,7 +54,7 @@ export function FurnitureGlyph({ item, px, selected = false, faded = false }: { 
           width={w + 0.1}
           height={d + 0.1}
           fill="none"
-          stroke="#2563eb"
+          stroke="#d7001e"
           strokeWidth={2 / px}
           strokeDasharray={`${5 / px} ${3 / px}`}
         />

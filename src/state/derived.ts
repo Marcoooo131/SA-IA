@@ -4,7 +4,7 @@ import { runAudit, type AuditResult } from '@/rules/engine';
 import type { RulesConfig } from '@/rules/config';
 import { quoteForDossier } from '@/quote/compare';
 import type { QuoteResult } from '@/quote/calculator';
-import { useApp } from './store';
+import { useApp, type WorkspaceTab } from './store';
 
 export function useAudit(dossier: Dossier | null): AuditResult | null {
   const rules = useApp((s) => s.rules);
@@ -51,5 +51,60 @@ export function journeySteps(dossier: Dossier, audit: AuditResult, catalog: Cata
     { key: 'audit', label: 'Audit & équipements', done: auditMissing.length === 0, missing: auditMissing },
     { key: 'offres', label: 'Offres', done: offerMissing.length === 0 && dossier.devices.length > 0, missing: offerMissing },
     { key: 'devis', label: 'Devis PDF', done: dossier.quotes.length > 0, missing: dossier.quotes.length ? [] : ['aucun devis généré'] },
+  ];
+}
+
+export interface AuditStep {
+  key: string;
+  label: string;
+  /** Libellé court (barre de progression). */
+  short: string;
+  /** Onglet de l'espace de travail correspondant. */
+  tab: WorkspaceTab;
+  done: boolean;
+  missing: string[];
+}
+
+/**
+ * Parcours de création d'un audit en 9 étapes (barre de progression de l'espace de travail).
+ * Chaque étape reste accessible à tout moment : l'état « terminé » est déduit des données.
+ */
+export function auditSteps(dossier: Dossier, audit: AuditResult): AuditStep[] {
+  const info = dossier.info;
+  const infoMissing = [!info.clientName.trim() && 'client', !info.address.trim() && 'adresse', !info.surface && 'surface'].filter(Boolean) as string[];
+  const rooms = dossier.plan.levels.reduce((s, l) => s + l.rooms.length, 0);
+  const hasBackground = dossier.plan.levels.some((l) => !!l.background);
+  const modelChosen = rooms > 0 || hasBackground || !!dossier.wizardDraft?.templateId;
+  const generated = !!dossier.generation;
+  const unplaced = dossier.plan.levels.reduce((s, l) => s + l.openings.filter((o) => o.host.kind === 'unplaced').length, 0);
+  const ext = audit.inventory.exteriorOpenings.length;
+  const open = audit.alerts.filter((a) => a.status === 'manquant' || a.status === 'a_verifier').length;
+  const devices = dossier.devices.length;
+  const SHORT: Record<string, string> = {
+    logement: 'Logement',
+    modele: 'Modèle',
+    questionnaire: 'Questions',
+    menuiseries: 'Menuiseries',
+    plan: 'Plan 2D',
+    vue3d: '3D',
+    audit: 'Audit',
+    proposition: 'Proposition',
+    devis: 'Devis',
+  };
+  const step = (key: string, label: string, tab: WorkspaceTab, missing: (string | false)[]): AuditStep => {
+    const m = missing.filter(Boolean) as string[];
+    return { key, label, short: SHORT[key] ?? label, tab, done: m.length === 0, missing: m };
+  };
+  return [
+    step('logement', 'Informations du logement', 'logement', infoMissing),
+    step('modele', 'Modèle ou import du plan', 'modele', [!modelChosen && 'choisir un modèle ou importer un plan']),
+    // un plan dessiné ou importé n'a pas besoin du questionnaire
+    step('questionnaire', 'Questionnaire', 'questionnaire', [!generated && rooms === 0 && 'répondre au questionnaire']),
+    step('menuiseries', 'Pièces et menuiseries', 'menuiseries', [rooms === 0 && 'aucune pièce', rooms > 0 && ext === 0 && 'aucune menuiserie extérieure', unplaced > 0 && `${unplaced} menuiserie(s) à positionner`]),
+    step('plan', 'Plan 2D meublé', 'plan', [rooms === 0 && 'plan vide', generated && !dossier.generation?.validatedAt && 'plan généré à valider']),
+    step('vue3d', 'Visualisation 3D', 'vue3d', [rooms === 0 && 'plan vide']),
+    step('audit', 'Audit et équipements', 'audit', [devices === 0 && 'aucun équipement positionné', open > 0 && `${open} point(s) à traiter`]),
+    step('proposition', 'Proposition commerciale', 'proposition', [devices === 0 && 'aucun équipement à chiffrer']),
+    step('devis', 'Devis', 'devis', [dossier.quotes.length === 0 && 'aucun devis généré']),
   ];
 }

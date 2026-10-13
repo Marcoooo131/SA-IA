@@ -266,7 +266,7 @@ export function AuditTab() {
   return (
     <div className="scroll-thin h-full overflow-auto">
       <div className="mx-auto flex max-w-7xl flex-col gap-5 p-6">
-        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm text-blue-900">
+        <div className="rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700">
           Aide à la préparation de l'audit, pas une certification de sécurité. Les règles appliquées sont des hypothèses de configuration à valider par le
           responsable métier ; les exigences applicables et préconisations des fabricants doivent être vérifiées indépendamment.
         </div>
@@ -283,7 +283,7 @@ export function AuditTab() {
                   <button
                     key={f}
                     onClick={() => setFilter(f)}
-                    className={cx('rounded-full px-2 py-0.5 text-xs', filter === f ? 'bg-brand-700 text-white' : 'text-slate-600 hover:bg-slate-100')}
+                    className={cx('rounded-full px-2 py-0.5 text-xs', filter === f ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100')}
                   >
                     {f === 'ouverts' ? 'À traiter' : f === 'tous' ? 'Tous' : ALERT_STATUS_LABELS[f]} {f in counts ? `(${counts[f as AlertStatus]})` : ''}
                   </button>

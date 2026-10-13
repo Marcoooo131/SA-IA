@@ -1,19 +1,63 @@
 @import "tailwindcss";
 
+/*
+ * Direction artistique Sector Alarm Movers — thème centralisé.
+ * Blanc (surfaces), noir / anthracite (titres, structure), rouge (actions principales,
+ * sélection, progression, alertes importantes).
+ *
+ * IMPORTANT : la valeur du rouge est PROVISOIRE (choisie à l'œil, proche de l'identité
+ * visible publiquement). Elle n'est pas une référence officielle : la remplacer ici par
+ * la valeur de la charte dès qu'elle est fournie — tout le produit suit.
+ */
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --color-brand-50: #eef6fb;
-  --color-brand-100: #d5e8f4;
-  --color-brand-200: #a9cfe6;
-  --color-brand-500: #1f6f9f;
-  --color-brand-600: #165a84;
-  --color-brand-700: #0f3d5e;
-  --color-brand-800: #0b2e47;
-  --color-brand-900: #081f31;
+
+  /* Rouge d'action (classe « brand-* ») */
+  --color-brand-50: #fef2f3;
+  --color-brand-100: #fde2e4;
+  --color-brand-200: #fbc6cb;
+  --color-brand-300: #f5939b;
+  --color-brand-500: #e2112b;
+  --color-brand-600: #d7001e;
+  --color-brand-700: #b40019;
+  --color-brand-800: #8f0014;
+  --color-brand-900: #6b000f;
+
+  /* Gris neutres (sans teinte bleue) : remplace la palette « slate » dans toute l'application */
+  --color-slate-50: #f7f7f7;
+  --color-slate-100: #f0f0f0;
+  --color-slate-200: #e5e5e5;
+  --color-slate-300: #d4d4d4;
+  --color-slate-400: #a3a3a3;
+  --color-slate-500: #6f6f6f;
+  --color-slate-600: #525252;
+  --color-slate-700: #3a3a3a;
+  --color-slate-800: #262626;
+  --color-slate-900: #161616;
+  --color-slate-950: #0b0b0b;
+
+  --radius-card: 0.75rem;
+}
+
+:root {
+  /* Alias lisibles (CSS / SVG / canvas) */
+  --sa-red: var(--color-brand-600);
+  --sa-red-hover: var(--color-brand-700);
+  --sa-ink: var(--color-slate-900);
+  --sa-surface: #f6f6f6;
+  --sa-border: var(--color-slate-200);
 }
 
 html, body, #root { height: 100%; }
-body { @apply bg-slate-100 text-slate-800 antialiased; font-size: 14px; }
+body { @apply text-slate-800 antialiased; background: var(--sa-surface); font-size: 14px; }
+h1, h2, h3 { @apply text-slate-900; letter-spacing: -0.01em; }
 
 .scroll-thin { scrollbar-width: thin; }
 .no-select { user-select: none; -webkit-user-select: none; }
+
+/* Transitions courtes et discrètes */
+button, a, [role="tab"], [role="radio"] { transition-property: color, background-color, border-color, box-shadow, opacity; transition-duration: 120ms; }
+
+/* Focus visible homogène */
+:focus-visible { outline: 2px solid var(--sa-red); outline-offset: 2px; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: none; }

@@ -237,7 +237,7 @@ export function JoineryFields({ level, opening }: { level: Level; opening: Openi
       </Grid2>
       <div className="flex items-center justify-between text-[11px]">
         <span className="text-slate-500">Protection périmétrique :</span>
-        <span className={cx(status === 'proteger' || status === 'a_positionner' ? 'font-medium text-teal-700' : 'text-slate-500')} data-testid="joinery-perimeter">
+        <span className={cx(status === 'proteger' || status === 'a_positionner' ? 'font-medium text-brand-700' : 'text-slate-500')} data-testid="joinery-perimeter">
           {status === 'proteger' || status === 'a_positionner' ? 'À étudier' : OPENING_AUDIT_LABELS[status]}
         </span>
       </div>
@@ -263,7 +263,7 @@ function JoineryThumb({ id }: { id: JoineryModelId }) {
           {id === 'porte_fenetre' && <path d="M -0.8 0 L -0.8 0.8 A 0.8 0.8 0 0 0 0 0" fill="none" stroke="#0369a1" strokeWidth={0.04} strokeDasharray="0.08 0.05" />}
         </>
       ) : id === 'porte_garage' ? (
-        <rect x={-0.8} y={-0.08} width={1.6} height={0.16} fill="#f1f5f9" stroke="#0f766e" strokeWidth={0.05} strokeDasharray="0.1 0.06" />
+        <rect x={-0.8} y={-0.08} width={1.6} height={0.16} fill="#f1f5f9" stroke="#d7001e" strokeWidth={0.05} strokeDasharray="0.1 0.06" />
       ) : id === 'passage' ? (
         <line x1={-0.8} y1={0} x2={0.8} y2={0} stroke="#94a3b8" strokeWidth={0.05} strokeDasharray="0.1 0.06" />
       ) : id === 'autre' ? (

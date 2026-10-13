@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Dashboard } from './Dashboard';
+import { Dashboard, DossiersView } from './Dashboard';
 import { useApp, setRepository } from '@/state/store';
 import { createLocalRepository } from '@/persistence/storage';
 
@@ -26,8 +26,8 @@ describe('tableau de bord et création de dossier', () => {
     expect(within(row).getByText('55,90 €/mois')).toBeInTheDocument();
   });
 
-  it('recherche par référence', async () => {
-    render(<Dashboard />);
+  it('recherche par référence (vue Dossiers)', async () => {
+    render(<DossiersView />);
     await userEvent.type(screen.getByLabelText('Rechercher par référence'), '0002');
     expect(screen.queryByTestId('dossier-row-MOV-DEMO-0001')).not.toBeInTheDocument();
     expect(screen.getByTestId('dossier-row-MOV-DEMO-0002')).toBeInTheDocument();
@@ -48,7 +48,14 @@ describe('tableau de bord et création de dossier', () => {
     expect(created).toBeDefined();
     expect(created.info.surface).toBe(95);
     expect(s.view).toBe('workspace');
-    expect(s.tab).toBe('questionnaire');
+    expect(s.tab).toBe('modele');
     expect(s.activeDossierId).toBe(created.id);
+  });
+
+  it('affiche un état vide élégant sans dossier', () => {
+    useApp.setState({ dossiers: [] });
+    render(<Dashboard />);
+    expect(screen.getByText('Aucun dossier pour le moment')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Créer mon premier audit/ })).toBeInTheDocument();
   });
 });

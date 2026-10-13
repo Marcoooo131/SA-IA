@@ -140,7 +140,7 @@ export function PropertiesPanel() {
         <div className="flex flex-col gap-2.5">
           <div className="flex items-center justify-between">
             <span className="font-mono text-sm font-semibold text-slate-800">{o.code}</span>
-            {o.exterior ? <Badge tone="teal">Donne sur l'extérieur</Badge> : <Badge>Intérieure</Badge>}
+            {o.exterior ? <Badge tone="red">Donne sur l'extérieur</Badge> : <Badge>Intérieure</Badge>}
           </div>
           {unplaced ? (
             <div className="flex flex-col gap-1.5 rounded border border-amber-300 bg-amber-50 p-2 text-[11px] text-amber-900" data-testid="prop-opening-unplaced">
@@ -153,7 +153,7 @@ export function PropertiesPanel() {
             </div>
           ) : (
             !o.positionConfirmed && (
-              <p className="rounded bg-sky-50 px-2 py-1 text-[11px] text-sky-800">Position proposée automatiquement : à vérifier (validée avec le plan).</p>
+              <p className="rounded bg-slate-100 px-2 py-1 text-[11px] text-slate-700">Position proposée automatiquement : à vérifier (validée avec le plan).</p>
             )
           )}
           <p className="text-xs text-slate-500">

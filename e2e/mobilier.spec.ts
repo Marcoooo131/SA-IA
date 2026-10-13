@@ -31,7 +31,7 @@ test('mobilier et menuiseries génériques : 2D/3D synchronisées, audit inchang
   const dialog = page.getByRole('dialog');
   await dialog.locator('input[name="clientName"]').fill('Client démo mobilier');
   await dialog.getByRole('button', { name: /Créer et répondre au questionnaire/ }).click();
-  await page.getByTestId('template-maison_etage').getByRole('button', { name: 'Choisir', exact: true }).click();
+  await page.getByTestId('template-maison_etage').getByRole('button', { name: 'Choisir ce modèle', exact: true }).click();
   await page.getByRole('button', { name: 'Continuer vers le questionnaire' }).click();
   const q = page.getByTestId('questionnaire');
   await q.getByRole('radio', { name: 'Surface exacte à renseigner' }).click();
@@ -39,7 +39,7 @@ test('mobilier et menuiseries génériques : 2D/3D synchronisées, audit inchang
   await q.getByRole('radio', { name: 'Garage attenant' }).click();
   await page.getByRole('button', { name: 'Générer le plan' }).click();
   await page.getByRole('button', { name: 'Utiliser ce plan et le vérifier' }).click();
-  await page.getByRole('tab', { name: 'Plan 2D' }).click();
+  await page.getByRole('tab', { name: 'Plan 2D meublé', exact: true }).click();
 
   // 2. Chaque pièce reçoit un mobilier adapté
   for (const id of ['canape', 'table_basse', 'meuble_tv', 'evier', 'plaque_cuisson', 'meuble_chaussures', 'voiture', 'wc']) await expect(model(page, id).first()).toBeVisible();
@@ -95,12 +95,12 @@ test('mobilier et menuiseries génériques : 2D/3D synchronisées, audit inchang
   await expect(page.getByTestId(`opening-${code}`).locator('[data-joinery]')).toHaveAttribute('data-joinery', 'porte_fenetre');
   await page.getByTestId('mode-3d_securite').click();
   await expect(page.getByTestId('view3d-openings-placed')).toHaveText(String(placedBefore));
-  await page.getByRole('tab', { name: 'Pièces & menuiseries' }).click();
+  await page.getByRole('tab', { name: 'Pièces et menuiseries', exact: true }).click();
   const fenTotal = Number(await page.getByTestId('total-Fenêtres').innerText());
   const sejourBaies = Number(await page.getByLabel('Baies vitrées – Séjour', { exact: true }).inputValue());
 
   // 8. Ajouter une baie vitrée depuis la bibliothèque : rattachée au séjour
-  await page.getByRole('tab', { name: 'Plan 2D' }).click();
+  await page.getByRole('tab', { name: 'Plan 2D meublé', exact: true }).click();
   await page.getByTestId('joinery-model-baie').click();
   const living = (await page.getByTestId('room-Séjour').boundingBox())!;
   // mur nord du séjour (façade)
@@ -108,20 +108,20 @@ test('mobilier et menuiseries génériques : 2D/3D synchronisées, audit inchang
   await expect(page.locator('select[name="opening-model"]')).toHaveValue('baie');
   await expect(page.getByText('Donne sur l\'extérieur').first()).toBeVisible();
   await page.keyboard.press('Escape');
-  await page.getByRole('tab', { name: 'Pièces & menuiseries' }).click();
+  await page.getByRole('tab', { name: 'Pièces et menuiseries', exact: true }).click();
   await expect(page.getByLabel('Baies vitrées – Séjour', { exact: true })).toHaveValue(String(sejourBaies + 1));
   await expect(page.getByTestId('total-Fenêtres')).toHaveText(String(fenTotal));
 
   // 9. Quantités de menuiseries cohérentes avec l'audit
   let detectors = 0;
   for (const t of await page.locator('[data-testid^="detectors-"]').allInnerTexts()) detectors += Number(t.trim());
-  await page.getByRole('tab', { name: 'Audit' }).click();
+  await page.getByRole('tab', { name: 'Audit et équipements', exact: true }).click();
   await expect(page.getByTestId('audit-joinery-detectors')).toHaveText(String(detectors));
   await expect(page.getByTestId('count-perimetrique-detecteur_choc')).toHaveText(String(detectors));
   await page.getByTestId('mode-volumetrique').getByRole('button', { name: 'Appliquer sur le plan' }).click();
 
   // 10. Masquer le mobilier sans masquer les équipements de sécurité
-  await page.getByRole('tab', { name: 'Plan 2D' }).click();
+  await page.getByRole('tab', { name: 'Plan 2D meublé', exact: true }).click();
   await page.getByTestId('mode-plan_archi').click();
   await expect(page.getByTestId('furniture-layer')).toHaveCount(0);
   expect(await page.locator('[data-testid^="device-"]').count()).toBeGreaterThan(0);
@@ -133,7 +133,7 @@ test('mobilier et menuiseries génériques : 2D/3D synchronisées, audit inchang
   await page.screenshot({ path: 'test-results/mobilier-3d-sans-mobilier.png' });
 
   // 12. PDF avec un plan lisible (mobilier atténué, équipements mis en avant)
-  await page.getByRole('tab', { name: 'Devis' }).click();
+  await page.getByRole('tab', { name: 'Devis', exact: true }).click();
   const download = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Générer le devis PDF' }).click();
   const pdf = await download;
@@ -141,10 +141,10 @@ test('mobilier et menuiseries génériques : 2D/3D synchronisées, audit inchang
   await pdf.saveAs('test-results/mobilier-devis.pdf');
 
   // 11. Enregistrer puis recharger sans perte des modifications
-  await page.getByRole('button', { name: 'Enregistrer' }).click();
+  await page.getByRole('button', { name: 'Enregistrer', exact: true }).click();
   await page.reload();
   await page.getByRole('button', { name: /MOV-\d{4}-\d{4}/ }).first().click();
-  await page.getByRole('tab', { name: 'Plan 2D' }).click();
+  await page.getByRole('tab', { name: 'Plan 2D meublé', exact: true }).click();
   await model(page, 'canape').click();
   await expect(page.locator('input[name="furniture-x"]')).toHaveValue(x1);
   await expect(page.getByTestId(`opening-${code}`).locator('[data-joinery]')).toHaveAttribute('data-joinery', 'porte_fenetre');

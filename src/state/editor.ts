@@ -30,6 +30,8 @@ export interface EditorState {
   lockStructure: boolean;
   /** Plan 2D : mobilier affiché. */
   show2dFurniture: boolean;
+  /** Plan 2D : équipements de sécurité affichés. */
+  show2dDevices: boolean;
   /** Maquette 3D : mobilier et équipements affichés. */
   show3dFurniture: boolean;
   show3dDevices: boolean;
@@ -56,6 +58,7 @@ export const useEditor = create<EditorState>()((set) => ({
   openingPreset: null,
   lockStructure: false,
   show2dFurniture: true,
+  show2dDevices: true,
   show3dFurniture: true,
   show3dDevices: true,
   view: { x: -2, y: -2, scale: 45 },

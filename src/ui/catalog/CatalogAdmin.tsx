@@ -388,28 +388,37 @@ function HistoryPanel() {
   );
 }
 
-export function CatalogAdmin() {
-  const [section, setSection] = useState<Section>('produits');
+/**
+ * Catalogue (produits, offres, import Excel, historique) et Paramètres (remises et
+ * paramètres de tarification, règles d'audit) : mêmes données, deux entrées de navigation.
+ */
+export function CatalogAdmin({ mode = 'catalogue' }: { mode?: 'catalogue' | 'parametres' }) {
+  const sections: { key: Section; label: string }[] =
+    mode === 'catalogue'
+      ? [
+          { key: 'produits', label: 'Produits' },
+          { key: 'packs', label: 'Offres (packs)' },
+          { key: 'import', label: 'Import / export Excel' },
+          { key: 'historique', label: 'Historique' },
+        ]
+      : [
+          { key: 'tarifs', label: 'Remises & paramètres' },
+          { key: 'regles', label: "Règles d'audit" },
+        ];
+  const [section, setSection] = useState<Section>(sections[0].key);
   const catalog = useApp((s) => s.catalog);
   const toast = useApp((s) => s.toast);
-  const sections: { key: Section; label: string }[] = [
-    { key: 'produits', label: 'Produits' },
-    { key: 'packs', label: 'Offres (packs)' },
-    { key: 'tarifs', label: 'Remises & paramètres' },
-    { key: 'import', label: 'Import / export Excel' },
-    { key: 'regles', label: "Règles d'audit" },
-    { key: 'historique', label: 'Historique' },
-  ];
   return (
     <div className="scroll-thin h-full overflow-auto">
-      <div className="mx-auto flex max-w-7xl flex-col gap-5 p-6">
+      <div className="mx-auto flex max-w-7xl flex-col gap-5 px-4 py-8 lg:px-8">
         <div className="flex items-end justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-slate-900">Catalogue, tarifs et règles</h1>
+            <h1 className="text-2xl font-bold text-slate-900">{mode === 'catalogue' ? 'Catalogue des équipements' : 'Paramètres'}</h1>
             <p className="text-sm text-slate-500">
               Version v{catalog.version} · modifiée le {formatDateTime(catalog.updatedAt)} · <Badge tone="amber">Tarifs de démonstration, non officiels</Badge>
             </p>
           </div>
+          {mode === 'catalogue' && (
           <div className="flex gap-2">
             <Button
               icon={<FileSpreadsheet size={14} />}
@@ -439,6 +448,7 @@ export function CatalogAdmin() {
               Exporter (.csv)
             </Button>
           </div>
+          )}
         </div>
         <nav className="flex gap-1 border-b border-slate-200">
           {sections.map((s) => (
@@ -447,7 +457,7 @@ export function CatalogAdmin() {
               onClick={() => setSection(s.key)}
               className={cx(
                 '-mb-px border-b-2 px-3 py-2 text-sm font-medium',
-                section === s.key ? 'border-brand-600 text-brand-700' : 'border-transparent text-slate-500 hover:text-slate-800',
+                section === s.key ? 'border-brand-600 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-900',
               )}
             >
               {s.label}

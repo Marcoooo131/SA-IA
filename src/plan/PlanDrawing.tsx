@@ -39,6 +39,8 @@ export interface PlanDrawingProps {
   showFurniture?: boolean;
   /** Mobilier atténué (ex. PDF : équipements de sécurité mis en avant). */
   fadeFurniture?: boolean;
+  /** Équipements de sécurité affichés (par défaut : oui). */
+  showDevices?: boolean;
 }
 
 const DOOR = '#334155';
@@ -78,7 +80,7 @@ export function OpeningShape({ level, opening, selected, px }: { level: Level; o
   const deg = (angle * 180) / Math.PI;
   const lw = 1.5 / px;
   const model = joineryModelOf(opening);
-  const color = opening.exterior ? '#0f766e' : DOOR;
+  const color = opening.exterior ? '#d7001e' : DOOR;
   // Repère local : x le long du mur, y = normale. Le battant s'ouvre vers l'intérieur de la pièce hôte.
   const s = opening.host.kind === 'room' ? (opening.host.side === 'N' || opening.host.side === 'E' ? 1 : -1) : 1;
   // sens d'ouverture : paumelles à gauche (par défaut) ou à droite
@@ -171,7 +173,7 @@ export function OpeningShape({ level, opening, selected, px }: { level: Level; o
   return (
     <g transform={`translate(${center.x} ${center.y}) rotate(${deg})`} data-joinery={model}>
       {body}
-      {selected && <rect x={-w / 2 - 0.08} y={-0.2} width={w + 0.16} height={0.4} fill="none" stroke="#2563eb" strokeWidth={2 / px} />}
+      {selected && <rect x={-w / 2 - 0.08} y={-0.2} width={w + 0.16} height={0.4} fill="none" stroke="#d7001e" strokeWidth={2 / px} />}
     </g>
   );
 }
@@ -220,7 +222,7 @@ export function DeviceGlyph({ device, product, px, selected }: { device: PlacedD
           </text>
         </g>
       )}
-      {selected && <circle cx={device.x} cy={device.y} r={r + 6 / px} fill="none" stroke="#2563eb" strokeWidth={2 / px} />}
+      {selected && <circle cx={device.x} cy={device.y} r={r + 6 / px} fill="none" stroke="#d7001e" strokeWidth={2 / px} />}
     </g>
   );
 }
@@ -271,8 +273,10 @@ export function PlanDrawing({
   provenance,
   showFurniture = true,
   fadeFurniture = false,
+  showDevices = true,
 }: PlanDrawingProps) {
   const px = pxPerMeter;
+  if (!showDevices) devices = [];
   const segments = buildWallSegments(level);
   const productMap = new Map(products.map((p) => [p.id, p]));
   const isSel = (kind: string, id?: string) =>
@@ -312,7 +316,7 @@ export function PlanDrawing({
           height={room.h}
           fill={ROOM_COLORS[room.type]}
           fillOpacity={bg && bg.visible ? 0.55 : 1}
-          stroke={isSel('room', room.id) ? '#2563eb' : '#cbd5e1'}
+          stroke={isSel('room', room.id) ? '#d7001e' : '#cbd5e1'}
           strokeWidth={(isSel('room', room.id) ? 2 : 0.8) / px}
           onPointerDown={down({ kind: 'room', id: room.id, handle: 'move' })}
           style={{ cursor: interactive ? 'move' : undefined }}
@@ -408,12 +412,12 @@ export function PlanDrawing({
               style={{ cursor: interactive ? 'move' : undefined }}
             />
             {pieces.map((p, i) => (
-              <line key={i} x1={p.a.x} y1={p.a.y} x2={p.b.x} y2={p.b.y} stroke={sel ? '#2563eb' : '#64748b'} strokeWidth={w.thickness} strokeLinecap="square" style={{ pointerEvents: 'none' }} />
+              <line key={i} x1={p.a.x} y1={p.a.y} x2={p.b.x} y2={p.b.y} stroke={sel ? '#d7001e' : '#64748b'} strokeWidth={w.thickness} strokeLinecap="square" style={{ pointerEvents: 'none' }} />
             ))}
             {sel && interactive && (
               <>
-                <circle cx={w.a.x} cy={w.a.y} r={handle} fill="#fff" stroke="#2563eb" strokeWidth={2 / px} onPointerDown={down({ kind: 'wall', id: w.id, handle: 'a' })} style={{ cursor: 'crosshair' }} />
-                <circle cx={w.b.x} cy={w.b.y} r={handle} fill="#fff" stroke="#2563eb" strokeWidth={2 / px} onPointerDown={down({ kind: 'wall', id: w.id, handle: 'b' })} style={{ cursor: 'crosshair' }} />
+                <circle cx={w.a.x} cy={w.a.y} r={handle} fill="#fff" stroke="#d7001e" strokeWidth={2 / px} onPointerDown={down({ kind: 'wall', id: w.id, handle: 'a' })} style={{ cursor: 'crosshair' }} />
+                <circle cx={w.b.x} cy={w.b.y} r={handle} fill="#fff" stroke="#d7001e" strokeWidth={2 / px} onPointerDown={down({ kind: 'wall', id: w.id, handle: 'b' })} style={{ cursor: 'crosshair' }} />
               </>
             )}
           </g>
@@ -430,7 +434,7 @@ export function PlanDrawing({
               <rect x={pl.center.x - 0.3} y={pl.center.y - 0.3} width={0.6} height={0.6} fill="transparent" />
             )}
             {showLabels && pl && o.exterior && (
-              <text x={pl.center.x} y={pl.center.y} dy={-14 / px} fontSize={9 / px} textAnchor="middle" fill="#0f766e" fontFamily="Inter, Helvetica, Arial, sans-serif" style={{ pointerEvents: 'none' }}>
+              <text x={pl.center.x} y={pl.center.y} dy={-14 / px} fontSize={9 / px} textAnchor="middle" fill="#b40019" fontFamily="Inter, Helvetica, Arial, sans-serif" style={{ pointerEvents: 'none' }}>
                 {o.code}
               </text>
             )}
@@ -571,7 +575,7 @@ export function PlanDrawing({
                 width={handle * 2}
                 height={handle * 2}
                 fill="#ffffff"
-                stroke="#2563eb"
+                stroke="#d7001e"
                 strokeWidth={2 / px}
                 onPointerDown={down({ kind: 'room', id: r.id, handle: h.h })}
                 style={{ cursor: h.c }}

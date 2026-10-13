@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Copy, Layers, Plus, Trash2 } from 'lucide-react';
 import { useApp, useActiveDossier } from '@/state/store';
+import { ProductArt } from '../ProductArt';
 import { useEditor } from '@/state/editor';
 import type { ProductCategory, RoomType } from '@/domain/types';
 import { CATEGORY_COLORS, CATEGORY_GLYPH, CATEGORY_LABELS, ROOM_TYPE_LABELS } from '@/domain/labels';
@@ -149,7 +150,7 @@ export function RoomsPanel() {
                 onClick={() => select({ kind: 'room', id: r.id })}
                 className={cx(
                   'flex w-full items-center justify-between rounded px-2 py-1 text-left text-sm',
-                  selection?.kind === 'room' && selection.id === r.id ? 'bg-blue-50 text-blue-800' : 'hover:bg-slate-50',
+                  selection?.kind === 'room' && selection.id === r.id ? 'bg-brand-50 text-brand-800' : 'hover:bg-slate-50',
                 )}
               >
                 <span className="truncate">{r.name}</span>
@@ -183,49 +184,70 @@ export function EquipmentLibrary({ onArm }: { onArm?: () => void }) {
   const products = useApp((s) => s.catalog.products);
   const armed = useApp((s) => s.armedProductId);
   const arm = useApp((s) => s.armProduct);
+  const dossier = useActiveDossier();
   const setTool = useEditor((s) => s.setTool);
   const placeable = products.filter((p) => p.active && p.billing !== 'lot');
+  const count = (id: string, suggested: boolean) =>
+    (dossier?.devices ?? []).filter((d) => d.productId === id && (d.origin === 'suggere' && !d.validated) === suggested).reduce((n, d) => n + d.quantity, 0);
   return (
-    <PanelSection title="Bibliothèque d'équipements">
-      <p className="mb-2 text-[11px] text-slate-500">Cliquez sur un équipement puis sur le plan (2D ou 3D) pour le placer.</p>
-      <ul className="flex flex-col gap-1">
-        {placeable.map((p) => (
-          <li key={p.id}>
-            <button
-              onClick={() => {
-                if (armed === p.id) {
-                  arm(null);
-                  setTool('select');
-                } else {
-                  arm(p.id);
-                  setTool('device');
-                  onArm?.();
-                }
-              }}
-              className={cx(
-                'flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left text-xs transition-colors',
-                armed === p.id ? 'border-brand-500 bg-brand-50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50',
-              )}
-              data-testid={`library-${p.reference}`}
-              title={p.description}
-            >
-              <CategoryDot category={p.category} />
-              <span className="flex-1">
-                <span className="block font-medium text-slate-800">{p.name}</span>
-                <span className="block text-[11px] text-slate-500">
-                  {p.priceInitial === null ? 'Inclus en forfait / prix non communiqué' : `${formatEuro(p.priceInitial)} · ${formatMonthly(p.monthly)}`}
+    <PanelSection title="Équipements de sécurité">
+      <p className="mb-2.5 text-[11px] text-slate-500">Choisissez un équipement puis cliquez sur le plan (2D ou 3D) pour le placer.</p>
+      <ul className="grid grid-cols-2 gap-2">
+        {placeable.map((p) => {
+          const placed = count(p.id, false);
+          const suggested = count(p.id, true);
+          const isArmed = armed === p.id;
+          return (
+            <li key={p.id}>
+              <button
+                onClick={() => {
+                  if (isArmed) {
+                    arm(null);
+                    setTool('select');
+                  } else {
+                    arm(p.id);
+                    setTool('device');
+                    onArm?.();
+                  }
+                }}
+                aria-pressed={isArmed}
+                className={cx(
+                  'flex h-full w-full flex-col items-stretch gap-1 rounded-xl border bg-white p-2 text-left',
+                  isArmed ? 'border-brand-600 bg-brand-50/50 ring-1 ring-brand-600' : 'border-slate-200 hover:border-slate-400',
+                )}
+                data-testid={`library-${p.reference}`}
+                title={p.description}
+              >
+                <span className="flex items-start justify-between">
+                  <ProductArt category={p.category} size={40} />
+                  <CategoryDot category={p.category} />
                 </span>
-              </span>
-            </button>
-          </li>
-        ))}
+                <span className="text-[11px] leading-tight font-semibold text-slate-900">{p.name}</span>
+                <span className="text-[10px] text-slate-500">{CATEGORY_LABELS[p.category]}</span>
+                <span className="mt-auto text-[11px] text-slate-800 tabular-nums">
+                  {p.priceInitial === null ? 'Prix non communiqué' : formatEuro(p.priceInitial)}
+                  {p.category === 'centrale' ? ' · 0 €/mois' : p.monthly ? ` · +${formatMonthly(p.monthly)}` : ''}
+                </span>
+                <span className="flex flex-wrap items-center gap-1">
+                  {isArmed ? (
+                    <span className="rounded-full bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">Sélectionné</span>
+                  ) : (
+                    <span className="rounded-full border border-slate-300 px-1.5 py-0.5 text-[10px] font-medium text-slate-700">+ Ajouter</span>
+                  )}
+                  {placed > 0 && <span className="text-[10px] text-slate-600">{placed} placé(s)</span>}
+                  {suggested > 0 && <span className="text-[10px] text-slate-500 italic">{suggested} proposé(s)</span>}
+                </span>
+              </button>
+            </li>
+          );
+        })}
       </ul>
       <div className="mt-3 space-y-1 text-[11px] text-slate-500">
         <div className="flex items-center gap-2">
           <CategoryDot category="detecteur_mouvement" /> Placé par le conseiller / validé
         </div>
         <div className="flex items-center gap-2">
-          <CategoryDot category="detecteur_mouvement" suggested /> Suggéré par le moteur de règles
+          <CategoryDot category="detecteur_mouvement" suggested /> Proposé automatiquement, à valider
         </div>
       </div>
     </PanelSection>

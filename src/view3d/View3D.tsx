@@ -128,7 +128,7 @@ export function View3D() {
       aria-pressed={active}
       className={cx(
         'flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs font-medium',
-        active ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+        active ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
       )}
     >
       {icon}
