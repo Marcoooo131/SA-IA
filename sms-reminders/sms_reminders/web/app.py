@@ -104,7 +104,7 @@ def create_app(container: Container | None = None) -> FastAPI:
     app = FastAPI(title="Relances SMS", docs_url=None, redoc_url=None, openapi_url=None)
     session_secret = settings.session_secret.get_secret_value()
     if not session_secret:
-        if settings.environment not in (Environment.DEV, Environment.TEST):
+        if settings.environment not in (Environment.DEV, Environment.TEST, Environment.DESKTOP):
             raise RuntimeError("SMR_SESSION_SECRET is required")
         session_secret = secrets.token_urlsafe(32)
     app.add_middleware(SessionMiddleware, secret_key=session_secret, session_cookie="smr_session",
@@ -192,6 +192,19 @@ def create_app(container: Container | None = None) -> FastAPI:
         request.session["user"] = {"login": user.login, "role": int(user.role)}
         with session_scope() as s:
             record(s, user.login, "login", "Connexion.")
+        return back("/")
+
+    @app.get("/local-login")
+    def local_login(request: Request, t: str = ""):
+        """Desktop application: one-time token from the launcher logs in the Windows user."""
+        expected = settings.local_login_token.get_secret_value()
+        if settings.environment != Environment.DESKTOP or not expected or not secrets.compare_digest(t, expected):
+            raise HTTPException(403, "lien de connexion invalide")
+        login = (settings.local_user or "poste local")[:80]
+        request.session.clear()
+        request.session["user"] = {"login": login, "role": int(Role.ADMIN)}
+        with session_scope() as s:
+            record(s, login, "login", "Connexion (application de bureau).")
         return back("/")
 
     @app.post("/logout")

@@ -268,3 +268,32 @@ def test_delivery_webhook_twilio(env, clock, monkeypatch):
     with session_scope() as s:
         job = s.query(SmsJob).filter_by(provider_message_id="SM1").one()
         assert job.delivery_status == "undelivered" and job.error_code == "30005"
+
+
+def test_local_login_desktop_only(env, clock, monkeypatch):
+    from sms_reminders.config import get_settings
+    from sms_reminders.container import Container
+    from sms_reminders.providers.simulation import SimulationProvider
+    from sms_reminders.web.app import create_app
+
+    cl = TestClient(create_app(Container(settings=get_settings(), provider=SimulationProvider(), clock=clock)))
+    assert cl.get("/local-login?t=x", follow_redirects=False).status_code == 403  # not a desktop environment
+
+    monkeypatch.setenv("SMR_ENVIRONMENT", "desktop")
+    monkeypatch.setenv("SMR_LOCAL_LOGIN_TOKEN", "t" * 32)
+    monkeypatch.setenv("SMR_LOCAL_USER", "marie")
+    get_settings.cache_clear()
+    cl = TestClient(create_app(Container(settings=get_settings(), provider=SimulationProvider(), clock=clock)))
+    assert cl.get("/local-login?t=wrong", follow_redirects=False).status_code == 403
+    assert cl.get("/", follow_redirects=False).status_code == 303
+    r = cl.get("/local-login?t=" + "t" * 32, follow_redirects=False)
+    assert r.status_code == 303
+    html = cl.get("/").text
+    assert "marie · Administrateur" in html and "Application de bureau" in html
+
+
+def test_local_token_refused_on_servers():
+    from sms_reminders.config import Settings
+
+    with pytest.raises(RuntimeError):
+        Settings(environment="dev", local_login_token="x").assert_safe_for_environment()
