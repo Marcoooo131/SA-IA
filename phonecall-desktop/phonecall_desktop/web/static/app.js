@@ -8,6 +8,7 @@ const STATE_LABELS = { ready: "Prêt", capturing: "Capture en cours", finalizing
 
 let current = { state: "ready" };
 let editing = false;
+let copilotPrepared = false;
 let timerHandle = null;
 const segments = new Map(); // utterance_id -> segment
 
@@ -91,6 +92,9 @@ function renderState(s) {
   $("btn-copy").disabled = !hasNote;
   $("btn-edit").disabled = st !== "done";
   $("btn-retry").hidden = !(st === "error" && current.error && current.error.retryable);
+  const ended = (st === "done" || st === "error") && segments.size > 0;
+  $("btn-copilot-prepare").disabled = !ended;
+  $("btn-copilot-paste").disabled = !ended || !copilotPrepared;
   $("timer").hidden = !capturing;
   clearInterval(timerHandle);
   if (capturing && current.started_at) {
@@ -173,6 +177,7 @@ function applySnapshot(s) {
   $("consent-row").hidden = !s.consent_required;
   $("consent-label").textContent = s.consent_label || "";
   $("btn-history").hidden = !s.history_enabled;
+  $("copilot-row").hidden = !s.copilot_enabled;
   segments.clear();
   for (const seg of s.transcript || []) segments.set(seg.utterance_id, seg);
   drawTranscript();
@@ -202,6 +207,7 @@ function connect() {
 // ------------------------------------------------------------------ actions
 
 async function start() {
+  copilotPrepared = false;
   segments.clear(); drawTranscript(); $("note").value = ""; $("flags").innerHTML = ""; $("notices").innerHTML = "";
   try {
     await api("/api/start", { method: "POST", body: JSON.stringify({
@@ -250,6 +256,7 @@ async function toggleEdit() {
 async function newConversation() {
   if (current.state === "done" && $("note").value && !confirm("Effacer la transcription et la note affichées ?")) return;
   try {
+    copilotPrepared = false;
     applySnapshot(await api("/api/new", { method: "POST" }));
     $("notices").innerHTML = "";
     editing = false; $("note").readOnly = true; $("btn-edit").textContent = "Modifier la note";
@@ -274,6 +281,51 @@ async function openHistory() {
   }
   if (!data.items.length) list.innerHTML = "<li>Aucune session enregistrée.</li>";
   if (!$("history-dialog").open) $("history-dialog").showModal();
+}
+
+// ------------------------------------------------------------------ Microsoft 365 Copilot Chat (copy / paste)
+
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch { /* fallback below */ }
+  const area = document.createElement("textarea");
+  area.value = text; area.style.position = "fixed"; area.style.opacity = "0";
+  document.body.append(area); area.select();
+  const ok = document.execCommand("copy");
+  area.remove();
+  return ok;
+}
+
+async function prepareCopilot() {
+  try {
+    const p = await api("/api/copilot/prompt", { method: "POST" });
+    if (!(await copyText(p.prompt))) throw { message: "Copie impossible : réessayez." };
+    copilotPrepared = true;
+    renderState({});
+    notice("info", `Demande copiée (${p.chars} caractères). Dans Copilot Chat (compte professionnel, bouclier « protégé »), collez avec Ctrl+V puis envoyez.`);
+    if (p.too_long) notice("warning", `La demande dépasse ${p.max_chars} caractères : Copilot pourrait la refuser ou la couper. Vérifiez que toute la transcription a été prise en compte.`);
+    await api("/api/copilot/open", { method: "POST" });
+  } catch (e) { notice("error", e.message); }
+}
+
+function openCopilotAnswer() {
+  $("copilot-error").hidden = true;
+  $("copilot-answer").value = "";
+  if (!$("copilot-dialog").open) $("copilot-dialog").showModal();
+  $("copilot-answer").focus();
+}
+
+async function useCopilotAnswer() {
+  const text = $("copilot-answer").value.trim();
+  if (!text) return;
+  try {
+    await api("/api/copilot/answer", { method: "POST", body: JSON.stringify({ text }) });
+    $("copilot-dialog").close();
+    editing = false; $("note").readOnly = true; $("btn-edit").textContent = "Modifier la note";
+    notice("info", "Réponse de Copilot vérifiée : relisez les points signalés sous la note.");
+  } catch (e) {
+    $("copilot-error").hidden = false;
+    $("copilot-error").textContent = e.message;
+  }
 }
 
 // ------------------------------------------------------------------ AI key (write-only)
@@ -339,6 +391,10 @@ document.addEventListener("DOMContentLoaded", () => {
   $("history-delete-all").onclick = async () => { if (confirm("Supprimer tout l'historique ?")) { await api("/api/history/all", { method: "DELETE" }); openHistory(); } };
   // Escape key = immediate stop of the capture
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && current.state === "capturing") stop(); });
+  $("btn-copilot-prepare").onclick = prepareCopilot;
+  $("btn-copilot-paste").onclick = openCopilotAnswer;
+  $("copilot-close").onclick = () => $("copilot-dialog").close();
+  $("copilot-use").onclick = useCopilotAnswer;
   $("btn-ai-key").onclick = openAIKey;
   $("ai-key-banner-btn").onclick = openAIKey;
   $("ai-key-close").onclick = () => $("ai-key-dialog").close();

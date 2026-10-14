@@ -87,6 +87,8 @@ class SessionController:
         self.note_text = ""  # what the user sees / edits / copies
         self.note_edited = False
         self.started_at: float | None = None
+        self._copilot = None  # last prompt prepared for Copilot Chat
+        self._tpl_cache = None
         self.call_meta: dict = {}  # passed to the note: PC clock, call direction / type chosen by the advisor
         self.duration_s = 0
         self.opened_devices: dict[str, str] = {}
@@ -137,6 +139,7 @@ class SessionController:
             "consent_required": self.settings.require_consent_confirmation,
             "consent_label": self.settings.consent_label,
             "history_enabled": self.history is not None,
+            "copilot_enabled": self.settings.copilot_enabled,
             "metrics": self.metrics,
         }
 
@@ -184,6 +187,7 @@ class SessionController:
                 self._set_state(State.ERROR, exc)
                 raise
             self.started_at = time.time()
+            self._copilot = None
             self.call_meta = {
                 "started_at": self.started_at,
                 "direction": req.call_direction if req.call_direction in ("entrant", "sortant") else None,
@@ -329,6 +333,58 @@ class SessionController:
 
     # ------------------------------------------------------------------ note actions
 
+    # ------------------------------------------------------------------ Microsoft 365 Copilot Chat
+
+    def _call_context(self):
+        from .notes.template import CallContext
+
+        meta = self.call_meta or {}
+        return CallContext(direction=meta.get("direction"), variant=meta.get("variant"), started_at=meta.get("started_at"),
+                           duration_s=self.duration_s, agent_name=self.settings.agent_name)
+
+    def _template_and_categories(self):
+        if self._tpl_cache is None:
+            from .notes.business import load_categories
+            from .notes.template import load_template, template_path
+
+            self._tpl_cache = (load_template(template_path(self.settings)), load_categories(self.settings))
+        return self._tpl_cache
+
+    def copilot_prompt(self) -> dict:
+        """Prompt to paste into Copilot Chat: instructions + template + transcript (after « Fin »)."""
+        from .notes.copilot import build_prompt
+
+        with self._lock:
+            segments = self.assembler.final_segments()
+            if self.state not in (State.DONE, State.ERROR) or not segments:
+                raise AppError(ErrorCode.INVALID_STATE, "terminez d'abord la conversation (Fin)")
+            ctx = self._call_context()
+        template, categories = self._template_and_categories()
+        self._copilot = build_prompt(template, segments, ctx, categories)
+        text = self._copilot.text
+        return {"prompt": text, "chars": len(text), "max_chars": self.settings.copilot_max_chars,
+                "too_long": len(text) > self.settings.copilot_max_chars}
+
+    def apply_copilot_answer(self, answer: str) -> None:
+        """Copilot's answer pasted by the advisor becomes the note, after the automatic check."""
+        from .notes.copilot import check_answer
+        from .notes.local_summary import metadata_text, transcript_text
+
+        with self._lock:
+            prompt = self._copilot
+            if prompt is None or self.state not in (State.DONE, State.ERROR):
+                raise AppError(ErrorCode.INVALID_STATE, "préparez d'abord la demande pour Copilot")
+            template, _categories = self._template_and_categories()
+            text, flags, points = check_answer(template, prompt, answer[:50_000],
+                                               transcript_text(self.assembler.final_segments()),
+                                               metadata_text(self._call_context()))
+            self.note = NoteResult(text=text, flags=flags, points_to_verify=points, prompt_version=template.version,
+                                   model="Microsoft 365 Copilot Chat")
+            self.note_text, self.note_edited = text, False
+        self.emit("note", {"text": text, "meta": self.snapshot()["note_meta"]})
+        self._set_state(State.DONE)
+        self._save_history("copilot")
+
     def update_note(self, text: str) -> None:
         with self._lock:
             if self.state != State.DONE:
@@ -345,6 +401,7 @@ class SessionController:
             if self.state in (State.CAPTURING, State.FINALIZING, State.GENERATING):
                 raise AppError(ErrorCode.INVALID_STATE, "terminez d'abord la conversation en cours")
             self._reset()
+            self._copilot = None
             self.session_id = None
             self._set_state(State.READY)
 

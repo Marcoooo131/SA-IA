@@ -60,6 +60,8 @@ dans la conversation.
 | `local` (par défaut) — sans IA | règles du fichier (`rule:`) : phrases recopiées mot pour mot et classées par marqueurs (« je voudrais », « j'ai envoyé », « je vais »...), extracteurs dédiés (téléphone, adresse, WO, dates, décision, actions et responsables) |
 | `anthropic` — Claude | le prompt et le schéma de sortie structurée sont générés depuis le fichier (`help:` de chaque champ) ; Claude remplit chaque champ avec un statut et les segments qui le justifient |
 
+| Copilot Chat (Microsoft 365) — boutons sous la note, dans tous les modes | la demande (consignes + template à remplir + transcription) est copiée, Copilot Chat s'ouvre avec le compte professionnel ; la réponse recollée devient la note après vérification. Gratuit, mais par copier-coller : Copilot Chat n'a pas d'accès programmatique officiel, et piloter sa page serait un contournement |
+
 ## Vérification automatique (avant affichage)
 
 - tous les champs affichés sont renseignés (sinon « Aucune information notifiée » + alerte) ;
@@ -70,7 +72,10 @@ dans la conversation.
   qui ne vient pas du poste est retirée ;
 - « Actions réellement effectuées » ne doit pas contenir de proposition ou d'action future ;
 - alerte si aucune prochaine étape n'est identifiée ;
-- mode Claude : les segments cités comme preuve doivent exister.
+- mode Claude : les segments cités comme preuve doivent exister ;
+- réponse de Copilot : mise en forme Markdown retirée, intitulés attendus présents, données du poste
+  (date, agent, type choisi) rétablies si Copilot les a modifiées, mêmes contrôles de chiffres,
+  de citations et d'actions effectuées.
 
 Les points « À confirmer » et les contradictions sont listés sous la note.
 

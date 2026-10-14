@@ -6,6 +6,7 @@ Principe : **aucune clé dans le code, dans un fichier ou dans Git.** Deux modes
 | Mode | Où est la clé Claude | Pour qui |
 |---|---|---|
 | `local` — **note sans IA** (mode du paquet téléchargeable) | aucune clé : template générale remplie par le programme, rien n'est envoyé | tous les postes, coût nul |
+| Copilot Chat Microsoft 365 (boutons sous la note) | aucune clé : copier-coller avec le compte professionnel de l'utilisateur (protection des données d'entreprise) | postes équipés de Microsoft 365, à valider par l'entreprise |
 | `anthropic` — **clé dans l'application** (option payante) | coffre Windows de chaque PC, saisie par le bouton « Clé API » | un ou quelques postes |
 | `gateway` — passerelle de l'entreprise | serveur passerelle uniquement ; les postes ont un jeton révocable | déploiement à plusieurs conseillers |
 

@@ -82,6 +82,10 @@ class Settings(BaseSettings):
     # local (no AI, extractive summary) | anthropic (direct, key in the Windows vault) | gateway | simulated (tests)
     notes_client: str = "gateway"
     agent_name: str = ""  # "Agent" field of the Phone Call (authorised metadata of the PC)
+    # Microsoft 365 Copilot Chat (work account) by copy and paste: no API, no cost
+    copilot_enabled: bool = True
+    copilot_url: str = "https://m365.cloud.microsoft/chat"
+    copilot_max_chars: int = 16000  # prompt length warning (official limit not published: to check on the PC)
     note_template: Path | None = None  # Phone Call template; default: phone_call_template.yaml next to the .exe
     gateway_url: str = ""
     gateway_timeout_s: float = 90.0

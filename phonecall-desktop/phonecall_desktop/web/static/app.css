@@ -68,4 +68,6 @@ dialog { width: min(720px, 92vw); border: 1px solid var(--line); border-radius: 
 #ai-key-input { width: 100%; padding: 6px; font: inherit; border: 1px solid #bbb; border-radius: 4px; margin: 4px 0 8px; box-sizing: border-box; }
 .error-text { color: var(--red); font-size: 13px; }
 #ai-key-banner button { margin-left: 8px; }
+#copilot-answer { width: 100%; min-height: 320px; box-sizing: border-box; font: 13.5px/1.45 "Segoe UI", system-ui, sans-serif; padding: 8px; }
+.note-buttons.copilot { margin-top: 6px; }
 .call-kind { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }

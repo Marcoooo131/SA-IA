@@ -50,15 +50,26 @@ la coller dans le CRM.
    - Une vérification automatique s'affiche sous la note : points à confirmer, contradictions,
      prochaines étapes manquantes. Relisez et complétez toujours la note.
 
-5. Outils
+5. Faire rédiger la note par Copilot Chat (Microsoft 365, gratuit avec le compte professionnel)
+   - Après « Fin », cliquez « 1. Préparer pour Copilot » : les consignes, la template et la
+     transcription sont copiées, et Copilot Chat s'ouvre dans le navigateur.
+   - Vérifiez que vous êtes connecté avec votre COMPTE PROFESSIONNEL (bouclier « protégé » visible) :
+     jamais avec un compte Microsoft personnel, la conversation contient des données clients.
+   - Collez (Ctrl+V) dans Copilot et envoyez. Copiez sa réponse (bouton « Copier »).
+   - Revenez dans Phone Call : « 2. Coller la réponse de Copilot », collez, « Vérifier et utiliser ».
+     L'application vérifie la réponse (champs manquants, chiffres absents de l'appel, actions
+     annoncées comme faites alors qu'elles étaient proposées...) et affiche les points à confirmer.
+   - Usage à faire valider par l'entreprise (données clients dans Copilot Chat).
+
+6. Outils
    - « Mode demonstration.bat » : conversation fictive, sans micro.
    - « Diagnostic audio.bat » : vérifie en 10 s que le son du PC et le micro sont captés.
 
-6. Option : note rédigée par Claude (IA, payante)
+7. Option : note rédigée par Claude (IA, payante)
    - Dans config.env, remplacez PCD_NOTES_CLIENT=local par PCD_NOTES_CLIENT=anthropic,
      relancez, puis bouton « Clé API ». La transcription (texte) est alors envoyée à Anthropic.
 
-7. Limites
+8. Limites
    - Avec des haut-parleurs (sans casque), la voix de l'interlocuteur peut apparaître en double.
    - Aucun son n'est enregistré sur le disque ; la transcription est effacée par « Nouvelle conversation ».
 

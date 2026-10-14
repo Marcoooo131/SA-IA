@@ -109,7 +109,8 @@ except ImportError:
 def launch_app(tmp_path, notes_client):
     env = {**os.environ, "PCD_ENVIRONMENT": "dev", "PCD_AUDIO_BACKEND": "test-files", "PCD_RECOGNIZER": "scripted",
            "PCD_NOTES_CLIENT": notes_client, "PCD_TEST_AUDIO_DIR": str(tmp_path / "audio"), "PCD_TEST_AUDIO_SPEED": "4",
-           "PCD_NO_SIGNAL_WARN_S": "60", "HOME": str(tmp_path), "PYTHON_KEYRING_BACKEND": "keyring.backends.fail.Keyring"}
+           "PCD_NO_SIGNAL_WARN_S": "60", "HOME": str(tmp_path), "PYTHON_KEYRING_BACKEND": "keyring.backends.fail.Keyring",
+           "BROWSER": "true"}  # « open Copilot » must not launch a real browser during the tests
     env.pop("PCD_ANTHROPIC_API_KEY", None)
     port_file = tmp_path / "port"
     proc = subprocess.Popen([sys.executable, "-m", "phonecall_desktop", "--port-file", str(port_file)], env=env)
@@ -284,3 +285,47 @@ def test_ui_note_without_ai(running_app_local, tmp_path):
         import shutil
 
         shutil.copy(tmp_path / "note_sans_ia.png", Path(out) / "note_sans_ia.png")
+
+
+@pytest.mark.skipif(not HAS_PLAYWRIGHT or os.environ.get("PCD_SKIP_UI_TESTS") == "1", reason="UI tests disabled")
+def test_ui_copilot_copy_and_paste(running_app_local, tmp_path):
+    from playwright.sync_api import expect, sync_playwright
+
+    url, _ = running_app_local
+    with sync_playwright() as p:
+        browser = p.chromium.launch(executable_path=CHROMIUM)
+        ctx = browser.new_context(viewport={"width": 1400, "height": 900})
+        ctx.grant_permissions(["clipboard-read", "clipboard-write"], origin=url.split("/?")[0])
+        page = ctx.new_page()
+        page.goto(url)
+        expect(page.locator("#copilot-row")).to_be_visible()
+        expect(page.locator("#btn-copilot-prepare")).to_be_disabled()  # only after the call
+        page.select_option("#call-direction", "entrant")
+        page.select_option("#call-type", "movers")
+        page.check("#consent")
+        page.click("#btn-start")
+        expect(page.locator("#transcript .seg").nth(8)).to_be_visible(timeout=30000)
+        page.click("#btn-stop")
+        expect(page.locator("#state-badge")).to_have_text("Terminé", timeout=20000)
+        local_note = page.locator("#note").input_value()
+        page.click("#btn-copilot-prepare")
+        expect(page.locator("#notices")).to_contain_text("Demande copiée")
+        prompt = page.evaluate("navigator.clipboard.readText()")
+        assert "Modèle à remplir :" in prompt and "Type d'appel : Appel entrant — Movers (choisi par le conseiller)" in prompt
+        assert "[00:00] Conseiller : Sector Alarm bonjour" in prompt
+        page.click("#btn-copilot-paste")
+        answer = local_note.replace("Situation actuelle :", "Situation actuelle : Maison plus grande que l'appartement actuel\nAncienne :")
+        page.fill("#copilot-answer", answer)
+        page.screenshot(path=str(tmp_path / "copilot_paste.png"))
+        page.click("#copilot-use")
+        expect(page.locator("#copilot-dialog")).to_be_hidden()
+        expect(page.locator("#flags")).to_contain_text("Note rédigée par Copilot")
+        assert "Maison plus grande que l'appartement actuel" in page.locator("#note").input_value()
+        page.screenshot(path=str(tmp_path / "copilot_done.png"))
+        browser.close()
+    out = os.environ.get("PCD_SCREENSHOT_DIR")
+    if out:
+        import shutil
+
+        for f in ("copilot_paste.png", "copilot_done.png"):
+            shutil.copy(tmp_path / f, Path(out) / f)

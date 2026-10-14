@@ -46,6 +46,10 @@ class NoteBody(BaseModel):
     text: str = Field(max_length=20_000)
 
 
+class CopilotAnswerBody(BaseModel):
+    text: str = Field(min_length=1, max_length=50_000)
+
+
 class AIKeyBody(BaseModel):
     key: str = Field(max_length=2_000)
     check: bool = True
@@ -166,6 +170,35 @@ def create_app(controller: SessionController, token: str, port_getter, hub: Hub)
     @app.post("/api/new")
     def new():
         controller.new_conversation()
+        return controller.snapshot()
+
+    # Microsoft 365 Copilot Chat: prompt copied by the page, Copilot opened in the default browser,
+    # answer pasted back by the advisor. The transcript never goes into a URL.
+
+    def copilot_on():
+        if not controller.settings.copilot_enabled:
+            raise AppError(ErrorCode.INVALID_STATE, "Copilot est désactivé (PCD_COPILOT_ENABLED)")
+
+    @app.post("/api/copilot/prompt")
+    def copilot_prompt():
+        copilot_on()
+        return controller.copilot_prompt()
+
+    @app.post("/api/copilot/open")
+    def copilot_open():
+        copilot_on()
+        url = controller.settings.copilot_url
+        if not url.startswith("https://"):
+            raise AppError(ErrorCode.CONFIG, "PCD_COPILOT_URL doit commencer par https://")
+        import webbrowser
+
+        opened = webbrowser.open(url, new=2)
+        return {"opened": bool(opened), "url": url}
+
+    @app.post("/api/copilot/answer")
+    def copilot_answer(body: CopilotAnswerBody):
+        copilot_on()
+        controller.apply_copilot_answer(body.text)
         return controller.snapshot()
 
     # The AI key is write-only: the interface can save, check or delete it, never read it back.

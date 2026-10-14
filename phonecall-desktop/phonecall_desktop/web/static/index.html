@@ -92,6 +92,10 @@
       <button id="btn-retry" hidden>Relancer la génération</button>
       <button id="btn-new">Nouvelle conversation</button>
     </div>
+    <div class="note-buttons copilot" id="copilot-row" hidden>
+      <button id="btn-copilot-prepare" disabled>1. Préparer pour Copilot</button>
+      <button id="btn-copilot-paste" disabled>2. Coller la réponse de Copilot</button>
+    </div>
     <p class="hint">Relisez la note avant de la coller dans le CRM : elle est générée automatiquement et peut contenir des erreurs.</p>
   </section>
 </main>
@@ -116,6 +120,14 @@
     <button id="ai-key-save" class="primary">Vérifier et enregistrer</button>
     <button id="ai-key-delete" class="danger">Supprimer la clé de ce PC</button>
   </div>
+</dialog>
+<dialog id="copilot-dialog">
+  <div class="dialog-head"><h2>Réponse de Copilot</h2><button id="copilot-close" class="ghost">Fermer</button></div>
+  <p class="hint">Dans Copilot Chat, copiez sa réponse (bouton « Copier » sous la réponse), puis collez-la ici
+    (Ctrl+V). L'application vérifie la note avant de l'afficher.</p>
+  <textarea id="copilot-answer" aria-label="Réponse de Copilot" placeholder="Collez ici la réponse de Copilot"></textarea>
+  <p id="copilot-error" class="error-text" hidden role="alert"></p>
+  <div class="note-buttons"><button id="copilot-use" class="primary">Vérifier et utiliser comme note</button></div>
 </dialog>
 </body>
 </html>

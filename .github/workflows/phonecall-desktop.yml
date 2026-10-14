@@ -131,6 +131,7 @@ jobs:
             3. Double-cliquez sur `PhoneCallDesktop.exe` (si Windows le bloque : « Informations complémentaires » › « Exécuter quand même »).
             4. Autorisez le micro : Paramètres › Confidentialité et sécurité › Microphone › « Autoriser les applications de bureau ».
 
-            Option (payante) : note rédigée par Claude — voir la section 6 de `LISEZMOI.txt`.
+            Gratuit aussi : faire rédiger la note par **Copilot Chat Microsoft 365** (compte professionnel), par copier-coller — section 5 de `LISEZMOI.txt`.
+            Option (payante) : note rédigée par Claude — section 7 de `LISEZMOI.txt`.
 
             Commit : ${{ github.sha }}
