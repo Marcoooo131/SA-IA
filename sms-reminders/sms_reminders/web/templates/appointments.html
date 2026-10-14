@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% from "macros.html" import job_badge, confirm_box, confirmation_badge, service_badge, pager %}
+{% block title %}{{ VIEWS[view] }}{% endblock %}
+{% block content %}
+<div class="head">
+  <h1>{{ VIEWS[view] }} <small class="muted">({{ total }})</small></h1>
+  {% if user.role >= Role.SUPERVISOR %}<a class="button" href="/appointments/new">Nouveau rendez-vous</a>{% endif %}
+</div>
+<form method="get" class="filters">
+  <input type="hidden" name="view" value="{{ view }}">
+  <label>Recherche <input name="q" value="{{ params.q }}" placeholder="Nom, téléphone ou n° client"></label>
+  {% if view not in Service.ALL %}
+  <label>Service <select name="service"><option value="">Tous</option>
+    {% for sv in Service.ALL %}<option value="{{ sv }}" {{ 'selected' if params.service == sv }}>{{ Service.LABELS[sv] }}</option>{% endfor %}
+    </select></label>
+  {% endif %}
+  {% if view not in ('confirmed', 'to_confirm') %}
+  <label>Confirmation <select name="confirmation"><option value="">Toutes</option>
+    <option value="to_confirm" {{ 'selected' if params.confirmation == 'to_confirm' }}>À confirmer</option>
+    <option value="confirmed" {{ 'selected' if params.confirmation == 'confirmed' }}>Confirmé</option></select></label>
+  {% endif %}
+  <label>Du <input type="date" name="date_from" value="{{ params.date_from }}"></label>
+  <label>Au <input type="date" name="date_to" value="{{ params.date_to }}"></label>
+  <label>Résultat SMS <select name="sms"><option value="">Tous</option>
+    <option value="error" {{ 'selected' if params.sms == 'error' }}>En erreur / à vérifier</option>
+    {% for st, lab in JOB_LABELS.items() %}<option value="{{ st }}" {{ 'selected' if params.sms == st }}>{{ lab }}</option>{% endfor %}
+    </select></label>
+  <label>Filtre <select name="flag"><option value="">À venir (actifs)</option>
+    {% for k, lab in FLAGS.items() %}<option value="{{ k }}" {{ 'selected' if params.flag == k }}>{{ lab }}</option>{% endfor %}
+    </select></label>
+  <button>Filtrer</button>
+  <a href="/appointments?view={{ view }}" class="small">Réinitialiser</a>
+</form>
+
+<div class="table-wrap"><table class="list appts">
+  <thead><tr>
+    <th title="Rendez-vous confirmé">Confirmé</th><th>N° client</th><th>Client</th><th>Téléphone</th><th>Service</th>
+    <th>Rendez-vous</th><th>Statut</th><th>SMS 48 h</th><th>1er SMS 24 h</th><th>2e SMS 24 h</th><th>Dernière action</th><th></th>
+  </tr></thead>
+  <tbody>
+  {% for a in rows %}
+    <tr class="{{ 'cancelled' if a.status == AppointmentStatus.CANCELLED }} {{ 'past' if a.appointment_at < now }}">
+      <td>{{ confirm_box(a, csrf, next_url) }}</td>
+      <td class="mono">{{ a.customer_ref }}</td>
+      <td>{{ a.full_name }}</td>
+      <td class="mono nowrap">{% if a.phone_valid %}{{ phone_display(a.phone_e164) }}{% else %}<span class="error" title="Numéro invalide ou non mobile">{{ a.phone_raw }} ⚠</span>{% endif %}</td>
+      <td>{{ service_badge(a.service) }}</td>
+      <td class="nowrap">{{ fmt(a.appointment_at) }}</td>
+      <td>{{ confirmation_badge(a) }}</td>
+      <td>{{ job_badge(a.job_for(Step.J2)) }}</td>
+      <td>{{ job_badge(a.job_for(Step.J1_FIRST)) }}</td>
+      <td>{{ job_badge(a.job_for(Step.J1_SECOND)) }}</td>
+      <td class="small last-action" title="{{ a.last_action or '' }}"><span class="clamp">{{ a.last_action or '' }}</span><span class="muted">{{ fmt_short(a.last_action_at) if a.last_action_at }}</span></td>
+      <td><a href="/appointments/{{ a.id }}">Détail</a></td>
+    </tr>
+  {% else %}
+    <tr><td colspan="12" class="muted">Aucun rendez-vous ne correspond à ces critères.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{{ pager(page, total, page_size, '/appointments?' ~ qs) }}
+{% endblock %}

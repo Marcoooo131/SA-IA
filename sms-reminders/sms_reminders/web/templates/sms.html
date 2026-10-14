@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "macros.html" import job_badge, service_badge, pager %}
+{% block title %}Historique des SMS{% endblock %}
+{% block content %}
+<h1>Historique des SMS <small class="muted">({{ total }})</small></h1>
+<form method="get" class="filters">
+  <label>Recherche <input name="q" value="{{ params.q }}" placeholder="Nom, téléphone ou n° client"></label>
+  <label>Service <select name="service"><option value="">Tous</option>
+    {% for sv in Service.ALL %}<option value="{{ sv }}" {{ 'selected' if params.service == sv }}>{{ Service.LABELS[sv] }}</option>{% endfor %}</select></label>
+  <label>Étape <select name="step"><option value="">Toutes</option>
+    {% for st, lab in Step.LABELS.items() %}<option value="{{ st }}" {{ 'selected' if params.step == st }}>{{ lab }}</option>{% endfor %}</select></label>
+  <label>Statut <select name="status"><option value="">Tous</option>
+    <option value="error" {{ 'selected' if params.status == 'error' }}>En erreur / à vérifier</option>
+    {% for st, lab in JOB_LABELS.items() %}<option value="{{ st }}" {{ 'selected' if params.status == st }}>{{ lab }}</option>{% endfor %}</select></label>
+  <label>Prévu du <input type="date" name="date_from" value="{{ params.date_from }}"></label>
+  <label>au <input type="date" name="date_to" value="{{ params.date_to }}"></label>
+  <button>Filtrer</button>
+</form>
+<table class="list">
+  <thead><tr><th>Prévu</th><th>Client</th><th>Service</th><th>Étape</th><th>Statut</th><th>Envoi réel / simulé</th><th>Livraison</th><th>Expéditeur</th><th>Template</th><th>Détail</th></tr></thead>
+  <tbody>
+  {% for j in rows %}
+    <tr>
+      <td class="nowrap">{{ fmt(j.scheduled_at) }}</td>
+      <td><a href="/appointments/{{ j.appointment_id }}">{{ j.appointment.full_name }}</a><br><small class="mono muted">{{ j.appointment.customer_ref }}</small></td>
+      <td>{{ service_badge(j.appointment.service) }}</td>
+      <td>{{ Step.LABELS[j.step] }}</td>
+      <td>{{ job_badge(j) }}</td>
+      <td class="nowrap">{% if j.sent_at %}{{ fmt(j.sent_at) }}{% if j.simulated %} <strong class="sim-text">SIMULATION</strong>{% endif %}{% else %}—{% endif %}</td>
+      <td>{{ DELIVERY_LABELS.get(j.delivery_status, j.delivery_status or '—') }}</td>
+      <td class="mono small">{{ j.sender or '—' }}</td>
+      <td>{% if j.template_version %}v{{ j.template_version.version }}{% else %}—{% endif %}</td>
+      <td class="small">{{ j.status_reason or '' }}{% if j.error_code and j.error_code != 'blocked' %} <span class="error">{{ j.error_code }}</span>{% endif %}</td>
+    </tr>
+  {% else %}<tr><td colspan="10" class="muted">Aucun SMS.</td></tr>{% endfor %}
+  </tbody>
+</table>
+{{ pager(page, total, page_size, '/sms?' ~ qs) }}
+{% endblock %}

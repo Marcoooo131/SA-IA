@@ -1,0 +1,5 @@
+Numéro client;Nom et prénom;Téléphone;Date;Heure;Service;Confirmé;Identifiant rendez-vous
+CLI-100001;DUPONT Marie;06 00 00 00 01;20/11/2026;09:30;Movers;non;RDV-2026-0001
+CLI-100002;MARTIN Paul;06 00 00 00 02;20/11/2026;14:00;Takeovers;non;RDV-2026-0002
+CLI-100003;BERNARD Sophie;+33 6 00 00 00 03;21/11/2026;10:15;Movers;oui;RDV-2026-0003
+CLI-100001;DUPONT Marie;06 00 00 00 01;28/11/2026;16:45;Takeovers;non;RDV-2026-0004

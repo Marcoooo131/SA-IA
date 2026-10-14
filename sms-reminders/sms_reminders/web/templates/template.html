@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Template {{ label }}{% endblock %}
+{% set ro = user.role < Role.ADMIN %}
+{% block content %}
+<p><a href="/settings#templates">← Paramètres</a></p>
+<h1>{{ label }}</h1>
+<p>{% if slot.active_version %}<span class="badge ok">Version active : v{{ slot.active_version.version }}</span>{% else %}<span class="badge err">Template non configuré — envois bloqués</span>{% endif %}</p>
+
+<div class="grid">
+  <div class="card">
+    <h2>{{ 'Nouvelle version' if not ro else 'Texte' }}</h2>
+    {% if not ro %}
+    <form method="post" action="/settings/templates/{{ slot.id }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <textarea name="body" rows="7" class="js-sms-counter" data-target="counter" maxlength="2000">{{ shown.body if shown else '' }}</textarea>
+      <p id="counter" class="small muted"></p>
+      <button class="primary">Enregistrer une nouvelle version</button>
+      <p class="small muted">Enregistrer ne modifie jamais une version existante : une nouvelle version est créée, à activer après relecture de l'aperçu.</p>
+    </form>
+    {% endif %}
+    <h3>Variables disponibles</h3>
+    <ul class="small">{% for k, d in VARIABLES.items() %}<li><code>{{ '{{' }}{{ k }}{{ '}}' }}</code> — {{ d }}</li>{% endfor %}</ul>
+  </div>
+
+  <div class="card">
+    <h2>Aperçu {% if shown %}— v{{ shown.version }}{% endif %}</h2>
+    {% if preview %}
+      <form method="get" class="inline small">
+        <input type="hidden" name="version" value="{{ shown.id }}">
+        <label>Personnaliser avec <select name="appointment" class="js-autosubmit"><option value="">données d'exemple</option>
+          {% for a in candidates %}<option value="{{ a.id }}" {{ 'selected' if request.query_params.get('appointment') == a.id|string }}>#{{ a.id }} {{ a.full_name }} — {{ fmt(a.appointment_at) }}</option>{% endfor %}
+        </select></label><noscript><button>OK</button></noscript>
+      </form>
+      <pre class="sms">{{ preview.text }}</pre>
+      <p class="small">{{ preview.info.characters }} caractères · encodage {{ preview.info.encoding }} · <strong>{{ preview.info.segments }} segment(s)</strong> estimé(s)
+        (maximum autorisé : {{ max_segments }}) — aperçu avec {{ preview.label }}.
+        {% if preview.info.non_gsm %}<br><span class="warn-text">Caractères hors alphabet GSM (passage en UCS-2, 70 caractères par SMS) : {{ preview.info.non_gsm|join(' ') }}</span>{% endif %}</p>
+      {% if preview.missing %}<p class="error">Variables sans valeur : {{ preview.missing|join(', ') }} — l'envoi serait bloqué pour ce rendez-vous.</p>{% endif %}
+      {% if preview.errors %}<ul class="error">{% for e in preview.errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+      {% if not ro and not preview.errors and (not slot.active_version or slot.active_version.id != shown.id) %}
+      <form method="post" action="/settings/templates/{{ slot.id }}/activate/{{ shown.id }}">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <label class="check"><input type="checkbox" name="acknowledge"> J'ai relu l'aperçu et ce texte est validé</label>
+        <button class="primary">Activer la version {{ shown.version }}</button>
+      </form>
+      {% endif %}
+    {% else %}<p class="muted">Template non configuré.</p>{% endif %}
+    {% if not ro and slot.active_version %}
+      <form method="post" action="/settings/templates/{{ slot.id }}/deactivate" class="actions">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><button class="danger">Désactiver (bloque les envois)</button></form>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h2>Versions</h2>
+  <table class="list small">
+    <thead><tr><th>Version</th><th>Créée</th><th>Activée</th><th>SMS utilisant cette version</th><th></th></tr></thead>
+    <tbody>{% for v in versions|reverse %}
+      <tr><td>v{{ v.version }}{% if slot.active_version_id == v.id %} <span class="badge ok">active</span>{% endif %}</td>
+        <td>{{ fmt(v.created_at) }} par {{ v.created_by }}</td>
+        <td>{{ (fmt(v.activated_at) ~ ' par ' ~ v.activated_by) if v.activated_at else '—' }}</td>
+        <td>{{ usage[v.id] }}</td>
+        <td><a href="?version={{ v.id }}">Voir</a></td></tr>
+    {% else %}<tr><td colspan="5" class="muted">Aucune version.</td></tr>{% endfor %}</tbody>
+  </table>
+</div>
+{% endblock %}

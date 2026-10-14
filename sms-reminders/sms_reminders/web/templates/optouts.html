@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Liste d'opposition{% endblock %}
+{% block content %}
+<h1>Liste d'opposition</h1>
+<p class="small muted">Numéros qui ne doivent plus recevoir aucun SMS (demande de désinscription, numéro interdit, opposition signalée par le fournisseur).
+  Vérifiée avant chaque envoi.</p>
+<form method="post" action="/optouts" class="card filters">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <label>Numéro <input name="phone" required></label>
+  <label>Motif <input name="reason" value="Demande de désinscription" maxlength="255"></label>
+  <label>Type <select name="source"><option value="opt_out">Désinscription</option><option value="manual">Numéro interdit</option></select></label>
+  <button class="primary">Ajouter</button>
+</form>
+<table class="list">
+  <thead><tr><th>Numéro</th><th>Motif</th><th>Origine</th><th>Ajouté</th><th></th></tr></thead>
+  <tbody>{% for r in rows %}
+    <tr><td class="mono">{{ phone_display(r.phone_e164) }}</td><td>{{ r.reason }}</td><td>{{ r.source }}</td><td>{{ fmt(r.created_at) }} par {{ r.created_by }}</td>
+      <td>{% if user.role >= Role.ADMIN %}<form method="post" action="/optouts/{{ r.id }}/delete"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="link-danger">Retirer</button></form>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="5" class="muted">Aucun numéro.</td></tr>{% endfor %}</tbody>
+</table>
+{% endblock %}
