@@ -57,11 +57,13 @@ check("True peak", TP <= -1.0, `${TP} dBTP (max -1)`);
 // ---------------------------------------------------------------- black frames
 const bd = ffStderr(["-map", "0:v:0", "-vf", "blackdetect=d=0.05:pix_th=0.08:pic_th=0.985", "-f", "null", "-"]);
 const blacks = [...bd.matchAll(/black_start:([\d.]+) black_end:([\d.]+)/g)].map((m) => [Number(m[1]), Number(m[2])]);
-// intentional: the opening (black screen + call indicator) and the hard cut to silence at 4 s
-const allowed = [[0, CUES.crmSlam + 0.05], [CUES.cutToSilence - 0.02, CUES.redPulse + 0.1]];
+// intentional: the opening (black screen + call indicator), the hard cut to silence at 4 s and the
+// deep black background of the signature while the red line draws, before the logo
+const allowed = [[0, CUES.crmSlam + 0.05], [CUES.cutToSilence - 0.02, CUES.redPulse + 0.1],
+                 [CUES.signatureCut, CUES.logoImpact + 0.05]];
 const unexpected = blacks.filter(([s, e]) => !allowed.some(([as, ae]) => s >= as - 0.02 && e <= ae + 0.02));
 check("Pas d'écran noir accidentel", unexpected.length === 0,
-      blacks.length ? `noirs détectés : ${blacks.map(([s, e]) => `${s.toFixed(2)}–${e.toFixed(2)} s`).join(", ")} (voulus : ouverture, coupure à ${CUES.cutToSilence} s)` : "aucun");
+      blacks.length ? `noirs détectés : ${blacks.map(([s, e]) => `${s.toFixed(2)}–${e.toFixed(2)} s`).join(", ")} (voulus : ouverture, coupure à ${CUES.cutToSilence} s, fond noir de la signature avant le logo)` : "aucun");
 // last frames are not black
 const last = ffStderr(["-ss", String(VIDEO.duration - 0.05), "-map", "0:v:0", "-vf", "signalstats,metadata=print:key=lavfi.signalstats.YMAX", "-f", "null", "-"]);
 const ymax = Math.max(...[...last.matchAll(/YMAX=(\d+)/g)].map((m) => Number(m[1])));

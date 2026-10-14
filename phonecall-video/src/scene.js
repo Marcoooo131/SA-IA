@@ -647,8 +647,8 @@ function sceneGeneration(c, t) {
   // tracks: amplitude falls to a flat line, then the panel folds away
   const amp = 0.9 * (1 - ease.outCubic(seg(t, CUES.waveOff[0], CUES.waveOff[1])));
   c.save();
-  c.globalAlpha = 1 - collapse;
-  c.translate(0, -collapse * 120);
+  c.globalAlpha = 1 - ease.outCubic(seg(t, tf0, tf0 + 0.35));
+  c.translate(0, collapse * 90); // folds down, away from the title
   tracks(c, t, x, 470, w, amp);
   // « FIN » button with click
   const press = window01(t, CUES.endClick - 0.04, CUES.endClick + 0.14, 0.04, 0.1);
@@ -773,6 +773,7 @@ function noteCard(c, t, { x, y, w, typing, copyState }) {
   });
   c.restore();
   const h = 146 + rows.reduce((a, r) => a + r.h, 0) + 14;
+  noteCard.lastHeight = h;
   panel(c, x, y, w, h, { glow: 0.25 });
   // header
   text(c, "PHONE CALL", x + 40, y + 76, { size: 34, weight: 900, color: C.white, spacing: 4, family: FONT.display });
@@ -863,14 +864,19 @@ function sceneResult(c, t) {
   const sk = seg(t, 24.35, 25.1);
   if (sk > 0 && sk < 1) {
     c.save();
+    c.translate(CX, lerp(470, 560, move));
+    c.scale(s, s);
+    c.translate(-CX, -470);
+    rr(c, x, 470, w, noteCard.lastHeight || 900, 28);
+    c.clip();
     c.globalCompositeOperation = "lighter";
-    const sx = lerp(0, W, sk);
+    const sx = lerp(x - 200, x + w + 200, sk);
     const g = c.createLinearGradient(sx - 150, 0, sx + 150, 0);
     g.addColorStop(0, "rgba(255,255,255,0)");
-    g.addColorStop(0.5, "rgba(255,255,255,0.16)");
+    g.addColorStop(0.5, "rgba(255,255,255,0.14)");
     g.addColorStop(1, "rgba(255,255,255,0)");
     c.fillStyle = g;
-    c.fillRect(0, 500, W, 900);
+    c.fillRect(x, 470, w, 1200);
     c.restore();
   }
   // validation badge
@@ -938,8 +944,13 @@ function sceneSignature(c, t) {
   const [l0, l1] = CUES.lineDraw;
   // the sound wave flattens into a line, then draws the outline of an interface
   const flat = ease.outCubic(seg(t, 27.0, 27.25));
-  if (t < l0 + 0.25) {
-    waveLine(c, bx, bx + bw, by, t, 70 * (1 - flat), { color: C.red, width: 5, glow: 24 });
+  if (t < l0 + 0.35) {
+    const fade = 1 - seg(t, l0 + 0.15, l0 + 0.35);
+    c.save();
+    c.globalAlpha = fade;
+    waveLine(c, SAFE.left, SAFE.right, 960, t, 150 * (1 - flat) + 6, { color: C.red, width: 8, glow: 40 });
+    waveLine(c, SAFE.left + 40, SAFE.right - 40, 960, t + 0.3, 90 * (1 - flat) + 3, { color: C.white, width: 3, glow: 20, seed: 2 });
+    c.restore();
   }
   const dk = ease.inOutCubic(seg(t, l0, l1));
   if (dk > 0) {
@@ -1048,7 +1059,7 @@ function drawScene(c, t) {
 function mood(t) {
   if (t < 4) return { glow: 0.35, grid: 1.2, streaks: 0.4, particles: 0.5 };
   if (t < 4.18) return { glow: 0, grid: 0, streaks: 0, particles: 0 };
-  if (t >= 27) return { glow: 0.5 * seg(t, 27.3, 28), grid: 0, streaks: 0.4, particles: 0.7 };
+  if (t >= 27) return { glow: 0.85, grid: 0.3, streaks: 0.6, particles: 0.9 };
   return { glow: 1, grid: 0.8, streaks: 1, particles: 1 };
 }
 
@@ -1135,13 +1146,13 @@ export function createRenderer(canvas, { debugSafe = false } = {}) {
     const flash = Math.max(
       window01(t, CUES.crmSlam - 0.02, CUES.crmSlam + 0.16, 0.02, 0.14) * 0.55,
       window01(t, 17.95, 18.12, 0.05, 0.12) * 0.5,
-      window01(t, 26.92, 27.08, 0.04, 0.12) * 0.7,
+      window01(t, 26.92, 27.4, 0.04, 0.4) * 0.5,
       window01(t, CUES.logoImpact - 0.01, CUES.logoImpact + 0.18, 0.01, 0.17) * 0.35,
     );
     if (flash > 0) {
       main.save();
       main.globalCompositeOperation = "lighter";
-      main.fillStyle = t > 26 && t < 27.2 ? `rgba(227,6,19,${flash})` : `rgba(255,255,255,${flash})`;
+      main.fillStyle = t > 26 && t < 27.45 ? `rgba(227,6,19,${flash})` : `rgba(255,255,255,${flash})`;
       main.fillRect(0, 0, W, H);
       main.restore();
     }
