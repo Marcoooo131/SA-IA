@@ -1,0 +1,29 @@
+# Tests de l'application English Coach (PWA mobile) : unitaires, build et bout en bout multi-écrans.
+name: English Coach — tests
+
+on:
+  push:
+    paths: ["english-coach/**", ".github/workflows/english-coach-tests.yml"]
+  pull_request:
+    paths: ["english-coach/**", ".github/workflows/english-coach-tests.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: english-coach
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: english-coach/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

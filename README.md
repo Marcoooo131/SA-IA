@@ -9,6 +9,10 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > hypothèses de configuration** à valider par les responsables métier. Toutes les données préchargées
 > sont fictives. Aucune intégration à un système interne n'existe.
 
+> 📱 **English Coach** (application mobile PWA, distincte de l'application Movers) :
+> [`english-coach/`](english-coach/README.md) — apprentissage de l'anglais écrit en 90 jours, installable sur
+> l'écran d'accueil, fonctionnant hors ligne, avec professeur IA et synchronisation entre appareils.
+
 > 💬 **Relances SMS Movers & Takeovers** (Python, distinct de l'application Movers) :
 > [`sms-reminders/`](sms-reminders/README.md) — import des rendez-vous, relances automatiques J-2 / J-1,
 > suivi des confirmations ; mode simulation tant que le fournisseur SMS n'est pas configuré.

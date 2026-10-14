@@ -1,0 +1,25 @@
+{
+  "id": "./",
+  "name": "English Coach",
+  "short_name": "English Coach",
+  "description": "Apprends l'anglais écrit en 90 jours : leçons courtes, révisions espacées et professeur IA.",
+  "lang": "fr",
+  "dir": "ltr",
+  "start_url": "./?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#2b59c3",
+  "theme_color": "#2b59c3",
+  "categories": ["education"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Continuer mon cours", "short_name": "Continuer", "url": "./?source=shortcut#/continue", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Réviser", "short_name": "Réviser", "url": "./?source=shortcut#/review", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

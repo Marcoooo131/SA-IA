@@ -1,0 +1,27 @@
+/** Logo English Coach : une bulle de discussion « EN » et une coche de réussite. */
+export const BRAND = '#2b59c3';
+
+export function logoMarkup() {
+  return `
+  <path d="M160 128h192a64 64 0 0 1 64 64v80a64 64 0 0 1-64 64H226l-92 62 18-62h8a64 64 0 0 1-64-64v-80a64 64 0 0 1 64-64z" fill="#fff"/>
+  <g fill="${BRAND}">
+    <rect x="168" y="178" width="26" height="110" rx="3"/>
+    <rect x="168" y="178" width="72" height="24" rx="3"/>
+    <rect x="168" y="222" width="62" height="22" rx="3"/>
+    <rect x="168" y="264" width="72" height="24" rx="3"/>
+    <rect x="270" y="178" width="26" height="110" rx="3"/>
+    <rect x="318" y="178" width="26" height="110" rx="3"/>
+    <polygon points="270,178 298,178 344,288 316,288"/>
+  </g>
+  <circle cx="396" cy="384" r="70" fill="#ffb547" stroke="${BRAND}" stroke-width="16"/>
+  <polyline points="362,386 388,410 430,358" fill="none" stroke="#fff" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+
+/** rounded : coins arrondis (favicon) ; scale : réduction du logo (icône masquable). */
+export function iconSvg({ rounded = false, scale = 1 } = {}) {
+  const offset = (512 * (1 - scale)) / 2;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" ${rounded ? 'rx="112"' : ''} fill="${BRAND}"/>
+  <g transform="translate(${offset} ${offset}) scale(${scale})">${logoMarkup()}</g>
+</svg>`;
+}
