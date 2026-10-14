@@ -2,7 +2,8 @@
 
 Application de bureau Windows qui **capte la conversation sur l'ordinateur** (son joué par le PC
 via WASAPI loopback + micro du conseiller), la **transcrit en direct en français, localement**, puis
-fait **rédiger une note « Phone Call » par Claude** (clé API saisie dans l'application, ou passerelle IA de l'entreprise), à relire et à copier
+produit une **note « Phone Call » de 10 lignes maximum sans IA** (synthèse faite par le programme,
+gratuite, hors ligne) — ou, en option, rédigée par Claude —, à relire et à copier
 dans le CRM. Indépendante de Twilio.
 
 > ⚠️ **Prototype.** Testé automatiquement avec des sources audio simulées et des conversations
@@ -55,8 +56,8 @@ phonecall_desktop/
   audio/        sources (WASAPI, fichiers de test), périphériques, capture supervisée, traitement du flux
   stt/          segmentation, transcription en flux, faster-whisper, reconnaisseur scripté (tests)
   transcript/   assemblage : ordre, doublons, écho
-  notes/        note : client direct Claude (clé du coffre Windows) ou client de la passerelle
-                (même moteur : phonecall_agent.note_service)
+  notes/        note : synthèse sans IA (local_summary.py, par défaut), client direct Claude
+                (clé du coffre Windows) ou client de la passerelle (moteur phonecall_agent.note_service)
   web/          serveur local sécurisé + interface (HTML/CSS/JS sans dépendance externe)
   session.py    cycle de vie d'une conversation (états, arrêt garanti)
   history.py    historique optionnel chiffré

@@ -73,17 +73,28 @@ jobs:
           }
           $code = Run-App '--selftest --report selftest.txt' 120000
           Get-Content selftest.txt; Write-Host "selftest exit code: $code"; if ($code -ne 0) { exit $code }
-          # Claude note engine bundled: SDK, versioned prompt, schema, business.yaml (no API call)
-          if (-not (Select-String -Path selftest.txt -Pattern "note engine ok: .*categories=[1-9]" -Quiet)) { Write-Host "note engine missing"; exit 1 }
+          # Delivered profile: production, note without AI using business.yaml, bundled transcription model
           if (-not (Select-String -Path selftest.txt -Pattern "environment: production" -Quiet)) { Write-Host "packaged profile is not production"; exit 1 }
+          if (-not (Select-String -Path selftest.txt -Pattern "note engine ok: mode=sans IA.*categories=[1-9]" -Quiet)) { Write-Host "note engine missing"; exit 1 }
+          if (-not (Select-String -Path selftest.txt -Pattern "transcription model: .*models.small \(offline=True\)" -Quiet)) { Write-Host "bundled model not used"; exit 1 }
+          # Claude option still bundled (SDK, versioned prompt, schema): checked without any API call
+          $env:PCD_NOTES_CLIENT = 'anthropic'
+          $code = Run-App '--selftest --report selftest-claude.txt' 120000
+          Remove-Item Env:PCD_NOTES_CLIENT
+          Get-Content selftest-claude.txt
+          if ($code -ne 0 -or -not (Select-String -Path selftest-claude.txt -Pattern "note engine ok: model=claude.*categories=[1-9]" -Quiet)) { Write-Host "Claude option broken"; exit 1 }
           $code = Run-App '--diag 0 --report diag.txt' 60000
           Get-Content diag.txt; Write-Host "diag exit code: $code (1 = no audio device on CI runners)"
-          $code = Run-App '--selftest-recognizer tiny --report recognizer.txt' 600000
+          # Bundled model loaded with Hugging Face unreachable (as on a PC where it is blocked)
+          $env:HF_HUB_OFFLINE = '1'; $env:HF_ENDPOINT = 'http://127.0.0.1:9'
+          $code = Run-App '--selftest-recognizer small --report recognizer.txt' 600000
+          Remove-Item Env:HF_HUB_OFFLINE, Env:HF_ENDPOINT
           Get-Content recognizer.txt; Write-Host "recognizer exit code: $code"; if ($code -ne 0) { exit $code }
+          if (-not (Select-String -Path recognizer.txt -Pattern "offline=True" -Quiet)) { Write-Host "model was not loaded from the package"; exit 1 }
           $code = Run-App '--smoke-window 3' 180000
           Write-Host "WebView2 window exit code: $code (0 = page loaded in the native window)"
           if ($code -ne 0) { Get-Content "$env:LOCALAPPDATA\PhoneCallDesktop\logs\phonecall-desktop.log" -Tail 30; exit $code }
-          Remove-Item selftest.txt, diag.txt, recognizer.txt
+          Remove-Item selftest.txt, selftest-claude.txt, diag.txt, recognizer.txt
       - name: Re-create the zip without test outputs
         run: Compress-Archive -Path dist\PhoneCallDesktop -DestinationPath dist\PhoneCallDesktop-windows.zip -Force
       - uses: actions/upload-artifact@v4
@@ -112,15 +123,14 @@ jobs:
           files: PhoneCallDesktop-windows.zip
           body: |
             Poste conseiller Phone Call (application Windows non signée).
-            Transcription en direct calculée sur le PC ; note rédigée par Claude à la fin de l'appel.
+            Transcription en direct calculée sur le PC avec le modèle livré dans le zip (aucun accès à Hugging Face).
+            À la fin de l'appel : synthèse de 10 lignes maximum faite **sans IA** (aucun coût, rien n'est envoyé sur Internet).
 
             1. Téléchargez `PhoneCallDesktop-windows.zip`, clic droit › Extraire tout.
             2. Ouvrez le dossier `PhoneCallDesktop` et lisez `LISEZMOI.txt`.
             3. Double-cliquez sur `PhoneCallDesktop.exe` (si Windows le bloque : « Informations complémentaires » › « Exécuter quand même »).
             4. Autorisez le micro : Paramètres › Confidentialité et sécurité › Microphone › « Autoriser les applications de bureau ».
-            5. Bouton « Clé API » : collez votre clé Anthropic (console.anthropic.com › API Keys). Elle est rangée dans le coffre Windows.
 
-            Au premier lancement, le moteur de transcription (~500 Mo) est téléchargé.
-            Seule la transcription (texte) est envoyée à Claude, à la fin de l'appel ; l'audio ne quitte pas le PC.
+            Option (payante) : note rédigée par Claude — voir la section 6 de `LISEZMOI.txt`.
 
             Commit : ${{ github.sha }}

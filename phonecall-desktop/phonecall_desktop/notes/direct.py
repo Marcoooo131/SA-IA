@@ -12,11 +12,11 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from pathlib import Path
 
-from ..config import Settings, install_dir
+from ..config import Settings
 from ..errors import AppError, ErrorCode
 from ..transcript.assembler import Segment
+from .business import business_config_path  # noqa: F401 - re-exported
 from .client import NoteClient, NoteResult, note_from_payload
 
 log = logging.getLogger(__name__)
@@ -29,22 +29,6 @@ def validate_key_format(key: str) -> str:
     if not key.startswith(KEY_PREFIX) or not 20 <= len(key) <= 256 or any(c.isspace() for c in key):
         raise AppError(ErrorCode.AI_KEY_FORMAT)
     return key
-
-
-def business_config_path(settings: Settings) -> Path | None:
-    """Explicit setting, then ``business.yaml`` next to the .exe, then the example of the sources."""
-    candidates: list[Path] = []
-    if settings.business_config:
-        candidates.append(settings.business_config)
-    if (d := install_dir()) is not None:
-        candidates.append(d / "business.yaml")
-    try:
-        import phonecall_agent
-
-        candidates.append(Path(phonecall_agent.__file__).resolve().parent.parent / "config" / "business.example.yaml")
-    except ImportError:
-        pass
-    return next((p for p in candidates if p.is_file()), None)
 
 
 class DirectAINoteClient(NoteClient):

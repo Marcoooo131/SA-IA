@@ -250,3 +250,36 @@ def test_ui_direct_mode_asks_for_the_key(running_app_direct, tmp_path):
         Path(out).mkdir(parents=True, exist_ok=True)
         for f in ("ai_key_dialog.png", "ai_key_missing.png"):
             shutil.copy(tmp_path / f, Path(out) / f)
+
+
+@pytest.fixture
+def running_app_local(tmp_path):
+    yield from launch_app(tmp_path, "local")
+
+
+@pytest.mark.skipif(not HAS_PLAYWRIGHT or os.environ.get("PCD_SKIP_UI_TESTS") == "1", reason="UI tests disabled")
+def test_ui_note_without_ai(running_app_local, tmp_path):
+    from playwright.sync_api import expect, sync_playwright
+
+    url, _ = running_app_local
+    with sync_playwright() as p:
+        browser = p.chromium.launch(executable_path=CHROMIUM)
+        page = browser.new_page(viewport={"width": 1400, "height": 900})
+        page.goto(url)
+        expect(page.locator("#btn-ai-key")).to_be_hidden()
+        expect(page.locator("#ai-key-banner")).to_be_hidden()
+        page.check("#consent")
+        page.click("#btn-start")
+        expect(page.locator("#transcript .seg").nth(8)).to_be_visible(timeout=30000)
+        page.click("#btn-stop")
+        expect(page.locator("#state-badge")).to_have_text("Terminé", timeout=20000)
+        note = page.locator("#note").input_value()
+        assert note.startswith("Motif : Déménagement") and len(note.splitlines()) <= 10
+        expect(page.locator("#flags")).to_contain_text("Synthèse sans IA")
+        page.screenshot(path=str(tmp_path / "note_sans_ia.png"))
+        browser.close()
+    out = os.environ.get("PCD_SCREENSHOT_DIR")
+    if out:
+        import shutil
+
+        shutil.copy(tmp_path / "note_sans_ia.png", Path(out) / "note_sans_ia.png")

@@ -42,6 +42,13 @@ def config_files() -> tuple[str, ...]:
     return tuple(files)
 
 
+def bundled_model_dir(model: str) -> Path | None:
+    """Transcription model delivered in the package (``models/<name>`` next to the .exe): no download."""
+    if (d := install_dir()) is not None and (d / "models" / model / "model.bin").is_file():
+        return d / "models" / model
+    return None
+
+
 class Environment(str, Enum):
     DEV = "dev"
     TEST = "test"
@@ -72,7 +79,9 @@ class Settings(BaseSettings):
     transcription_finish_timeout_s: float = 120.0
 
     # --- Notes
-    notes_client: str = "gateway"  # gateway | anthropic (direct, key in the Windows vault) | simulated (tests)
+    # local (no AI, extractive summary) | anthropic (direct, key in the Windows vault) | gateway | simulated (tests)
+    notes_client: str = "gateway"
+    note_max_lines: int = 10  # local mode
     gateway_url: str = ""
     gateway_timeout_s: float = 90.0
     gateway_ca_bundle: Path | None = None  # company CA if TLS inspection is used
@@ -101,8 +110,8 @@ class Settings(BaseSettings):
             problems.append("audio_backend must be wasapi")
         if self.recognizer == "scripted":
             problems.append("scripted recognizer is for tests only")
-        if self.notes_client not in ("gateway", "anthropic"):
-            problems.append("notes_client must be gateway or anthropic")
+        if self.notes_client not in ("gateway", "anthropic", "local"):
+            problems.append("notes_client must be gateway, anthropic or local")
         if self.notes_client == "gateway" and not self.gateway_url.startswith("https://"):
             problems.append("gateway_url must be https://")
         if problems:

@@ -47,7 +47,10 @@ python -m phonecall_desktop     # le modèle est téléchargé au premier lancem
    ```
 2. **Signer** les exécutables avec le certificat de signature de code de l'entreprise (sinon
    SmartScreen / l'antivirus peut les bloquer) et les faire analyser par l'équipe sécurité.
-3. Déployer le **modèle de transcription** sans téléchargement au poste : récupérer une fois le
+3. Le **modèle de transcription** `small` est livré dans le paquet (`models\small\` à côté de
+   l'exécutable) : aucun accès à Hugging Face n'est nécessaire sur les postes (réseau d'entreprise
+   qui bloque le téléchargement). `build_windows.ps1 -WhisperModel medium` livre un autre modèle,
+   `-NoModel` aucun. Autre possibilité, déployer le modèle à part : récupérer une fois le
    modèle CTranslate2 (`Systran/faster-whisper-small` sur Hugging Face), le placer dans
    `C:\ProgramData\PhoneCallDesktop\models\small\` (fichiers `model.bin`, `config.json`,
    `tokenizer.json`, `vocabulary.*`) et régler `PCD_WHISPER_MODEL_DIR`.

@@ -79,6 +79,11 @@ def selftest() -> int:
                   + (f" error={devices['error']['code']}" if devices.get("error") else ""))
             for d in devices["devices"]:
                 print(f"  - [{d['channel']}] {d['name']}{' (défaut)' if d['is_default'] else ''}")
+        if settings.recognizer == "whisper":
+            from .factory import whisper_model_source
+
+            source, local = whisper_model_source(settings)
+            print(f"transcription model: {source} (offline={local})")
         print(f"notes: {settings.notes_client}")
         if hasattr(controller.note_client, "describe"):
             info = controller.note_client.describe()
@@ -104,16 +109,19 @@ def show_error(message: str) -> None:
 
 
 def selftest_recognizer(model: str) -> int:
-    """Loads the transcription model (downloads it the first time) and transcribes 1 s of silence."""
+    """Loads the transcription model (the one delivered in the package if present, otherwise downloaded
+    the first time) and transcribes 1 s of silence."""
     import numpy as np
 
+    from .factory import whisper_model_source
     from .stt.whisper_local import WhisperRecognizer
 
+    source, local = whisper_model_source(get_settings().model_copy(update={"whisper_model": model}))
     t0 = time.monotonic()
-    rec = WhisperRecognizer(model=model)
+    rec = WhisperRecognizer(model=source, local_files_only=local)
     rec.warmup()
     rec.transcribe(np.zeros(16_000, dtype=np.float32))
-    print(f"recognizer ok: model={model} in {time.monotonic() - t0:.1f}s")
+    print(f"recognizer ok: model={model} source={source} offline={local} in {time.monotonic() - t0:.1f}s")
     return 0
 
 

@@ -1,18 +1,19 @@
 PHONE CALL — prise de notes assistée
 ====================================
 
-Pendant l'appel : transcription en direct, calculée sur le PC (l'audio ne quitte jamais le PC).
-À la fin de l'appel : la transcription (texte seulement) est envoyée à Claude (Anthropic), qui
-rédige la note Phone Call. Relisez toujours la note avant de la coller dans le CRM.
+Pendant l'appel : transcription en direct, calculée sur le PC.
+À la fin de l'appel : une synthèse de 10 lignes maximum, faite par le programme SANS IA
+(motif, demande, réponses du conseiller, suite prévue, montants et dates cités).
+Rien n'est envoyé sur Internet, aucun coût. Relisez et complétez toujours la note avant de
+la coller dans le CRM.
 
 1. Démarrer
    - Double-cliquez sur PhoneCallDesktop.exe.
    - Si Windows affiche « Windows a protégé votre ordinateur » (application non signée) :
      cliquez sur « Informations complémentaires » puis « Exécuter quand même ».
-   - Au premier lancement, le moteur de transcription (~500 Mo) est téléchargé : laissez
-     l'application ouverte quelques minutes (message bleu dans la fenêtre).
-   - Internet est nécessaire pour ce premier téléchargement, puis à chaque fin d'appel
-     pour la rédaction de la note par Claude.
+   - Le moteur de transcription est livré dans le dossier « models » : aucun téléchargement,
+     aucun accès Internet nécessaire. Ne déplacez pas l'exe hors de ce dossier.
+   - Au lancement, le moteur se prépare quelques secondes (message bleu dans la fenêtre).
 
 2. Autoriser le micro (une seule fois)
    - Paramètres Windows › Confidentialité et sécurité › Microphone :
@@ -21,30 +22,30 @@ rédige la note Phone Call. Relisez toujours la note avant de la coller dans le 
    - Le son du PC (voix de l'interlocuteur) ne demande aucune autorisation : il est capté
      sur le périphérique choisi dans l'application.
 
-3. Enregistrer la clé API Claude (une seule fois par PC et par session Windows)
-   - Créez la clé sur console.anthropic.com › API Keys (compte de l'entreprise).
-   - Dans l'application : bouton « Clé API » (en haut à droite), collez la clé, cliquez
-     « Vérifier et enregistrer ». La clé est vérifiée puis rangée dans le coffre Windows
-     (Gestionnaire d'identification › Informations d'identification Windows › PhoneCallDesktop).
-   - Ne collez jamais la clé dans un fichier, un e-mail ou une conversation.
-   - Pour la retirer : bouton « Clé API » › « Supprimer la clé de ce PC ».
-
-4. Utiliser
+3. Utiliser
    - Choisissez « Son du PC » = le périphérique où vous entendez l'appel (souvent le casque),
      et « Micro » = le micro du casque.
    - Cochez la case d'information, cliquez Démarrer. Le bandeau rouge indique que l'écoute est active.
-   - Cliquez Fin (ou touche Échap) : l'écoute s'arrête ; la note est rédigée par Claude
-     en quelques secondes, avec les points à vérifier.
+   - Cliquez Fin (ou touche Échap) : l'écoute s'arrête, la synthèse s'affiche.
    - Relisez, modifiez si besoin, Copier la note, collez dans le CRM.
 
+4. Comment la synthèse sans IA est faite
+   - Le programme ne « comprend » pas l'appel : il recopie les phrases importantes, entre
+     guillemets, repérées par des règles (« je voudrais », « je vous propose », « je vais »,
+     « d'accord », montants, dates...).
+   - Le motif est deviné par les mots-clés du fichier business.yaml (modifiable avec le
+     Bloc-notes, à faire valider par le métier).
+   - Il peut manquer une information ou choisir une phrase peu utile : complétez la note.
+
 5. Outils
-   - « Mode demonstration.bat » : conversation fictive, sans micro ni IA (note simulée).
+   - « Mode demonstration.bat » : conversation fictive, sans micro.
    - « Diagnostic audio.bat » : vérifie en 10 s que le son du PC et le micro sont captés.
 
-6. Limites de cette version
-   - Sans clé API enregistrée, la transcription fonctionne mais la note ne peut pas être rédigée.
-   - Chaque note est facturée sur le compte Anthropic de la clé (quelques centimes par appel).
-   - La note peut contenir des erreurs : elle est une proposition à relire, jamais validée seule.
+6. Option : note rédigée par Claude (IA, payante)
+   - Dans config.env, remplacez PCD_NOTES_CLIENT=local par PCD_NOTES_CLIENT=anthropic,
+     relancez, puis bouton « Clé API ». La transcription (texte) est alors envoyée à Anthropic.
+
+7. Limites
    - Avec des haut-parleurs (sans casque), la voix de l'interlocuteur peut apparaître en double.
    - Aucun son n'est enregistré sur le disque ; la transcription est effacée par « Nouvelle conversation ».
 

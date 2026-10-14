@@ -83,6 +83,7 @@ pas sur le prix seul.
 
 | Scénario | Transcription | Note | Total par appel | Total par heure d'appels |
 |---|---|---|---|---|
+| **Local + note sans IA** (paquet téléchargeable) | 0 € | 0 € | **0 €** | 0 € |
 | Local + Opus 5.5 | 0 € | 0,04 – 0,09 $ | **0,04 – 0,09 $** | 0,60 – 1,35 $ |
 | Local + Sonnet 5.5 | 0 € | 0,02 – 0,045 $ | 0,02 – 0,045 $ | 0,30 – 0,70 $ |
 | AssemblyAI (2 flux) + Sonnet 5.5 | ~0,02 $ | 0,02 – 0,045 $ | ~0,04 – 0,065 $ | ~0,60 – 1,00 $ |
