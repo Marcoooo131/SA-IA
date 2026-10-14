@@ -65,17 +65,31 @@ la coller dans le CRM.
      annoncées comme faites alors qu'elles étaient proposées...) et affiche les points à confirmer.
    - Usage à faire valider par l'entreprise (données clients dans Copilot Chat).
 
-6. Outils
+   - Pendant l'appel, « Copier la transcription » (au-dessus de la transcription) copie le texte
+     déjà transcrit, à coller directement dans Copilot. Les phrases encore en cours finissent par « … ».
+
+6. Enchaîner les appels (liste d'attente)
+   - Après « Fin », vous pouvez cliquer « Démarrer » tout de suite : l'appel précédent finit sa
+     transcription et sa note en arrière-plan.
+   - « Appels de la session » (colonne de gauche) liste les appels : « Voir » affiche la note et
+     la transcription (avec boutons de copie), « Ouvrir » remet l'appel à l'écran (hors capture),
+     « Retirer » l'efface. Un message prévient quand une note est prête.
+   - Une seule capture à la fois. Les 10 derniers appels sont gardés en mémoire, jamais sur le disque.
+   - Si plusieurs appels sont traités en même temps, la transcription en direct peut prendre un peu
+     de retard : elle se rattrape à la fin.
+
+7. Outils
    - « Mode demonstration.bat » : conversation fictive, sans micro.
    - « Diagnostic audio.bat » : vérifie en 10 s que le son du PC et le micro sont captés.
 
-7. Option : note rédigée par Claude (IA, payante)
+8. Option : note rédigée par Claude (IA, payante)
    - Dans config.env, remplacez PCD_NOTES_CLIENT=local par PCD_NOTES_CLIENT=anthropic,
      relancez, puis bouton « Clé API ». La transcription (texte) est alors envoyée à Anthropic.
 
-8. Limites
+9. Limites
    - Avec des haut-parleurs (sans casque), la voix de l'interlocuteur peut apparaître en double.
-   - Aucun son n'est enregistré sur le disque ; la transcription est effacée par « Nouvelle conversation ».
+   - Aucun son n'est enregistré sur le disque ; la transcription est effacée par « Nouvelle conversation » ou « Retirer »,
+     et à la fermeture de l'application.
 
 Journaux techniques (sans contenu des conversations) :
    %LOCALAPPDATA%\PhoneCallDesktop\logs

@@ -237,6 +237,31 @@ def create_app(controller: SessionController, token: str, port_getter, hub: Hub)
         log.info("AI key deleted from the credential vault")
         return ai_key_status()
 
+    # ------------------------------------------------------------------ calls of the session (queue)
+
+    @app.get("/api/transcript/text")
+    def transcript_text(call: str | None = None):
+        """Transcription as plain text (live partials included), to copy into Copilot."""
+        text = controller.transcript_text(call)
+        return {"text": text, "chars": len(text)}
+
+    @app.get("/api/calls")
+    def calls():
+        return {"calls": controller.calls_summary(), "current_id": controller.current.id}
+
+    @app.get("/api/calls/{call_id}")
+    def call_details(call_id: str):
+        return controller.call_details(call_id)
+
+    @app.post("/api/calls/{call_id}/select")
+    def call_select(call_id: str):
+        return controller.select(call_id)
+
+    @app.delete("/api/calls/{call_id}")
+    def call_remove(call_id: str):
+        controller.remove(call_id)
+        return {"ok": True}
+
     @app.get("/api/history")
     def history_list():
         if controller.history is None:

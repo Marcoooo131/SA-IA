@@ -71,3 +71,18 @@ dialog { width: min(720px, 92vw); border: 1px solid var(--line); border-radius: 
 #copilot-answer { width: 100%; min-height: 320px; box-sizing: border-box; font: 13.5px/1.45 "Segoe UI", system-ui, sans-serif; padding: 8px; }
 .note-buttons.copilot { margin-top: 6px; }
 .call-kind { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.panel-head h2 { margin-bottom: 0; }
+.calls-box { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 8px; }
+.calls { list-style: none; padding: 0; margin: 6px 0 0; max-height: 260px; overflow-y: auto; }
+.calls li { border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; margin-bottom: 6px; font-size: 13px; }
+.calls li.current { border-color: var(--red); }
+.calls .call-head { display: flex; justify-content: space-between; gap: 6px; font-weight: 600; }
+.calls .call-state { font-size: 12px; padding: 1px 7px; border-radius: 10px; background: #eee; white-space: nowrap; }
+.calls .s-finalizing, .calls .s-generating { background: #fff3cd; }
+.calls .s-capturing { background: var(--red); color: #fff; }
+.calls .s-done { background: #e3f4e6; }
+.calls .s-error { background: #fde8e8; }
+.calls .call-preview { color: var(--muted); margin: 3px 0 5px; }
+.calls .call-actions button { margin-right: 4px; }
+#call-note, #call-transcript { width: 100%; min-height: 180px; box-sizing: border-box; font: 13.5px/1.45 "Segoe UI", system-ui, sans-serif; padding: 8px; }

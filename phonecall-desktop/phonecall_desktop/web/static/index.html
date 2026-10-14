@@ -72,10 +72,18 @@
     </div>
     <div id="lag" class="hint" hidden></div>
     <ul id="notices" class="notices" aria-live="polite"></ul>
+    <div id="calls-box" class="calls-box" hidden>
+      <h2>Appels de la session</h2>
+      <p class="hint">Après « Fin », un appel peut finir de se transcrire ici pendant que vous démarrez le suivant.</p>
+      <ul id="calls" class="calls"></ul>
+    </div>
   </section>
 
   <section class="panel transcript" aria-label="Transcription">
-    <h2>Transcription en direct</h2>
+    <div class="panel-head">
+      <h2>Transcription en direct</h2>
+      <button id="btn-copy-transcript" class="small" disabled title="Copier toute la transcription (même pendant l'appel), par exemple pour Copilot">Copier la transcription</button>
+    </div>
     <div id="transcript" class="transcript-body">
       <p class="empty" id="transcript-empty">La transcription s'affichera ici pendant l'appel.</p>
     </div>
@@ -121,6 +129,17 @@
     <button id="ai-key-delete" class="danger">Supprimer la clé de ce PC</button>
   </div>
 </dialog>
+<dialog id="call-dialog">
+  <div class="dialog-head"><h2 id="call-title">Appel</h2><button id="call-close" class="ghost">Fermer</button></div>
+  <p id="call-status" class="hint"></p>
+  <h3>Note Phone Call</h3>
+  <textarea id="call-note" readonly aria-label="Note de l'appel"></textarea>
+  <div class="note-buttons"><button id="call-copy-note" class="primary">Copier la note</button></div>
+  <h3>Transcription</h3>
+  <textarea id="call-transcript" readonly aria-label="Transcription de l'appel"></textarea>
+  <div class="note-buttons"><button id="call-copy-transcript">Copier la transcription</button></div>
+</dialog>
+
 <dialog id="copilot-dialog">
   <div class="dialog-head"><h2>Réponse de Copilot</h2><button id="copilot-close" class="ghost">Fermer</button></div>
   <p class="hint">Dans Copilot Chat, copiez sa réponse (bouton « Copier » sous la réponse), puis collez-la ici

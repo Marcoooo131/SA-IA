@@ -168,7 +168,7 @@ def test_copilot_endpoints(ended):
     assert r["chars"] == len(r["prompt"]) and not r["too_long"] and "\nAgent : Julie M.\n" in r["prompt"]
     assert c.post("/api/copilot/open").json() == {"opened": True, "url": "https://m365.cloud.microsoft/chat"}
     assert c.opened == ["https://m365.cloud.microsoft/chat"]  # the transcript is never in the URL
-    answer = answer_for(c.ctl._copilot, TEAM, demenagement="Oui, déménagement dans une maison plus grande")
+    answer = answer_for(c.ctl.current.copilot, TEAM, demenagement="Oui, déménagement dans une maison plus grande")
     state = c.post("/api/copilot/answer", json={"text": answer}).json()
     assert state["state"] == "done" and state["note"].startswith("Interlocuteur :\nNom : Non communiqué")
     assert "Déménagement : Oui, déménagement dans une maison plus grande" in state["note"]

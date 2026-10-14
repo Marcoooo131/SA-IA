@@ -330,3 +330,60 @@ def test_ui_copilot_copy_and_paste(running_app_local, tmp_path):
 
         for f in ("copilot_paste.png", "copilot_done.png"):
             shutil.copy(tmp_path / f, Path(out) / f)
+
+
+@pytest.mark.skipif(not HAS_PLAYWRIGHT or os.environ.get("PCD_SKIP_UI_TESTS") == "1", reason="UI tests disabled")
+def test_ui_copy_live_transcript_and_queue(running_app_local, tmp_path):
+    from playwright.sync_api import expect, sync_playwright
+
+    url, _ = running_app_local
+    with sync_playwright() as p:
+        browser = p.chromium.launch(executable_path=CHROMIUM)
+        ctx = browser.new_context(viewport={"width": 1400, "height": 900})
+        ctx.grant_permissions(["clipboard-read", "clipboard-write"], origin=url.split("/?")[0])
+        page = ctx.new_page()
+        page.goto(url)
+        expect(page.locator("#btn-copy-transcript")).to_be_disabled()
+        expect(page.locator("#calls-box")).to_be_hidden()
+        page.check("#consent")
+        page.click("#btn-start")
+        expect(page.locator("#transcript .seg").nth(3)).to_be_visible(timeout=30000)
+        # copy while the call is still running
+        page.click("#btn-copy-transcript")
+        expect(page.locator("#notices")).to_contain_text("Transcription copiée (jusqu'à maintenant")
+        live = page.evaluate("navigator.clipboard.readText()")
+        assert live.startswith("[00:00] Conseiller : Sector Alarm bonjour") and "Interlocuteur :" in live
+        expect(page.locator("#transcript .seg").nth(8)).to_be_visible(timeout=30000)
+        page.click("#btn-stop")
+        # next call at once, without waiting for the note of the first one
+        expect(page.locator("#btn-start")).to_be_enabled()
+        page.click("#btn-start")
+        expect(page.locator("#state-badge")).to_have_text("Capture en cours")
+        expect(page.locator("#calls li")).to_have_count(2)
+        first = page.locator("#calls li").nth(1)
+        expect(first.locator(".call-state")).to_have_text("Note prête", timeout=30000)
+        expect(first.locator("button", has_text="Ouvrir")).to_be_disabled()  # capture running
+        page.screenshot(path=str(tmp_path / "queue.png"))
+        first.locator("button", has_text="Voir").click()
+        expect(page.locator("#call-dialog")).to_be_visible()
+        assert page.locator("#call-note").input_value().startswith("Interlocuteur :")
+        assert page.locator("#call-transcript").input_value().startswith("[00:00] Conseiller : Sector Alarm bonjour")
+        page.screenshot(path=str(tmp_path / "queue_view.png"))
+        page.click("#call-copy-note")
+        expect(page.locator("#notices")).to_contain_text("Note copiée")
+        assert page.evaluate("navigator.clipboard.readText()").startswith("Interlocuteur :")
+        page.click("#call-close")
+        expect(page.locator("#call-dialog")).to_be_hidden()
+        expect(page.locator("#transcript .seg").nth(3)).to_be_visible(timeout=30000)
+        page.click("#btn-stop")
+        expect(page.locator("#state-badge")).to_have_text("Terminé", timeout=30000)
+        page.locator("#calls li").nth(1).locator("button", has_text="Ouvrir").click()
+        expect(page.locator("#calls li").nth(1)).to_contain_text("(affiché)")
+        assert page.locator("#note").input_value().startswith("Interlocuteur :")
+        browser.close()
+    out = os.environ.get("PCD_SCREENSHOT_DIR")
+    if out:
+        import shutil
+
+        for f in ("queue.png", "queue_view.png"):
+            shutil.copy(tmp_path / f, Path(out) / f)

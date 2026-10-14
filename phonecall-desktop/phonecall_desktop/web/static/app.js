@@ -83,11 +83,13 @@ function renderState(s) {
   document.title = capturing ? "● CAPTURE – Phone Call" : "Phone Call – prise de notes";
   const busy = ["capturing", "finalizing", "generating"].includes(st);
   const loading = current.recognizer_status === "loading";
-  $("btn-start").disabled = busy || loading || (current.consent_required && !$("consent").checked);
+  // the previous call can finish in the queue: only a running capture prevents a new start
+  $("btn-start").disabled = capturing || loading || (current.consent_required && !$("consent").checked);
+  $("btn-copy-transcript").disabled = segments.size === 0;
   $("engine-status").hidden = !loading;
   $("btn-stop").disabled = !capturing;
-  for (const id of ["use-system", "use-mic", "system-device", "mic-device", "btn-refresh", "consent", "call-direction", "call-type"]) $(id).disabled = busy;
-  $("btn-new").disabled = busy;
+  for (const id of ["use-system", "use-mic", "system-device", "mic-device", "btn-refresh", "consent", "call-direction", "call-type"]) $(id).disabled = capturing;
+  $("btn-new").disabled = capturing;
   const hasNote = st === "done" && $("note").value.trim().length > 0;
   $("btn-copy").disabled = !hasNote;
   $("btn-edit").disabled = st !== "done";
@@ -183,6 +185,87 @@ function applySnapshot(s) {
   drawTranscript();
   renderNote(s.note, s.note_meta);
   renderState(s);
+  renderCalls(s.calls || [], s.call_id);
+}
+
+// ------------------------------------------------------------------ calls of the session (queue)
+
+function hhmm(ts) {
+  return ts ? new Date(ts * 1000).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }) : "";
+}
+
+function renderCalls(calls, currentId) {
+  $("calls-box").hidden = calls.length === 0;
+  const list = $("calls");
+  list.innerHTML = "";
+  for (const c of calls) {
+    const li = document.createElement("li");
+    if (c.id === currentId) li.className = "current";
+    const head = document.createElement("div");
+    head.className = "call-head";
+    const title = document.createElement("span");
+    title.textContent = `Appel de ${hhmm(c.started_at)}${c.duration_s ? ` · ${fmt(c.duration_s)}` : ""}${c.id === currentId ? " (affiché)" : ""}`;
+    const state = document.createElement("span");
+    state.className = `call-state s-${c.state}`;
+    state.textContent = c.state === "done" ? "Note prête" : c.label;
+    head.append(title, state);
+    const preview = document.createElement("div");
+    preview.className = "call-preview";
+    preview.textContent = c.preview || "—";
+    const actions = document.createElement("div");
+    actions.className = "call-actions";
+    const view = document.createElement("button");
+    view.className = "small"; view.textContent = "Voir";
+    view.onclick = () => openCall(c.id);
+    actions.append(view);
+    if (c.id !== currentId) {
+      const open = document.createElement("button");
+      open.className = "small"; open.textContent = "Ouvrir";
+      open.disabled = current.state === "capturing";
+      open.title = "Afficher cet appel à l'écran (après la fin de l'appel en cours)";
+      open.onclick = () => api(`/api/calls/${c.id}/select`, { method: "POST" }).then(applySnapshot).catch((e) => notice("error", e.message));
+      actions.append(open);
+    }
+    if (["done", "error"].includes(c.state)) {
+      const del = document.createElement("button");
+      del.className = "small danger"; del.textContent = "Retirer";
+      del.onclick = async () => {
+        if (!confirm("Retirer cet appel de la liste (transcription et note effacées) ?")) return;
+        try { await api(`/api/calls/${c.id}`, { method: "DELETE" }); applySnapshot(await api("/api/state")); }
+        catch (e) { notice("error", e.message); }
+      };
+      actions.append(del);
+    }
+    li.append(head, preview, actions);
+    list.append(li);
+  }
+}
+
+async function openCall(id) {
+  try {
+    const d = await api(`/api/calls/${id}`);
+    $("call-title").textContent = `Appel de ${hhmm(d.started_at)}`;
+    $("call-status").textContent = d.state === "done" ? "Note prête." : `${d.label}…`;
+    $("call-note").value = d.note || (["finalizing", "generating"].includes(d.state) ? "La note sera disponible à la fin du traitement." : "Aucune note.");
+    $("call-transcript").value = d.transcript || "";
+    $("call-copy-note").disabled = !d.note;
+    $("call-copy-note").onclick = async () => { await copyText(d.note); notice("info", "Note copiée."); };
+    $("call-copy-transcript").onclick = async () => { await copyText(d.transcript); notice("info", "Transcription copiée."); };
+    if (!$("call-dialog").open) $("call-dialog").showModal();
+  } catch (e) { notice("error", e.message); }
+}
+
+async function copyTranscript() {
+  try {
+    const r = await api("/api/transcript/text");
+    if (!r.text) { notice("warning", "La transcription est vide pour le moment."); return; }
+    if (!(await copyText(r.text))) throw { message: "Copie impossible : réessayez." };
+    $("btn-copy-transcript").textContent = "Copiée ✓";
+    setTimeout(() => { $("btn-copy-transcript").textContent = "Copier la transcription"; }, 1500);
+    notice("info", current.state === "capturing"
+      ? "Transcription copiée (jusqu'à maintenant ; les phrases en cours sont marquées …)."
+      : "Transcription copiée : collez-la dans Copilot Chat (Ctrl+V).");
+  } catch (e) { notice("error", e.message); }
 }
 
 // ------------------------------------------------------------------ live connection
@@ -194,9 +277,16 @@ function connect() {
   ws.onmessage = (msg) => {
     const { type, data } = JSON.parse(msg.data);
     if (type === "snapshot") applySnapshot(data);
-    else if (type === "state") renderState(data);
-    else if (type === "segment") renderSegment(data);
-    else if (type === "transcript") { segments.clear(); data.segments.forEach((s) => segments.set(s.utterance_id, s)); drawTranscript(); }
+    else if (type === "state") {
+      if (data.call_id && current.call_id && data.call_id !== current.call_id) api("/api/state").then(applySnapshot);
+      else renderState(data);
+    }
+    else if (type === "segment") { if (!data.call_id || data.call_id === current.call_id) { renderSegment(data); renderState({}); } }
+    else if (type === "transcript") {
+      if (data.call_id && data.call_id !== current.call_id) return;
+      segments.clear(); data.segments.forEach((s) => segments.set(s.utterance_id, s)); drawTranscript(); renderState({});
+    }
+    else if (type === "calls") renderCalls(data.calls, data.current_id);
     else if (type === "note") { editing = false; $("note").readOnly = true; $("btn-edit").textContent = "Modifier la note"; renderNote(data.text, data.meta); renderState({}); }
     else if (type === "levels") renderLevels(data);
     else if (type === "notice") notice(data.level, data.message);
@@ -391,6 +481,8 @@ document.addEventListener("DOMContentLoaded", () => {
   $("history-delete-all").onclick = async () => { if (confirm("Supprimer tout l'historique ?")) { await api("/api/history/all", { method: "DELETE" }); openHistory(); } };
   // Escape key = immediate stop of the capture
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && current.state === "capturing") stop(); });
+  $("btn-copy-transcript").onclick = copyTranscript;
+  $("call-close").onclick = () => $("call-dialog").close();
   $("btn-copilot-prepare").onclick = prepareCopilot;
   $("btn-copilot-paste").onclick = openCopilotAnswer;
   $("copilot-close").onclick = () => $("copilot-dialog").close();
