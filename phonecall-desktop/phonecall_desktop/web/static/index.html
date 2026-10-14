@@ -46,6 +46,22 @@
     <p class="hint">Choisissez le périphérique sur lequel vous entendez l'appel (souvent le casque).
       Avec des haut-parleurs, la voix de l'interlocuteur est aussi captée par le micro : préférez un casque.</p>
 
+    <h2>Type d'appel</h2>
+    <div class="call-kind">
+      <select id="call-direction" aria-label="Sens de l'appel">
+        <option value="">Sens : auto</option>
+        <option value="entrant">Appel entrant</option>
+        <option value="sortant">Appel sortant</option>
+      </select>
+      <select id="call-type" aria-label="Type d'appel">
+        <option value="">Type : auto</option>
+        <option value="frontline">Frontline</option>
+        <option value="movers">Movers</option>
+        <option value="autre">Autre appel</option>
+      </select>
+    </div>
+    <p class="hint">Choisir le type avant l'appel rend le compte rendu plus fiable (sinon il est détecté et marqué « À confirmer »).</p>
+
     <label class="check consent" id="consent-row"><input type="checkbox" id="consent"> <span id="consent-label"></span></label>
 
     <p id="engine-status" class="engine-status" hidden>Préparation du moteur de transcription…

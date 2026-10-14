@@ -274,7 +274,8 @@ def test_ui_note_without_ai(running_app_local, tmp_path):
         page.click("#btn-stop")
         expect(page.locator("#state-badge")).to_have_text("Terminé", timeout=20000)
         note = page.locator("#note").input_value()
-        assert note.startswith("FRONTLINE") and "Service concernée : Déménagement" in note and "Réponse apporté :" in note
+        assert note.startswith("COMPTE RENDU D'APPEL — Movers") and "1. IDENTIFICATION DE L'APPEL" in note
+        assert "Date de déménagement : le mois prochain" in note and "8. INFORMATIONS COMPLÉMENTAIRES" in note
         expect(page.locator("#flags")).to_contain_text("Note sans IA")
         page.screenshot(path=str(tmp_path / "note_sans_ia.png"))
         browser.close()

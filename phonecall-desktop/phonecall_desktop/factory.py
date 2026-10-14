@@ -48,8 +48,10 @@ def build_note_client(settings: Settings) -> NoteClient:
     if settings.notes_client == "local":
         from .notes.business import load_categories
         from .notes.local_summary import LocalSummaryNoteClient
+        from .notes.template import load_template, template_path
 
-        return LocalSummaryNoteClient(load_categories(settings), settings.agent_name)
+        return LocalSummaryNoteClient(load_categories(settings), settings.agent_name,
+                                      load_template(template_path(settings)))
     if settings.notes_client == "anthropic":
         from .notes.direct import DirectAINoteClient
 

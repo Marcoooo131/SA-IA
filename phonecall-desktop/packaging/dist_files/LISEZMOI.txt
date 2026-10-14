@@ -2,9 +2,11 @@ PHONE CALL — prise de notes assistée
 ====================================
 
 Pendant l'appel : transcription en direct, calculée sur le PC.
-À la fin de l'appel : la note Phone Call dans le modèle FRONTLINE (Nom, Numéro, Agent,
-Service concernée, Raison de l'appel, Situation, Réponse apporté, Informations Complémentaires),
-remplie par le programme SANS IA avec les phrases de l'appel.
+À la fin de l'appel : le compte rendu Phone Call dans la template générale (8 rubriques :
+identification, motif, situation, échanges, actions et solutions, résultat, suivi, informations
+complémentaires ; champs Movers et Appel sortant quand ils s'appliquent), rempli par le programme
+SANS IA avec les phrases de l'appel. Chaque champ a une valeur : « Aucune information notifiée »
+si l'appel n'en parle pas, « À confirmer » si l'information est incertaine.
 Rien n'est envoyé sur Internet, aucun coût. Relisez et complétez toujours la note avant de
 la coller dans le CRM.
 
@@ -26,25 +28,27 @@ la coller dans le CRM.
 3. Utiliser
    - Choisissez « Son du PC » = le périphérique où vous entendez l'appel (souvent le casque),
      et « Micro » = le micro du casque.
+   - Choisissez le « Sens » (entrant / sortant) et le « Type » (Frontline, Movers, autre) de l'appel :
+     sinon ils sont détectés automatiquement et marqués « À confirmer ».
    - Cochez la case d'information, cliquez Démarrer. Le bandeau rouge indique que l'écoute est active.
    - Cliquez Fin (ou touche Échap) : l'écoute s'arrête, la note s'affiche.
    - Pour que le champ « Agent » soit rempli automatiquement : ouvrez config.env avec le
      Bloc-notes et écrivez votre nom après PCD_AGENT_NAME= (une seule fois).
+   - La date et l'heure de l'appel viennent de l'horloge du PC.
    - Relisez, modifiez si besoin, Copier la note, collez dans le CRM.
 
 4. Comment la note sans IA est remplie
    - Le programme ne « comprend » pas l'appel : il recopie les phrases, entre guillemets, et
-     les range dans les rubriques par des règles :
-       Raison de l'appel  = phrases de l'interlocuteur qui demandent (« je voudrais », « je souhaite »...)
-       Situation          = les autres phrases de l'interlocuteur
-       Réponse apporté    = ce que dit le conseiller (sans ses questions) + la décision de l'interlocuteur
-       Informations Complémentaires = suite prévue (« je vais », « je vous envoie »...), montants,
-                            dates, durée de l'appel
-   - Nom et numéro de téléphone : remplis seulement s'ils sont prononcés (« je m'appelle... »,
-     « Madame Durand », « 06 12 34 56 78 ») ; à vérifier, la transcription peut se tromper.
-   - Service concernée : deviné par les mots-clés du fichier business.yaml (modifiable avec le
-     Bloc-notes, à faire valider par le métier).
-   - Une phrase peut être mal rangée ou manquer : relisez et complétez la note.
+     les range dans les champs par des règles (« je voudrais » = demande, « j'ai envoyé » =
+     action effectuée, « je vais » / « vous devez » = action restante avec son responsable,
+     montants, dates, numéros, adresses...).
+   - Nom, numéro de téléphone, numéro WO, adresse : « À confirmer » (la transcription peut se tromper).
+   - Deux versions différentes (deux numéros, deux dates, accord puis refus) : « Contradiction
+     à vérifier », avec les deux versions.
+   - Les champs, leur ordre et leurs règles sont dans phone_call_template.yaml (modifiable avec
+     le Bloc-notes, à faire valider par le métier) ; les services dans business.yaml.
+   - Une vérification automatique s'affiche sous la note : points à confirmer, contradictions,
+     prochaines étapes manquantes. Relisez et complétez toujours la note.
 
 5. Outils
    - « Mode demonstration.bat » : conversation fictive, sans micro.

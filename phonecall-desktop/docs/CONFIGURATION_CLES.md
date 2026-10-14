@@ -5,7 +5,7 @@ Principe : **aucune clé dans le code, dans un fichier ou dans Git.** Deux modes
 
 | Mode | Où est la clé Claude | Pour qui |
 |---|---|---|
-| `local` — **note sans IA** (mode du paquet téléchargeable) | aucune clé : note au modèle FRONTLINE remplie par le programme, rien n'est envoyé | tous les postes, coût nul |
+| `local` — **note sans IA** (mode du paquet téléchargeable) | aucune clé : template générale remplie par le programme, rien n'est envoyé | tous les postes, coût nul |
 | `anthropic` — **clé dans l'application** (option payante) | coffre Windows de chaque PC, saisie par le bouton « Clé API » | un ou quelques postes |
 | `gateway` — passerelle de l'entreprise | serveur passerelle uniquement ; les postes ont un jeton révocable | déploiement à plusieurs conseillers |
 

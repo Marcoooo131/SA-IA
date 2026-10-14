@@ -5,22 +5,20 @@
 param([string]$WhisperModel = "small", [switch]$NoModel)
 $ErrorActionPreference = "Stop"
 python -m pip install --upgrade pip
-python -m pip install -e ".[build]" -e ..\phonecall-agent
-# --paths : take the packages from the sources (editable installs are not seen by PyInstaller).
-# phonecall_agent: only the note engine (prompt, schema, checks, Claude client) is bundled,
-# not the gateway server (Twilio, database, queue).
-pyinstaller --noconfirm --clean --name PhoneCallDesktop --windowed --paths . --paths ..\phonecall-agent `
+python -m pip install -e ".[build]"
+# --paths . : take the package from the sources (editable installs are not seen by PyInstaller)
+pyinstaller --noconfirm --clean --name PhoneCallDesktop --windowed --paths . `
   --collect-submodules phonecall_desktop `
   --collect-all faster_whisper --collect-all ctranslate2 --collect-all webview `
-  --collect-data phonecall_desktop --collect-data phonecall_agent `
-  --hidden-import phonecall_agent.note_service --hidden-import phonecall_agent.generation.anthropic_generator `
+  --collect-data phonecall_desktop `
   --hidden-import pyaudiowpatch `
   packaging\launcher.py
 # Files delivered next to the executable (configuration, README, shortcuts)
 Copy-Item -Path packaging\dist_files\* -Destination dist\PhoneCallDesktop\ -Recurse -Force
 if (-not (Test-Path dist\PhoneCallDesktop\config.env)) { throw "config.env absent du paquet (packaging\dist_files\config.env)" }
-# Business configuration of the note (categories, format): to be replaced by the validated version
+# Business configuration (categories) and Phone Call template: editable copies next to the .exe
 Copy-Item -Path ..\phonecall-agent\config\business.example.yaml -Destination dist\PhoneCallDesktop\business.yaml -Force
+Copy-Item -Path phonecall_desktop\notes\template\phone_call_template.yaml -Destination dist\PhoneCallDesktop\phone_call_template.yaml -Force
 if (-not $NoModel) {
   # Downloaded here (build machine), delivered in models\<name> next to the .exe
   python -c "import sys; from faster_whisper import download_model; download_model(sys.argv[1], output_dir=sys.argv[2])" $WhisperModel "dist\PhoneCallDesktop\models\$WhisperModel"

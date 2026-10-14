@@ -62,6 +62,8 @@ class StartRequest:
     system_device: str | None = None
     mic_device: str | None = None
     consent: bool = False
+    call_direction: str | None = None  # entrant | sortant | None (automatic detection)
+    call_type: str | None = None  # movers | frontline | autre | None (automatic detection)
 
 
 class SessionController:
@@ -85,6 +87,7 @@ class SessionController:
         self.note_text = ""  # what the user sees / edits / copies
         self.note_edited = False
         self.started_at: float | None = None
+        self.call_meta: dict = {}  # passed to the note: PC clock, call direction / type chosen by the advisor
         self.duration_s = 0
         self.opened_devices: dict[str, str] = {}
         self.session_id: str | None = None
@@ -181,6 +184,11 @@ class SessionController:
                 self._set_state(State.ERROR, exc)
                 raise
             self.started_at = time.time()
+            self.call_meta = {
+                "started_at": self.started_at,
+                "direction": req.call_direction if req.call_direction in ("entrant", "sortant") else None,
+                "variant": req.call_type if req.call_type in ("movers", "frontline", "autre") else None,
+            }
             self.session_id = new_request_id()
             log.info("capture started channels=%s", ",".join(c.value for c in channels))
             self._set_state(State.CAPTURING)
@@ -294,7 +302,8 @@ class SessionController:
         self._set_state(State.GENERATING)
         try:
             t0 = time.monotonic()
-            note = self.note_client.generate(self.assembler.final_segments(), self.duration_s, self._request_id)
+            note = self.note_client.generate(self.assembler.final_segments(), self.duration_s, self._request_id,
+                                             meta=self.call_meta)
             self.metrics["generation_s"] = round(time.monotonic() - t0, 2)
             self.metrics["generation_cost_usd"] = note.cost_usd
         except AppError as exc:

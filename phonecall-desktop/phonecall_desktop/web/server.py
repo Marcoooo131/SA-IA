@@ -38,6 +38,8 @@ class StartBody(BaseModel):
     system_device: str | None = None
     mic_device: str | None = None
     consent: bool = False
+    call_direction: str | None = Field(default=None, pattern=r"^(entrant|sortant)$")
+    call_type: str | None = Field(default=None, pattern=r"^(movers|frontline|autre)$")
 
 
 class NoteBody(BaseModel):

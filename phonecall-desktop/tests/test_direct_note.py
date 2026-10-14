@@ -13,15 +13,19 @@ from phonecall_desktop.audio.devices import SyntheticFileBackend
 from phonecall_desktop.audio.types import Channel
 from phonecall_desktop.config import Environment, Settings
 from phonecall_desktop.errors import AppError, ErrorCode
-from phonecall_desktop.notes.direct import DirectAINoteClient, business_config_path, validate_key_format
+from phonecall_desktop.notes.business import business_config_path
+from phonecall_desktop.notes.direct import DirectAINoteClient, validate_key_format
 from phonecall_desktop.session import SessionController
 from phonecall_desktop.stt.scripted import ScriptedRecognizer
 from phonecall_desktop.synthetic import generate_wav
 from phonecall_desktop.transcript.assembler import Segment
 from phonecall_desktop.web.server import Hub, create_app
 
-pytest.importorskip("phonecall_agent")
-from phonecall_agent.demo_data import load_ai_response_fixture, load_transcript_fixture  # noqa: E402
+from call_scripts import MOVERS  # noqa: E402
+
+from phonecall_desktop.notes.template import load_template  # noqa: E402
+
+TEMPLATE = load_template()
 
 KEY = "sk-ant-api03-" + "x" * 40
 REQUEST = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
@@ -69,29 +73,76 @@ def settings(**kw):
 
 
 def conversation() -> list[Segment]:
-    data = load_transcript_fixture("demenagement")
-    return [Segment(utterance_id=s["id"], channel=Channel.MIC if s["speaker"] == "advisor" else Channel.SYSTEM,
-                    t_start=s["start"], t_end=s["end"], text=s["text"], final=True) for s in data["segments"]]
+    return [Segment(f"u{i}", Channel(ch), i * 5.0, i * 5.0 + 4, text, final=True) for i, (ch, text) in enumerate(MOVERS)]
+
+
+def model_output(**fields) -> str:
+    """What Claude returns: every field of the template (absent unless given)."""
+    out = {f.id: {"status": "absent", "items": [], "reason": "", "evidence": []} for f in TEMPLATE.all_fields()}
+    for fid, v in fields.items():
+        out[fid] = {"status": "present", "items": [], "reason": "", "evidence": [], **v}
+    return json.dumps({"direction": "entrant", "variant": "movers", "fields": out}, ensure_ascii=False)
+
+
+GOOD_OUTPUT = model_output(
+    demande={"items": ["Transférer l'alarme suite au déménagement du 15 mars"], "evidence": ["S3"]},
+    nom={"items": ["Madame Durand"], "evidence": ["S2"]},
+    date_heure={"items": ["01/01/2020 à 08:00"], "evidence": []},
+    date_demenagement={"items": ["15 mars"], "evidence": ["S3"]},
+    numero_wo={"status": "uncertain", "items": ["458213"], "reason": "référence entendue", "evidence": ["S8"]},
+    actions_effectuees={"items": ["Audit programmé pour le 10 mars à 9 h"], "evidence": ["S15"]},
+    actions_restantes={"items": ["Envoyer l'attestation de vente — responsable : client"], "evidence": ["S16", "S99"]},
+    offre={"items": ["Un mois d'abonnement offert pour le transfert"], "evidence": ["S11"]},
+    decision={"items": ["Accord du client : « D'accord, ça me va. »"], "evidence": ["S12"]},
+    historique={"items": ["Non précisé"]},
+)
 
 
 def status_error(cls, code):
     return cls("error", response=httpx.Response(code, request=REQUEST), body=None)
 
 
-def test_generates_note_with_shared_prompt_and_checks():
-    messages = FakeMessages(load_ai_response_fixture("demenagement"))
+def test_fills_the_template_from_the_whole_transcript():
+    messages = FakeMessages(GOOD_OUTPUT)
     factory = fake_factory(messages)
-    client = DirectAINoteClient(settings(), lambda: KEY, client_factory=factory)
-    note = client.generate(conversation(), 95, "req-1")
-    assert note.category == "demenagement" and note.text and not note.simulated
-    assert note.prompt_version and note.model == "claude-opus-5-5" and note.cost_usd > 0
+    client = DirectAINoteClient(settings(agent_name="Julie M."), lambda: KEY, client_factory=factory)
+    clock = 1_776_155_520.0  # data of the PC
+    note = client.generate(conversation(), 95, "req-1", meta={"started_at": clock, "variant": "movers"})
+    t = note.text
+    assert t.startswith("COMPTE RENDU D'APPEL — Movers · Appel entrant")
+    assert "Demande du client : Transférer l'alarme suite au déménagement du 15 mars" in t
+    assert "Nom et prénom : À confirmer — entendu dans la conversation, non vérifié : Madame Durand" in t
+    assert "Agent : Julie M. (paramètre du poste)" in t
+    assert "01/01/2020" not in t and "(horloge du poste)" in t  # the date comes from the PC, never from the model
+    assert "Numéro WO : À confirmer — référence entendue : 458213" in t
+    assert "Historique utile : Aucune information notifiée" in t  # vague wording normalised
+    assert "Situation actuelle : Aucune information notifiée" in t
+    codes = {f["code"] for f in note.flags}
+    assert "preuve_inconnue" in codes  # S99 does not exist
+    assert not [f for f in note.flags if f["severity"] == "blocking"], note.flags
+    assert note.model == "claude-opus-5-5" and note.cost_usd > 0 and note.prompt_version == TEMPLATE.version
     assert factory.keys == [KEY]
     sent = messages.calls[0]
     assert sent["model"] == "claude-opus-5-5" and sent["output_config"]["effort"] == "medium"
-    assert sent["output_config"]["format"]["type"] == "json_schema"
+    assert sent["fallbacks"] == "default" and sent["betas"] == ["server-side-fallback-2026-07-01"]
+    schema = sent["output_config"]["format"]["schema"]
+    assert set(schema["properties"]["fields"]["required"]) == {f.id for f in TEMPLATE.all_fields()}
+    assert "Aucune information notifiée" in sent["system"] and "Numéro WO" in sent["system"]
     user = sent["messages"][0]["content"]
-    assert "[conseiller]" in user and "[interlocuteur]" in user and "déménage" in user
+    assert "[S1] [00:00] [conseiller]" in user and "[interlocuteur]" in user and "12 rue des Lilas" in user
+    assert "horloge du poste" in user and "Julie M." in user and "Movers" in user
     assert KEY not in json.dumps(sent, ensure_ascii=False, default=str)
+
+
+def test_model_claims_are_checked():
+    output = model_output(
+        actions_effectuees={"items": ["Je vous propose un rendez-vous"], "evidence": ["S11"]},
+        solutions={"items": ["Remise de 30 euros"], "evidence": ["S11"]},
+    )
+    note = DirectAINoteClient(settings(), lambda: KEY, client_factory=fake_factory(FakeMessages(output))).generate(
+        conversation(), 95, "req-2")
+    codes = {f["code"] for f in note.flags}
+    assert {"action_non_effectuee", "chiffre_non_trouve", "pas_de_suite"} <= codes
 
 
 def test_short_transcript_does_not_call_the_ai():
@@ -124,7 +175,7 @@ def test_api_errors_are_mapped(error, code):
 
 
 def test_invalid_ai_output_is_retried_then_reported():
-    messages = FakeMessages(load_ai_response_fixture("invalid_json"))
+    messages = FakeMessages('{"direction": "entrant", "fields": ')
     client = DirectAINoteClient(settings(), lambda: KEY, client_factory=fake_factory(messages))
     with pytest.raises(AppError) as err:
         client.generate(conversation(), 95, "req-5")
@@ -133,7 +184,7 @@ def test_invalid_ai_output_is_retried_then_reported():
 
 def test_new_key_rebuilds_the_client():
     keys = iter([KEY, KEY, KEY + "b"])
-    factory = fake_factory(FakeMessages(load_ai_response_fixture("demenagement")))
+    factory = fake_factory(FakeMessages(GOOD_OUTPUT))
     client = DirectAINoteClient(settings(), lambda: next(keys), client_factory=factory)
     for i in range(3):
         client.generate(conversation(), 95, f"req-{i}")
@@ -142,7 +193,8 @@ def test_new_key_rebuilds_the_client():
 
 def test_describe_for_selftest():
     info = DirectAINoteClient(settings(), lambda: None, client_factory=fake_factory()).describe()
-    assert info["prompt_version"] and info["prompt_chars"] > 1000 and info["categories"] > 0
+    assert info["template"] == TEMPLATE.version and info["prompt_chars"] > 1000 and info["categories"] > 0
+    assert info["schema_fields"] == info["fields"] == len(TEMPLATE.all_fields())
     assert info["key"] == "absent" and info["model"] == "claude-opus-5-5"
 
 

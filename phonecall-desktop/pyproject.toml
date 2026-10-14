@@ -13,8 +13,8 @@ dependencies = [
   "cryptography>=42",
   "keyring>=25",
   "faster-whisper>=1.1",
-  # Note engine (prompt, schema, checks) shared with the gateway: install ../phonecall-agent too
-  "anthropic>=1.13",
+  "pyyaml>=6",  # Phone Call template and business.yaml
+  "anthropic>=1.13",  # optional note mode written by Claude
   "PyAudioWPatch>=0.2.12; sys_platform == 'win32'",
   "pywebview>=5.0; sys_platform == 'win32'",
 ]
@@ -34,7 +34,7 @@ build-backend = "setuptools.build_meta"
 include = ["phonecall_desktop*"]
 
 [tool.setuptools.package-data]
-phonecall_desktop = ["web/static/*"]
+phonecall_desktop = ["web/static/*", "notes/template/*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

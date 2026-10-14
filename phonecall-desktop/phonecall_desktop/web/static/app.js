@@ -85,7 +85,7 @@ function renderState(s) {
   $("btn-start").disabled = busy || loading || (current.consent_required && !$("consent").checked);
   $("engine-status").hidden = !loading;
   $("btn-stop").disabled = !capturing;
-  for (const id of ["use-system", "use-mic", "system-device", "mic-device", "btn-refresh", "consent"]) $(id).disabled = busy;
+  for (const id of ["use-system", "use-mic", "system-device", "mic-device", "btn-refresh", "consent", "call-direction", "call-type"]) $(id).disabled = busy;
   $("btn-new").disabled = busy;
   const hasNote = st === "done" && $("note").value.trim().length > 0;
   $("btn-copy").disabled = !hasNote;
@@ -208,6 +208,7 @@ async function start() {
       use_system: $("use-system").checked, use_mic: $("use-mic").checked,
       system_device: $("system-device").value || null, mic_device: $("mic-device").value || null,
       consent: $("consent").checked,
+      call_direction: $("call-direction").value || null, call_type: $("call-type").value || null,
     }) });
   } catch (e) { notice("error", e.message); }
 }

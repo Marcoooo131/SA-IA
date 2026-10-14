@@ -68,7 +68,9 @@ class NoteClient(ABC):
     name = "abstract"
 
     @abstractmethod
-    def generate(self, segments: list[Segment], duration_s: int, request_id: str) -> NoteResult: ...
+    def generate(self, segments: list[Segment], duration_s: int, request_id: str,
+                 meta: dict | None = None) -> NoteResult:
+        """``meta``: authorised data of the PC (started_at, call direction / type chosen by the advisor)."""
 
 
 class GatewayNoteClient(NoteClient):
@@ -86,7 +88,8 @@ class GatewayNoteClient(NoteClient):
             headers={"User-Agent": "phonecall-desktop/0.1"},
         )
 
-    def generate(self, segments: list[Segment], duration_s: int, request_id: str) -> NoteResult:
+    def generate(self, segments: list[Segment], duration_s: int, request_id: str,
+                 meta: dict | None = None) -> NoteResult:
         token = self.token_provider()
         if not token:
             raise AppError(ErrorCode.NOTE_AUTH, "aucun jeton configuré")
@@ -138,7 +141,8 @@ class SimulatedNoteClient(NoteClient):
         self.fail_times = fail_times
         self.calls = 0
 
-    def generate(self, segments: list[Segment], duration_s: int, request_id: str) -> NoteResult:
+    def generate(self, segments: list[Segment], duration_s: int, request_id: str,
+                 meta: dict | None = None) -> NoteResult:
         self.calls += 1
         if self.fail_times > 0:
             self.fail_times -= 1

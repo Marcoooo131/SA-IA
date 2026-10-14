@@ -1,0 +1,236 @@
+# TEMPLATE GÉNÉRALE PHONE CALL — configuration centrale du compte rendu d'appel.
+#
+# Inspirée des templates métier Movers, Frontline et Appel sortant. Modifier ce fichier suffit
+# pour ajouter, retirer, renommer ou réordonner des champs : l'application, la note sans IA, la
+# note rédigée par Claude et la vérification automatique en dépendent toutes.
+# Une copie modifiable est livrée à côté de PhoneCallDesktop.exe (phone_call_template.yaml).
+#
+# Champs :
+#   id        identifiant stable (lettres, chiffres, _)
+#   label     intitulé affiché dans la note
+#   when      (option) le champ n'apparaît que pour ces types : movers, frontline, sortant, entrant, autre
+#   multi     true = plusieurs éléments (liste), false = une seule valeur
+#   help      consigne pour Claude (ce que le champ doit contenir)
+#   rule      règle de remplissage SANS IA (voir notes/template/rules.py) :
+#               meta: <nom>     information du poste (date, agent, type choisi...)
+#               extract: <nom>  extracteur dédié (téléphone, nom, adresse, WO...)
+#               quotes          phrases de la conversation : speaker (remote|advisor|any),
+#                               markers (au moins un), exclude (aucun), questions (only|exclude),
+#                               late (fin de l'appel), max, fallback (première phrase si rien)
+
+version: "2026-10-general-v1"
+title: "COMPTE RENDU D'APPEL"
+absent: "Aucune information notifiée"
+uncertain: "À confirmer"
+not_applicable: "Non applicable"
+
+# Types d'appel. Le conseiller peut les choisir avant l'appel ; sinon, détection automatique.
+call_types:
+  movers:
+    label: Movers
+    keywords: [déménage, déménagement, nouvelle adresse, nouveau logement, repreneur, emménage, transfert de l'installation]
+  frontline:
+    label: Frontline
+  autre:
+    label: Autre appel
+directions:
+  entrant: Appel entrant
+  sortant: Appel sortant
+
+sections:
+  - title: "1. Identification de l'appel"
+    fields:
+      - id: type_appel
+        label: Type d'appel
+        help: "Entrant ou sortant, et type métier (Movers, Frontline, autre)."
+        rule: {meta: call_type}
+      - id: service
+        label: Service concerné
+        help: "Service ou motif métier concerné par l'appel."
+        rule: {meta: service}
+      - id: interlocuteur
+        label: Interlocuteur et rôle
+        help: "Qui parle au conseiller et à quel titre (titulaire du contrat, proche, repreneur, agence...)."
+        multi: true
+        rule: {quotes: {speaker: remote, max: 2, markers: [je suis le, je suis la, je suis son, je suis sa, titulaire, abonné, propriétaire, locataire, de la part de, pour le compte de, je représente, mon père, ma mère, mon fils, ma fille, mon mari, ma femme, repreneur, nouveau propriétaire, agence, notaire, syndic, tuteur]}}
+      - id: interlocuteur_vise
+        label: Interlocuteur visé
+        when: [sortant]
+        help: "Personne que le conseiller cherche à joindre (appel sortant)."
+        rule: {quotes: {speaker: advisor, max: 1, markers: [je cherche à joindre, je souhaiterais parler, je voudrais parler, je souhaite parler, est-ce que je suis bien, suis-je bien, je cherche à contacter, je suis bien chez]}}
+      - id: nom
+        label: Nom et prénom
+        help: "Nom du client. Ne pas le déduire d'une transcription peu fiable : 'uncertain' avec ce qui a été entendu."
+        rule: {extract: customer_name}
+      - id: telephone
+        label: Numéro de téléphone
+        help: "Numéro prononcé dans l'appel ou fourni par les métadonnées ; 'uncertain' si seulement entendu."
+        rule: {extract: phone}
+      - id: agent
+        label: Agent
+        help: "Nom du conseiller : métadonnées du poste en priorité ; sinon 'uncertain' avec ce qui a été entendu."
+        rule: {meta: agent}
+      - id: date_heure
+        label: Date et heure de l'appel
+        help: "Uniquement depuis les métadonnées (horloge du poste), jamais depuis la conversation."
+        rule: {meta: datetime}
+      - id: objet
+        label: Objet de l'appel
+        help: "Objet en quelques mots."
+        rule: {meta: subject}
+      - id: objectif
+        label: Objectif de l'appel sortant
+        when: [sortant]
+        help: "Pourquoi le conseiller appelle (appel sortant)."
+        rule: {quotes: {speaker: advisor, max: 2, markers: [je vous appelle, je me permets de vous appeler, je vous contacte, je vous recontacte, je vous rappelle au sujet, je vous rappelle concernant, l'objet de mon appel, c'est au sujet de, c'est concernant]}}
+
+  - title: "2. Motif de l'appel"
+    fields:
+      - id: demande
+        label: Demande du client
+        multi: true
+        help: "Ce que le client demande, avec ses mots."
+        rule: {quotes: {speaker: remote, max: 4, fallback: true, markers: [je voudrais, je souhaite, je veux, j'aimerais, je vous appelle, j'appelle, je souhaiterais, est-ce que vous pouvez, pouvez-vous, pourriez-vous, j'ai besoin, il faudrait, résilier, déménage, problème, souci, ne marche, ne fonctionne, en panne, sonne, se déclenche, bip, ne s'allume], exclude: [non merci, je ne souhaite pas, je refuse, je ne veux pas, pas intéressé]}}
+
+  - title: "3. Situation du client"
+    fields:
+      - id: situation
+        label: Situation actuelle
+        multi: true
+        help: "Situation décrite par le client (faits, contexte)."
+        rule: {quotes: {speaker: remote, max: 8, questions: exclude, exclude_used: true, exclude: [d'accord, ça me va, je garde, non merci, je refuse, je ne souhaite pas, je vais, je vous envoie, je vous l'envoie, je vous rappellerai, je rappellerai, disponible, merci beaucoup, au revoir]}}
+      - id: historique
+        label: Historique utile
+        multi: true
+        help: "Appels, interventions ou demandes précédents évoqués."
+        rule: {quotes: {speaker: any, max: 3, markers: [déjà appelé, la dernière fois, l'année dernière, le mois dernier, déjà eu, précédemment, ancien dossier, suite à, toujours pas, encore une fois, deuxième fois, depuis le, depuis plusieurs, j'avais déjà, vous m'aviez]}}
+      - id: adresse
+        label: Adresse ou nouvelle adresse
+        when: [movers]
+        help: "Adresse actuelle et/ou nouvelle adresse, telles que dites."
+        rule: {extract: address}
+      - id: date_demenagement
+        label: Date de déménagement
+        when: [movers]
+        help: "Date ou période de déménagement annoncée."
+        rule: {extract: move_date}
+      - id: materiel
+        label: Matériel sur place
+        when: [movers]
+        multi: true
+        help: "Équipements installés évoqués (centrale, détecteurs, caméras...)."
+        rule: {quotes: {speaker: any, max: 3, questions: exclude, markers: [centrale, détecteur, caméra, sirène, badge, clavier, télécommande, boîtier, capteur, matériel, équipement, panneau, transmetteur]}}
+      - id: audit
+        label: Audit
+        when: [movers]
+        help: "Audit, étude ou visite technique évoqué, prévu ou réalisé."
+        multi: true
+        rule: {quotes: {speaker: any, max: 2, markers: [audit, étude, visite technique, repérage, évaluation du logement]}}
+      - id: numero_wo
+        label: Numéro WO
+        when: [movers]
+        help: "Numéro de Work Order ou d'intervention cité."
+        rule: {extract: wo_number}
+      - id: contrat
+        label: Situation contractuelle ou résiliation
+        when: [movers]
+        multi: true
+        help: "Contrat, abonnement, engagement, préavis, résiliation évoqués."
+        rule: {quotes: {speaker: any, max: 3, questions: exclude, markers: [contrat, abonnement, résili, engagement, préavis, mensualité, prélèvement, fin de contrat]}}
+      - id: contraintes
+        label: Contraintes signalées
+        multi: true
+        help: "Disponibilités, accès, contraintes de date ou de lieu signalées."
+        rule: {quotes: {speaker: remote, max: 3, markers: [pas disponible, indisponible, seulement le, uniquement le, pas avant, je travaille, absent, je ne serai pas, accès difficile, pas d'accès, digicode, parking, étage, pas de réseau, le matin, l'après-midi, en semaine, le week-end, chien, animaux]}}
+
+  - title: "4. Échanges et informations communiquées"
+    fields:
+      - id: informations
+        label: Informations communiquées
+        multi: true
+        help: "Informations factuelles données par le conseiller."
+        rule: {quotes: {speaker: advisor, max: 6, questions: exclude, markers: [c'est, il faut, le délai, le tarif, le prix, coûte, vous avez, votre contrat, votre abonnement, il y a, un technicien, nous pouvons, ça prend, comptez, je ne peux pas, pourra, peut], exclude: [je vous propose, je peux vous proposer, je vais, j'ai, je viens de, c'est noté, c'est fait, parce que, car, en fait, c'est-à-dire, la cause, c'est dû, cela vient, ça vient]}}
+      - id: explications
+        label: Explications apportées
+        multi: true
+        help: "Explications du fonctionnement, de la procédure ou d'une décision."
+        rule: {quotes: {speaker: advisor, max: 4, questions: exclude, markers: [parce que, car, en fait, c'est-à-dire, cela signifie, ça veut dire, la procédure, pour cela, afin de, le fonctionnement, ce qui permet, la cause, c'est dû, cela vient, ça vient, s'explique]}}
+      - id: questions_objections
+        label: Questions et objections
+        multi: true
+        help: "Questions et objections du client."
+        rule: {quotes: {speaker: remote, max: 5, questions: only, markers: [trop cher, pas d'accord, pas satisfait, je ne comprends pas, pourquoi, ça ne va pas, inadmissible, déçu, ce n'est pas normal, je ne veux pas]}}
+      - id: reponses
+        label: Réponses fournies
+        multi: true
+        help: "Réponses du conseiller aux questions et objections."
+        rule: {extract: answers_to_questions}
+
+  - title: "5. Actions et solutions apportées"
+    fields:
+      - id: actions_effectuees
+        label: Actions réellement effectuées
+        multi: true
+        help: "UNIQUEMENT les actions faites pendant l'appel (passé composé, « c'est fait »). Jamais une proposition."
+        rule: {quotes: {speaker: advisor, max: 4, markers: [je note, je prends note, je mets à jour, j'enregistre, j'ai envoyé, j'ai enregistré, j'ai appliqué, j'ai noté, j'ai transmis, j'ai créé, j'ai programmé, j'ai modifié, j'ai mis à jour, j'ai fait, j'ai ouvert, j'ai résilié, j'ai annulé, je viens de, c'est fait, c'est noté, c'est enregistré, a été envoyé, a été enregistré, est enregistré]}}
+      - id: solutions
+        label: Solutions proposées
+        multi: true
+        help: "Solutions proposées, acceptées ou non."
+        rule: {quotes: {speaker: advisor, max: 4, markers: [je vous propose, je peux vous proposer, nous pouvons vous proposer, on peut vous proposer, je vous conseille, la solution, il est possible de, vous pouvez, on pourrait, nous pourrions]}}
+      - id: offre
+        label: Offre commerciale
+        when: [movers]
+        multi: true
+        help: "Offre, remise ou geste commercial proposé."
+        rule: {quotes: {speaker: advisor, max: 2, markers: [offert, offerts, gratuit, remise, réduction, promotion, geste commercial, tarif préférentiel, offre]}}
+
+  - title: "6. Résultat de l'appel"
+    fields:
+      - id: decision
+        label: Décision du client
+        help: "Décision exprimée par le client (accord, refus, réflexion). 'contradictory' si accord et refus."
+        rule: {extract: decision}
+      - id: resultat
+        label: Résultat de l'appel
+        help: "Issue de l'appel d'après les faits de la conversation."
+        rule: {extract: outcome}
+
+  - title: "7. Suivi et prochaines étapes"
+    fields:
+      - id: rendez_vous
+        label: Rendez-vous
+        help: "Rendez-vous fixé (date, heure) ou seulement proposé ('uncertain')."
+        rule: {extract: appointment}
+      - id: actions_restantes
+        label: Actions restantes (responsable)
+        multi: true
+        help: "Chaque action à faire après l'appel, avec son responsable s'il est identifié (conseiller, client, technicien, service)."
+        rule: {extract: remaining_actions}
+      - id: echeance
+        label: Échéance ou rappel
+        help: "Date limite, rappel prévu."
+        rule: {extract: deadline}
+      - id: tiers
+        label: Contact repreneur ou tiers
+        when: [movers]
+        multi: true
+        help: "Repreneur, nouveau propriétaire, agence ou autre tiers et ses coordonnées si dites."
+        rule: {quotes: {speaker: any, max: 2, markers: [repreneur, nouveau propriétaire, nouveaux propriétaires, nouveaux occupants, locataire, agence, notaire, syndic, acheteur, acquéreur]}}
+      - id: documents
+        label: Documents attendus
+        multi: true
+        help: "Documents à envoyer ou à recevoir."
+        rule: {quotes: {speaker: any, max: 3, markers: [formulaire, attestation, justificatif, RIB, facture, document, photo, pièce jointe, devis, acte de vente, bail, mandat, enveloppe]}}
+      - id: etat_dossier
+        label: État du dossier
+        help: "État du dossier s'il est dit (en cours, clôturé, transmis)."
+        rule: {extract: case_state}
+
+  - title: "8. Informations complémentaires"
+    fields:
+      - id: complements
+        label: Informations complémentaires
+        multi: true
+        help: "Autres éléments utiles : montants, dates, références cités, durée de l'appel."
+        rule: {extract: complements}
