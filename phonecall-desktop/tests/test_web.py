@@ -274,8 +274,8 @@ def test_ui_note_without_ai(running_app_local, tmp_path):
         page.click("#btn-stop")
         expect(page.locator("#state-badge")).to_have_text("Terminé", timeout=20000)
         note = page.locator("#note").input_value()
-        assert note.startswith("Motif : Déménagement") and len(note.splitlines()) <= 10
-        expect(page.locator("#flags")).to_contain_text("Synthèse sans IA")
+        assert note.startswith("FRONTLINE") and "Service concernée : Déménagement" in note and "Réponse apporté :" in note
+        expect(page.locator("#flags")).to_contain_text("Note sans IA")
         page.screenshot(path=str(tmp_path / "note_sans_ia.png"))
         browser.close()
     out = os.environ.get("PCD_SCREENSHOT_DIR")

@@ -2,8 +2,8 @@
 
 Application de bureau Windows qui **capte la conversation sur l'ordinateur** (son joué par le PC
 via WASAPI loopback + micro du conseiller), la **transcrit en direct en français, localement**, puis
-produit une **note « Phone Call » de 10 lignes maximum sans IA** (synthèse faite par le programme,
-gratuite, hors ligne) — ou, en option, rédigée par Claude —, à relire et à copier
+produit une **note « Phone Call » sans IA dans le modèle FRONTLINE de l'entreprise** (rubriques
+remplies par le programme, gratuite, hors ligne) — ou, en option, rédigée par Claude —, à relire et à copier
 dans le CRM. Indépendante de Twilio.
 
 > ⚠️ **Prototype.** Testé automatiquement avec des sources audio simulées et des conversations

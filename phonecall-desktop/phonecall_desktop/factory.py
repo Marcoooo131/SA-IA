@@ -49,7 +49,7 @@ def build_note_client(settings: Settings) -> NoteClient:
         from .notes.business import load_categories
         from .notes.local_summary import LocalSummaryNoteClient
 
-        return LocalSummaryNoteClient(load_categories(settings), settings.note_max_lines)
+        return LocalSummaryNoteClient(load_categories(settings), settings.agent_name)
     if settings.notes_client == "anthropic":
         from .notes.direct import DirectAINoteClient
 

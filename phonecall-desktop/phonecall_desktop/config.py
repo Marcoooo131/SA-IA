@@ -81,7 +81,7 @@ class Settings(BaseSettings):
     # --- Notes
     # local (no AI, extractive summary) | anthropic (direct, key in the Windows vault) | gateway | simulated (tests)
     notes_client: str = "gateway"
-    note_max_lines: int = 10  # local mode
+    agent_name: str = ""  # local mode: "Agent" field of the Phone Call template
     gateway_url: str = ""
     gateway_timeout_s: float = 90.0
     gateway_ca_bundle: Path | None = None  # company CA if TLS inspection is used

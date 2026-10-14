@@ -28,50 +28,92 @@ def quotes(text):
     return re.findall(r"« (.+?) »", text)
 
 
+def section(text, title):
+    """Lines under a heading of the template, up to the next blank line."""
+    block = text.split(f"\n{title}\n", 1)[1]
+    return block.split("\n\n", 1)[0].splitlines()
+
+
+def field(text, label):
+    return next(line for line in text.splitlines() if line.startswith(f"{label} :")).split(" : ", 1)[1]
+
+
+TEMPLATE = ["FRONTLINE", "Interlocuteur :", "Nom :", "Numéro de téléphone :", "Agent :", "Service concernée :",
+            "Raison de l'appel :", "Situation :", "Réponse apporté :", "Informations Complémentaires :"]
+
+
 @pytest.mark.parametrize("scenario", list(SCENARIOS))
-def test_scenarios_fit_in_ten_lines_and_only_quote_what_was_said(scenario):
+def test_follows_the_company_template_and_only_quotes_what_was_said(scenario):
     segs = call(SCENARIOS[scenario])
     note = summarize(segs, 95, CATEGORIES)
-    lines = note.text.splitlines()
-    assert 3 <= len(lines) <= 10 and note.cost_usd == 0 and not note.simulated
+    positions = [note.text.find(h) for h in TEMPLATE]
+    assert -1 not in positions and positions == sorted(positions)  # every heading, in the template order
     said = " ".join(s.text for s in segs)
     for q in quotes(note.text):
         assert q.rstrip("…") in said  # verbatim, never reworded
-    assert lines[0].startswith("Motif : ") and "1 min 35 s" in lines[0]
-    assert any(f["code"] == "sans_ia" for f in note.flags)
+    assert "- Durée de l'appel : 1 min 35 s" in note.text
+    assert note.cost_usd == 0 and not note.simulated and any(f["code"] == "sans_ia" for f in note.flags)
 
 
 def test_moving_call():
     note = summarize(call(SCENARIOS["demenagement"]), 95, CATEGORIES)
-    assert note.category == "demenagement"
-    assert "Demande de l'interlocuteur : « Bonjour, je vous appelle parce que je déménage" in note.text
-    assert "Réponse de l'interlocuteur : « Je préfère en parler avec ma compagne" in note.text
-    assert "Suite prévue : « Je viens de vous envoyer le formulaire" in note.text
-    assert "Sector Alarm bonjour" not in note.text and "au revoir" not in note.text
+    t = note.text
+    assert note.category == "demenagement" and field(t, "Service concernée") == "Déménagement"
+    assert section(t, "Raison de l'appel :")[0].startswith("- « Bonjour, je vous appelle parce que je déménage")
+    assert "- « Dans une maison, un peu plus grande que mon appartement actuel. »" in section(t, "Situation :")
+    answers = section(t, "Réponse apporté :")
+    assert "- « Je peux vous proposer un rendez-vous avec un technicien. »" in answers
+    assert answers[-1].startswith("- Décision de l'interlocuteur : « Je préfère en parler avec ma compagne")
+    assert not any("?" in line for line in answers)  # the advisor's questions are not answers
+    assert section(t, "Informations Complémentaires :")[0].startswith("- Suite prévue : « Je viens de vous envoyer le formulaire")
+    assert "Sector Alarm bonjour" not in t and "au revoir" not in t
+    assert field(t, "Nom") == "" and field(t, "Numéro de téléphone") == ""  # not said: left for the advisor
 
 
 def test_retention_call():
-    note = summarize(call(SCENARIOS["resiliation"]), 120, CATEGORIES)
-    assert note.category == "retention"
-    assert "« D'accord, dans ce cas je garde le contrat. »" in note.text
-    assert "Éléments chiffrés cités : deux mois offerts" in note.text
-    assert "Conseiller : « Je peux vous proposer deux mois d'abonnement offerts" in note.text
+    t = summarize(call(SCENARIOS["resiliation"]), 120, CATEGORIES).text
+    assert field(t, "Service concernée") == "Rétention"
+    assert "- Décision de l'interlocuteur : « D'accord, dans ce cas je garde le contrat. »" in section(t, "Réponse apporté :")
+    assert "- Éléments chiffrés cités : deux mois offerts" in section(t, "Informations Complémentaires :")
 
 
-def test_long_call_is_capped_and_keeps_the_end():
+def test_name_phone_and_agent_when_said():
+    turns = [("mic", "Sector Alarm, Julie bonjour, je vous écoute."),
+             ("system", "Bonjour, je m’appelle Madame Durand, j'ai un problème avec ma centrale qui sonne la nuit."),
+             ("mic", "Je vais vous envoyer un technicien demain matin, Madame Durand."),
+             ("system", "Vous pouvez me joindre au 06.12.34.56.78 si besoin.")]
+    note = summarize(call(turns), 60, CATEGORIES)
+    t = note.text
+    assert field(t, "Nom") == "Madame Durand (à vérifier)"
+    assert field(t, "Numéro de téléphone") == "06 12 34 56 78 (à vérifier)"
+    assert field(t, "Agent") == "Julie"
+    assert not any("06" in line for line in section(t, "Situation :"))
+    assert any("Nom et numéro" in p for p in note.points_to_verify)
+    assert field(summarize(call(turns), 60, CATEGORIES, agent_name="Marc D.").text, "Agent") == "Marc D."
+
+
+def test_advisor_addressing_the_customer_gives_the_name():
+    turns = [("mic", "Bonjour Monsieur Martin, que puis-je faire pour vous aujourd'hui ?"),
+             ("system", "Je voudrais une attestation pour mon assurance habitation s'il vous plaît."),
+             ("mic", "Je vous envoie l'attestation par e-mail dans la journée.")]
+    t = summarize(call(turns), 50, CATEGORIES).text
+    assert field(t, "Nom") == "Monsieur Martin (à vérifier)" and field(t, "Agent") == ""
+    assert field(t, "Service concernée") == "Demande administrative"
+
+
+def test_long_call_keeps_many_words_without_duplicates():
     turns = [("system", "Bonjour, je voudrais savoir pourquoi ma centrale sonne toutes les nuits sans raison.")]
     turns += [("mic", f"Je vérifie le point numéro {i} sur votre installation de détecteurs.") for i in range(30)]
-    turns += [("system", f"Est-ce que le détecteur {i} peut être en cause selon vous ?") for i in range(10)]
+    turns += [("system", f"Le détecteur du salon {i} clignote aussi depuis la semaine dernière.") for i in range(10)]
     turns += [("mic", "Je vais programmer le passage d'un technicien mardi prochain à 14 h.")]
     turns += [("system", "D'accord, ça me va pour mardi.")]
-    note = summarize(call(turns), 600, CATEGORIES)
-    assert note.category == "sav" and len(note.text.splitlines()) <= 10
-    assert note.text.count("peut être en cause") == 1  # near-duplicates quoted once
-    lines = summarize(call(turns), 600, CATEGORIES, max_lines=5).text.splitlines()
-    assert len(lines) == 5 and lines[0].startswith("Motif")
-    assert any(line.startswith("Suite prévue") and "mardi prochain" in line for line in lines)
-    assert any(line.startswith("Réponse de l'interlocuteur") for line in lines)
-    assert lines[-1].startswith("Éléments chiffrés cités") and "mardi prochain" in lines[-1] and "14 h" in lines[-1]
+    t = summarize(call(turns), 600, CATEGORIES).text
+    assert field(t, "Service concernée") == "Service après-vente"
+    assert t.count("clignote aussi") == 1 and t.count("Je vérifie le point") == 1  # near-duplicates quoted once
+    info = section(t, "Informations Complémentaires :")
+    assert info[0].startswith("- Suite prévue : « Je vais programmer le passage d'un technicien mardi prochain à 14 h")
+    assert any("mardi prochain" in line and "14 h" in line for line in info)
+    assert "- Durée de l'appel : 10 min 00 s" in info
 
 
 def test_uncertain_passages_are_not_quoted_and_their_figures_are_to_verify():
@@ -86,19 +128,17 @@ def test_uncertain_passages_are_not_quoted_and_their_figures_are_to_verify():
 def test_amounts_dates_and_durations_are_extracted():
     turns = [("system", "Je voudrais savoir combien coûte la caméra supplémentaire pour mon garage."),
              ("mic", "Elle coûte 149 euros, ou quarante-neuf euros par mois pendant trois mois, livrée le 12 avril.")]
-    note = summarize(call(turns), 60, CATEGORIES)
-    line = note.text.splitlines()[-1]
-    assert line.startswith("Éléments chiffrés cités")
+    line = next(x for x in summarize(call(turns), 60, CATEGORIES).text.splitlines() if "Éléments chiffrés" in x)
     for v in ("149 euros", "quarante-neuf euros par mois", "trois mois", "le 12 avril"):
         assert v in line
 
 
-def test_unknown_motive_is_flagged():
+def test_unknown_service_is_left_empty_and_flagged():
     turns = [("system", "Bonjour, je voudrais parler à la personne qui m'a appelé hier matin."),
              ("mic", "Je vais regarder qui a essayé de vous joindre et je vous rappelle dans la journée.")]
     note = summarize(call(turns), 40, [Category("x", "X", ["inexistant"])])
-    assert note.category is None and "Motif : non déterminé" in note.text
-    assert any(f["code"] == "motif_indetermine" for f in note.flags)
+    assert note.category is None and field(note.text, "Service concernée") == ""
+    assert any(f["code"] == "service_indetermine" for f in note.flags)
 
 
 def test_no_content():
@@ -106,10 +146,10 @@ def test_no_content():
     assert note.no_usable_content and note.text == NO_CONTENT_TEXT
 
 
-def test_long_sentences_are_cut():
-    long = "Je voudrais " + " ".join(["vraiment"] * 80) + " comprendre."
+def test_very_long_sentences_are_cut():
+    long = "Je voudrais " + " ".join(["vraiment"] * 150) + " comprendre."
     note = summarize(call([("system", long), ("mic", "Je vais vous envoyer un courrier détaillé dès demain matin.")]), 30, CATEGORIES)
-    assert all(len(q) <= 175 for q in quotes(note.text)) and "…" in note.text
+    assert all(len(q) <= 405 for q in quotes(note.text)) and "…" in note.text
 
 
 def test_factory_and_production_accept_local_mode():
@@ -138,7 +178,7 @@ def test_end_to_end_session_with_local_note(tmp_path):
     while ctl.state not in end_states and time.time() < deadline:
         time.sleep(0.05)
     assert ctl.state == State.DONE, ctl.error
-    assert ctl.note_text.startswith("Motif : Déménagement") and len(ctl.note_text.splitlines()) <= 10
+    assert ctl.note_text.startswith("FRONTLINE") and "Service concernée : Déménagement" in ctl.note_text
 
 
 # ---------------------------------------------------------------- model delivered in the package
