@@ -1,0 +1,39 @@
+# Reference deployment. Secrets come from ../.env (generated from your secret manager, never committed).
+# Put a TLS-terminating reverse proxy in front of "web".
+name: sms-reminders
+
+x-app: &app
+  build: ..
+  env_file: ../.env
+  environment:
+    SMR_DATABASE_URL: postgresql+psycopg://sms:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/sms_reminders
+  depends_on:
+    postgres: { condition: service_healthy }
+  restart: unless-stopped
+  read_only: true
+  tmpfs: [/tmp]
+  security_opt: ["no-new-privileges:true"]
+
+services:
+  web:
+    <<: *app
+    ports: ["127.0.0.1:8000:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 30s
+  # Persistent scheduler: runs whatever users do with their browsers. Several replicas are safe.
+  worker:
+    <<: *app
+    command: ["python", "-m", "sms_reminders.cli", "worker"]
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: sms
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: sms_reminders
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U sms"], interval: 10s }
+    restart: unless-stopped
+
+volumes:
+  pgdata:

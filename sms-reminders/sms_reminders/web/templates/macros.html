@@ -1,0 +1,43 @@
+{% macro job_badge(job) -%}
+{% if job is none %}<span class="badge muted" title="Aucune relance programmée pour cette étape">—</span>
+{%- else -%}
+<span class="badge {{ JOB_CLASS.get(job.status, '') }}" title="{{ fmt(job.scheduled_at) }}{% if job.status_reason %} — {{ job.status_reason }}{% endif %}">
+  {{ JOB_LABELS.get(job.status, job.status) }}
+  {%- if job.status in (JobStatus.SCHEDULED, JobStatus.RETRY_WAIT, JobStatus.BLOCKED) %} <small>{{ fmt_short(job.next_attempt_at) }}</small>{% endif %}
+  {%- if job.status in (JobStatus.SENT, JobStatus.SIMULATED) %} <small>{{ fmt_short(job.sent_at) }}</small>{% endif %}
+</span>
+{%- endif %}
+{%- endmacro %}
+
+{% macro confirm_box(appt, csrf, next_url) -%}
+<form method="post" action="/appointments/{{ appt.id }}/confirm" class="inline js-confirm">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <input type="hidden" name="next" value="{{ next_url }}">
+  <label class="check" title="Rendez-vous confirmé (confirmation interne de l'équipe)">
+    <input type="checkbox" name="confirmed" class="js-autosubmit" {{ 'checked' if appt.confirmation == Confirmation.CONFIRMED }}
+      {{ 'disabled' if appt.status != AppointmentStatus.ACTIVE }} aria-label="Rendez-vous confirmé">
+  </label>
+  <noscript><button>OK</button></noscript>
+</form>
+{%- endmacro %}
+
+{% macro confirmation_badge(appt) -%}
+{% if appt.status == AppointmentStatus.CANCELLED %}<span class="badge muted">Annulé</span>
+{% elif appt.confirmation == Confirmation.CONFIRMED %}<span class="badge ok" title="{{ SOURCE_LABELS.get(appt.confirmation_source, '') }}">Confirmé</span>
+{% else %}<span class="badge warn">À confirmer</span>{% endif %}
+{% if appt.suspended %}<span class="badge err" title="{{ appt.suspension_reason }}">Suspendu</span>{% endif %}
+{% if appt.resume_pending %}<span class="badge warn">Reprise à valider</span>{% endif %}
+{%- endmacro %}
+
+{% macro service_badge(service) -%}
+{% if service %}<span class="svc svc-{{ service }}">{{ Service.LABELS[service] }}</span>{% else %}<span class="badge err">Service manquant</span>{% endif %}
+{%- endmacro %}
+
+{% macro pager(page, total, page_size, base) -%}
+{% set pages = ((total + page_size - 1) // page_size) %}
+{% if pages > 1 %}<div class="pager">
+  {% if page > 1 %}<a href="{{ base }}&page={{ page - 1 }}">← Précédent</a>{% endif %}
+  <span>Page {{ page }} / {{ pages }}</span>
+  {% if page < pages %}<a href="{{ base }}&page={{ page + 1 }}">Suivant →</a>{% endif %}
+</div>{% endif %}
+{%- endmacro %}

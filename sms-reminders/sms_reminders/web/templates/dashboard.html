@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "macros.html" import job_badge, confirm_box, service_badge %}
+{% block title %}Tableau de bord{% endblock %}
+{% block content %}
+<div class="head">
+  <h1>Tableau de bord</h1>
+  <form method="get" class="inline">
+    <label>Période
+      <select name="period" class="js-autosubmit">
+        {% for p in (7, 30, 90) %}<option value="{{ p }}" {{ 'selected' if p == period }}>{{ p }} derniers jours</option>{% endfor %}
+      </select>
+    </label>
+    <noscript><button>OK</button></noscript>
+  </form>
+</div>
+
+{% if config_issues %}
+<div class="card warnbox">
+  <strong>Éléments restant à configurer</strong>
+  <ul>{% for i in config_issues %}<li>{{ i }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+{% macro tiles(ind) %}
+<div class="tiles">
+  <div class="tile"><span>Rendez-vous à venir</span><strong>{{ ind.upcoming }}</strong></div>
+  <div class="tile"><span>À confirmer</span><strong>{{ ind.upcoming_to_confirm }}</strong></div>
+  <div class="tile"><span>Confirmés</span><strong>{{ ind.upcoming_confirmed }}</strong></div>
+  <div class="tile"><span>SMS programmés</span><strong>{{ ind.sms_scheduled }}</strong></div>
+  <div class="tile"><span>SMS envoyés (réels)</span><strong>{{ ind.sms_sent }}</strong></div>
+  <div class="tile sim"><span>SMS simulés (non envoyés)</span><strong>{{ ind.sms_simulated }}</strong></div>
+  <div class="tile err"><span>SMS en erreur / à vérifier</span><strong>{{ ind.sms_errors }}</strong></div>
+  <div class="tile"><span>SMS expirés</span><strong>{{ ind.sms_expired }}</strong></div>
+  <div class="tile"><span>Taux de confirmation</span>
+    <strong>{% if ind.confirmation_rate is not none %}{{ '%.0f'|format(ind.confirmation_rate * 100) }} %{% else %}—{% endif %}</strong>
+    <em>{{ ind.rate_numerator }} / {{ ind.rate_denominator }}</em></div>
+</div>
+{% endmacro %}
+
+<h2>Ensemble</h2>
+{{ tiles(overall) }}
+<p class="small muted definition">
+  <strong>Définitions.</strong> « À venir », « À confirmer », « Confirmés » : rendez-vous non annulés dont l'heure n'est pas encore passée.
+  « SMS programmés » : en attente d'envoi (toutes dates). « Envoyés », « Simulés » : sur les {{ period }} derniers jours.
+  « En erreur / à vérifier » et « Expirés » : SMS prévus depuis {{ period }} jours ou à venir.
+  <strong>Taux de confirmation</strong> = rendez-vous confirmés ÷ rendez-vous non annulés dont la date est comprise dans les {{ period }} derniers jours (déjà passés).
+  Une confirmation enregistrée par la case à cocher est une confirmation interne de l'équipe, pas une réponse du client.
+</p>
+{% if no_service %}<p class="error">{{ no_service }} rendez-vous à venir n'ont pas de service : aucune relance n'est programmée pour eux. <a href="/appointments?flag=no_service">Voir</a></p>{% endif %}
+
+<div class="grid2">
+  {% for sv, ind in per_service.items() %}
+  <div><h2>{{ service_badge(sv) }}</h2>{{ tiles(ind) }}</div>
+  {% endfor %}
+</div>
+
+<h2>À confirmer dans les 48 prochaines heures</h2>
+{% if upcoming %}
+<table class="list">
+  <thead><tr><th>Confirmé</th><th>Client</th><th>Service</th><th>Rendez-vous</th><th>48 h</th><th>24 h (1)</th><th>24 h (2)</th></tr></thead>
+  <tbody>
+  {% for a in upcoming %}
+    <tr>
+      <td>{{ confirm_box(a, csrf, '/') }}</td>
+      <td><a href="/appointments/{{ a.id }}">{{ a.full_name }}</a><br><small class="muted">{{ a.customer_ref }}</small></td>
+      <td>{{ service_badge(a.service) }}</td>
+      <td>{{ fmt(a.appointment_at) }}</td>
+      <td>{{ job_badge(a.job_for(Step.J2)) }}</td>
+      <td>{{ job_badge(a.job_for(Step.J1_FIRST)) }}</td>
+      <td>{{ job_badge(a.job_for(Step.J1_SECOND)) }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p class="muted">Aucun rendez-vous à confirmer dans les 48 prochaines heures.</p>{% endif %}
+{% endblock %}

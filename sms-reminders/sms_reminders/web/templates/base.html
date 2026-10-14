@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Relances SMS{% endblock %} · Movers & Takeovers</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="dot"></span> Relances SMS <small>Movers & Takeovers</small></div>
+  {% if user %}
+  <div class="who">{{ user.login }} · {{ ROLE_LABELS[user.role] }}
+    <form method="post" action="/logout" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="link">Déconnexion</button>
+    </form>
+  </div>
+  {% endif %}
+</header>
+{% if provider.simulated %}
+<div class="banner sim"><strong>MODE SIMULATION</strong> — aucun SMS réel n'est envoyé. Les messages « Simulé — non envoyé » n'ont jamais quitté le serveur.</div>
+{% elif provider.name == 'disabled' %}
+<div class="banner err"><strong>Aucun fournisseur SMS configuré</strong> — tous les envois sont bloqués.</div>
+{% endif %}
+{% if settings.environment.value in ('dev', 'test') %}
+<div class="banner env">Environnement {{ settings.environment.value }} : utilisez uniquement des données fictives.</div>
+{% endif %}
+<div class="layout">
+  {% if user %}
+  {% set path = request.url.path %}{% set view = request.query_params.get('view', 'all') %}
+  <nav class="side">
+    <a href="/" class="{{ 'on' if path == '/' }}">Tableau de bord</a>
+    <a href="/appointments" class="{{ 'on' if path == '/appointments' and view == 'all' }}">Tous les rendez-vous</a>
+    <a href="/appointments?view=movers" class="{{ 'on' if path == '/appointments' and view == 'movers' }}">Movers</a>
+    <a href="/appointments?view=takeovers" class="{{ 'on' if path == '/appointments' and view == 'takeovers' }}">Takeovers</a>
+    <a href="/appointments?view=confirmed" class="{{ 'on' if path == '/appointments' and view == 'confirmed' }}">Confirmés</a>
+    <a href="/appointments?view=to_confirm" class="{{ 'on' if path == '/appointments' and view == 'to_confirm' }}">À confirmer</a>
+    <a href="/sms" class="{{ 'on' if path.startswith('/sms') }}">Historique des SMS</a>
+    {% if user.role >= Role.SUPERVISOR %}<a href="/import" class="{{ 'on' if path.startswith('/import') }}">Importation des clients</a>{% endif %}
+    {% if user.role >= Role.SUPERVISOR %}<a href="/settings" class="{{ 'on' if path.startswith('/settings') }}">Paramètres et templates</a>{% endif %}
+    <a href="/optouts" class="{{ 'on' if path.startswith('/optouts') }} sub">Liste d'opposition</a>
+    {% if user.role >= Role.ADMIN %}<a href="/audit" class="{{ 'on' if path.startswith('/audit') }} sub">Journal d'audit</a>{% endif %}
+  </nav>
+  {% endif %}
+  <main>
+    {% for kind, message in messages %}<div class="flash {{ kind }}">{{ message }}</div>{% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+</body>
+</html>

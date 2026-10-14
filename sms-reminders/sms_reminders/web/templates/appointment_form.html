@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Nouveau rendez-vous{% endblock %}
+{% block content %}
+<p><a href="/appointments">← Rendez-vous</a></p>
+<h1>Nouveau rendez-vous</h1>
+{% if errors %}<div class="flash err">{{ errors|join(' ; ') }}</div>{% endif %}
+<form method="post" action="/appointments/new" class="card form-grid">
+  <input type="hidden" name="csrf" value="{{ csrf }}">
+  <label>Numéro client interne * <input name="customer_ref" value="{{ values.customer_ref or '' }}" required></label>
+  <label>Identifiant rendez-vous (CRM) <input name="external_ref" value="{{ values.external_ref or '' }}"></label>
+  <label>Prénom <input name="first_name" value="{{ values.first_name or '' }}"></label>
+  <label>Nom * <input name="last_name" value="{{ values.last_name or '' }}" required></label>
+  <label>Téléphone mobile * <input name="phone" value="{{ values.phone or '' }}" required></label>
+  <label>Service * <select name="service"><option value="">— non renseigné (aucune relance) —</option>
+    {% for sv in Service.ALL %}<option value="{{ sv }}" {{ 'selected' if values.service == sv }}>{{ Service.LABELS[sv] }}</option>{% endfor %}</select></label>
+  <label>Date * <input type="date" name="appointment_date" value="{{ values.appointment_date or '' }}" required></label>
+  <label>Heure (Paris) * <input type="time" name="appointment_time" value="{{ values.appointment_time or '' }}" required></label>
+  <button class="primary">Créer et programmer les relances</button>
+</form>
+{% endblock %}

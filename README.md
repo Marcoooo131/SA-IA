@@ -9,6 +9,10 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > hypothèses de configuration** à valider par les responsables métier. Toutes les données préchargées
 > sont fictives. Aucune intégration à un système interne n'existe.
 
+> 💬 **Relances SMS Movers & Takeovers** (Python, distinct de l'application Movers) :
+> [`sms-reminders/`](sms-reminders/README.md) — import des rendez-vous, relances automatiques J-2 / J-1,
+> suivi des confirmations ; mode simulation tant que le fournisseur SMS n'est pas configuré.
+
 > 📞 **Prototypes « Phone Call »** (Python, distincts de l'application Movers) :
 > - [`phonecall-desktop/`](phonecall-desktop/README.md) — poste conseiller Windows : capture du son du PC et du micro,
 >   transcription en direct, note Phone Call à copier dans le CRM (indépendant de Twilio) ;

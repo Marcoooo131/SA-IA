@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Journal d'audit{% endblock %}
+{% block content %}
+<h1>Journal d'audit</h1>
+<table class="list small">
+  <thead><tr><th>Date</th><th>Par</th><th>Type</th><th>Rendez-vous</th><th>Message</th></tr></thead>
+  <tbody>{% for e in rows %}
+    <tr><td class="nowrap">{{ fmt(e.at, True) }}</td><td>{{ e.actor }}</td><td class="mono">{{ e.kind }}</td>
+      <td>{% if e.appointment_id %}<a href="/appointments/{{ e.appointment_id }}">#{{ e.appointment_id }}</a>{% endif %}</td><td>{{ e.message }}</td></tr>
+  {% endfor %}</tbody>
+</table>
+<div class="pager">{% if page > 1 %}<a href="?page={{ page - 1 }}">← Plus récents</a>{% endif %}{% if rows|length == 100 %}<a href="?page={{ page + 1 }}">Plus anciens →</a>{% endif %}</div>
+{% endblock %}

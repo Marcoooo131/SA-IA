@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Importation des clients{% endblock %}
+{% block content %}
+<h1>Importation des clients</h1>
+<div class="grid">
+  <div class="card">
+    <h2>1. Choisir un fichier</h2>
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    <form method="post" action="/import" enctype="multipart/form-data">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="file" name="file" accept=".csv,.xlsx" required>
+      <button class="primary">Analyser le fichier</button>
+    </form>
+    <p class="small muted">Formats : CSV (séparateur « ; » ou « , », UTF-8) ou Excel .xlsx (première feuille, première ligne = noms de colonnes).
+      Étapes suivantes : correspondance des colonnes, validation, aperçu, puis validation explicite. Rien n'est enregistré avant la validation.</p>
+    <p><a href="/import/exemple.csv">Télécharger un fichier d'exemple</a></p>
+  </div>
+  <div class="card">
+    <h2>Colonnes attendues</h2>
+    <ul class="small">
+      <li><strong>Numéro client interne</strong> (identifiant CRM — jamais le téléphone)</li>
+      <li><strong>Nom et prénom</strong> (une colonne) ou <strong>Nom</strong> + <strong>Prénom</strong></li>
+      <li><strong>Téléphone mobile</strong></li>
+      <li><strong>Date</strong> (JJ/MM/AAAA) et <strong>Heure</strong> (HH:MM, heure de Paris)</li>
+      <li><strong>Service</strong> : Movers ou Takeovers (sans service, aucune relance n'est programmée)</li>
+      <li>Facultatif : <strong>Confirmé</strong> (oui/non), <strong>Identifiant du rendez-vous</strong> CRM</li>
+    </ul>
+    <p class="small muted">Doublons : un rendez-vous déjà enregistré (même identifiant de rendez-vous, ou même client + service + date + heure) est ignoré
+      et ne reçoit aucune nouvelle relance. Un client peut avoir plusieurs rendez-vous.</p>
+  </div>
+</div>
+<h2>Derniers imports</h2>
+<table class="list">
+  <thead><tr><th>#</th><th>Date</th><th>Par</th><th>Fichier</th><th>Statut</th><th>Résultat</th></tr></thead>
+  <tbody>{% for b in batches %}
+    <tr><td><a href="/import/{{ b.id }}">{{ b.id }}</a></td><td>{{ fmt(b.created_at) }}</td><td>{{ b.created_by }}</td><td>{{ b.filename }}</td>
+      <td>{{ {'uploaded': 'À valider', 'committed': 'Validé', 'discarded': 'Abandonné'}[b.status] }}</td>
+      <td class="small">{% if b.summary %}{{ b.summary.created }} créés · {{ b.summary.duplicate_existing }} déjà enregistrés · {{ b.summary.duplicate_file }} doublons · {{ b.summary.error }} erreurs{% endif %}</td></tr>
+  {% else %}<tr><td colspan="6" class="muted">Aucun import.</td></tr>{% endfor %}</tbody>
+</table>
+{% endblock %}

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Paramètres et templates{% endblock %}
+{% set ro = user.role < Role.ADMIN %}
+{% block content %}
+<h1>Paramètres et templates</h1>
+{% if ro %}<div class="flash warn">Lecture seule : seuls les administrateurs peuvent modifier ces paramètres.</div>{% endif %}
+
+<div class="card {{ 'warnbox' if config_issues }}">
+  <h2>État de la configuration</h2>
+  {% if config_issues %}<ul>{% for i in config_issues %}<li>{{ i }}</li>{% endfor %}</ul>
+  {% else %}<p class="ok-text">Configuration complète.</p>{% endif %}
+  <dl class="kv small">
+    <dt>Fournisseur SMS</dt><dd><strong>{{ provider.name }}</strong>{% if provider.simulated %} — simulation, aucun envoi réel{% endif %}
+      <span class="muted">(variable SMR_SMS_PROVIDER, voir docs/FOURNISSEUR_SMS.md)</span></dd>
+    <dt>Accusés de livraison</dt><dd>{% if settings.public_base_url and not provider.simulated %}{{ settings.public_base_url }}/webhooks/sms/{{ provider.name }}/status{% else %}non configurés{% endif %}</dd>
+    <dt>CRM</dt><dd>Aucune connexion CRM configurée — les rendez-vous proviennent des imports CSV / Excel.</dd>
+  </dl>
+</div>
+
+<div class="card" id="services">
+  <h2>Numéros d'expédition</h2>
+  <p class="small muted">Chaque service utilise son propre expéditeur (numéro au format international, identifiant alphanumérique ou identifiant de service
+    de messagerie du fournisseur). Aucun expéditeur par défaut : un service sans expéditeur ne peut rien envoyer.</p>
+  <form method="post" action="/settings/services" class="form-grid">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {% for sv in Service.ALL %}{% set cfg = services[sv] %}
+    <fieldset><legend>{{ Service.LABELS[sv] }}</legend>
+      <label>Expéditeur <input name="sender_{{ sv }}" value="{{ cfg.sender_id or '' }}" placeholder="non configuré" {{ 'disabled' if ro }} maxlength="40"></label>
+      <label class="check"><input type="checkbox" name="enabled_{{ sv }}" {{ 'checked' if cfg.enabled }} {{ 'disabled' if ro }}> Envois actifs</label>
+      <small class="muted">Modifié par {{ cfg.updated_by }} le {{ fmt(cfg.updated_at) }}</small>
+    </fieldset>
+    {% endfor %}
+    {% if not ro %}<button class="primary">Enregistrer</button>{% endif %}
+  </form>
+</div>
+
+<div class="card" id="templates">
+  <h2>Templates SMS</h2>
+  <table class="list">
+    <thead><tr><th>Service</th><th>Étape</th><th>Statut</th><th>Versions</th><th></th></tr></thead>
+    <tbody>{% for sl in slots %}
+      <tr><td>{{ Service.LABELS[sl.service] }}</td><td>{{ Step.LABELS[sl.step] }}</td>
+        <td>{% if sl.active_version %}<span class="badge ok">Actif — v{{ sl.active_version.version }}</span>{% else %}<span class="badge err">Template non configuré</span>{% endif %}</td>
+        <td>{{ sl.versions|length }}</td>
+        <td><a href="/settings/templates/{{ sl.id }}">{{ 'Modifier' if not ro else 'Consulter' }}</a></td></tr>
+    {% endfor %}</tbody>
+  </table>
+</div>
+
+<div class="card" id="politique">
+  <h2>Politique de relance</h2>
+  <form method="post" action="/settings/policy" class="form-grid">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="section" value="policy">
+    <label class="check full"><input type="checkbox" name="sending_enabled" {{ 'checked' if policy.sending_enabled }} {{ 'disabled' if ro }}> Envois automatiques actifs (interrupteur général)</label>
+    <label>SMS J-2 : heures avant le rendez-vous <input type="number" name="j2_hours_before" value="{{ policy.j2_hours_before }}" {{ 'disabled' if ro }}></label>
+    <label>1er SMS J-1 : heures avant <input type="number" name="j1_hours_before" value="{{ policy.j1_hours_before }}" {{ 'disabled' if ro }}></label>
+    <label>2e SMS J-1 : minutes après le 1er <input type="number" name="j1_second_delay_minutes" value="{{ policy.j1_second_delay_minutes }}" {{ 'disabled' if ro }}></label>
+    <label>Point de départ du 2e SMS J-1
+      <select name="j1_second_anchor" {{ 'disabled' if ro }}>
+        <option value="scheduled" {{ 'selected' if policy.j1_second_anchor == 'scheduled' }}>heure prévue du 1er SMS</option>
+        <option value="actual_send" {{ 'selected' if policy.j1_second_anchor == 'actual_send' }}>heure réelle d'envoi du 1er SMS</option>
+      </select></label>
+    <label>Validité SMS J-2 (minutes après l'heure prévue) <input type="number" name="grace_minutes_j2" value="{{ policy.grace_minutes_j2 }}" {{ 'disabled' if ro }}></label>
+    <label>Validité 1er SMS J-1 (minutes) <input type="number" name="grace_minutes_j1_first" value="{{ policy.grace_minutes_j1_first }}" {{ 'disabled' if ro }}></label>
+    <label>Validité 2e SMS J-1 (minutes) <input type="number" name="grace_minutes_j1_second" value="{{ policy.grace_minutes_j1_second }}" {{ 'disabled' if ro }}></label>
+    <label>Validité relance manuelle (minutes) <input type="number" name="grace_minutes_manual" value="{{ policy.grace_minutes_manual }}" {{ 'disabled' if ro }}></label>
+    <label>Aucun envoi moins de … minutes avant le rendez-vous <input type="number" name="min_minutes_before_appointment" value="{{ policy.min_minutes_before_appointment }}" {{ 'disabled' if ro }}></label>
+    <label>Rendez-vous importé après l'échéance d'un SMS
+      <select name="late_policy" {{ 'disabled' if ro }}>
+        <option value="skip" {{ 'selected' if policy.late_policy == 'skip' }}>ne jamais envoyer rétroactivement</option>
+        <option value="send_within_grace" {{ 'selected' if policy.late_policy == 'send_within_grace' }}>envoyer seulement si encore dans la fenêtre de validité</option>
+      </select></label>
+    <label>Tentatives maximum en cas d'erreur temporaire <input type="number" name="max_attempts" value="{{ policy.max_attempts }}" {{ 'disabled' if ro }}></label>
+    <label>Délais entre tentatives (minutes, séparés par des virgules) <input name="retry_delays_minutes" value="{{ policy.retry_delays_minutes|join(', ') }}" {{ 'disabled' if ro }}></label>
+    <label>Revérification d'un SMS bloqué (minutes) <input type="number" name="blocked_recheck_minutes" value="{{ policy.blocked_recheck_minutes }}" {{ 'disabled' if ro }}></label>
+    <label>Anti-doublon : même étape déjà envoyée dans les … heures <input type="number" name="duplicate_window_hours" value="{{ policy.duplicate_window_hours }}" {{ 'disabled' if ro }}></label>
+    <label>Relance manuelle : intervalle minimal après un SMS (minutes) <input type="number" name="manual_min_interval_minutes" value="{{ policy.manual_min_interval_minutes }}" {{ 'disabled' if ro }}></label>
+    <label class="check"><input type="checkbox" name="quiet_hours_enabled" {{ 'checked' if policy.quiet_hours_enabled }} {{ 'disabled' if ro }}> Plage horaire sans envoi</label>
+    <label>De <input type="time" name="quiet_start" value="{{ policy.quiet_start.strftime('%H:%M') }}" {{ 'disabled' if ro }}></label>
+    <label>À <input type="time" name="quiet_end" value="{{ policy.quiet_end.strftime('%H:%M') }}" {{ 'disabled' if ro }}></label>
+    <label>Segments SMS maximum par message <input type="number" name="max_segments" value="{{ policy.max_segments }}" {{ 'disabled' if ro }}></label>
+    <label id="conservation">Conservation : jours après la date du rendez-vous <input type="number" name="retention_days" value="{{ policy.retention_days }}" {{ 'disabled' if ro }}></label>
+    <label>Fichiers d'import non validés : suppression après … heures <input type="number" name="import_retention_hours" value="{{ policy.import_retention_hours }}" {{ 'disabled' if ro }}></label>
+    {% if not ro %}<button class="primary">Enregistrer la politique</button>{% endif %}
+  </form>
+  <p class="small muted">Les relances sont calculées en durées exactes depuis l'heure du rendez-vous (heure de Paris, changements d'heure inclus).
+    Un SMS n'est jamais envoyé après sa fenêtre de validité : après une panne, il passe en « Expiré » au lieu de partir en retard.</p>
+  {% if not ro %}
+  <form method="post" action="/admin/purge" class="actions"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="danger">Lancer la purge de conservation maintenant</button></form>
+  {% endif %}
+</div>
+
+<div class="card" id="conformite">
+  <h2>Conformité</h2>
+  <p class="small">Les envois <strong>réels</strong> restent bloqués tant qu'un administrateur n'a pas enregistré la validation (finalité strictement opérationnelle
+    des messages, base légale, information des clients, gestion des oppositions, conditions du fournisseur — voir docs/CONFORMITE.md).
+    Le mode simulation n'est pas concerné.</p>
+  <form method="post" action="/settings/policy">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="section" value="compliance">
+    <label class="check"><input type="checkbox" name="compliance_validated" {{ 'checked' if policy.compliance_validated }} {{ 'disabled' if ro }}>
+      La finalité et le contenu des SMS ont été validés (juridique / DPO) et l'envoi réel est autorisé</label>
+    <label>Référence de la validation (date, personne, document) <textarea name="compliance_note" rows="2" {{ 'disabled' if ro }}>{{ policy.compliance_note }}</textarea></label>
+    {% if not ro %}<button>Enregistrer</button>{% endif %}
+  </form>
+</div>
+{% endblock %}

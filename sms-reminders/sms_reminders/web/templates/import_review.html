@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Import #{{ batch.id }}{% endblock %}
+{% block content %}
+<p><a href="/import">← Imports</a></p>
+<h1>Import #{{ batch.id }} <small class="muted">{{ batch.filename }}</small></h1>
+{% if batch.status != 'uploaded' %}
+  <div class="card">
+    <p>Import {{ 'validé le ' ~ fmt(batch.committed_at) if batch.status == 'committed' else 'abandonné' }}. Les données brutes du fichier ont été supprimées.</p>
+    {% if batch.summary %}<p>{{ batch.summary.created }} rendez-vous créés · {{ batch.summary.duplicate_existing }} déjà enregistrés (ignorés) ·
+      {{ batch.summary.duplicate_file }} doublons dans le fichier · {{ batch.summary.error }} lignes en erreur.</p>{% endif %}
+    <p><a href="/appointments">Voir les rendez-vous</a></p>
+  </div>
+{% else %}
+<div class="card">
+  <h2>2. Correspondance des colonnes</h2>
+  <form method="post" action="/import/{{ batch.id }}/mapping" class="form-grid">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    {% for key, label in fields.items() %}
+    <label>{{ label }}
+      <select name="map_{{ key }}"><option value="">— aucune —</option>
+        {% for h in batch.headers %}<option value="{{ h }}" {{ 'selected' if batch.mapping and batch.mapping.get(key) == h }}>{{ h }}</option>{% endfor %}
+      </select></label>
+    {% endfor %}
+    <button>Appliquer la correspondance</button>
+  </form>
+  <details><summary>Premières lignes du fichier</summary>
+    <table class="list small"><thead><tr>{% for h in batch.headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for r in sample %}<tr>{% for v in r %}<td>{{ v }}</td>{% endfor %}</tr>{% endfor %}</tbody></table>
+  </details>
+</div>
+
+<div class="card" id="apercu">
+  <h2>3. Validation et aperçu</h2>
+  {% if map_errors %}
+    <ul class="error">{% for e in map_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+  {% else %}
+    <p>{{ summary.total }} lignes : <strong>{{ summary.new }} nouveaux rendez-vous</strong>
+      ({{ summary.warnings }} avec avertissement) · {{ summary.duplicate_existing }} déjà enregistrés · {{ summary.duplicate_file }} doublons dans le fichier ·
+      <span class="{{ 'error' if summary.error }}">{{ summary.error }} en erreur</span>. Seuls les nouveaux rendez-vous seront créés.</p>
+    <table class="list small">
+      <thead><tr><th>Ligne</th><th>Résultat</th><th>N° client</th><th>Client</th><th>Téléphone</th><th>Service</th><th>Rendez-vous</th><th>Confirmé</th><th>Remarques</th></tr></thead>
+      <tbody>{% for r in results %}
+        <tr class="row-{{ r.status }}">
+          <td>{{ r.line }}</td><td>{{ row_labels[r.status] }}</td>
+          {% if r.data %}
+            <td class="mono">{{ r.data.customer_ref }}</td><td>{{ r.data.first_name }} {{ r.data.last_name }}</td><td class="mono">{{ r.data.phone }}</td>
+            <td>{{ Service.LABELS.get(r.data.service, '—') }}</td>
+            <td class="nowrap">{{ r.data.appointment_date.strftime('%d/%m/%Y') }} {{ r.data.appointment_time.strftime('%H:%M') }}</td>
+            <td>{{ 'oui' if r.data.confirmed else 'non' }}</td>
+          {% else %}<td colspan="6"></td>{% endif %}
+          <td>{% for e in r.errors %}<div class="error">{{ e }}</div>{% endfor %}{% for w in r.warnings %}<div class="warn-text">{{ w }}</div>{% endfor %}</td>
+        </tr>{% endfor %}
+      </tbody>
+    </table>
+    <form method="post" action="/import/{{ batch.id }}/commit" class="actions">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="primary" {{ 'disabled' if not summary.new }}>4. Valider l'import ({{ summary.new }} rendez-vous)</button>
+    </form>
+  {% endif %}
+  <form method="post" action="/import/{{ batch.id }}/discard">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><button class="danger">Abandonner cet import</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

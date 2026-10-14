@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% from "macros.html" import job_badge, confirm_box, confirmation_badge, service_badge %}
+{% block title %}{{ appt.full_name }}{% endblock %}
+{% block content %}
+<p><a href="/appointments">← Rendez-vous</a></p>
+<div class="head">
+  <h1>{{ appt.full_name }} <small class="muted mono">{{ appt.customer_ref }}</small></h1>
+  <div>{{ service_badge(appt.service) }} {{ confirmation_badge(appt) }}</div>
+</div>
+
+{% if blocker and appt.status == AppointmentStatus.ACTIVE and appt.confirmation != Confirmation.CONFIRMED %}
+<div class="flash warn">Relances automatiques à l'arrêt : {{ blocker }}.</div>
+{% endif %}
+{% if blocked_number %}<div class="flash err">Ce numéro figure dans la liste d'opposition : aucun SMS ne lui sera envoyé.</div>{% endif %}
+{% if not appt.phone_valid %}<div class="flash err">Numéro de téléphone invalide ou non mobile : les envois sont bloqués.</div>{% endif %}
+
+<div class="grid">
+  <div class="card">
+    <h2>Rendez-vous</h2>
+    <dl class="kv">
+      <dt>Numéro client interne</dt><dd class="mono">{{ appt.customer_ref }}</dd>
+      {% if appt.external_ref %}<dt>Identifiant rendez-vous</dt><dd class="mono">{{ appt.external_ref }}</dd>{% endif %}
+      <dt>Téléphone</dt><dd class="mono">{{ phone_display(appt.phone_e164) if appt.phone_e164 else appt.phone_raw }}</dd>
+      <dt>Date et heure</dt><dd>{{ appt.appointment_date.strftime('%d/%m/%Y') }} à {{ appt.appointment_time.strftime('%H:%M') }} <span class="muted">(heure de Paris)</span></dd>
+      <dt>Service</dt><dd>{{ service_badge(appt.service) }}</dd>
+      <dt>Confirmation</dt><dd>
+        <div class="confirm-line">{{ confirm_box(appt, csrf, '/appointments/' ~ appt.id) }} <span>Rendez-vous confirmé</span></div>
+        {% if appt.confirmation == Confirmation.CONFIRMED %}
+          <small class="muted">le {{ fmt(appt.confirmed_at) }} par {{ appt.confirmed_by }} — {{ SOURCE_LABELS.get(appt.confirmation_source, '') }}</small>
+        {% endif %}</dd>
+      {% if appt.status == AppointmentStatus.CANCELLED %}<dt>Annulation</dt><dd>le {{ fmt(appt.cancelled_at) }} par {{ appt.cancelled_by }} : {{ appt.cancellation_reason }}</dd>{% endif %}
+      {% if appt.suspended %}<dt>Suspension</dt><dd>{{ appt.suspension_reason }}</dd>{% endif %}
+      <dt>Importation</dt><dd>{{ fmt(appt.imported_at) }} — {{ appt.import_origin }} ({{ appt.created_by }})</dd>
+      <dt>Plan de relance</dt><dd>révision {{ appt.schedule_revision }}</dd>
+    </dl>
+
+    <details>
+      <summary>Modifier les données</summary>
+      <form method="post" action="/appointments/{{ appt.id }}/edit" class="form-grid">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <label>Numéro client interne <input name="customer_ref" value="{{ appt.customer_ref }}" required></label>
+        <label>Identifiant rendez-vous (CRM) <input name="external_ref" value="{{ appt.external_ref or '' }}"></label>
+        <label>Prénom <input name="first_name" value="{{ appt.first_name }}"></label>
+        <label>Nom <input name="last_name" value="{{ appt.last_name }}" required></label>
+        <label>Téléphone mobile <input name="phone" value="{{ appt.phone_raw }}" required></label>
+        <label>Service <select name="service"><option value="">— non renseigné —</option>
+          {% for sv in Service.ALL %}<option value="{{ sv }}" {{ 'selected' if appt.service == sv }}>{{ Service.LABELS[sv] }}</option>{% endfor %}</select></label>
+        <label>Date <input type="date" name="appointment_date" value="{{ appt.appointment_date.isoformat() }}" required></label>
+        <label>Heure <input type="time" name="appointment_time" value="{{ appt.appointment_time.strftime('%H:%M') }}" required></label>
+        <p class="small muted full">Changer la date, l'heure ou le service annule les relances non envoyées et recalcule le plan.</p>
+        <button class="primary">Enregistrer</button>
+      </form>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>Actions</h2>
+    {% if appt.status == AppointmentStatus.ACTIVE and not appt.suspended %}
+    <form method="post" action="/appointments/{{ appt.id }}/suspend" class="action">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input name="reason" placeholder="Motif de la suspension" required maxlength="255">
+      <button>Suspendre les relances</button>
+    </form>
+    {% endif %}
+
+    {% if (appt.resume_pending or appt.suspended) and appt.status == AppointmentStatus.ACTIVE %}
+    <div id="reprise" class="resume">
+      <h3>Reprise des relances</h3>
+      <p class="small">Aucune ancienne relance n'est réactivée automatiquement. Voici ce que la reprise programmerait :</p>
+      <ul class="small">{% for l in preview %}
+        <li class="{{ 'ok' if l.action == 'resume' else 'muted' }}">{{ Step.LABELS[l.step] }} (prévu {{ fmt(l.scheduled_at) }}) : {{ l.reason }}</li>
+      {% endfor %}</ul>
+      <form method="post" action="/appointments/{{ appt.id }}/resume">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <label class="check"><input type="checkbox" name="acknowledge"> J'ai vérifié que ces relances sont toujours pertinentes</label>
+        <button class="primary">Valider la reprise</button>
+      </form>
+    </div>
+    {% endif %}
+
+    {% if user.role >= Role.SUPERVISOR %}
+      {% if appt.status == AppointmentStatus.ACTIVE %}
+      <form method="post" action="/appointments/{{ appt.id }}/cancel" class="action">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input name="reason" placeholder="Motif d'annulation" required maxlength="255">
+        <button class="danger">Annuler le rendez-vous</button>
+      </form>
+      {% if appt.confirmation != Confirmation.CONFIRMED and not appt.suspended and appt.appointment_at > now %}
+      <form method="post" action="/appointments/{{ appt.id }}/manual" class="action">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input type="hidden" name="nonce" value="{{ nonce }}">
+        <label>Relance manuelle avec le template
+          <select name="template_step">{% for st in Step.AUTOMATIC %}<option value="{{ st }}">{{ Step.LABELS[st] }}</option>{% endfor %}</select></label>
+        <label class="check"><input type="checkbox" name="acknowledge"> Toutes les règles (confirmation, opposition, template, numéro, intervalle minimal) seront revérifiées avant l'envoi</label>
+        <button>Relancer maintenant</button>
+      </form>
+      {% endif %}
+      {% else %}
+      <form method="post" action="/appointments/{{ appt.id }}/reactivate" class="action">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><button>Réactiver le rendez-vous</button>
+      </form>
+      {% endif %}
+    {% endif %}
+
+    {% if appt.phone_e164 and not blocked_number %}
+    <form method="post" action="/optouts" class="action">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <input type="hidden" name="phone" value="{{ appt.phone_e164 }}">
+      <input type="hidden" name="next" value="/appointments/{{ appt.id }}">
+      <input type="hidden" name="reason" value="Demande de désinscription du client">
+      <button>Le client demande à ne plus recevoir de SMS</button>
+    </form>
+    {% endif %}
+
+    {% if user.role >= Role.ADMIN %}
+    <details class="danger-zone"><summary>Effacement des données (RGPD)</summary>
+      <form method="post" action="/appointments/{{ appt.id }}/delete">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input name="reason" placeholder="Motif (ex. demande d'effacement)" maxlength="200">
+        <input name="confirm_text" placeholder="Saisir SUPPRIMER">
+        <button class="danger">Supprimer définitivement</button>
+      </form>
+    </details>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h2>Relances SMS</h2>
+  <table class="list">
+    <thead><tr><th>Étape</th><th>Plan</th><th>Prévu</th><th>Valable jusqu'au</th><th>Statut</th><th>Envoi</th><th>Livraison</th><th>Template</th><th>Tentatives</th><th>Détail</th></tr></thead>
+    <tbody>
+    {% for j in appt.jobs|reverse %}
+      <tr class="{{ 'outdated' if j.step != Step.MANUAL and j.revision != appt.schedule_revision }}">
+        <td>{{ Step.LABELS[j.step] }}{% if j.step == Step.MANUAL %}<br><small class="muted">template {{ Step.LABELS[j.template_step] }} — {{ j.created_by }}</small>{% endif %}</td>
+        <td>r{{ j.revision }}{% if j.step != Step.MANUAL and j.revision != appt.schedule_revision %} <small class="muted">(ancien)</small>{% endif %}</td>
+        <td class="nowrap">{{ fmt(j.scheduled_at) }}</td>
+        <td class="nowrap">{{ fmt(j.expires_at) }}</td>
+        <td>{{ job_badge(j) }}</td>
+        <td class="nowrap">{{ fmt(j.sent_at) if j.sent_at else '—' }}{% if j.simulated %}<br><strong class="sim-text">SIMULATION</strong>{% endif %}
+          {% if j.provider_message_id %}<br><small class="mono muted">{{ j.provider_message_id }}</small>{% endif %}</td>
+        <td>{{ DELIVERY_LABELS.get(j.delivery_status, j.delivery_status or '—') }}</td>
+        <td>{% if j.template_version %}v{{ j.template_version.version }}{% else %}—{% endif %}</td>
+        <td>{{ j.attempts }}</td>
+        <td class="small">{{ j.status_reason or '' }}{% if j.error_code and j.error_code != 'blocked' %}<br><span class="error">{{ j.error_code }} {{ j.error_message or '' }}</span>{% endif %}
+          {% if j.body %}<details><summary>Texte</summary><pre class="sms">{{ j.body }}</pre><small class="muted">Expéditeur : {{ j.sender }} · {{ j.segments }} segment(s)</small></details>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="10" class="muted">Aucune relance programmée.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Historique</h2>
+  <table class="list small">
+    <thead><tr><th>Date</th><th>Par</th><th>Action</th></tr></thead>
+    <tbody>{% for e in events %}<tr><td class="nowrap">{{ fmt(e.at, True) }}</td><td>{{ e.actor }}</td><td>{{ e.message }}</td></tr>{% endfor %}</tbody>
+  </table>
+</div>
+{% endblock %}
