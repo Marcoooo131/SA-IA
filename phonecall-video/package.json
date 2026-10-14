@@ -1,0 +1,18 @@
+{
+  "name": "phonecall-ai-video",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Vidéo motion design de 30 s (1080×1920, 60 i/s) pour PHONE CALL AI, rendue de façon déterministe (Canvas 2D + Web Audio, Playwright, FFmpeg).",
+  "scripts": {
+    "stills": "node scripts/render.mjs --stills 1.5,5.8,10.5,15.2,21,25.2,29 --safe",
+    "draft": "node scripts/render.mjs --fps 15",
+    "render": "node scripts/render.mjs && node scripts/assemble.mjs && node scripts/verify.mjs",
+    "assemble": "node scripts/assemble.mjs",
+    "verify": "node scripts/verify.mjs",
+    "preview": "npx http-server -p 8080 -c-1 ."
+  },
+  "optionalDependencies": {
+    "playwright": "1.56.1"
+  }
+}
