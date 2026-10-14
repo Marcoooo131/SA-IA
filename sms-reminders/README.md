@@ -18,6 +18,9 @@ second SMS 3 h plus tard), suivi des confirmations, historique complet, tableau 
 >
 > Liste complète : [docs/CHECKLIST_PRODUCTION.md](docs/CHECKLIST_PRODUCTION.md).
 
+> **Version Windows prête à lancer** (un seul `.exe`, sans serveur) :
+> [../sms-reminders-desktop/](../sms-reminders-desktop/README.md).
+
 ## Démarrage rapide (poste de développement)
 
 Prérequis : Python 3.11+.

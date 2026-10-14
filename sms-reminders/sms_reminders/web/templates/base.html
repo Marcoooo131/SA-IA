@@ -24,6 +24,10 @@
 {% elif provider.name == 'disabled' %}
 <div class="banner err"><strong>Aucun fournisseur SMS configuré</strong> — tous les envois sont bloqués.</div>
 {% endif %}
+{% if settings.environment.value == 'desktop' %}
+<div class="banner env"><strong>Application de bureau</strong> — les relances ne partent que tant que cette application est ouverte et l'ordinateur allumé.
+  Pour un fonctionnement permanent, utilisez la version serveur.</div>
+{% endif %}
 {% if settings.environment.value in ('dev', 'test') %}
 <div class="banner env">Environnement {{ settings.environment.value }} : utilisez uniquement des données fictives.</div>
 {% endif %}

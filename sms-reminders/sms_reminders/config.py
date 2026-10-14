@@ -17,6 +17,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Environment(str, Enum):
     DEV = "dev"
     TEST = "test"
+    # Single-workstation Windows application (sms-reminders-desktop): local SQLite database,
+    # server bound to 127.0.0.1, login by a one-time token generated at each launch.
+    DESKTOP = "desktop"
     STAGING = "staging"
     PRODUCTION = "production"
 
@@ -50,6 +53,10 @@ class Settings(BaseSettings):
     # Roles: advisor (conseiller), supervisor (responsable), admin. Target: company SSO (OIDC).
     ui_users: str = ""
     cookie_secure: bool = True
+    # Desktop application only: token given by the launcher in the URL it opens; it logs in the
+    # Windows user (SMR_LOCAL_USER) as administrator. Empty = disabled (server deployments).
+    local_login_token: SecretStr = SecretStr("")
+    local_user: str = ""
 
     # --- Import
     import_max_bytes: int = 5 * 1024 * 1024
@@ -68,6 +75,8 @@ class Settings(BaseSettings):
 
     def assert_safe_for_environment(self) -> None:
         """Refuse dangerous configurations outside of dev/test."""
+        if self.local_login_token.get_secret_value() and self.environment != Environment.DESKTOP:
+            raise RuntimeError("Unsafe configuration: SMR_LOCAL_LOGIN_TOKEN is reserved to the desktop application")
         if self.environment not in (Environment.STAGING, Environment.PRODUCTION):
             return
         problems = []

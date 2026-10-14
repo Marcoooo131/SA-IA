@@ -1,0 +1,75 @@
+# Relances SMS — application de bureau Windows : tests, construction du .exe, auto-test du paquet,
+# publication du zip (artefact de la CI + version GitHub sur main).
+name: Relances SMS Desktop
+
+on:
+  push:
+    paths: ["sms-reminders-desktop/**", "sms-reminders/**", ".github/workflows/sms-reminders-desktop.yml"]
+  pull_request:
+    paths: ["sms-reminders-desktop/**", "sms-reminders/**", ".github/workflows/sms-reminders-desktop.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests-linux:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: sms-reminders-desktop } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e "../sms-reminders[dev]" -e ".[dev]"
+      - run: python -m pytest
+      - run: python -m sms_desktop --selftest --data-dir "$RUNNER_TEMP/relances"
+
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    defaults: { run: { working-directory: sms-reminders-desktop, shell: pwsh } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - run: pip install -e "../sms-reminders[dev]" -e ".[dev,build]"
+      - name: Tests (Windows)
+        run: python -m pytest
+      - name: Build the Windows package
+        run: ./packaging/build_windows.ps1
+      - name: Self-test of the packaged executable
+        run: |
+          ./dist/RelancesSMS-Test/RelancesSMS-Test.exe --selftest --data-dir "$env:RUNNER_TEMP\relances-test"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Zip
+        run: |
+          Copy-Item -Recurse dist\RelancesSMS-Test dist\RelancesSMS\outils-test
+          Compress-Archive -Path dist\RelancesSMS -DestinationPath dist\RelancesSMS-windows.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RelancesSMS-windows-unsigned
+          path: sms-reminders-desktop/dist/RelancesSMS-windows.zip
+          retention-days: 30
+
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [tests-linux, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: RelancesSMS-windows-unsigned }
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: relances-sms-desktop-build-${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          name: Relances SMS — application Windows (build ${{ github.run_number }})
+          prerelease: true
+          files: RelancesSMS-windows.zip
+          body: |
+            Application de bureau Windows « Relances SMS — Movers & Takeovers » (non signée).
+            Télécharger RelancesSMS-windows.zip, décompresser, lancer RelancesSMS.exe.
+            Mode SIMULATION par défaut : aucun SMS réel n'est envoyé.
+            Les relances ne partent que tant que l'application est ouverte et l'ordinateur allumé.
+            Documentation : sms-reminders-desktop/README.md

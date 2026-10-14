@@ -12,6 +12,8 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > 💬 **Relances SMS Movers & Takeovers** (Python, distinct de l'application Movers) :
 > [`sms-reminders/`](sms-reminders/README.md) — import des rendez-vous, relances automatiques J-2 / J-1,
 > suivi des confirmations ; mode simulation tant que le fournisseur SMS n'est pas configuré.
+> Application Windows prête à lancer : [`sms-reminders-desktop/`](sms-reminders-desktop/README.md)
+> (`RelancesSMS.exe`, à télécharger dans les *Releases* du dépôt).
 
 > 📞 **Prototypes « Phone Call »** (Python, distincts de l'application Movers) :
 > - [`phonecall-desktop/`](phonecall-desktop/README.md) — poste conseiller Windows : capture du son du PC et du micro,
