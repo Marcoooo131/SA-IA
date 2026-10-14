@@ -30,4 +30,6 @@ Tous les contrôles automatiques sont passés.
 | Zone de sécurité TikTok | OK (contrôle visuel) | images fixes rendues avec le cadre `SAFE` (x 70–930, y 210–1450) pour chaque scène : aucun texte ni élément essentiel en dehors |
 | Planche de contact | OK (contrôle visuel) | 2 images par scène, lisibilité des textes vérifiée en réduction (format mobile) |
 
+Copie allégée `out/phone-call-ai_tiktok.mp4` (25,5 Mo, H.264 2 passes 6,8 Mb/s, même son) : mêmes contrôles, tous OK ; netteté des textes vérifiée sur l'image la plus dense (note, 22,8 s).
+
 Rendu : 1800 images en ≈ 8 min (3 navigateurs Chromium, 4 cœurs), encodage H.264 High CRF 15, preset slow.

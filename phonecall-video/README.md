@@ -11,7 +11,8 @@ Phone Call : le conseiller lance l'écoute, la conversation est transcrite en di
 
 | Fichier | Contenu |
 |---|---|
-| `deliverables/phone-call-ai.mp4` | la vidéo finale |
+| `out/phone-call-ai.mp4` | la vidéo finale, qualité maître (CRF 15, ≈ 64 Mo) — **non versionnée** (taille) : `npm run render` la régénère à l'identique |
+| `out/phone-call-ai_tiktok.mp4` | copie 25 Mo (même format, H.264 2 passes à 6,8 Mb/s), commande ci-dessous |
 | `deliverables/contact_sheet.jpg` | planche de contact (2 images par scène, horodatées) |
 | `deliverables/validation.md` | rapport de validation technique |
 | `src/config.js` | **configuration centrale** : format, zone de sécurité, couleurs, polices, textes, conversation, note, **timeline** |
@@ -49,6 +50,16 @@ npm run preview     # puis ouvrir http://localhost:8080/?preview  (lecture temps
 ```
 
 Le rendu complet produit `out/phone-call-ai.mp4`, `out/contact_sheet.jpg` et `out/validation.md`.
+
+Copie allégée (même résolution, même fréquence, même son) :
+
+```bash
+cd out
+V="-c:v libx264 -preset slow -b:v 6800k -maxrate 9000k -bufsize 14000k -g 120 -profile:v high -level:v 4.2 -pix_fmt yuv420p"
+ffmpeg -y -i phone-call-ai.mp4 -map 0:v $V -pass 1 -passlogfile x264pass -an -f null /dev/null
+ffmpeg -y -i phone-call-ai.mp4 -map 0:v -map 0:a $V -pass 2 -passlogfile x264pass -c:a copy -movflags +faststart phone-call-ai_tiktok.mp4
+node ../scripts/verify.mjs phone-call-ai_tiktok.mp4
+```
 
 ## Modifier la vidéo
 
