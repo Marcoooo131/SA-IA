@@ -75,6 +75,7 @@ def init_db() -> None:
     from . import models  # noqa: F401  (register tables)
 
     Base.metadata.create_all(get_engine())
+    _add_missing_columns()
     from .policy import ensure_defaults
 
     with session_scope() as s:
@@ -87,3 +88,22 @@ def reset_caches() -> None:
         get_engine().dispose()
     get_engine.cache_clear()
     get_sessionmaker.cache_clear()
+
+
+def _add_missing_columns() -> None:
+    """Minimal forward migration for existing databases (e.g. a desktop installation updated to
+    a newer version): add new nullable columns. Anything more needs a real migration tool."""
+    from sqlalchemy import inspect, text
+
+    engine = get_engine()
+    inspector = inspect(engine)
+    with engine.begin() as conn:
+        for table in Base.metadata.sorted_tables:
+            existing = {c["name"] for c in inspector.get_columns(table.name)}
+            for column in table.columns:
+                if column.name in existing:
+                    continue
+                if not column.nullable:
+                    raise RuntimeError(f"cannot add NOT NULL column {table.name}.{column.name} automatically")
+                ddl = column.type.compile(dialect=engine.dialect)
+                conn.execute(text(f'ALTER TABLE {table.name} ADD COLUMN "{column.name}" {ddl}'))

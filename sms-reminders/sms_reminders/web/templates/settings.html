@@ -17,6 +17,36 @@
   </dl>
 </div>
 
+{% if store %}
+<div class="card" id="fournisseur">
+  <h2>Fournisseur SMS</h2>
+  <p class="small">Actuellement : <strong>{{ provider.name }}</strong>{% if provider.simulated %} — <span class="warn-text">simulation, aucun SMS réel</span>{% endif %}.
+    Les identifiants sont fournis par l'administrateur du compte du fournisseur. L'identifiant secret est rangé dans le
+    coffre de Windows (Gestionnaire d'identification), jamais dans un fichier.</p>
+  <form method="post" action="/settings/provider" class="form-grid">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Fournisseur <select name="sms_provider" {{ 'disabled' if ro }}>
+      <option value="twilio" {{ 'selected' if store.provider == 'twilio' }}>Twilio — envoi réel</option>
+      <option value="simulation" {{ 'selected' if store.provider == 'simulation' }}>Simulation — aucun envoi</option>
+      <option value="disabled" {{ 'selected' if store.provider == 'disabled' }}>Désactivé</option></select></label>
+    <label>Account SID <input name="twilio_account_sid" value="{{ store.account_sid }}" placeholder="AC…" autocomplete="off" {{ 'disabled' if ro }}></label>
+    <label>Auth Token <input name="twilio_auth_token" type="password" autocomplete="new-password"
+      placeholder="{{ 'enregistré — laisser vide pour le conserver' if store.has_token else 'non renseigné' }}" {{ 'disabled' if ro }}></label>
+    {% if not ro %}<button class="primary">Enregistrer le fournisseur</button>{% endif %}
+  </form>
+  {% if not ro %}
+  <form method="post" action="/settings/provider/test" class="filters">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Envoyer un SMS de test au <input name="phone" placeholder="votre mobile" required></label>
+    <label>depuis l'expéditeur <select name="service">{% for sv in Service.ALL %}<option value="{{ sv }}">{{ Service.LABELS[sv] }}</option>{% endfor %}</select></label>
+    <button>Envoyer le test</button>
+  </form>
+  {% endif %}
+  <p class="small muted">Pour envoyer de vrais SMS, il faut aussi : les numéros d'expédition (ci-dessous), les six templates actifs
+    et la case de validation de la section « Conformité ». La liste « État de la configuration » indique ce qui manque.</p>
+</div>
+{% endif %}
+
 <div class="card" id="services">
   <h2>Numéros d'expédition</h2>
   <p class="small muted">Chaque service utilise son propre expéditeur (numéro au format international, identifiant alphanumérique ou identifiant de service

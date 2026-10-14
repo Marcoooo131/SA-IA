@@ -18,6 +18,9 @@ class Container:
     provider: SmsProvider
     crm: CrmConnector = field(default_factory=DisabledCrm)
     clock: Callable[[], datetime] = utcnow
+    # Desktop application only: lets an administrator configure the SMS provider from the UI
+    # (sms_desktop.provider_store). None on servers: the provider comes from environment variables.
+    provider_store: object | None = None
 
     def now(self) -> datetime:
         return self.clock()

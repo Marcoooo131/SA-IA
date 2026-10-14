@@ -13,13 +13,13 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import ValidationError
+from pydantic import SecretStr, ValidationError
 from sqlalchemy import func, or_, select, text
 from sqlalchemy.orm import Session, selectinload
 from starlette.middleware.sessions import SessionMiddleware
 
 from .. import appointments as ops
-from .. import importer, stats, template_admin
+from .. import importer, late, stats, template_admin
 from ..audit import record
 from ..config import Environment
 from ..container import Container, get_container
@@ -42,6 +42,7 @@ from ..models import (
 )
 from ..phone import check_mobile, display as phone_display
 from ..policy import Policy, load_policy, save_policy
+from ..providers import OutboundSms, build_provider
 from ..scheduler import execute_job, planning_blocker
 from ..templating import VARIABLES, context_for, render, sample_context, segment_info, validate
 from ..timeutil import LocalTimeError, PARIS, fmt, fmt_short, local_to_utc
@@ -140,11 +141,20 @@ def create_app(container: Container | None = None) -> FastAPI:
     def flash(request: Request, message: str, kind: str = "ok") -> None:
         request.session.setdefault("flash", []).append([kind, message])
 
+    def late_prompts(user: User | None) -> list:
+        if user is None or user.role < Role.SUPERVISOR:
+            return []
+        with session_scope() as s:
+            found = late.candidates(s, load_policy(s), c.now())
+            return [{"job_id": x.job.id, "step": x.job.step, "scheduled_at": x.job.scheduled_at, "reason": x.job.status_reason,
+                     "appointment_id": x.appointment.id, "name": x.appointment.full_name, "customer_ref": x.appointment.customer_ref,
+                     "service": x.appointment.service, "appointment_at": x.appointment.appointment_at} for x in found]
+
     def render_page(request: Request, name: str, user: User | None, **ctx) -> HTMLResponse:
         messages = request.session.pop("flash", [])
         return templates.TemplateResponse(request, name, {
-            "user": user, "csrf": csrf_token(request), "settings": settings, "provider": c.provider,
-            "messages": messages, "now": c.now(), **ctx,
+            "user": user, "csrf": csrf_token(request), "settings": c.settings, "provider": c.provider,
+            "messages": messages, "now": c.now(), "late": late_prompts(user), "path": request.url.path, **ctx,
         })
 
     def back(url: str) -> RedirectResponse:
@@ -620,7 +630,9 @@ def create_app(container: Container | None = None) -> FastAPI:
             slots = s.scalars(select(TemplateSlot).options(selectinload(TemplateSlot.active_version), selectinload(TemplateSlot.versions))
                               .order_by(TemplateSlot.service, TemplateSlot.id)).all()
             config_issues = _config_issues(s, c)
-        return render_page(request, "settings.html", user, policy=policy, services=services, slots=slots, config_issues=config_issues)
+        store = c.provider_store.describe() if c.provider_store is not None else None
+        return render_page(request, "settings.html", user, policy=policy, services=services, slots=slots,
+                           config_issues=config_issues, store=store)
 
     @app.post("/settings/services")
     async def settings_services(request: Request):
@@ -741,6 +753,108 @@ def create_app(container: Container | None = None) -> FastAPI:
         flash(request, "Template désactivé : les envois correspondants sont bloqués.", "warn")
         return back(f"/settings/templates/{slot_id}")
 
+    # ------------------------------------------------------------------ expired reminders (pop-up)
+
+    @app.get("/late/pending.json")
+    def late_pending(request: Request):
+        user = require(Role.ADVISOR)(request)
+        return {"count": len(late_prompts(user))}
+
+    @app.get("/late/dialog", response_class=HTMLResponse)
+    def late_dialog(request: Request, next: str = "/"):
+        user = require(Role.SUPERVISOR)(request)
+        return templates.TemplateResponse(request, "late_dialog.html", {
+            "late": late_prompts(user), "csrf": csrf_token(request), "path": _safe_next(next, "/"), "fmt": fmt,
+        })
+
+    @app.post("/late/{job_id}")
+    async def late_decide(request: Request, job_id: int):
+        user, values = await form_user(request, Role.SUPERVISOR)
+        target = _safe_next(values.get("next"), "/")
+        send = values.get("decision") == "send"
+        try:
+            with session_scope() as s:
+                job = late.decide(s, job_id, send=send, actor=user.login, policy=load_policy(s), now=c.now())
+                label = Step.LABELS[job.step]
+        except late.LateDecisionError as exc:
+            flash(request, str(exc), "warn")
+            return back(target)
+        if not send:
+            flash(request, f"{label} : envoi tardif refusé (enregistré dans l'historique).", "warn")
+            return back(target)
+        execute_job(c, job_id)
+        with session_scope() as s:
+            job = s.get(SmsJob, job_id)
+            status, reason = job.status, job.status_reason or ""
+        if status == JobStatus.SENT:
+            flash(request, f"{label} envoyé maintenant.")
+        elif status == JobStatus.SIMULATED:
+            flash(request, f"{label} traité en mode simulation : aucun SMS réel n'a été envoyé.", "warn")
+        else:
+            flash(request, f"{label} : non envoyé — {JOB_LABELS.get(status, status)}{(' : ' + reason) if reason else ''}.", "err")
+        return back(target)
+
+    # ------------------------------------------------------------------ SMS provider (desktop application)
+
+    @app.post("/settings/provider")
+    async def settings_provider(request: Request):
+        user, values = await form_user(request, Role.ADMIN)
+        store = c.provider_store
+        if store is None:
+            raise HTTPException(404, "configuration par variables d'environnement sur un serveur")
+        name = values.get("sms_provider", "")
+        sid = (values.get("twilio_account_sid") or "").strip()
+        token = (values.get("twilio_auth_token") or "").strip() or None
+        if name not in ("simulation", "twilio", "disabled"):
+            flash(request, "Fournisseur inconnu.", "err")
+            return back("/settings#fournisseur")
+        current_token = c.settings.twilio_auth_token.get_secret_value()
+        if name == "twilio" and not (sid.startswith("AC") and len(sid) == 34):
+            flash(request, "Account SID Twilio invalide (34 caractères, commence par AC).", "err")
+            return back("/settings#fournisseur")
+        if name == "twilio" and not (token or current_token):
+            flash(request, "Saisissez l'Auth Token Twilio.", "err")
+            return back("/settings#fournisseur")
+        try:
+            store.save(name, sid, token)
+        except Exception as exc:  # noqa: BLE001 - e.g. Windows credential store unavailable
+            log.warning("provider store failed: %s", type(exc).__name__)
+            flash(request, "Impossible d'enregistrer l'identifiant secret dans le coffre Windows.", "err")
+            return back("/settings#fournisseur")
+        new = c.settings.model_copy(update={"sms_provider": name, "twilio_account_sid": sid,
+                                            "twilio_auth_token": SecretStr(token or current_token)})
+        c.settings, c.provider = new, build_provider(new)
+        with session_scope() as s:
+            record(s, user.login, "provider_configured", f"Fournisseur SMS configuré : {name}.")
+        flash(request, f"Fournisseur SMS : {name}. " + ("Envoyez un SMS de test pour vérifier." if name == "twilio" else ""))
+        return back("/settings#fournisseur")
+
+    @app.post("/settings/provider/test")
+    async def settings_provider_test(request: Request):
+        user, values = await form_user(request, Role.ADMIN)
+        phone = check_mobile(values.get("phone", ""))
+        service = values.get("service")
+        if not phone.valid:
+            flash(request, phone.error or "Numéro invalide.", "err")
+            return back("/settings#fournisseur")
+        with session_scope() as s:
+            cfg = s.get(ServiceConfig, service) if service in Service.ALL else None
+            sender = cfg.sender_id if cfg else None
+        if not sender:
+            flash(request, "Renseignez d'abord le numéro d'expédition de ce service.", "err")
+            return back("/settings#fournisseur")
+        result = c.provider.send(OutboundSms(sender, phone.e164, "Relances SMS : message de test, aucune action requise.",
+                                             "test-" + secrets.token_hex(8)))
+        with session_scope() as s:
+            record(s, user.login, "provider_test", f"SMS de test ({c.provider.name}) : {'accepté' if result.ok else 'échec ' + str(result.error_code)}.")
+        if result.ok and c.provider.simulated:
+            flash(request, "Mode simulation : le test a réussi mais aucun SMS réel n'a été envoyé.", "warn")
+        elif result.ok:
+            flash(request, f"SMS de test accepté par le fournisseur (identifiant {result.provider_message_id}). Vérifiez sa réception.")
+        else:
+            flash(request, f"Échec du SMS de test : {result.error_code} {result.error_message or ''}", "err")
+        return back("/settings#fournisseur")
+
     # ------------------------------------------------------------------ opt-outs
 
     @app.get("/optouts", response_class=HTMLResponse)
@@ -835,6 +949,8 @@ def _config_issues(s: Session, c: Container) -> list[str]:
         issues.append("Mode SIMULATION : aucun SMS réel n'est envoyé (fournisseur non configuré).")
     elif c.provider.name == "disabled":
         issues.append("Aucun fournisseur SMS configuré : tous les envois sont bloqués.")
+    elif c.provider.name == "twilio" and not (c.settings.twilio_account_sid and c.settings.twilio_auth_token.get_secret_value()):
+        issues.append("Identifiants du fournisseur SMS incomplets : les envois échoueront.")
     elif not policy.compliance_validated:
         issues.append("Validation de conformité non enregistrée : les envois réels sont bloqués.")
     if not policy.sending_enabled:

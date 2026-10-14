@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from conftest import PASSWORD, PARIS_NOW, jobs_of, make_appt
@@ -297,3 +297,87 @@ def test_local_token_refused_on_servers():
 
     with pytest.raises(RuntimeError):
         Settings(environment="dev", local_login_token="x").assert_safe_for_environment()
+
+
+def test_late_popup_flow(app, configured, clock, provider):
+    from sms_reminders.scheduler import run_due
+
+    appt = make_appt()
+    now = datetime(2026, 10, 15, 15, 0, tzinfo=timezone.utc)  # J2 (15/10 12:00 UTC) expired
+    clock.set(now)
+    run_due(configured, now)
+    sup = client_for(app, "sam")
+    page = sup.get("/appointments").text
+    assert 'id="late-dialog"' in page and "Envoyer ce SMS maintenant" in page and "Dupont" in page
+    assert sup.get("/late/pending.json").json() == {"count": 1}
+    assert "late-dialog" in sup.get("/late/dialog").text
+    advisor = client_for(app, "alice")
+    assert 'id="late-dialog"' not in advisor.get("/").text
+    assert advisor.get("/late/pending.json").json() == {"count": 0}
+    job_id = jobs_of(appt)[Step.J2].id
+    assert post(advisor, f"/late/{job_id}", {"decision": "send"}).status_code == 403
+    r = post(sup, f"/late/{job_id}", {"decision": "send", "next": "/appointments"})
+    assert r.headers["location"] == "/appointments"
+    assert len(provider.calls) == 1 and jobs_of(appt)[Step.J2].status == JobStatus.SENT
+    assert 'id="late-dialog"' not in sup.get("/").text
+    r = post(sup, f"/late/{job_id}", {"decision": "send"})  # already handled
+    assert len(provider.calls) == 1
+
+
+class FakeStore:
+    def __init__(self):
+        self.saved = None
+
+    def describe(self):
+        return {"provider": "simulation", "account_sid": "", "has_token": False, "location": "x"}
+
+    def save(self, provider, sid, token):
+        self.saved = (provider, sid, token)
+
+
+def test_provider_configuration_from_the_ui(env, clock):
+    from sms_reminders.config import get_settings
+    from sms_reminders.container import Container
+    from sms_reminders.providers.simulation import SimulationProvider
+    from sms_reminders.web.app import create_app
+
+    store = FakeStore()
+    c = Container(settings=get_settings(), provider=SimulationProvider(), clock=clock, provider_store=store)
+    app = create_app(c)
+    admin = client_for(app, "ada")
+    assert "Fournisseur SMS" in admin.get("/settings").text
+    post(admin, "/settings/provider", {"sms_provider": "twilio", "twilio_account_sid": "bad"}, page="/settings")
+    assert store.saved is None and c.provider.name == "simulation"
+    sid = "AC" + "a" * 32
+    post(admin, "/settings/provider", {"sms_provider": "twilio", "twilio_account_sid": sid, "twilio_auth_token": "tok"}, page="/settings")
+    assert store.saved == ("twilio", sid, "tok")
+    assert c.provider.name == "twilio" and not c.provider.simulated and c.settings.twilio_account_sid == sid
+    assert "MODE SIMULATION" not in admin.get("/").text
+    sup = client_for(app, "sam")
+    assert post(sup, "/settings/provider", {"sms_provider": "simulation"}, page="/settings").status_code == 403
+
+
+def test_provider_test_sms(env, clock):
+    from sms_reminders.config import get_settings
+    from sms_reminders.container import Container
+    from sms_reminders.web.app import create_app
+
+    from conftest import ScriptedProvider
+
+    prov = ScriptedProvider()
+    c = Container(settings=get_settings(), provider=prov, clock=clock, provider_store=FakeStore())
+    app = create_app(c)
+    admin = client_for(app, "ada")
+    post(admin, "/settings/provider/test", {"phone": "0600000001", "service": "movers"}, page="/settings")
+    assert prov.calls == []  # no sender configured yet
+    with session_scope() as s:
+        s.get(ServiceConfig, "movers").sender_id = "+33600000900"
+    post(admin, "/settings/provider/test", {"phone": "0600000001", "service": "movers"}, page="/settings")
+    assert len(prov.calls) == 1 and prov.calls[0].sender == "+33600000900" and prov.calls[0].to == "+33600000001"
+    assert "SMS de test accepté" in admin.get("/settings").text
+
+
+def test_provider_routes_absent_on_servers(app):
+    admin = client_for(app, "ada")
+    assert "Fournisseur SMS</h2>" not in admin.get("/settings").text
+    assert post(admin, "/settings/provider", {"sms_provider": "twilio"}, page="/settings").status_code == 404
