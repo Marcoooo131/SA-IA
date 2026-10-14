@@ -82,3 +82,8 @@ details summary { cursor: pointer; margin: 8px 0; }
 code { background: #f1f1f1; padding: 0 4px; border-radius: 3px; }
 .table-wrap { overflow-x: auto; }
 td.last-action { max-width: 190px; } td.last-action .clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+dialog.late-dialog { max-width: 560px; border: 0; border-top: 5px solid var(--red); border-radius: 8px; padding: 20px 24px; box-shadow: 0 12px 40px rgba(0,0,0,.35); position: fixed; top: 12vh; z-index: 50; background: #fff; }
+dialog.late-dialog::backdrop { background: rgba(0,0,0,.45); }
+dialog.late-dialog h2 { margin-top: 0; color: var(--red); }
+dialog.late-dialog .question { font-size: 17px; font-weight: 600; }
+.late-actions { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; } .late-actions form { margin: 0; }

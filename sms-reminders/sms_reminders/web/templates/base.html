@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/app.js" defer></script>
 </head>
-<body>
+<body{% if user and user.role >= Role.SUPERVISOR %} data-late-poll="1"{% endif %}>
 <header class="top">
   <div class="brand"><span class="dot"></span> Relances SMS <small>Movers & Takeovers</small></div>
   {% if user %}
@@ -52,6 +52,7 @@
     {% for kind, message in messages %}<div class="flash {{ kind }}">{{ message }}</div>{% endfor %}
     {% block content %}{% endblock %}
   </main>
+  {% if user and user.role >= Role.SUPERVISOR %}{% include "late_dialog.html" %}{% endif %}
 </div>
 </body>
 </html>

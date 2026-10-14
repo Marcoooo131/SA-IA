@@ -1,0 +1,29 @@
+{# Pop-up: expired reminders of unconfirmed appointments. Included in every page and served
+   alone at /late/dialog (refreshed by app.js without reloading the page). #}
+{% if late %}{% set item = late[0] %}
+<dialog id="late-dialog" class="late-dialog" open aria-labelledby="late-title">
+  <h2 id="late-title">SMS non envoyé à l'heure prévue</h2>
+  <p>Le <strong>{{ {'j2': 'SMS à 48 h', 'j1_first': '1er SMS à 24 h', 'j1_second': '2e SMS à 24 h'}[item.step] }}</strong>
+    de <a href="/appointments/{{ item.appointment_id }}"><strong>{{ item.name }}</strong></a>
+    <span class="mono muted">({{ item.customer_ref }})</span> devait partir le <strong>{{ fmt(item.scheduled_at) }}</strong>
+    mais n'a pas pu être envoyé{% if item.reason %} : <em>{{ item.reason }}</em>{% endif %}.</p>
+  <p>Rendez-vous <strong>{{ 'Movers' if item.service == 'movers' else 'Takeovers' }}</strong> le <strong>{{ fmt(item.appointment_at) }}</strong>,
+    toujours <strong>non confirmé</strong>.</p>
+  <p class="question">Envoyer ce SMS maintenant ?</p>
+  <div class="late-actions">
+    <form method="post" action="/late/{{ item.job_id }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="next" value="{{ path }}">
+      <input type="hidden" name="decision" value="send">
+      <button class="primary">Envoyer maintenant</button>
+    </form>
+    <form method="post" action="/late/{{ item.job_id }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="next" value="{{ path }}">
+      <input type="hidden" name="decision" value="decline">
+      <button class="danger">Ne pas envoyer</button>
+    </form>
+    <button type="button" class="js-late-later">Plus tard</button>
+  </div>
+  <p class="small muted">Toutes les règles sont revérifiées avant l'envoi (confirmation, opposition, template, numéro d'expédition).
+    {% if late|length > 1 %}<br><strong>{{ late|length - 1 }} autre(s) SMS en attente de décision.</strong>{% endif %}</p>
+</dialog>
+{% endif %}

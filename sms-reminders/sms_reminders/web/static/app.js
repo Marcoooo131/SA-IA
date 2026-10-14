@@ -35,3 +35,36 @@ document.querySelectorAll(".js-sms-counter").forEach((area) => {
   area.addEventListener("input", update);
   update();
 });
+
+// Expired-reminder pop-up: shown as a modal, refreshed every 30 s without reloading the page.
+const LATE_SNOOZE_KEY = "relances-late-snooze";
+function lateSnoozed() {
+  try { return Date.now() < Number(sessionStorage.getItem(LATE_SNOOZE_KEY) || 0); } catch { return false; }
+}
+function showLateDialog() {
+  const dialog = document.getElementById("late-dialog");
+  if (!dialog) return;
+  if (lateSnoozed()) { dialog.close(); return; }
+  if (dialog.open && !dialog.matches(":modal")) { dialog.close(); }
+  if (!dialog.open && typeof dialog.showModal === "function") dialog.showModal();
+}
+document.addEventListener("click", (event) => {
+  if (!event.target.closest(".js-late-later")) return;
+  try { sessionStorage.setItem(LATE_SNOOZE_KEY, String(Date.now() + 10 * 60 * 1000)); } catch {}
+  document.getElementById("late-dialog")?.close();
+});
+async function pollLate() {
+  if (lateSnoozed() || document.getElementById("late-dialog")?.open) return;
+  try {
+    const r = await fetch("/late/pending.json", { credentials: "same-origin" });
+    if (!r.ok || !(await r.json()).count) return;
+    const html = await (await fetch("/late/dialog?next=" + encodeURIComponent(location.pathname + location.search))).text();
+    document.getElementById("late-dialog")?.remove();
+    document.body.insertAdjacentHTML("beforeend", html);
+    showLateDialog();
+  } catch {}
+}
+if (document.body.dataset.latePoll) {
+  showLateDialog();
+  setInterval(pollLate, 30000);
+}

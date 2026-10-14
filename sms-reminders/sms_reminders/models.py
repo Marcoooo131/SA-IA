@@ -244,6 +244,10 @@ class SmsJob(Base):
     segments: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error_code: Mapped[str | None] = mapped_column(String(60), nullable=True)
     error_message: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Human decision on an expired reminder (pop-up): sent | declined | superseded.
+    late_decision: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    late_decided_by: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    late_decided_at: Mapped[datetime | None] = mapped_column(UTCDateTime, nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(UTCDateTime, default=utcnow)
     created_by: Mapped[str] = mapped_column(String(80), default="system")

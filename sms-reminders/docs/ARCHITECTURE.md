@@ -101,6 +101,17 @@ Dans cet ordre :
 | Rendez-vous importé tardivement | les étapes déjà échues sont marquées « Non envoyé (trop tard) » (règle `late_policy=skip`) |
 | Confirmation pendant l'envoi | verrou de ligne sur le rendez-vous (PostgreSQL) pendant la vérification |
 
+### SMS expirés : décision humaine (pop-up)
+
+Un SMS automatique expiré n'est jamais renvoyé seul. Pour un rendez-vous encore actif, **non
+confirmé**, non suspendu et à plus d'une heure, une fenêtre propose aux responsables et
+administrateurs « Envoyer ce SMS maintenant ? » (`late.py`) : *Envoyer maintenant* réarme le SMS pour
+une courte fenêtre (15 min) et l'exécute aussitôt après revérification de toutes les règles ;
+*Ne pas envoyer* l'écarte définitivement. Une seule question par rendez-vous (l'étape expirée la
+plus récente ; les plus anciennes sont closes avec la même décision) et aucune si une étape plus
+récente est déjà partie. Décision, auteur et date sont stockés (`sms_job.late_decision`,
+`late_decided_by`, `late_decided_at`) et inscrits dans l'historique.
+
 ### Politique de reprise après erreur fournisseur
 
 Erreur temporaire (réseau, 429, 5xx) : nouvelle tentative après 2, 10 puis 30 minutes, au plus

@@ -9,9 +9,9 @@ relance. Aucune installation de Python, de serveur ou de base de données n'est 
 >   relance dont l'heure passe pendant que l'application est fermée **n'est pas envoyée en retard**
 >   (elle passe en « Expiré »). Pour des relances fiables 24 h/24, utiliser la
 >   [version serveur](../sms-reminders/docs/INSTALLATION.md).
-> - **Mode SIMULATION par défaut** : aucun SMS réel n'est envoyé tant qu'un fournisseur n'est pas
->   configuré (voir `config.example.env`), et les envois réels exigent en plus les numéros
->   d'expédition, les templates et la validation de conformité (*Paramètres*).
+> - **Envoi réel** : dès que le fournisseur SMS est enregistré dans *Paramètres → Fournisseur SMS*
+>   (une seule fois), l'application envoie de vrais SMS à chaque lancement. Avant cela, elle est en
+>   simulation (aucun SMS réel). Voir « Mettre en service l'envoi réel » ci-dessous.
 > - Exécutable **non signé** : Windows SmartScreen peut afficher un avertissement
 >   (*Informations complémentaires → Exécuter quand même*). Pour un déploiement, le faire signer
 >   par la DSI.
@@ -39,13 +39,48 @@ relance. Aucune installation de Python, de serveur ou de base de données n'est 
 Sans WebView2 (rare sous Windows 10/11 à jour) : `RelancesSMS.exe --browser` ouvre l'interface dans
 le navigateur par défaut.
 
+## Mettre en service l'envoi réel (une seule fois)
+
+Dans *Paramètres et templates* (la liste « État de la configuration » indique ce qui manque) :
+
+1. **Fournisseur SMS** : choisir *Twilio — envoi réel*, saisir l'*Account SID* et l'*Auth Token*
+   fournis par l'administrateur du compte Twilio, puis **Enregistrer**. L'Auth Token est rangé dans
+   le coffre de Windows (Gestionnaire d'identification), jamais dans un fichier.
+2. **Numéros d'expédition** Movers et Takeovers.
+3. **Envoyer un SMS de test** vers votre mobile et vérifier sa réception.
+4. **Templates** : activer les six textes.
+5. **Conformité** : cocher la validation (juridique / DPO).
+
+Ensuite, à chaque lancement de `RelancesSMS.exe`, les relances arrivées à échéance partent en réel.
+Pour revenir en simulation : *Fournisseur SMS → Simulation*.
+
+> L'adaptateur Twilio a été testé contre un serveur simulé, pas encore avec un vrai compte : le SMS de
+> test de l'étape 3 est la première vérification réelle. Un autre fournisseur (OVH, Brevo,
+> SMSFactor…) peut être ajouté sur demande.
+
+## SMS expirés : la fenêtre « Envoyer ce SMS maintenant ? »
+
+Quand une relance n'a pas pu partir à son heure (application fermée, ordinateur éteint, coupure), elle
+n'est jamais envoyée en retard toute seule. À l'ouverture de l'application, puis toutes les 30
+secondes, une fenêtre s'affiche pour chaque rendez-vous **non confirmé** dont un SMS a expiré :
+
+- **Envoyer maintenant** : le SMS part immédiatement, après revérification de toutes les règles
+  (confirmation, liste d'opposition, template, numéro d'expédition…) ;
+- **Ne pas envoyer** : le SMS n'est jamais renvoyé ; la décision est inscrite dans l'historique ;
+- **Plus tard** : la fenêtre revient dans 10 minutes.
+
+Une seule question par client : si plusieurs SMS du même rendez-vous ont expiré, seul le plus récent
+est proposé. Aucune question si le rendez-vous est confirmé, annulé, suspendu, ou commence dans moins
+d'une heure, ni si un SMS plus récent du même rendez-vous est déjà parti.
+
 ## Où sont les données
 
 | Élément | Emplacement |
 |---|---|
 | Base de données (rendez-vous, SMS, historique) | `%LOCALAPPDATA%\RelancesSMS\relances.db` |
 | Journal technique (sans données clients) | `%LOCALAPPDATA%\RelancesSMS\relances.log` |
-| Configuration facultative | `%APPDATA%\RelancesSMS\config.env` (modèle : `config.example.env`) |
+| Fournisseur et compte (non secret) | `%APPDATA%\RelancesSMS\config.env` (modèle : `config.example.env`) |
+| Auth Token du fournisseur | Gestionnaire d'identification Windows, entrée « RelancesSMS » |
 
 Désinstaller : supprimer le dossier décompressé, puis ces deux dossiers pour effacer les données.
 

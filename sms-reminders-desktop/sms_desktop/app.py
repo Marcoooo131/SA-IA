@@ -1,7 +1,9 @@
 """Desktop application: the sms-reminders web app and its scheduler in one local process.
 
 - Data: SQLite database in %LOCALAPPDATA%\\RelancesSMS (Linux/macOS: ~/.local/share/relances-sms).
-- Configuration: optional %APPDATA%\\RelancesSMS\\config.env (SMR_* variables, see config.example.env).
+- Configuration: optional %APPDATA%\\RelancesSMS\\config.env (SMR_* variables, see config.example.env);
+  the SMS provider can also be set from the application (Paramètres → Fournisseur SMS), the
+  secret token then goes to the Windows Credential Manager.
 - Server bound to 127.0.0.1 on a random port; access through a one-time token generated at each
   launch (the Windows user is logged in as administrator). Nothing listens on the network.
 - The scheduler runs in a background thread while the application is open. Closing the window
@@ -68,6 +70,12 @@ def prepare_environment(directory: Path, token: str) -> None:
     for key, value in read_config(config_file()).items():
         if key not in FORCED:
             os.environ.setdefault(key, value)
+    if not os.environ.get("SMR_TWILIO_AUTH_TOKEN"):
+        from .provider_store import ProviderStore
+
+        provider_token = ProviderStore(config_file()).get_token()
+        if provider_token:
+            os.environ["SMR_TWILIO_AUTH_TOKEN"] = provider_token
     os.environ.setdefault("SMR_DATABASE_URL", f"sqlite:///{(directory / 'relances.db').as_posix()}")
     os.environ["SMR_ENVIRONMENT"] = "desktop"
     os.environ["SMR_LOCAL_LOGIN_TOKEN"] = token
@@ -145,7 +153,10 @@ class Runtime:
         from sms_reminders.scheduler import recover_stale
         from sms_reminders.web.app import create_app
 
+        from .provider_store import ProviderStore
+
         self.container = get_container()
+        self.container.provider_store = ProviderStore(config_file())
         self.app = create_app(self.container)  # also creates the tables
         log.info("recovery: %s", recover_stale(self.container))
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -181,7 +192,8 @@ class Runtime:
         self.scheduler.stop()
         if self.server:
             self.server.should_exit = True
-        self.scheduler.join(timeout=10)
+        if self.scheduler.is_alive():
+            self.scheduler.join(timeout=10)
         log.info("stopped")
 
 
