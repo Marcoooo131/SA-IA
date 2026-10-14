@@ -2,11 +2,13 @@ PHONE CALL — prise de notes assistée
 ====================================
 
 Pendant l'appel : transcription en direct, calculée sur le PC.
-À la fin de l'appel : le compte rendu Phone Call dans la template générale (8 rubriques :
-identification, motif, situation, échanges, actions et solutions, résultat, suivi, informations
-complémentaires ; champs Movers et Appel sortant quand ils s'appliquent), rempli par le programme
-SANS IA avec les phrases de l'appel. Chaque champ a une valeur : « Aucune information notifiée »
-si l'appel n'en parle pas, « À confirmer » si l'information est incertaine.
+À la fin de l'appel : la note Phone Call au format de l'équipe (Interlocuteur, Raison de l'appel,
+Situation, Réponse apporté, Informations Complémentaires ; champs Movers : Déménagement, Raison
+Résiliation, Matériel sur place, Audit, Numéro WO, Date de déménagement, Date de rendez-vous, Offre
+commercial, Contact Repreneurs). Chaque champ a une valeur : « Non communiqué » si l'appel n'en
+parle pas, « À confirmer » si l'information est incertaine.
+Le plus proche de l'exemple de l'équipe : faire rédiger la note par Copilot (section 5). Sans
+Copilot, le programme remplit la note SANS IA avec les phrases de l'appel.
 Rien n'est envoyé sur Internet, aucun coût. Relisez et complétez toujours la note avant de
 la coller dans le CRM.
 
@@ -45,8 +47,10 @@ la coller dans le CRM.
    - Nom, numéro de téléphone, numéro WO, adresse : « À confirmer » (la transcription peut se tromper).
    - Deux versions différentes (deux numéros, deux dates, accord puis refus) : « Contradiction
      à vérifier », avec les deux versions.
-   - Les champs, leur ordre et leurs règles sont dans phone_call_template.yaml (modifiable avec
-     le Bloc-notes, à faire valider par le métier) ; les services dans business.yaml.
+   - Les champs, leur ordre, leurs règles et l'exemple de note donné à Copilot sont dans
+     phone_call_template.yaml (modifiable avec le Bloc-notes) ; les services dans business.yaml.
+     Autre présentation disponible (8 rubriques) : PCD_NOTE_TEMPLATE=phone_call_template_general.yaml
+     dans config.env.
    - Une vérification automatique s'affiche sous la note : points à confirmer, contradictions,
      prochaines étapes manquantes. Relisez et complétez toujours la note.
 

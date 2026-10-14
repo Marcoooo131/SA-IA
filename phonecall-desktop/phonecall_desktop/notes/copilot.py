@@ -17,7 +17,7 @@ from dataclasses import dataclass
 
 from ..transcript.assembler import Segment
 from .business import Category
-from .template import CallContext, FieldSpec, Template
+from .template import CallContext, FieldSpec, Template, section_heading
 
 SPEAKERS = {"advisor": "Conseiller", "remote": "Interlocuteur"}
 VAGUE = re.compile(r"^(?:n/?a|na|-|—|aucune?|néant|neant|non précisé(?:e)?|non renseigné(?:e)?|non communiqué(?:e)?|"
@@ -52,7 +52,7 @@ def build_prompt(t: Template, segments: list[Segment], ctx: CallContext, categor
     tags = {x for x in (probe.direction, probe.variant) if x}
     fields = [f for f in t.all_fields() if f.visible(tags)]
     kind = " · ".join(x for x in (t.variant_label(probe.variant), t.directions.get(probe.direction or "", "")) if x)
-    title = f"{t.title} — {kind}" if kind else t.title
+    title = (f"{t.title} — {kind}" if kind else t.title) if t.title else ""
 
     type_label = " — ".join(x for x in (t.directions.get(probe.direction or "", "sens de l'appel non identifié"),
                                         t.variant_label(probe.variant)) if x)
@@ -61,14 +61,21 @@ def build_prompt(t: Template, segments: list[Segment], ctx: CallContext, categor
         prefilled["type_appel"] = f"{type_label} (choisi par le conseiller)"
     prefilled["date_heure"] = f"{_when(ctx)} (horloge du poste)" if _when(ctx) else t.absent
     if ctx.agent_name.strip():
-        prefilled["agent"] = f"{ctx.agent_name.strip()} (paramètre du poste)"
+        prefilled["agent"] = ctx.agent_name.strip()
+    prefilled = {k: v for k, v in prefilled.items() if any(f.id == k for f in fields)}
 
-    skeleton = [title]
+    skeleton = [title] if title else []
     for section in t.sections:
         visible = [f for f in section.fields if f in fields]
         if visible:
-            skeleton += ["", section.title.upper()]
-            skeleton += [f"{f.label} : {prefilled.get(f.id, '')}".rstrip() for f in visible]
+            if skeleton and t.blank_lines:
+                skeleton.append("")
+            skeleton.append(section_heading(t, section))
+            for f in visible:
+                skeleton.append(f"[lignes libres : {f.help or f.label}]" if f.bare
+                                else f"{f.label} : {prefilled.get(f.id, '')}".rstrip())
+    several = ("plusieurs éléments sur la même ligne, séparés par « ; »" if t.list_style == "inline"
+               else "pour plusieurs éléments, « Intitulé : » puis une ligne par élément commençant par « - »")
 
     lines = [
         "Tu rédiges le compte rendu d'un appel téléphonique du service client de Sector Alarm (Phone Call), "
@@ -78,27 +85,34 @@ def build_prompt(t: Template, segments: list[Segment], ctx: CallContext, categor
         "- Réponds UNIQUEMENT avec le compte rendu rempli, en texte simple : pas d'introduction, pas de conclusion, "
         "pas de tableau, pas de gras, pas de Markdown.",
         "- Garde exactement les titres et les intitulés du modèle, dans le même ordre : une ligne « Intitulé : valeur » "
-        "par champ ; pour plusieurs éléments, écris « Intitulé : » puis une ligne par élément commençant par « - ».",
+        f"par champ ({several}). Remplace chaque « [lignes libres : ...] » par une information par ligne, sans "
+        "intitulé ni tiret.",
         f"- Chaque champ reçoit une valeur. Information absente de la conversation : écris exactement « {t.absent} ».",
         f"- Information évoquée mais incertaine : « {t.uncertain} — raison : valeur ». Informations contradictoires : "
-        "« Contradiction à vérifier », puis chaque version sur une ligne « - », sans choisir. Champ réellement sans "
-        f"objet pour cet appel : « {t.not_applicable} — raison ».",
+        + ("« Contradiction à vérifier : version 1 / version 2 », sans choisir. " if t.list_style == "inline" else
+           "« Contradiction à vérifier », puis chaque version sur une ligne « - », sans choisir. ")
+        + f"Champ réellement sans objet pour cet appel : « {t.not_applicable} — raison ».",
         "- N'invente rien et ne complète jamais avec ce qui serait habituel ou probable.",
         f"- Nom, numéro de téléphone et numéro WO entendus dans la conversation : « {t.uncertain} — entendu dans la "
         "conversation : valeur ».",
         "- Les valeurs déjà écrites dans le modèle viennent du poste du conseiller (source fiable) : recopie-les sans "
-        "les modifier. La date et l'heure de l'appel ne viennent jamais de la conversation.",
-        "- « Actions réellement effectuées » : seulement ce qui a été fait pendant l'appel. Une proposition va dans "
-        "« Solutions proposées » ; une action à faire va dans « Actions restantes (responsable) » avec son "
-        "responsable (conseiller, client, technicien, service) ou « responsable non identifié ».",
-        "- Sois concis mais complet : garde toutes les informations utiles au dossier ; cite entre « » les mots exacts "
-        "du client quand ils comptent (montants, refus, dates).",
+        "les modifier.",
+        "- Distingue ce qui a été fait pendant l'appel, ce qui a seulement été proposé et ce qui reste à faire (avec "
+        "qui s'en charge : conseiller, client, technicien, service).",
+        "- Rédige des phrases courtes et factuelles, comme dans l'exemple : reformule fidèlement, sans citer la "
+        "transcription mot pour mot. Garde toutes les informations utiles au dossier.",
+        "- La transcription peut contenir des erreurs de reconnaissance (mots mal entendus, phrases coupées, "
+        "« Sector Alarm » répété sans raison) : ne t'appuie que sur ce qui est clair ; sinon « À confirmer ».",
     ]
     if probe.type_source != "choisi par le conseiller":
         lines.append(f"- Type d'appel : détermine-le d'après la conversation (proposition automatique : {type_label}) "
                      f"et écris « {t.uncertain} — déterminé d'après la conversation : ... ».")
     lines += ["", "Contenu attendu par champ :"]
-    lines += [f"- {f.label} : {f.help}" for f in fields if f.help and f.id not in prefilled]
+    lines += [f"- {f.label}{' (lignes libres)' if f.bare else ''} : {f.help}" for f in fields
+              if f.help and f.id not in prefilled]
+    if t.example:
+        lines += ["", "Exemple de Phone Call attendu (forme à reproduire ; il concerne un autre appel : n'en reprends "
+                  "aucune information) :", "---", t.example, "---"]
     lines += ["", "Modèle à remplir :", "", *skeleton, "", "Transcription (Conseiller = micro du conseiller, "
               "Interlocuteur = son du PC ; [incertain] = passage mal compris) :"]
     for s in segments:
@@ -137,8 +151,12 @@ def check_answer(t: Template, prompt: CopilotPrompt, answer: str, transcript: st
     if not text:
         return text, flags + [_flag("reponse_vide", "blocking", "La réponse collée est vide.")], points
 
-    # Locate each expected field: « Label : value » + its bullets
-    labels = {f.label: f for f in prompt.fields}
+    # Locate each expected field: « Label : value » + its bullets (fields without label: free lines)
+    labels = {f.label: f for f in prompt.fields if not f.bare}
+    headings = [section_heading(t, s) for s in t.sections if any(f in prompt.fields for f in s.fields)]
+    missing_sections = [h for h in headings if not any(line.strip().lower() == h.strip().lower() for line in lines)]
+    if missing_sections:
+        flags.append(_flag("rubriques_manquantes", "warning", "Rubriques absentes : " + ", ".join(missing_sections)))
     starts = {}
     for i, line in enumerate(lines):
         for label in labels:
@@ -164,7 +182,7 @@ def check_answer(t: Template, prompt: CopilotPrompt, answer: str, transcript: st
             lines[i] = f"{spec.label} : {prompt.prefilled[spec.id]}"  # data of the PC is authoritative
             flags.append(_flag("valeur_poste_restauree", "warning", f"{label} : valeur du poste rétablie."))
             continue
-        if not value or (not bullets and VAGUE.match(head)):
+        if not value or (not bullets and head != t.absent and VAGUE.match(head)):
             lines[i] = f"{spec.label} : {t.absent}"
             normalised += 1
             continue
@@ -172,13 +190,6 @@ def check_answer(t: Template, prompt: CopilotPrompt, answer: str, transcript: st
             points.append(f"{label} : {value[:140]}")
         if spec.id in UNRELIABLE and not value.startswith((t.uncertain, t.absent, "Contradiction")):
             points.append(f"{label} : entendu dans la conversation, à confirmer")
-        for q in re.findall(r"« (.+?) »", value):
-            if len(q) > 12 and q.rstrip("…").strip() not in flat_transcript:
-                flags.append(_flag("citation_introuvable", "warning", f"{label} : citation absente de la transcription ({q[:60]})."))
-        unknown = sorted(n for n in _numbers(value) if len(n) > 1 and n not in source_numbers)
-        if unknown:
-            flags.append(_flag("chiffre_non_trouve", "blocking",
-                               f"{label} : {', '.join(unknown)} ne figure ni dans la conversation ni dans les informations du poste."))
         if spec.id == "actions_effectuees":
             for item in bullets or [head]:
                 low = item.lower()
@@ -186,6 +197,16 @@ def check_answer(t: Template, prompt: CopilotPrompt, answer: str, transcript: st
                     flags.append(_flag("action_non_effectuee", "blocking",
                                        f"Actions réellement effectuées : « {item[:80]} » ressemble à une proposition ou à "
                                        "une action future."))
+    # Every line, with or without label: quotes and figures must come from the call or the PC
+    for line in lines:
+        where = line.split(" :", 1)[0][:40] if " :" in line else line[:40]
+        for q in re.findall(r"« (.+?) »", line):
+            if len(q) > 12 and q.rstrip("…").strip() not in flat_transcript:
+                flags.append(_flag("citation_introuvable", "warning", f"{where} : citation absente de la transcription ({q[:60]})."))
+        unknown = sorted(n for n in _numbers(line) if len(n) > 1 and n not in source_numbers)
+        if unknown:
+            flags.append(_flag("chiffre_non_trouve", "blocking",
+                               f"« {where}… » : {', '.join(unknown)} ne figure ni dans la conversation ni dans les informations du poste."))
     if normalised:
         flags.append(_flag("absents_normalises", "info", f"{normalised} champ(s) vide(s) ou imprécis remplacé(s) par « {t.absent} »."))
     steps = [label for label, f in labels.items() if f.id in ("rendez_vous", "actions_restantes", "echeance")]

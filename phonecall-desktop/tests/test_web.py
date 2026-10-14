@@ -275,8 +275,8 @@ def test_ui_note_without_ai(running_app_local, tmp_path):
         page.click("#btn-stop")
         expect(page.locator("#state-badge")).to_have_text("Terminé", timeout=20000)
         note = page.locator("#note").input_value()
-        assert note.startswith("COMPTE RENDU D'APPEL — Movers") and "1. IDENTIFICATION DE L'APPEL" in note
-        assert "Date de déménagement : le mois prochain" in note and "8. INFORMATIONS COMPLÉMENTAIRES" in note
+        assert note.startswith("Interlocuteur :\nNom : Non communiqué") and "\nRéponse apporté :\n" in note
+        assert "Date de déménagement : le mois prochain" in note and "\nInformations Complémentaires :\n" in note
         expect(page.locator("#flags")).to_contain_text("Note sans IA")
         page.screenshot(path=str(tmp_path / "note_sans_ia.png"))
         browser.close()
@@ -311,16 +311,17 @@ def test_ui_copilot_copy_and_paste(running_app_local, tmp_path):
         page.click("#btn-copilot-prepare")
         expect(page.locator("#notices")).to_contain_text("Demande copiée")
         prompt = page.evaluate("navigator.clipboard.readText()")
-        assert "Modèle à remplir :" in prompt and "Type d'appel : Appel entrant — Movers (choisi par le conseiller)" in prompt
+        assert "Modèle à remplir :" in prompt and "Exemple de Phone Call attendu" in prompt and "\nOffre commercial :\n" in prompt
         assert "[00:00] Conseiller : Sector Alarm bonjour" in prompt
         page.click("#btn-copilot-paste")
-        answer = local_note.replace("Situation actuelle :", "Situation actuelle : Maison plus grande que l'appartement actuel\nAncienne :")
+        assert "Raison Résiliation : Non communiqué" in local_note
+        answer = local_note.replace("Raison Résiliation : Non communiqué", "Raison Résiliation : Aucune (transfert dans une maison plus grande que l'appartement actuel)")
         page.fill("#copilot-answer", answer)
         page.screenshot(path=str(tmp_path / "copilot_paste.png"))
         page.click("#copilot-use")
         expect(page.locator("#copilot-dialog")).to_be_hidden()
         expect(page.locator("#flags")).to_contain_text("Note rédigée par Copilot")
-        assert "Maison plus grande que l'appartement actuel" in page.locator("#note").input_value()
+        assert "Raison Résiliation : Aucune (transfert dans une maison plus grande" in page.locator("#note").input_value()
         page.screenshot(path=str(tmp_path / "copilot_done.png"))
         browser.close()
     out = os.environ.get("PCD_SCREENSHOT_DIR")

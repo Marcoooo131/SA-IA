@@ -148,10 +148,10 @@ def _substantive(s: Sentence) -> bool:
 TITLE = r"(?:Madame|Monsieur|Mademoiselle|Mme|M\.)"
 NAME = r"[A-ZÀ-Ý][a-zà-ÿ'-]+(?:[ -][A-ZÀ-Ý][a-zà-ÿ'-]+)?"
 NOT_NAMES = {"Sector", "Alarm", "Bonjour", "Bonsoir", "Oui", "Non", "Merci", "Très", "Alors", "Donc", "Je", "Vous",
-             "Madame", "Monsieur", "Allô", "Ok", "Parfait", "Bien", "Voilà", "Bah", "Euh"}
+             "Madame", "Monsieur", "Allô", "Ok", "Parfait", "Bien", "Voilà", "Bah", "Euh", "Société", "Societe"}
 SELF_INTRO = re.compile(rf"(?:je m'appelle|mon nom est|mon nom c'est|je suis|c'est|ici)\s+(?:({TITLE})\s+)?({NAME})")
 ADDRESSED = re.compile(rf"\b({TITLE})\s+({NAME})")
-COMPANY_GREETING = re.compile(rf"(?:Sector Alarm,?\s+({NAME})\b|({NAME}),?\s+(?:de\s+)?Sector Alarm|({NAME}),?\s+(?:à votre écoute|pour vous servir))")
+COMPANY_GREETING = re.compile(rf"(?:Sector Alarm,?\s+({NAME})\b|({NAME}),?\s+(?:de\s+)?(?:la\s+)?(?:[Ss]oci[ée]t[ée]\s+)?Sector Alarm|({NAME}),?\s+(?:à votre écoute|pour vous servir))")
 PHONE = re.compile(r"(?<!\d)(?:\+33\s?|0)[1-9](?:[\s.-]?\d{2}){4}(?!\d)")
 
 

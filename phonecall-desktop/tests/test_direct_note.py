@@ -23,9 +23,10 @@ from phonecall_desktop.web.server import Hub, create_app
 
 from call_scripts import MOVERS  # noqa: E402
 
-from phonecall_desktop.notes.template import load_template  # noqa: E402
+from phonecall_desktop.notes.template import DEFAULT_TEMPLATE, load_template  # noqa: E402
 
-TEMPLATE = load_template()
+GENERAL = DEFAULT_TEMPLATE.with_name("phone_call_template_general.yaml")
+TEMPLATE = load_template(GENERAL)  # these tests use the 8-section template; the team format is tested below
 
 KEY = "sk-ant-api03-" + "x" * 40
 REQUEST = httpx.Request("POST", "https://api.anthropic.com/v1/messages")
@@ -68,8 +69,8 @@ def fake_factory(messages=None, models=None):
 
 
 def settings(**kw):
-    return Settings(environment=Environment.TEST, audio_backend="test-files", recognizer="scripted",
-                    notes_client="anthropic", **kw)
+    return Settings(**{"environment": Environment.TEST, "audio_backend": "test-files", "recognizer": "scripted",
+                       "notes_client": "anthropic", "note_template": GENERAL, **kw})
 
 
 def conversation() -> list[Segment]:
@@ -292,3 +293,22 @@ def test_key_endpoints_require_direct_mode_and_auth(tmp_path, vault):
     assert c.put("/api/ai-key", json={"key": KEY}).status_code == 409 and "key" not in vault
     c.headers.pop("X-PCD-Token")
     assert c.put("/api/ai-key", json={"key": KEY}).status_code == 401
+
+
+def test_team_format_with_claude():
+    team = load_template()
+    output = {f.id: {"status": "absent", "items": [], "reason": "", "evidence": []} for f in team.all_fields()}
+    output["demenagement"] = {"status": "present", "items": ["Oui, déménagement dans une maison"], "reason": "",
+                              "evidence": ["S3"]}
+    output["complements_echanges"] = {"status": "present", "items": ["Le client enverra l'attestation de vente.",
+                                                                     "Le client est disponible le matin."],
+                                      "reason": "", "evidence": ["S17"]}
+    raw = json.dumps({"direction": "entrant", "variant": "movers", "fields": output}, ensure_ascii=False)
+    messages = FakeMessages(raw)
+    client = DirectAINoteClient(settings(note_template=None), lambda: KEY, client_factory=fake_factory(messages))
+    note = client.generate(conversation(), 95, "req-team", meta={"variant": "movers"})
+    assert note.text.startswith("Interlocuteur :\nNom : Non communiqué\nNuméro de téléphone : Non communiqué")
+    assert "Déménagement : Oui, déménagement dans une maison" in note.text
+    assert note.text.endswith("Informations Complémentaires :\nLe client enverra l'attestation de vente.\n"
+                              "Le client est disponible le matin.")
+    assert "Agent : Camille" in messages.calls[0]["system"]  # the example, as a model of form

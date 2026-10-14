@@ -53,6 +53,7 @@ FUTURE_ADVISOR = tuple(norm(m) for m in (
     "je vous rappelle la semaine", "je vous rappelle dans", "je vous recontacte", "vous allez recevoir", "vous recevrez",
     "un technicien va", "un technicien passera", "le technicien passera", "le service", "il faudra", "vous devez",
     "vous devrez", "pensez à", "n'oubliez pas", "merci de nous", "je programme", "je vous programme",
+    "je vous l'envoie", "je vous les envoie", "je vous envoie",
     "vous allez la recevoir", "vous allez le recevoir", "vous allez les recevoir", "vous la recevrez", "vous le recevrez",
     "vous les recevrez", "vous serez contacté", "vous serez rappelé", "va vous appeler", "va vous contacter",
     "va vous rappeler",
@@ -63,9 +64,14 @@ FUTURE_REMOTE = tuple(norm(m) for m in ("je vais", "je vous rappellerai", "je ra
                                         "je vous l'envoie", "je vous l'enverrai", "je vous les envoie", "je m'en occupe"))
 CUSTOMER_TASK = tuple(norm(m) for m in ("vous devez", "vous devrez", "il faudra que vous", "pensez à", "n'oubliez pas",
                                         "merci de nous", "il faudra nous", "vous pouvez nous envoyer"))
+EXPLANATION = tuple(norm(m) for m in (
+    "pour vous expliquer", "en fait", "parce que", "c'est-à-dire", "ça veut dire", "cela signifie", "on vient",
+    "nous venons", "on essaie", "nous essayons", "si c'est non", "si jamais", "dans tous les cas", "ne vous impacte pas",
+    "sans frais", "la procédure", "le process", "ça se passe", "on retire", "on recycle"))
 DELIVERY = tuple(norm(m) for m in ("vous allez recevoir", "vous recevrez", "vous allez la recevoir", "vous allez le recevoir",
                                    "vous allez les recevoir", "vous la recevrez", "vous le recevrez", "vous les recevrez"))
 APPOINTMENT = tuple(norm(m) for m in ("rendez-vous", "rdv", "passage d'un technicien", "intervention", "visite",
+                                      "date d'installation", "date l'installation", "l'installation",
                                       "technicien passera", "technicien viendra", "le technicien"))
 FIXED = tuple(norm(m) for m in ("est fixé", "c'est noté pour", "je vous programme", "j'ai programmé", "je programme",
                                 "je vous confirme", "prévu le", "prévue le", "passera le", "viendra le", "c'est fixé",
@@ -84,7 +90,13 @@ ADDRESS = re.compile(r"\b\d{1,4}(?:\s?(?:bis|ter))?,?\s+(?:rue|avenue|av\.|boule
                      re.IGNORECASE)
 NEW_ADDRESS = tuple(norm(m) for m in ("nouvelle adresse", "nouveau logement", "je vais habiter", "on emménage", "j'emménage",
                                       "on déménage", "je déménage", "nous déménageons", "future adresse"))
-MOVE_WORDS = tuple(norm(m) for m in ("déménag", "emménag", "nouveau logement", "nouvelle adresse", "les clés", "état des lieux"))
+MOVE_WORDS = tuple(norm(m) for m in ("déménag", "emménag", "nouveau logement", "nouvelle adresse", "les clés", "état des lieux",
+                                     "on rentre", "je rentre", "nous rentrons", "on arrive", "on s'installe", "à partir du"))
+DATE_CHOSEN = tuple(norm(m) for m in ("c'est parfait", "ça me va", "ça me convient", "ok pour", "va pour", "on part sur",
+                                      "je valide", "je vous mets", "je vous réserve", "je vous inscris", "c'est noté pour"))
+DAY_NUMBER = re.compile(r"\b(?:le|lundi|mardi|mercredi|jeudi|vendredi|samedi)\s+(?:\d{1,2}|1er)\b")
+NOT_AN_ACTION = tuple(norm(m) for m in ("je vais avoir", "je vais être", "je vais regarder", "je vais voir ce que",
+                                        "je vais vérifier", "je vais quand même vérifier"))
 MONTH_PERIOD = re.compile(r"\b(?:debut|fin|mi-|courant|en)\s?(?:janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre"
                           r"|octobre|novembre|decembre)\b")
 
@@ -170,7 +182,9 @@ class RuleFiller:
                 continue
             if questions == "exclude" and is_question(s):
                 continue
-            if late and s.index < len(self.sentences) // 2 or exclude_used and s.index in self.used:
+            if late and s.index < len(self.sentences) // 2:
+                continue
+            if exclude_used and (s.index in self.used or any(_similar(s.n, self.sentences[i].n) for i in self.used)):
                 continue
             cands.append(s)
         if not cands and fallback:
@@ -288,11 +302,13 @@ class RuleFiller:
         for s in self.sentences:
             if not s.has(MOVE_WORDS):
                 continue
-            for rx in (*FIGURES[1:5], MONTH_PERIOD):
+            for rx in (*FIGURES[1:5], MONTH_PERIOD, DAY_NUMBER):
                 for m in rx.finditer(s.n):
                     found.append((m.group(0).strip(), s))
         if not found:
             return FieldValue.absent()
+        values = [v for v, _s in found]
+        found = [(v, s) for v, s in found if not any(v != o and v in o for o in values)]  # « le 15 » in « le 15 mars »
         value = self._distinct(found, "")
         if value.status == "uncertain":  # a single date said in the call: reported as said
             value.status, value.reason = "present", ""
@@ -356,6 +372,8 @@ class RuleFiller:
     def _remaining(self) -> list[tuple[Sentence, str]]:
         out = []
         for s in self.pool("any"):
+            if s.has(NOT_AN_ACTION):
+                continue
             if s.speaker == "advisor" and s.has(FUTURE_ADVISOR) and not is_question(s):
                 if s.has(CUSTOMER_TASK):
                     who = "client"
@@ -389,6 +407,12 @@ class RuleFiller:
             if len(fixed) > 1 and len(dates) > 1:
                 return FieldValue("contradictory", items, "plusieurs dates de rendez-vous citées", "conversation")
             return FieldValue("present", [f"Fixé : {items[-1]}"], source="conversation")
+        # A date agreed on in the conversation (« Le 30 c'est parfait. »), without the word rendez-vous
+        chosen = [s for s in self.pool("any") if s.has(DATE_CHOSEN) and DAY_NUMBER.search(s.n)]
+        if chosen:
+            s = chosen[-1]
+            date = DAY_NUMBER.search(s.n).group(0)
+            return FieldValue("uncertain", [f"{date} ({_quote(s.text)})"], "date retenue dans la conversation", "conversation")
         if cands:
             return FieldValue("uncertain", [_quote(cands[-1].text)], "rendez-vous évoqué mais non fixé", "conversation")
         return FieldValue.absent()
@@ -406,6 +430,27 @@ class RuleFiller:
     def extract_case_state(self) -> FieldValue:
         said = [s for s in self.sentences if CASE_STATE.search(s.n)]
         return FieldValue("present", [_quote(said[-1].text)], source="conversation") if said else FieldValue.absent()
+
+    def extract_additional_info(self) -> FieldValue:
+        """Explanations given, actions remaining (with owner) and decision not already quoted above."""
+        items: list[str] = []
+        explanations = [s for s in self.pool("advisor") if s.index not in self.used and not is_question(s)
+                        and s.has(EXPLANATION)]
+        for s in explanations[:4]:
+            self.used.add(s.index)
+            items.append(f"Explication donnée : {self._item(s)}")
+        for s, who in self._remaining:
+            if s.index not in self.used:
+                self.used.add(s.index)
+                items.append(f"Action à suivre ({who}) : {self._item(s)}")
+        decision = self.extract_decision()
+        if decision.status in ("present", "uncertain") and decision.items:
+            items.append(f"Décision du client : {decision.items[0]}")
+        elif decision.status == "contradictory":
+            items.append("Décision du client contradictoire : " + " / ".join(decision.items))
+        if not items:
+            return FieldValue.absent()
+        return FieldValue("present", items, source="conversation")
 
     def extract_complements(self) -> FieldValue:
         written = " ".join(i for v in self.values.values() for i in v.items).lower()

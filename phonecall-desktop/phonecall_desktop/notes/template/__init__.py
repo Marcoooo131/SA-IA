@@ -34,9 +34,11 @@ class FieldSpec:
     multi: bool = False
     when: frozenset[str] | None = None
     rule: dict = field(default_factory=dict)
+    bare: bool = False  # no label: free lines under the section title (label = section name, for messages)
+    unless: frozenset[str] = frozenset()
 
     def visible(self, tags: set[str]) -> bool:
-        return self.when is None or bool(self.when & tags)
+        return (self.when is None or bool(self.when & tags)) and not (self.unless & tags)
 
 
 @dataclass
@@ -56,6 +58,10 @@ class Template:
     directions: dict[str, str]
     sections: list[Section]
     path: str = ""
+    section_case: str = "upper"  # upper | as_is
+    blank_lines: bool = True
+    list_style: str = "bullets"  # bullets | inline
+    example: str = ""
 
     def all_fields(self) -> list[FieldSpec]:
         return [f for s in self.sections for f in s.fields]
@@ -70,7 +76,14 @@ class Template:
 def template_path(settings: Settings) -> Path:
     """``PCD_NOTE_TEMPLATE``, then the copy next to the .exe, then the default of the package."""
     if settings.note_template:
-        return settings.note_template
+        path = Path(settings.note_template)
+        if path.is_absolute() or path.is_file():
+            return path
+        # bare file name (config.env): next to the .exe, otherwise one of the templates of the package
+        for base in [d for d in (install_dir(),) if d is not None] + [DEFAULT_TEMPLATE.parent]:
+            if (base / path).is_file():
+                return base / path
+        return path
     if (d := install_dir()) is not None and (d / "phone_call_template.yaml").is_file():
         return d / "phone_call_template.yaml"
     return DEFAULT_TEMPLATE
@@ -89,19 +102,25 @@ def load_template(path: Path | None = None) -> Template:
             if not re.fullmatch(r"[a-z0-9_]+", fid) or fid in seen:
                 raise ValueError(f"template {path}: invalid or duplicate field id {fid!r}")
             seen.add(fid)
-            when = f.get("when")
-            fields.append(FieldSpec(fid, str(f["label"]), str(f.get("help") or ""), bool(f.get("multi")),
-                                    frozenset(when) if when else None, dict(f.get("rule") or {})))
+            when, bare = f.get("when"), bool(f.get("bare"))
+            label = str(f.get("label") or "") or (str(s["title"]).rstrip(" :") if bare else "")
+            if not label:
+                raise ValueError(f"template {path}: field {fid!r} has no label")
+            fields.append(FieldSpec(fid, label, str(f.get("help") or ""), bool(f.get("multi")) or bare,
+                                    frozenset(when) if when else None, dict(f.get("rule") or {}), bare,
+                                    frozenset(f.get("unless") or [])))
         sections.append(Section(str(s["title"]), fields))
     if not sections:
         raise ValueError(f"template {path}: no section")
     return Template(
-        version=str(data.get("version") or "?"), title=str(data.get("title") or "COMPTE RENDU D'APPEL"),
+        version=str(data.get("version") or "?"), title=str(data.get("title", "COMPTE RENDU D'APPEL") or ""),
         absent=str(data.get("absent") or "Aucune information notifiée"),
         uncertain=str(data.get("uncertain") or "À confirmer"),
         not_applicable=str(data.get("not_applicable") or "Non applicable"),
         call_types=dict(data.get("call_types") or {}), directions=dict(data.get("directions") or {}),
         sections=sections, path=str(path),
+        section_case=str(data.get("section_case") or "upper"), blank_lines=bool(data.get("blank_lines", True)),
+        list_style=str(data.get("list_style") or "bullets"), example=str(data.get("example") or "").strip(),
     )
 
 
@@ -148,37 +167,68 @@ class FilledNote:
         return [(s, [f for f in s.fields if f.visible(self.tags)]) for s in self.template.sections]
 
 
+def section_heading(t: Template, section: Section) -> str:
+    return section.title.upper() if t.section_case == "upper" else section.title
+
+
+def _join(t: Template, items: list[str]) -> str:
+    return " ; ".join(items)
+
+
 def format_value(t: Template, spec: FieldSpec, v: FieldValue) -> list[str]:
-    """Lines of one field: « Label : value », or a heading and bullets for several items."""
+    """Lines of one field: « Label : value », or the label and one bullet per item (list_style)."""
     items = [i.strip() for i in v.items if i and i.strip()]
+    inline = t.list_style == "inline"
     if v.status == "absent" or (v.status == "present" and not items):
         return [f"{spec.label} : {t.absent}"]
     if v.status == "not_applicable":
         return [f"{spec.label} : {t.not_applicable}" + (f" — {v.reason}" if v.reason else "")]
     if v.status == "contradictory":
         head = f"{spec.label} : Contradiction à vérifier" + (f" — {v.reason}" if v.reason else "")
-        return [head] + [f"- {i}" for i in items]
+        return [f"{head} : {' / '.join(items)}"] if inline else [head] + [f"- {i}" for i in items]
     prefix = ""
     if v.status == "uncertain":
         prefix = t.uncertain + (f" — {v.reason}" if v.reason else "")
         if not items:
             return [f"{spec.label} : {prefix}"]
         prefix += " : "
-    if len(items) == 1:
-        return [f"{spec.label} : {prefix}{items[0]}"]
+    if len(items) == 1 or inline:
+        return [f"{spec.label} : {prefix}{_join(t, items)}"]
     return [f"{spec.label} :" + (f" {prefix.rstrip(' :')}" if prefix else "")] + [f"- {i}" for i in items]
+
+
+def format_bare(t: Template, v: FieldValue) -> list[str]:
+    """Free lines of a field without label (nothing when absent: the section decides)."""
+    items = [i.strip() for i in v.items if i and i.strip()]
+    if v.status == "absent" or not items and v.status == "present":
+        return []
+    if v.status == "not_applicable":
+        return [t.not_applicable + (f" — {v.reason}" if v.reason else "")]
+    if v.status == "contradictory":
+        return ["Contradiction à vérifier" + (f" — {v.reason}" if v.reason else "") + " : " + " / ".join(items)]
+    if v.status == "uncertain":
+        head = t.uncertain + (f" — {v.reason}" if v.reason else "")
+        return [f"{head} : {i}" for i in items] if items else [head]
+    return items
 
 
 def render(note: FilledNote) -> str:
     t = note.template
-    kind = " · ".join(x for x in (t.variant_label(note.variant), t.directions.get(note.direction or "", "")) if x)
-    lines = [f"{t.title} — {kind}" if kind else t.title]
+    lines = []
+    if t.title:
+        kind = " · ".join(x for x in (t.variant_label(note.variant), t.directions.get(note.direction or "", "")) if x)
+        lines.append(f"{t.title} — {kind}" if kind else t.title)
     for section, fields in note.visible_fields():
         if not fields:
             continue
-        lines += ["", section.title.upper()]
+        if lines and t.blank_lines:
+            lines.append("")
+        lines.append(section_heading(t, section))
+        body = []
         for spec in fields:
-            lines += format_value(t, spec, note.values.get(spec.id) or FieldValue.absent())
+            v = note.values.get(spec.id) or FieldValue.absent()
+            body += format_bare(t, v) if spec.bare else format_value(t, spec, v)
+        lines += body or [t.absent]  # every section says something
     return "\n".join(lines)
 
 

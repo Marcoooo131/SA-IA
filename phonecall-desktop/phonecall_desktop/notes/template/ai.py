@@ -50,6 +50,8 @@ def system_prompt(t: Template) -> str:
         f"variant parmi {', '.join(t.call_types)} : "
         + "; ".join(f"{k} = {v.get('label', k)}" for k, v in t.call_types.items()) + ".",
         "",
+        "- Rédige des éléments courts et factuels, comme dans l'exemple ci-dessous s'il y en a un.",
+        "",
         "Champs (id — intitulé — consigne ; les champs « si … » ne concernent que ces types d'appel, sinon "
         "status \"not_applicable\") :",
     ]
@@ -57,8 +59,11 @@ def system_prompt(t: Template) -> str:
         lines.append(f"{section.title}")
         for f in section.fields:
             cond = f" (si {', '.join(sorted(f.when))})" if f.when else ""
+            cond += f" (jamais si {', '.join(sorted(f.unless))})" if f.unless else ""
             lines.append(f"- {f.id} — {f.label}{cond} — {f.help or 'information correspondante'}"
                          + (" (plusieurs éléments possibles)" if f.multi else ""))
+    if t.example:
+        lines += ["", "Exemple de compte rendu attendu (forme seulement ; il concerne un autre appel) :", t.example]
     return "\n".join(lines)
 
 

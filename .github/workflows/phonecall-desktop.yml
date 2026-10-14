@@ -124,7 +124,7 @@ jobs:
           body: |
             Poste conseiller Phone Call (application Windows non signée).
             Transcription en direct calculée sur le PC avec le modèle livré dans le zip (aucun accès à Hugging Face).
-            À la fin de l'appel : compte rendu dans la **template générale Phone Call** (8 rubriques, champs Movers / Frontline / Appel sortant), rempli **sans IA** (aucun coût, rien n'est envoyé sur Internet).
+            À la fin de l'appel : note Phone Call **au format de l'équipe** (Interlocuteur, Raison de l'appel, Situation, Réponse apporté, Informations Complémentaires), remplie **sans IA** ou par **Copilot Chat** (exemple de l'équipe fourni à Copilot).
 
             1. Téléchargez `PhoneCallDesktop-windows.zip`, clic droit › Extraire tout.
             2. Ouvrez le dossier `PhoneCallDesktop` et lisez `LISEZMOI.txt`.

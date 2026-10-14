@@ -214,3 +214,13 @@ def test_repetition_marks_final_uncertain():
     st.close()
     final = [e for e in events if e.kind == "final"][0]
     assert final.uncertain and final.text == "Non, mais non."
+
+
+def test_vocabulary_word_alone_is_an_artefact():
+    from phonecall_desktop.stt.streaming import is_hallucination, vocabulary_terms
+
+    terms = vocabulary_terms("Sector Alarm, télésurveillance, alarme")
+    for text in ("Sector Alarm", "Sector Alarm.", "sector alarm, Sector Alarm", "Télésurveillance !"):
+        assert is_hallucination(text, terms), text
+    for text in ("Oui bonjour, Société Sector Alarm, vous allez bien ?", "Mon alarme sonne la nuit.", "Sector"):
+        assert not is_hallucination(text, terms), text

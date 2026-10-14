@@ -1,8 +1,12 @@
-# Template générale Phone Call
+# Template Phone Call
 
-Le compte rendu d'appel suit une **template générale unique**, inspirée des templates métier
-Movers, Frontline et Appel sortant. Elle est **centralisée dans un fichier de configuration** :
-`phone_call_template.yaml`. Modifier ce fichier suffit pour ajouter, retirer, renommer ou réordonner
+Le compte rendu d'appel est défini dans un **fichier de configuration** : par défaut
+`phone_call_template.yaml`, **au format de l'équipe** (Interlocuteur / Raison de l'appel / Situation /
+Réponse apporté / Informations Complémentaires, champs Movers), avec un exemple de note validé par
+l'équipe que Copilot et Claude reproduisent. Une présentation **générale en 8 rubriques** reste
+disponible : `phone_call_template_general.yaml` (`PCD_NOTE_TEMPLATE` dans `config.env`). Le reste de
+ce document décrit la template générale ; les mêmes règles (statuts, sources, vérification)
+s'appliquent au format de l'équipe, où l'information absente s'écrit « Non communiqué ». Modifier ce fichier suffit pour ajouter, retirer, renommer ou réordonner
 des champs ; l'application, la note sans IA, la note rédigée par Claude et la vérification
 automatique en dépendent toutes.
 
@@ -10,7 +14,13 @@ automatique en dépendent toutes.
 |---|---|
 | `phonecall_desktop/notes/template/phone_call_template.yaml` | version de référence (dans le code) |
 | `phone_call_template.yaml` à côté de `PhoneCallDesktop.exe` | copie modifiable livrée dans le zip (prioritaire) |
+| `phone_call_template_general.yaml` (même dossiers) | présentation générale en 8 rubriques |
 | `PCD_NOTE_TEMPLATE=chemin` dans `config.env` | autre fichier, si besoin |
+
+Mise en page réglable dans le fichier : `title` (ligne de titre ou aucune), `section_case` (titres
+tels quels ou en majuscules), `blank_lines`, `list_style` (`inline` : « Intitulé : a ; b »), champs
+sans intitulé (`bare: true`, lignes libres sous la rubrique), champs exclus pour un type (`unless:`),
+et `example:` (note modèle donnée à Copilot et à Claude).
 
 ## Structure
 

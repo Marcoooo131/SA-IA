@@ -18,6 +18,7 @@ from phonecall_desktop.factory import build_note_client, whisper_model_source
 from phonecall_desktop.notes.business import load_categories
 from phonecall_desktop.notes.local_summary import NO_CONTENT_TEXT, LocalSummaryNoteClient, summarize
 from phonecall_desktop.notes.template import (
+    DEFAULT_TEMPLATE,
     CallContext,
     FieldValue,
     FilledNote,
@@ -33,7 +34,8 @@ from phonecall_desktop.transcript.assembler import Segment
 
 ABSENT = "Aucune information notifiée"
 CATEGORIES = load_categories(Settings(environment=Environment.TEST))
-TEMPLATE = load_template()
+GENERAL = DEFAULT_TEMPLATE.with_name("phone_call_template_general.yaml")
+TEMPLATE = load_template(GENERAL)  # the 8-section general template (option)
 CLOCK = time.mktime((2026, 10, 14, 10, 32, 0, 0, 0, -1))
 
 
@@ -307,7 +309,9 @@ def test_factory_and_production_accept_local_mode():
     s = Settings(environment=Environment.PRODUCTION, notes_client="local", agent_name="Julie")
     s.assert_safe()
     client = build_note_client(s)
-    assert isinstance(client, LocalSummaryNoteClient) and client.describe()["fields"] == len(TEMPLATE.all_fields())
+    assert isinstance(client, LocalSummaryNoteClient) and client.describe()["fields"] == len(load_template().all_fields())
+    general = build_note_client(s.model_copy(update={"note_template": GENERAL}))
+    assert general.describe()["template"] == TEMPLATE.version
 
 
 def test_end_to_end_session_keeps_transcript_and_note_separate(tmp_path):
@@ -326,8 +330,8 @@ def test_end_to_end_session_keeps_transcript_and_note_separate(tmp_path):
     while ctl.state not in {State.DONE, State.ERROR} and time.time() < deadline:
         time.sleep(0.05)
     assert ctl.state == State.DONE, ctl.error
-    assert value(ctl.note_text, "Type d'appel") == "Appel entrant — Movers (choisi par le conseiller)"
-    assert value(ctl.note_text, "Date et heure de l'appel").endswith("(horloge du poste)")
+    assert ctl.note_text.startswith("Interlocuteur :\nNom : Non communiqué")  # team format (default template)
+    assert value(ctl.note_text, "Date de déménagement").startswith("le mois prochain")
     snap = ctl.snapshot()
     assert snap["note"] == ctl.note_text and len(snap["transcript"]) >= 8  # raw transcript kept beside the note
     assert snap["transcript"][1]["text"].startswith("Bonjour, je vous appelle parce que je déménage")
@@ -345,3 +349,73 @@ def test_bundled_model_is_used_offline(tmp_path, monkeypatch):
     assert whisper_model_source(s) == (str(tmp_path / "models" / "small"), True)
     it = tmp_path / "it"
     assert whisper_model_source(s.model_copy(update={"whisper_model_dir": it})) == (str(it / "small"), True)
+
+
+# ---------------------------------------------------------------- team format (default template)
+
+from call_scripts import TEAM_EXAMPLE  # noqa: E402
+
+from phonecall_desktop.stt.streaming import is_hallucination, vocabulary_terms  # noqa: E402
+
+TEAM = load_template()
+TEAM_HEADINGS = ["Interlocuteur :", "Raison de l'appel :", "Situation :", "Réponse apporté :", "Informations Complémentaires :"]
+
+
+def team_call():
+    terms = vocabulary_terms(Settings().vocabulary)
+    return [(c, t) for c, t in TEAM_EXAMPLE if t and not is_hallucination(t, terms)]
+
+
+def test_default_template_is_the_team_format():
+    assert TEAM.title == "" and TEAM.absent == "Non communiqué" and TEAM.list_style == "inline"
+    assert [s.title for s in TEAM.sections] == TEAM_HEADINGS
+    assert TEAM.example.startswith("Interlocuteur :\nNom : Non communiqué")
+    movers = [f.label for f in TEAM.all_fields() if f.visible({"movers", "sortant"}) and not f.bare]
+    assert movers == ["Nom", "Numéro de téléphone", "Agent", "Déménagement", "Raison Résiliation", "Matériel sur place",
+                      "Audit", "Numéro WO", "Date de déménagement", "Date de rendez-vous", "Offre commercial",
+                      "Contact Repreneurs"]
+    frontline = [f.label for f in TEAM.all_fields() if f.visible({"frontline", "entrant"}) and not f.bare]
+    assert frontline == ["Nom", "Numéro de téléphone", "Agent", "Service concernée"]
+
+
+def test_team_example_without_ai():
+    note = summarize(segs(team_call()), CallContext(direction="sortant", variant="movers", started_at=CLOCK, duration_s=160),
+                     CATEGORIES, TEAM)
+    t = note.text
+    lines = t.splitlines()
+    assert lines[0] == "Interlocuteur :" and [line for line in lines if line in TEAM_HEADINGS] == TEAM_HEADINGS
+    assert value(t, "Nom") == "Non communiqué" and value(t, "Numéro de téléphone") == "Non communiqué"
+    assert value(t, "Agent") == "À confirmer — entendu dans la conversation : Julien"
+    assert "je déménage 1 km plus loin" in value(t, "Déménagement")
+    assert "sans frais" in value(t, "Matériel sur place") and "électricité" in value(t, "Audit")
+    assert value(t, "Numéro WO") == "Non communiqué"
+    assert value(t, "Date de déménagement").startswith("jeudi 29")
+    assert value(t, "Date de rendez-vous").startswith("À confirmer — date retenue dans la conversation : le 30")
+    assert "deux mots offerts" in value(t, "Offre commercial")
+    assert "agence Exemple Immobilier" in value(t, "Contact Repreneurs")
+    extra = t.split("Informations Complémentaires :\n", 1)[1]
+    assert "Action à suivre (client) : « Je vais juste les prévenir" in extra and "Durée de l'appel : 2 min 40 s" in extra
+    assert "Sector Alarm »" not in t  # « Sector Alarm » alone: dropped as a transcription artefact
+    assert not [f for f in note.flags if f["severity"] == "blocking"], note.flags
+
+
+def test_frontline_call_in_team_format():
+    t = summarize(segs(FRONTLINE), CallContext(direction="entrant", variant="frontline"), CATEGORIES, TEAM).text
+    assert value(t, "Service concernée").endswith("Service après-vente")
+    reason = t.split("Raison de l'appel :\n", 1)[1].split("\nSituation :", 1)[0]
+    assert "« Bonjour, ma centrale sonne toutes les nuits" in reason and "Déménagement" not in t
+    answer = t.split("Réponse apporté :\n", 1)[1].split("\nInformations Complémentaires :", 1)[0]
+    assert "J'ai envoyé une nouvelle pile" in answer
+
+
+def test_empty_free_section_says_non_communique():
+    t = summarize(segs([("system", "Bonjour, je voudrais une attestation pour mon assurance habitation."),
+                        ("mic", "Je vous l'envoie par e-mail aujourd'hui, au revoir.")] * 2),
+                  CallContext(direction="entrant", variant="frontline"), CATEGORIES, TEAM).text
+    assert "Situation :\nNon communiqué" in t
+
+
+def test_template_given_by_bare_file_name(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    s = Settings(environment=Environment.TEST, note_template="phone_call_template_general.yaml")
+    assert template_path(s) == GENERAL  # found in the package whatever the current folder

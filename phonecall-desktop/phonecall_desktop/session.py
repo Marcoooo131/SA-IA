@@ -177,7 +177,8 @@ class SessionController:
             self.recognizer.warmup()  # raises RECOGNIZER_UNAVAILABLE before any capture
             self.recognizer_ready = True
             self.transcriber = StreamingTranscriber(self.recognizer, self._on_transcript, list(channels),
-                                                    context_prompt=self.settings.vocabulary)
+                                                    context_prompt=self.settings.vocabulary,
+                                                    vocabulary=self.settings.vocabulary)
             self.capture = CaptureManager(self.backend, self._on_chunk, self._on_capture_event)
             try:
                 self.opened_devices = self.capture.start(CaptureConfig(channels, no_signal_warn_s=self.settings.no_signal_warn_s))
