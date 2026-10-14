@@ -75,6 +75,7 @@ export function ChatThreadScreen({ id }: { id: string }) {
   const [text, setText] = useState('');
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const endRef = useRef<HTMLDivElement | null>(null);
   const started = useRef(false);
   const day = currentDay(state);
@@ -149,7 +150,6 @@ export function ChatThreadScreen({ id }: { id: string }) {
   }
 
   function remove() {
-    if (!window.confirm('Supprimer cette conversation ?')) return;
     setState((s) => deleteChat(s, id));
     navigate('/chat', { replace: true });
   }
@@ -161,12 +161,23 @@ export function ChatThreadScreen({ id }: { id: string }) {
           <ArrowLeft size={24} aria-hidden="true" />
         </button>
         <strong style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{thread.title}</strong>
-        <button type="button" className="icon-btn" onClick={remove} aria-label="Supprimer la conversation">
+        <button type="button" className="icon-btn" onClick={() => setConfirmDelete(true)} aria-label="Supprimer la conversation">
           <Trash2 size={20} aria-hidden="true" />
         </button>
       </header>
       <div className="fs-body">
         <div className="inner">
+          {confirmDelete && (
+            <div className="banner error" role="alert" style={{ flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ flex: '1 1 100%' }}>Supprimer cette conversation ?</span>
+              <button type="button" className="btn btn-ko btn-small" onClick={remove}>
+                Supprimer
+              </button>
+              <button type="button" className="btn btn-ghost btn-small" onClick={() => setConfirmDelete(false)}>
+                Annuler
+              </button>
+            </div>
+          )}
           <OfflineBanner>Hors connexion : le professeur IA ne peut pas répondre sans Internet. Tes messages déjà échangés restent consultables.</OfflineBanner>
           <div className="messages" aria-live="polite">
             {thread.messages.map((m) => (

@@ -66,3 +66,9 @@ export function mergeStates(localRaw: AppState, remoteRaw: unknown): AppState {
     settings: remote.settings.updatedAt > local.settings.updatedAt ? remote.settings : local.settings,
   };
 }
+
+/** Fusionne et renvoie l'état courant tel quel s'il ne change pas (évite une boucle de synchronisation). */
+export function mergeIfChanged(current: AppState, remote: unknown): AppState {
+  const merged = mergeStates(current, remote);
+  return JSON.stringify(merged) === JSON.stringify(current) ? current : merged;
+}

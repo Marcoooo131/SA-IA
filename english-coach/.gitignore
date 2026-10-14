@@ -4,3 +4,4 @@ data
 test-results
 playwright-report
 *.log
+dist-artifact

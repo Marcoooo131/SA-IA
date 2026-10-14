@@ -57,7 +57,8 @@ export function initPwa() {
     emit();
   });
 
-  if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  // Pas de service worker dans la version artefact claude.ai (le cadre de l'artefact ne le permet pas).
+  if (import.meta.env.PROD && import.meta.env.VITE_TARGET !== 'artifact' && 'serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
       try {
         const reg = await navigator.serviceWorker.register('./sw.js', { scope: './' });

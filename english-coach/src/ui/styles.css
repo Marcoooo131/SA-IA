@@ -24,11 +24,16 @@
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
   --app-height: 100dvh;
+  --on-brand: #ffffff;
+  --hero-a: #2b59c3;
+  --hero-b: #3a6ee0;
+  --warn-fg: #8a5a00;
   color-scheme: light;
 }
 
+/* Thème sombre : système (sans choix explicite) ou choix explicite data-theme="dark". */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --brand: #7fa2ff;
     --brand-strong: #a9c0ff;
     --brand-soft: #1d2a4d;
@@ -45,7 +50,34 @@
     --warn-soft: #3d3218;
     --shadow: none;
     color-scheme: dark;
+    --on-brand: #0e1525;
+    --hero-a: #24407f;
+    --hero-b: #2e55a8;
+    --warn-fg: #ffcf7a;
   }
+}
+
+:root[data-theme='dark'] {
+  --brand: #7fa2ff;
+  --brand-strong: #a9c0ff;
+  --brand-soft: #1d2a4d;
+  --bg: #0e1525;
+  --surface: #18223a;
+  --surface-2: #212d48;
+  --text: #e8ecf5;
+  --muted: #a3acc2;
+  --border: #2c3956;
+  --ok: #5fd28a;
+  --ok-soft: #173a29;
+  --ko: #ff8a7a;
+  --ko-soft: #47201c;
+  --warn-soft: #3d3218;
+  --shadow: none;
+  color-scheme: dark;
+  --on-brand: #0e1525;
+  --hero-a: #24407f;
+  --hero-b: #2e55a8;
+  --warn-fg: #ffcf7a;
 }
 
 * {
@@ -173,16 +205,11 @@ h3 {
 }
 
 .hero {
-  background: linear-gradient(160deg, #2b59c3, #3a6ee0);
+  background: linear-gradient(160deg, var(--hero-a), var(--hero-b));
   color: #fff;
   border: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  .hero {
-    background: linear-gradient(160deg, #24407f, #2e55a8);
-  }
-}
 
 .hero .eyebrow {
   font-size: 0.85rem;
@@ -261,14 +288,9 @@ h3 {
 
 .btn-primary {
   background: var(--brand);
-  color: #fff;
+  color: var(--on-brand);
 }
 
-@media (prefers-color-scheme: dark) {
-  .btn-primary {
-    color: #0e1525;
-  }
-}
 
 .hero .btn-primary {
   background: #fff;
@@ -288,20 +310,14 @@ h3 {
 
 .btn-ok {
   background: var(--ok);
-  color: #fff;
+  color: var(--on-brand);
 }
 
 .btn-ko {
   background: var(--ko);
-  color: #fff;
+  color: var(--on-brand);
 }
 
-@media (prefers-color-scheme: dark) {
-  .btn-ok,
-  .btn-ko {
-    color: #0e1525;
-  }
-}
 
 .btn-small {
   min-height: 44px;
@@ -382,7 +398,7 @@ h3 {
   padding: 0 6px;
   border-radius: 99px;
   background: var(--ko);
-  color: #fff;
+  color: var(--on-brand);
   font-size: 0.72rem;
   font-weight: 700;
 }
@@ -406,14 +422,9 @@ h3 {
 
 .pill.warn {
   background: var(--warn-soft);
-  color: #8a5a00;
+  color: var(--warn-fg);
 }
 
-@media (prefers-color-scheme: dark) {
-  .pill.warn {
-    color: #ffcf7a;
-  }
-}
 
 /* ——— Bannières ——— */
 
@@ -928,7 +939,7 @@ h3 {
 
 .day.current .num {
   background: var(--brand);
-  color: #fff;
+  color: var(--on-brand);
 }
 
 .day .info {
@@ -1079,15 +1090,10 @@ h3 {
 .msg.user {
   align-self: flex-end;
   background: var(--brand);
-  color: #fff;
+  color: var(--on-brand);
   border-bottom-right-radius: 6px;
 }
 
-@media (prefers-color-scheme: dark) {
-  .msg.user {
-    color: #0e1525;
-  }
-}
 
 .msg.tutor {
   align-self: flex-start;
@@ -1162,7 +1168,7 @@ h3 {
   border-radius: 50%;
   border: none;
   background: var(--brand);
-  color: #fff;
+  color: var(--on-brand);
   display: inline-flex;
   align-items: center;
   justify-content: center;

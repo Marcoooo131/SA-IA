@@ -50,3 +50,12 @@ describe('fusion entre appareils', () => {
     expect(mergeStates(s, { completed: {} }).attempts).toHaveLength(1);
   });
 });
+
+describe('fusion sans changement', () => {
+  it('renvoie le même objet quand rien ne change', async () => {
+    const { mergeIfChanged } = await import('./merge');
+    const s = answerFirst(emptyState(), 100);
+    expect(mergeIfChanged(s, JSON.parse(JSON.stringify(s)))).toBe(s);
+    expect(mergeIfChanged(s, answerFirst(emptyState(), 200))).not.toBe(s);
+  });
+});

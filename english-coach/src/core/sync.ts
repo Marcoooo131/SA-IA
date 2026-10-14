@@ -1,5 +1,5 @@
 import { ApiError, apiFetch, errorMessage } from './api';
-import { mergeStates } from './merge';
+import { mergeIfChanged, mergeStates } from './merge';
 import type { AppState } from './state';
 import { flush, getMeta, getState, setMeta, setState } from './store';
 
@@ -80,7 +80,7 @@ async function runSync(): Promise<void> {
           body: JSON.stringify({ doc: merged, baseRevision: remote.revision }),
         });
         // Les réponses données pendant l'échange ne doivent pas être écrasées : on refusionne.
-        setState((current) => mergeStates(current, merged));
+        setState((current) => mergeIfChanged(current, merged));
         await flush();
         setMeta({ revision: saved.revision, lastSyncAt: Date.now(), syncError: undefined });
         setStatus('ok');

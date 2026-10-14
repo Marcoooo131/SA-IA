@@ -24,6 +24,7 @@ let state: AppState = emptyState();
 let meta: DeviceMeta = { deviceId: uid('d_') };
 let ready = false;
 const listeners = new Set<() => void>();
+const stateListeners = new Set<() => void>();
 let saveQueued = false;
 let dirty = false;
 let writes: Promise<void> = Promise.resolve();
@@ -63,6 +64,7 @@ export function setState(update: (s: AppState) => AppState) {
   state = next;
   dirty = true;
   emit();
+  stateListeners.forEach((l) => l());
   scheduleSave();
 }
 
@@ -108,6 +110,14 @@ export function flushSync() {
 export function subscribe(listener: () => void) {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+/** Ne réagit qu'aux changements de progression (pas aux informations propres à l'appareil). */
+export function subscribeState(listener: () => void) {
+  stateListeners.add(listener);
+  return () => {
+    stateListeners.delete(listener);
+  };
 }
 
 export function useAppState(): AppState {

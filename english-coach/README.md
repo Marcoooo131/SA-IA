@@ -66,6 +66,18 @@ de lancement intégré, **service worker** qui met en cache l'application et tou
 traductions libres) et la synchronisation **nécessitent Internet** : l'application affiche un message clair et ne simule
 jamais l'IA hors ligne. Les données en attente sont envoyées au retour du réseau.
 
+## Version artefact claude.ai (sans serveur)
+
+`npm run build:artifact` produit `dist-artifact/english-coach.html`, une page unique publiable comme artefact claude.ai :
+
+- **mémoire** : la progression est enregistrée dans la base de données de l'artefact, dans l'espace privé de
+  l'utilisateur (`data/users/<id>/progress`), donc liée à son compte Claude et retrouvée sur tous ses appareils ;
+  une copie reste sur l'appareil ;
+- **professeur IA** : Claude, appelé depuis la page sur le compte de l'utilisateur (capacité `sample`, accord demandé
+  à la première utilisation) ;
+- pas de service worker ni de serveur : les modules `src/artifact/` remplacent la synchronisation par code,
+  le client du serveur IA et le guide d'installation PWA.
+
 ## Démarrage
 
 Prérequis : **Node.js 22.18 ou plus récent** (TypeScript exécuté nativement, SQLite intégré `node:sqlite`).

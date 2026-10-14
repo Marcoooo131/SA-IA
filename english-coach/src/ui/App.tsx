@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { BookOpen, Home as HomeIcon, MessageSquareText, RefreshCw, Repeat, UserRound } from 'lucide-react';
-import { flushSync, getMeta, getState, setMeta, setState, subscribe, useAppState } from '../core/store';
+import { flushSync, getMeta, getState, setMeta, setState, subscribeState, useAppState } from '../core/store';
 import { addStudyTime, currentDay, dueCards, openMistakes, type SessionKind } from '../core/state';
 import { scheduleSync, syncNow } from '../core/sync';
 import { matchRoute, navigate, useRoute } from './router';
@@ -9,7 +9,8 @@ import { Home } from './screens/Home';
 import { Learn } from './screens/Learn';
 import { Review, Vocabulary } from './screens/Review';
 import { ChatList, ChatThreadScreen } from './screens/Chat';
-import { Profile, InstallGuide } from './screens/Profile';
+import { Profile } from './screens/Profile';
+import { InstallGuide } from './platform';
 import { SessionScreen } from './screens/Session';
 
 const TABS = [
@@ -79,7 +80,7 @@ function useStudyTimer(active: boolean) {
 function useBackgroundSync() {
   useEffect(() => {
     void syncNow();
-    const unsub = subscribe(() => scheduleSync());
+    const unsub = subscribeState(() => scheduleSync());
     const online = () => void syncNow();
     const hidden = () => {
       if (document.visibilityState === 'hidden') {

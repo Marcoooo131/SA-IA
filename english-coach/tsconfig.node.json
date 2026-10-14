@@ -14,5 +14,5 @@
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["server", "vite.config.ts"]
+  "include": ["server", "vite.config.ts", "vite.artifact.config.ts"]
 }

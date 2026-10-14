@@ -4,7 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "description": "English Coach : application mobile (PWA) d'apprentissage de l'anglais écrit en 90 jours, avec professeur IA et synchronisation.",
-  "engines": { "node": ">=22.18" },
+  "engines": {
+    "node": ">=22.18"
+  },
   "scripts": {
     "dev": "vite",
     "dev:server": "node --watch server/index.ts",
@@ -13,7 +15,8 @@
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "icons": "node scripts/generate-icons.mjs"
+    "icons": "node scripts/generate-icons.mjs",
+    "build:artifact": "tsc -b && vite build --config vite.artifact.config.ts && node scripts/build-artifact.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.134.0",
