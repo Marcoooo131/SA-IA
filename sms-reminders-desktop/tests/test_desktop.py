@@ -128,3 +128,72 @@ def test_saved_provider_is_used_at_next_launch(tmp_path, monkeypatch):
         assert rt.container.provider_store is not None
     finally:
         rt.stop()
+
+
+class FakeProcess:
+    def __init__(self, ends_after: float | None):
+        self.start = time.time()
+        self.ends_after = ends_after
+
+    def poll(self):
+        if self.ends_after is not None and time.time() - self.start >= self.ends_after:
+            return 0
+        return None
+
+
+def test_quit_button_stops_the_application(tmp_path):
+    rt = desk.Runtime(tmp_path / "data")
+    rt.start()
+    try:
+        with httpx.Client(base_url=rt.base_url, timeout=10, follow_redirects=True) as c:
+            page = c.get(rt.login_url.replace(rt.base_url, "")).text
+            assert "Quitter l'application" in page and "Déconnexion" not in page
+            import re
+
+            csrf = re.search(r'name="csrf" value="([^"]+)"', page).group(1)
+            r = c.post("/desktop/quit", data={"csrf": csrf})
+            assert r.status_code == 200 and "est fermé" in r.text
+        desk.wait_until_closed(rt, FakeProcess(None))  # returns once « Quitter » took effect
+        assert rt.quit_requested.is_set()
+    finally:
+        rt.stop()
+
+
+def test_window_close_stops_but_handed_over_window_keeps_running(tmp_path):
+    import threading
+
+    rt = desk.Runtime(tmp_path / "data")
+    try:
+        desk.wait_until_closed(rt, FakeProcess(ends_after=0.6), handoff_seconds=0.2)  # window closed: returns
+        assert not rt.quit_requested.is_set()
+        threading.Timer(0.8, rt.quit_requested.set).start()
+        t0 = time.time()
+        desk.wait_until_closed(rt, FakeProcess(ends_after=0), handoff_seconds=5)  # handed over: waits for « Quitter »
+        assert rt.quit_requested.is_set() and time.time() - t0 >= 0.7
+    finally:
+        rt.stop()
+
+
+def test_find_edge(tmp_path, monkeypatch):
+    exe = tmp_path / "Microsoft" / "Edge" / "Application" / "msedge.exe"
+    exe.parent.mkdir(parents=True)
+    exe.write_text("")
+    monkeypatch.setenv("PROGRAMFILES(X86)", str(tmp_path))
+    assert desk.find_edge() == str(exe)
+
+
+def test_quit_route_absent_on_servers():
+    from fastapi.testclient import TestClient
+
+    os.environ.update(SMR_ENVIRONMENT="test", SMR_DATABASE_URL="sqlite://", SMR_COOKIE_SECURE="false")
+    from sms_reminders.config import get_settings
+    from sms_reminders.container import Container
+    from sms_reminders.db import reset_caches
+    from sms_reminders.providers.simulation import SimulationProvider
+    from sms_reminders.web.app import create_app
+
+    get_settings.cache_clear()
+    reset_caches()
+    c = Container(settings=get_settings(), provider=SimulationProvider())
+    cl = TestClient(create_app(c))
+    assert cl.post("/desktop/quit", data={}).status_code in (401, 403, 404)

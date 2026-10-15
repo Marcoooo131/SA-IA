@@ -41,6 +41,21 @@ jobs:
         run: |
           ./dist/RelancesSMS-Test/RelancesSMS-Test.exe --selftest --data-dir "$env:RUNNER_TEMP\relances-test"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Same conditions as a zip downloaded from the Internet (Mark of the Web), then run the real executable
+        run: |
+          Get-ChildItem -Recurse -File dist\RelancesSMS | ForEach-Object {
+            Set-Content -LiteralPath $_.FullName -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3"
+          }
+          $p = Start-Process ./dist/RelancesSMS/RelancesSMS.exe -ArgumentList '--selftest','--data-dir',"$env:RUNNER_TEMP\relances-gui" -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); Write-Host "RelancesSMS.exe --selftest timed out"; exit 1 }
+          Write-Host "RelancesSMS.exe --selftest exit code: $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { exit $p.ExitCode }
+          $p = Start-Process ./dist/RelancesSMS/RelancesSMS.exe -ArgumentList '--window-test','--data-dir',"$env:RUNNER_TEMP\relances-gui" -PassThru
+          if (-not $p.WaitForExit(120000)) { $p.Kill(); Write-Host "RelancesSMS.exe --window-test timed out"; exit 1 }
+          Write-Host "RelancesSMS.exe --window-test exit code: $($p.ExitCode) (0 = fenêtre Edge ouverte)"
+          Get-Content "$env:RUNNER_TEMP\relances-gui\relances.log" -ErrorAction SilentlyContinue | Select-Object -Last 20
+          if ($p.ExitCode -ne 0) { exit $p.ExitCode }
+          Get-ChildItem -Recurse -File dist\RelancesSMS | ForEach-Object { Remove-Item -LiteralPath $_.FullName -Stream Zone.Identifier -ErrorAction SilentlyContinue }
       - name: Zip
         run: |
           Copy-Item -Recurse dist\RelancesSMS-Test dist\RelancesSMS\outils-test

@@ -6,7 +6,7 @@ python -m pip install -e ../sms-reminders -e ".[build]"
 # --paths : take the packages from the sources (editable installs are not seen by PyInstaller)
 pyinstaller --noconfirm --clean --name RelancesSMS --windowed --paths . --paths ../sms-reminders `
   --collect-submodules sms_desktop --collect-submodules sms_reminders --collect-data sms_reminders `
-  --collect-all webview --collect-all keyring --collect-data tzdata --collect-all phonenumbers `
+  --collect-all keyring --collect-data tzdata --collect-all phonenumbers `
   --hidden-import uvicorn.logging --hidden-import uvicorn.loops.auto --hidden-import uvicorn.protocols.http.auto `
   --hidden-import uvicorn.protocols.websockets.auto --hidden-import uvicorn.lifespan.on `
   packaging\launcher.py
