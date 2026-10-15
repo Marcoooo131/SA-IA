@@ -44,7 +44,7 @@ class ProviderStore:
     def describe(self) -> dict:
         values = self._values()
         return {
-            "provider": values.get("SMR_SMS_PROVIDER", "simulation"),
+            "provider": values.get("SMR_SMS_PROVIDER", "twilio"),
             "account_sid": values.get("SMR_TWILIO_ACCOUNT_SID", ""),
             "has_token": bool(self.get_token()),
             "location": str(self.path),

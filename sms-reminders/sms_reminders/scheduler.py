@@ -191,6 +191,8 @@ def evaluate(session: Session, job: SmsJob, appt: Appointment, policy: Policy, p
         return Decision("block", phone.error or "numéro invalide")
     if session.scalar(select(BlockedNumber.id).where(BlockedNumber.phone_e164 == phone.e164)):
         return Decision("cancel", "numéro en liste d'opposition (désinscription ou numéro interdit)")
+    if not getattr(provider, "ready", True):
+        return Decision("block", "identifiants du fournisseur SMS manquants (Paramètres → Fournisseur SMS)")
     if provider.name == "disabled":
         return Decision("block", "aucun fournisseur SMS configuré")
     if not provider.simulated and not policy.compliance_validated:

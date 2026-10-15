@@ -32,6 +32,10 @@
     <label>Account SID <input name="twilio_account_sid" value="{{ store.account_sid }}" placeholder="AC…" autocomplete="off" {{ 'disabled' if ro }}></label>
     <label>Auth Token <input name="twilio_auth_token" type="password" autocomplete="new-password"
       placeholder="{{ 'enregistré — laisser vide pour le conserver' if store.has_token else 'non renseigné' }}" {{ 'disabled' if ro }}></label>
+    {% if not policy.compliance_validated %}
+    <label class="check full"><input type="checkbox" name="compliance_validated" {{ 'disabled' if ro }}>
+      Les textes et l'envoi des SMS aux clients sont validés par l'entreprise (envoi réel autorisé)</label>
+    {% endif %}
     {% if not ro %}<button class="primary">Enregistrer le fournisseur</button>{% endif %}
   </form>
   {% if not ro %}

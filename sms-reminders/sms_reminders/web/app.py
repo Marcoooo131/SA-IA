@@ -842,6 +842,13 @@ def create_app(container: Container | None = None) -> FastAPI:
         c.settings, c.provider = new, build_provider(new)
         with session_scope() as s:
             record(s, user.login, "provider_configured", f"Fournisseur SMS configuré : {name}.")
+            if values.get("compliance_validated") == "on":
+                policy = load_policy(s)
+                if not policy.compliance_validated:
+                    policy.compliance_validated = True
+                    policy.compliance_note = (policy.compliance_note or f"Envoi réel validé par {user.login} lors de la mise en service.")[:500]
+                    save_policy(s, policy, user.login)
+                    record(s, user.login, "policy_updated", "Validation de conformité enregistrée (mise en service).")
         flash(request, f"Fournisseur SMS : {name}. " + ("Envoyez un SMS de test pour vérifier." if name == "twilio" else ""))
         return back("/settings#fournisseur")
 
@@ -966,7 +973,7 @@ def _config_issues(s: Session, c: Container) -> list[str]:
     elif c.provider.name == "disabled":
         issues.append("Aucun fournisseur SMS configuré : tous les envois sont bloqués.")
     elif c.provider.name == "twilio" and not (c.settings.twilio_account_sid and c.settings.twilio_auth_token.get_secret_value()):
-        issues.append("Identifiants du fournisseur SMS incomplets : les envois échoueront.")
+        issues.append("Identifiants du fournisseur SMS (Twilio) à saisir dans Paramètres → Fournisseur SMS : aucun SMS ne part en attendant.")
     elif not policy.compliance_validated:
         issues.append("Validation de conformité non enregistrée : les envois réels sont bloqués.")
     if not policy.sending_enabled:

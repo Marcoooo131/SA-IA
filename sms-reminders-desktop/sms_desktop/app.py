@@ -78,6 +78,9 @@ def prepare_environment(directory: Path, token: str) -> None:
         provider_token = ProviderStore(config_file()).get_token()
         if provider_token:
             os.environ["SMR_TWILIO_AUTH_TOKEN"] = provider_token
+    # Real sending by default: nothing is simulated; until the Twilio credentials are entered,
+    # reminders are blocked (and the application says so) instead of being sent.
+    os.environ.setdefault("SMR_SMS_PROVIDER", "twilio")
     os.environ.setdefault("SMR_DATABASE_URL", f"sqlite:///{(directory / 'relances.db').as_posix()}")
     os.environ["SMR_ENVIRONMENT"] = "desktop"
     os.environ["SMR_LOCAL_LOGIN_TOKEN"] = token
@@ -160,6 +163,12 @@ class Runtime:
         self.container = get_container()
         self.container.provider_store = ProviderStore(config_file())
         self.app = create_app(self.container)  # also creates the tables
+        from sms_reminders.db import session_scope
+
+        from .preset import apply_preset
+
+        with session_scope() as s:
+            log.info("preset: %s", apply_preset(s) or "already applied")
         log.info("recovery: %s", recover_stale(self.container))
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
