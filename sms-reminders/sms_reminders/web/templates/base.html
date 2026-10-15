@@ -29,8 +29,8 @@
 {% if provider.simulated %}
 <div class="banner sim"><strong>MODE SIMULATION</strong> — aucun SMS réel n'est envoyé. Les messages « Simulé — non envoyé » n'ont jamais quitté le serveur.</div>
 {% elif provider.ready is defined and not provider.ready and provider.name != 'disabled' %}
-<div class="banner err"><strong>Envoi réel pas encore activé</strong> — identifiants du fournisseur SMS manquants : aucun SMS ne part.
-  {% if user and user.role >= Role.ADMIN %}<a href="/settings#fournisseur">Saisir les identifiants</a>{% endif %}</div>
+<div class="banner err"><strong>Envoi réel pas encore activé</strong> — {{ "aucun téléphone d'envoi relié" if provider.name == 'telephone' else 'identifiants du fournisseur SMS manquants' }} : aucun SMS ne part.
+  {% if user and user.role >= Role.ADMIN %}<a href="/settings#fournisseur">{{ 'Relier les téléphones' if provider.name == 'telephone' else 'Saisir les identifiants' }}</a>{% endif %}</div>
 {% elif provider.name == 'disabled' %}
 <div class="banner err"><strong>Aucun fournisseur SMS configuré</strong> — tous les envois sont bloqués.</div>
 {% endif %}

@@ -191,6 +191,9 @@ def evaluate(session: Session, job: SmsJob, appt: Appointment, policy: Policy, p
         return Decision("block", phone.error or "numéro invalide")
     if session.scalar(select(BlockedNumber.id).where(BlockedNumber.phone_e164 == phone.e164)):
         return Decision("cancel", "numéro en liste d'opposition (désinscription ou numéro interdit)")
+    ready_for = getattr(provider, "ready_for", None)
+    if ready_for is not None and appt.service in Service.ALL and not ready_for(appt.service):
+        return Decision("block", f"téléphone d'envoi {Service.LABELS[appt.service]} non configuré (Paramètres → Téléphones d'envoi)")
     if not getattr(provider, "ready", True):
         return Decision("block", "identifiants du fournisseur SMS manquants (Paramètres → Fournisseur SMS)")
     if provider.name == "disabled":
@@ -288,7 +291,8 @@ def execute_job(container, job_id: int, now: datetime | None = None) -> str | No
         job.provider = provider.name
         job.sender, job.recipient, job.body = decision.sender, decision.to, decision.body
         job.segments, job.template_version_id = decision.segments, decision.template_version_id
-        message = OutboundSms(decision.sender, decision.to, decision.body, job.dedup_key, _status_callback_url(container))
+        message = OutboundSms(decision.sender, decision.to, decision.body, job.dedup_key, _status_callback_url(container),
+                              service=appt.service)
 
     try:
         result = provider.send(message)

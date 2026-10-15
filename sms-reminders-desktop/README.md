@@ -56,28 +56,40 @@ Au premier lancement, l'application est préremplie (modifiable ensuite dans *Pa
 | SMS à 48 h (Movers et Takeovers) | « Bonjour, confirmation du rdv d'installation de votre alarme prévu le {{date_rendez_vous}}. Vous recevrez un appel la veille si vous maintenez le rendez-vous sélectionné. Absence facturée 100 €. Rdv modifiable jusqu'à 17h la veille au 0644645942. » (2 SMS) |
 | 1er et 2e SMS à 24 h (Movers et Takeovers) | « Bonjour, nous avons rendez-vous pour la remise de votre système de télésurveillance le {{date_rendez_vous}}. Je vous remercie de bien vouloir nous rappeler au 0644645942. Sans confirmation de votre part nous annulerons votre rendez-vous. Cordialement, Sector Alarm. » (2 SMS) |
 
-L'application est en **envoi réel** (pas de simulation). Tant que les identifiants du fournisseur ne
-sont pas saisis, un bandeau rouge l'indique et les SMS restent en attente (« Bloqué ») : aucun SMS
-n'est simulé ni perdu, ils partent dès la saisie s'ils sont encore dans leur fenêtre de validité.
+L'application est en **envoi réel** (pas de simulation, pas de compte chez un fournisseur). Tant
+qu'aucun téléphone n'est relié, un bandeau rouge l'indique et les SMS restent en attente (« Bloqué ») :
+ils partent dès que le téléphone est relié, s'ils sont encore dans leur fenêtre de validité.
 
-## Mettre en service l'envoi réel (une seule fois)
+## Mettre en service l'envoi réel : les téléphones de l'entreprise (une seule fois)
 
-Dans *Paramètres et templates* (la liste « État de la configuration » indique ce qui manque) :
+Un PC ne peut pas envoyer de SMS lui-même : un SMS part toujours d'une carte SIM. Ici, ce sont **les
+téléphones de l'entreprise qui envoient les SMS depuis leur propre SIM** : le client reçoit le SMS du
+vrai numéro (06 44 64 59 42 pour Movers, 07 57 59 92 89 pour Takeovers) et peut y répondre. Aucun
+compte, aucun abonnement, aucun intermédiaire.
 
-1. **Fournisseur SMS** : choisir *Twilio — envoi réel*, saisir l'*Account SID* et l'*Auth Token*
-   fournis par l'administrateur du compte Twilio, puis **Enregistrer**. L'Auth Token est rangé dans
-   le coffre de Windows (Gestionnaire d'identification), jamais dans un fichier.
-2. **Numéros d'expédition** Movers et Takeovers.
-3. **Envoyer un SMS de test** vers votre mobile et vérifier sa réception.
-4. **Templates** : activer les six textes.
-5. **Conformité** : cocher la validation (juridique / DPO).
+Sur **chaque téléphone Android** (celui qui contient la SIM du numéro) :
 
-Ensuite, à chaque lancement de `RelancesSMS.exe`, les relances arrivées à échéance partent en réel.
-Pour revenir en simulation : *Fournisseur SMS → Simulation*.
+1. Installer l'application gratuite et open source **SMS Gate** (« SMS Gateway for Android »,
+   sms-gate.app — Google Play ou le fichier APK du site).
+2. L'ouvrir, autoriser l'envoi de SMS, activer **« Serveur local »** (*Local server*) puis **Démarrer**.
+   L'application affiche une **adresse** (ex. `192.168.1.23:8080`), un **identifiant** et un **mot de passe**.
+3. Laisser le téléphone allumé, branché, connecté au **même Wi-Fi que le PC**, et désactiver
+   l'optimisation de batterie pour SMS Gate (sinon Android peut la mettre en veille).
 
-> L'adaptateur Twilio a été testé contre un serveur simulé, pas encore avec un vrai compte : le SMS de
-> test de l'étape 3 est la première vérification réelle. Un autre fournisseur (OVH, Brevo,
-> SMSFactor…) peut être ajouté sur demande.
+Dans Relances SMS, *Paramètres → Téléphones d'envoi* :
+
+4. Pour Movers (et Takeovers), recopier l'adresse, l'identifiant et le mot de passe affichés par le
+   téléphone ; cocher la case de validation ; **Enregistrer les téléphones**. Les mots de passe sont
+   rangés dans le coffre de Windows.
+5. **Envoyer un SMS de test** vers votre mobile et vérifier qu'il arrive bien du bon numéro.
+
+Un seul téléphone peut servir aux deux services (même adresse dans les deux cadres) ; les SMS
+partiront alors tous de son numéro.
+
+> Limites : le téléphone doit être joignable depuis le PC. Certains Wi-Fi d'entreprise isolent les
+> appareils entre eux : si le test indique « Téléphone injoignable », essayer le partage de connexion
+> du téléphone (le PC s'y connecte) ou demander à la DSI d'autoriser la connexion. Les SMS envoyés
+> sont décomptés du forfait de la SIM.
 
 ## SMS expirés : la fenêtre « Envoyer ce SMS maintenant ? »
 
@@ -100,8 +112,8 @@ d'une heure, ni si un SMS plus récent du même rendez-vous est déjà parti.
 |---|---|
 | Base de données (rendez-vous, SMS, historique) | `%LOCALAPPDATA%\RelancesSMS\relances.db` |
 | Journal technique (sans données clients) | `%LOCALAPPDATA%\RelancesSMS\relances.log` |
-| Fournisseur et compte (non secret) | `%APPDATA%\RelancesSMS\config.env` (modèle : `config.example.env`) |
-| Auth Token du fournisseur | Gestionnaire d'identification Windows, entrée « RelancesSMS » |
+| Téléphones d'envoi : adresses et identifiants (non secrets) | `%APPDATA%\RelancesSMS\config.env` (modèle : `config.example.env`) |
+| Mots de passe des téléphones | Gestionnaire d'identification Windows, entrée « RelancesSMS » |
 
 Désinstaller : supprimer le dossier décompressé, puis ces deux dossiers pour effacer les données.
 

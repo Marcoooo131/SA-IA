@@ -96,37 +96,46 @@ class FakeKeyring:
         self.data[(service, key)] = value
 
 
-def test_provider_store_keeps_token_out_of_files(tmp_path):
+def test_provider_store_keeps_passwords_out_of_files(tmp_path):
     from sms_desktop.provider_store import ProviderStore
 
     cfg = tmp_path / "cfg" / "config.env"
     cfg.parent.mkdir()
-    cfg.write_text("SMR_WORKER_POLL_SECONDS=10\nSMR_SMS_PROVIDER=simulation\nSMR_TWILIO_AUTH_TOKEN=old-in-file\n")
+    cfg.write_text("SMR_WORKER_POLL_SECONDS=10\nSMR_SMS_PROVIDER=twilio\nSMR_TWILIO_ACCOUNT_SID=AC1\n")
     kr = FakeKeyring()
     store = ProviderStore(cfg, kr)
-    assert store.describe()["provider"] == "simulation" and not store.describe()["has_token"]
-    store.save("twilio", "AC" + "1" * 32, "secret-token")
+    store.save_phones("telephone", {"movers": ("192.168.1.23:8080", "sms", "pw-m"), "takeovers": ("", "", None)})
     text = cfg.read_text()
-    assert "secret-token" not in text and "old-in-file" not in text
-    assert "SMR_WORKER_POLL_SECONDS=10" in text and "SMR_SMS_PROVIDER=twilio" in text
+    assert "pw-m" not in text and "TWILIO" not in text and "SMR_WORKER_POLL_SECONDS=10" in text
+    assert "SMR_PHONE_MOVERS_URL=192.168.1.23:8080" in text and "SMR_SMS_PROVIDER=telephone" in text
     d = store.describe()
-    assert d["provider"] == "twilio" and d["has_token"] and d["account_sid"] == "AC" + "1" * 32
-    store.save("twilio", "AC" + "1" * 32, None)  # keep the existing token
-    assert kr.get_password("RelancesSMS", "twilio_auth_token") == "secret-token"
+    assert d["phones"]["movers"] == {"url": "192.168.1.23:8080", "user": "sms", "has_password": True}
+    assert d["phones"]["takeovers"]["has_password"] is False
+    store.save_phones("telephone", {"movers": ("192.168.1.23:8080", "sms", None), "takeovers": ("", "", None)})
+    assert kr.get_password("RelancesSMS", "phone_movers_password") == "pw-m"  # kept
 
 
-def test_saved_provider_is_used_at_next_launch(tmp_path, monkeypatch):
+def test_saved_phones_are_used_at_next_launch(tmp_path, monkeypatch):
     from sms_desktop import provider_store
 
     kr = FakeKeyring()
     monkeypatch.setattr(provider_store, "_default_keyring", lambda: kr)
     store = provider_store.ProviderStore(desk.config_file(), kr)
-    store.save("twilio", "AC" + "2" * 32, "tok")
+    store.save_phones("telephone", {"movers": ("192.168.1.23:8080", "sms", "pw"), "takeovers": ("", "", None)})
     rt = desk.Runtime(tmp_path / "data")
     try:
-        assert rt.container.provider.name == "twilio" and not rt.container.provider.simulated
-        assert rt.container.settings.twilio_auth_token.get_secret_value() == "tok"
-        assert rt.container.provider_store is not None
+        p = rt.container.provider
+        assert p.name == "telephone" and not p.simulated and p.ready_for("movers") and not p.ready_for("takeovers")
+        assert rt.container.settings.phone_movers_password.get_secret_value() == "pw"
+    finally:
+        rt.stop()
+
+
+def test_old_twilio_configuration_becomes_phone_mode(tmp_path):
+    desk.config_file().write_text("SMR_SMS_PROVIDER=twilio\n")
+    rt = desk.Runtime(tmp_path / "data")
+    try:
+        assert rt.container.provider.name == "telephone"
     finally:
         rt.stop()
 
@@ -206,8 +215,8 @@ def test_preset_senders_and_templates_real_mode_by_default(tmp_path):
 
     rt = desk.Runtime(tmp_path / "data")
     try:
-        # Real provider by default, blocked (not simulated) until the credentials are entered.
-        assert rt.container.provider.name == "twilio" and not rt.container.provider.simulated
+        # Real sending by default (company phones), blocked (not simulated) until a phone is linked.
+        assert rt.container.provider.name == "telephone" and not rt.container.provider.simulated
         assert rt.container.provider.ready is False
         with session_scope() as s:
             assert s.get(ServiceConfig, "movers").sender_id == "+33644645942"
@@ -250,6 +259,6 @@ def test_reminder_blocked_not_simulated_without_credentials(tmp_path):
         run_due(rt.container, now + timedelta(hours=24, minutes=1))
         with session_scope() as s:
             job = s.query(SmsJob).filter_by(step="j2").one()
-            assert job.status == "blocked" and "identifiants" in job.status_reason and not job.simulated
+            assert job.status == "blocked" and "téléphone d'envoi" in job.status_reason and not job.simulated
     finally:
         rt.stop()

@@ -1,7 +1,7 @@
-"""SMS provider settings entered from the application (Paramètres → Fournisseur SMS).
+"""Sending phones entered from the application (Paramètres → Téléphones d'envoi).
 
-- Provider name and Twilio Account SID: %APPDATA%\\RelancesSMS\\config.env (not secret).
-- Twilio Auth Token: Windows Credential Manager (keyring), never written to a file.
+- Mode and, for each service, the phone's address and login: %APPDATA%\\RelancesSMS\\config.env.
+- Phone passwords: Windows Credential Manager (keyring), never written to a file.
 """
 
 from __future__ import annotations
@@ -9,14 +9,20 @@ from __future__ import annotations
 from pathlib import Path
 
 KEYRING_SERVICE = "RelancesSMS"
-TOKEN_KEY = "twilio_auth_token"
-MANAGED = ("SMR_SMS_PROVIDER", "SMR_TWILIO_ACCOUNT_SID", "SMR_TWILIO_AUTH_TOKEN")
+SERVICES = ("movers", "takeovers")
+MANAGED = ("SMR_SMS_PROVIDER",) + tuple(
+    f"SMR_PHONE_{sv.upper()}_{k}" for sv in SERVICES for k in ("URL", "USER", "PASSWORD")
+)
 
 
 def _default_keyring():
     import keyring
 
     return keyring
+
+
+def password_key(service: str) -> str:
+    return f"phone_{service}_password"
 
 
 class ProviderStore:
@@ -30,9 +36,9 @@ class ProviderStore:
             self._keyring = _default_keyring()
         return self._keyring
 
-    def get_token(self) -> str | None:
+    def get_password(self, service: str) -> str | None:
         try:
-            return self.keyring.get_password(KEYRING_SERVICE, TOKEN_KEY)
+            return self.keyring.get_password(KEYRING_SERVICE, password_key(service))
         except Exception:  # noqa: BLE001 - no usable credential store
             return None
 
@@ -44,19 +50,29 @@ class ProviderStore:
     def describe(self) -> dict:
         values = self._values()
         return {
-            "provider": values.get("SMR_SMS_PROVIDER", "twilio"),
-            "account_sid": values.get("SMR_TWILIO_ACCOUNT_SID", ""),
-            "has_token": bool(self.get_token()),
+            "provider": values.get("SMR_SMS_PROVIDER", "telephone"),
+            "phones": {
+                sv: {
+                    "url": values.get(f"SMR_PHONE_{sv.upper()}_URL", ""),
+                    "user": values.get(f"SMR_PHONE_{sv.upper()}_USER", ""),
+                    "has_password": bool(self.get_password(sv)),
+                }
+                for sv in SERVICES
+            },
             "location": str(self.path),
         }
 
-    def save(self, provider: str, account_sid: str, auth_token: str | None) -> None:
-        if auth_token:
-            self.keyring.set_password(KEYRING_SERVICE, TOKEN_KEY, auth_token)  # may raise: reported to the user
+    def save_phones(self, provider: str, phones: dict[str, tuple[str, str, str | None]]) -> None:
+        """phones: service -> (url, login, password or None to keep the stored one)."""
+        for sv, (_, _, password) in phones.items():
+            if password:
+                self.keyring.set_password(KEYRING_SERVICE, password_key(sv), password)  # may raise: reported
         lines = []
         if self.path.is_file():
             lines = [ln for ln in self.path.read_text(encoding="utf-8-sig").splitlines()
-                     if ln.split("=", 1)[0].strip() not in MANAGED]
-        lines += [f"SMR_SMS_PROVIDER={provider}", f"SMR_TWILIO_ACCOUNT_SID={account_sid}"]
+                     if ln.split("=", 1)[0].strip() not in MANAGED and not ln.startswith("SMR_TWILIO_")]
+        lines.append(f"SMR_SMS_PROVIDER={provider}")
+        for sv, (url, login, _) in phones.items():
+            lines += [f"SMR_PHONE_{sv.upper()}_URL={url}", f"SMR_PHONE_{sv.upper()}_USER={login}"]
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text("\n".join(lines) + "\n", encoding="utf-8")

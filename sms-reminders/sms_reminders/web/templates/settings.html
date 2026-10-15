@@ -19,35 +19,38 @@
 
 {% if store %}
 <div class="card" id="fournisseur">
-  <h2>Fournisseur SMS</h2>
-  <p class="small">Actuellement : <strong>{{ provider.name }}</strong>{% if provider.simulated %} — <span class="warn-text">simulation, aucun SMS réel</span>{% endif %}.
-    Les identifiants sont fournis par l'administrateur du compte du fournisseur. L'identifiant secret est rangé dans le
-    coffre de Windows (Gestionnaire d'identification), jamais dans un fichier.</p>
+  <h2>Téléphones d'envoi</h2>
+  <p class="small">Les SMS partent <strong>des téléphones de l'entreprise</strong>, depuis leur propre carte SIM : le client reçoit
+    le SMS du vrai numéro et peut y répondre. Aucun compte ni abonnement : sur chaque téléphone Android, installer l'application
+    gratuite <strong>« SMS Gate »</strong> (SMS Gateway for Android), activer <strong>« Serveur local »</strong> et recopier ici
+    l'adresse, l'identifiant et le mot de passe affichés. Le téléphone et ce PC doivent être sur le <strong>même Wi-Fi</strong>.
+    Les mots de passe sont rangés dans le coffre de Windows.</p>
   <form method="post" action="/settings/provider" class="form-grid">
     <input type="hidden" name="csrf" value="{{ csrf }}">
-    <label>Fournisseur <select name="sms_provider" {{ 'disabled' if ro }}>
-      <option value="twilio" {{ 'selected' if store.provider == 'twilio' }}>Twilio — envoi réel</option>
-      <option value="simulation" {{ 'selected' if store.provider == 'simulation' }}>Simulation — aucun envoi</option>
-      <option value="disabled" {{ 'selected' if store.provider == 'disabled' }}>Désactivé</option></select></label>
-    <label>Account SID <input name="twilio_account_sid" value="{{ store.account_sid }}" placeholder="AC…" autocomplete="off" {{ 'disabled' if ro }}></label>
-    <label>Auth Token <input name="twilio_auth_token" type="password" autocomplete="new-password"
-      placeholder="{{ 'enregistré — laisser vide pour le conserver' if store.has_token else 'non renseigné' }}" {{ 'disabled' if ro }}></label>
+    <input type="hidden" name="sms_provider" value="telephone">
+    {% for sv in Service.ALL %}{% set ph = store.phones[sv] %}
+    <fieldset><legend>{{ Service.LABELS[sv] }} — {{ phone_display(services[sv].sender_id) if services[sv].sender_id else 'numéro non renseigné' }}
+        {% if ph.url and ph.has_password %}<span class="badge ok">configuré</span>{% else %}<span class="badge err">à configurer</span>{% endif %}</legend>
+      <label>Adresse du téléphone <input name="phone_{{ sv }}_url" value="{{ ph.url }}" placeholder="192.168.1.23:8080" autocomplete="off" {{ 'disabled' if ro }}></label>
+      <label>Identifiant <input name="phone_{{ sv }}_user" value="{{ ph.user }}" placeholder="sms" autocomplete="off" {{ 'disabled' if ro }}></label>
+      <label>Mot de passe <input name="phone_{{ sv }}_password" type="password" autocomplete="new-password"
+        placeholder="{{ 'enregistré — laisser vide pour le conserver' if ph.has_password else 'non renseigné' }}" {{ 'disabled' if ro }}></label>
+    </fieldset>
+    {% endfor %}
     {% if not policy.compliance_validated %}
     <label class="check full"><input type="checkbox" name="compliance_validated" {{ 'disabled' if ro }}>
       Les textes et l'envoi des SMS aux clients sont validés par l'entreprise (envoi réel autorisé)</label>
     {% endif %}
-    {% if not ro %}<button class="primary">Enregistrer le fournisseur</button>{% endif %}
+    {% if not ro %}<button class="primary">Enregistrer les téléphones</button>{% endif %}
   </form>
   {% if not ro %}
   <form method="post" action="/settings/provider/test" class="filters">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <label>Envoyer un SMS de test au <input name="phone" placeholder="votre mobile" required></label>
-    <label>depuis l'expéditeur <select name="service">{% for sv in Service.ALL %}<option value="{{ sv }}">{{ Service.LABELS[sv] }}</option>{% endfor %}</select></label>
+    <label>depuis le téléphone <select name="service">{% for sv in Service.ALL %}<option value="{{ sv }}">{{ Service.LABELS[sv] }}</option>{% endfor %}</select></label>
     <button>Envoyer le test</button>
   </form>
   {% endif %}
-  <p class="small muted">Pour envoyer de vrais SMS, il faut aussi : les numéros d'expédition (ci-dessous), les six templates actifs
-    et la case de validation de la section « Conformité ». La liste « État de la configuration » indique ce qui manque.</p>
 </div>
 {% endif %}
 

@@ -4,6 +4,7 @@ delivery-status webhook, health checks. All rules are enforced server side."""
 from __future__ import annotations
 
 import logging
+import re
 import secrets
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
@@ -818,27 +819,29 @@ def create_app(container: Container | None = None) -> FastAPI:
         store = c.provider_store
         if store is None:
             raise HTTPException(404, "configuration par variables d'environnement sur un serveur")
-        name = values.get("sms_provider", "")
-        sid = (values.get("twilio_account_sid") or "").strip()
-        token = (values.get("twilio_auth_token") or "").strip() or None
-        if name not in ("simulation", "twilio", "disabled"):
-            flash(request, "Fournisseur inconnu.", "err")
+        name = values.get("sms_provider", "telephone")
+        if name not in ("telephone", "disabled"):
+            flash(request, "Mode d'envoi inconnu.", "err")
             return back("/settings#fournisseur")
-        current_token = c.settings.twilio_auth_token.get_secret_value()
-        if name == "twilio" and not (sid.startswith("AC") and len(sid) == 34):
-            flash(request, "Account SID Twilio invalide (34 caractères, commence par AC).", "err")
-            return back("/settings#fournisseur")
-        if name == "twilio" and not (token or current_token):
-            flash(request, "Saisissez l'Auth Token Twilio.", "err")
-            return back("/settings#fournisseur")
+        phones, update = {}, {"sms_provider": name}
+        for sv in Service.ALL:
+            url = (values.get(f"phone_{sv}_url") or "").strip()[:200]
+            login = (values.get(f"phone_{sv}_user") or "").strip()[:80]
+            password = (values.get(f"phone_{sv}_password") or "").strip()[:200] or None
+            if url and not re.fullmatch(r"(https?://)?[A-Za-z0-9.\-]+(:\d{1,5})?/?", url):
+                flash(request, f"Adresse du téléphone {Service.LABELS[sv]} invalide (exemple : 192.168.1.23:8080).", "err")
+                return back("/settings#fournisseur")
+            phones[sv] = (url, login, password)
+            current = getattr(c.settings, f"phone_{sv}_password").get_secret_value()
+            update.update({f"phone_{sv}_url": url, f"phone_{sv}_user": login,
+                           f"phone_{sv}_password": SecretStr(password or current)})
         try:
-            store.save(name, sid, token)
+            store.save_phones(name, phones)
         except Exception as exc:  # noqa: BLE001 - e.g. Windows credential store unavailable
             log.warning("provider store failed: %s", type(exc).__name__)
-            flash(request, "Impossible d'enregistrer l'identifiant secret dans le coffre Windows.", "err")
+            flash(request, "Impossible d'enregistrer le mot de passe dans le coffre Windows.", "err")
             return back("/settings#fournisseur")
-        new = c.settings.model_copy(update={"sms_provider": name, "twilio_account_sid": sid,
-                                            "twilio_auth_token": SecretStr(token or current_token)})
+        new = c.settings.model_copy(update=update)
         c.settings, c.provider = new, build_provider(new)
         with session_scope() as s:
             record(s, user.login, "provider_configured", f"Fournisseur SMS configuré : {name}.")
@@ -849,7 +852,8 @@ def create_app(container: Container | None = None) -> FastAPI:
                     policy.compliance_note = (policy.compliance_note or f"Envoi réel validé par {user.login} lors de la mise en service.")[:500]
                     save_policy(s, policy, user.login)
                     record(s, user.login, "policy_updated", "Validation de conformité enregistrée (mise en service).")
-        flash(request, f"Fournisseur SMS : {name}. " + ("Envoyez un SMS de test pour vérifier." if name == "twilio" else ""))
+        flash(request, "Téléphones d'envoi enregistrés. Envoyez un SMS de test pour vérifier." if name == "telephone"
+              else "Envois désactivés.", "ok" if name == "telephone" else "warn")
         return back("/settings#fournisseur")
 
     @app.post("/settings/provider/test")
@@ -867,13 +871,14 @@ def create_app(container: Container | None = None) -> FastAPI:
             flash(request, "Renseignez d'abord le numéro d'expédition de ce service.", "err")
             return back("/settings#fournisseur")
         result = c.provider.send(OutboundSms(sender, phone.e164, "Relances SMS : message de test, aucune action requise.",
-                                             "test-" + secrets.token_hex(8)))
+                                             "test-" + secrets.token_hex(8), service=service))
         with session_scope() as s:
             record(s, user.login, "provider_test", f"SMS de test ({c.provider.name}) : {'accepté' if result.ok else 'échec ' + str(result.error_code)}.")
         if result.ok and c.provider.simulated:
             flash(request, "Mode simulation : le test a réussi mais aucun SMS réel n'a été envoyé.", "warn")
         elif result.ok:
-            flash(request, f"SMS de test accepté par le fournisseur (identifiant {result.provider_message_id}). Vérifiez sa réception.")
+            where = "transmis au téléphone d'envoi" if c.provider.name == "telephone" else "accepté par le fournisseur"
+            flash(request, f"SMS de test {where} (identifiant {result.provider_message_id or '—'}). Vérifiez sa réception.")
         else:
             flash(request, f"Échec du SMS de test : {result.error_code} {result.error_message or ''}", "err")
         return back("/settings#fournisseur")
@@ -972,6 +977,11 @@ def _config_issues(s: Session, c: Container) -> list[str]:
         issues.append("Mode SIMULATION : aucun SMS réel n'est envoyé (fournisseur non configuré).")
     elif c.provider.name == "disabled":
         issues.append("Aucun fournisseur SMS configuré : tous les envois sont bloqués.")
+    elif c.provider.name == "telephone" and not getattr(c.provider, "ready", False):
+        issues.append("Aucun téléphone d'envoi relié (Paramètres → Téléphones d'envoi) : aucun SMS ne part en attendant.")
+    elif c.provider.name == "telephone" and any(not c.provider.ready_for(sv) for sv in Service.ALL):
+        missing = [Service.LABELS[sv] for sv in Service.ALL if not c.provider.ready_for(sv)]
+        issues.append("Téléphone d'envoi non relié : " + ", ".join(missing) + " (SMS de ce service en attente).")
     elif c.provider.name == "twilio" and not (c.settings.twilio_account_sid and c.settings.twilio_auth_token.get_secret_value()):
         issues.append("Identifiants du fournisseur SMS (Twilio) à saisir dans Paramètres → Fournisseur SMS : aucun SMS ne part en attendant.")
     elif not policy.compliance_validated:
