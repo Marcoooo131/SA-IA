@@ -72,15 +72,20 @@ def prepare_environment(directory: Path, token: str) -> None:
     for key, value in read_config(config_file()).items():
         if key not in FORCED:
             os.environ.setdefault(key, value)
-    if not os.environ.get("SMR_TWILIO_AUTH_TOKEN"):
-        from .provider_store import ProviderStore
+    from .provider_store import SERVICES, ProviderStore
 
-        provider_token = ProviderStore(config_file()).get_token()
-        if provider_token:
-            os.environ["SMR_TWILIO_AUTH_TOKEN"] = provider_token
-    # Real sending by default: nothing is simulated; until the Twilio credentials are entered,
-    # reminders are blocked (and the application says so) instead of being sent.
-    os.environ.setdefault("SMR_SMS_PROVIDER", "twilio")
+    store = ProviderStore(config_file())
+    for sv in SERVICES:
+        key = f"SMR_PHONE_{sv.upper()}_PASSWORD"
+        if not os.environ.get(key):
+            password = store.get_password(sv)
+            if password:
+                os.environ[key] = password
+    # Real sending by default, from the company's phones (no account, no simulation): until a phone
+    # is linked, reminders are blocked (and the application says so) instead of being sent.
+    os.environ.setdefault("SMR_SMS_PROVIDER", "telephone")
+    if os.environ["SMR_SMS_PROVIDER"] == "twilio":  # earlier versions: no third-party account any more
+        os.environ["SMR_SMS_PROVIDER"] = "telephone"
     os.environ.setdefault("SMR_DATABASE_URL", f"sqlite:///{(directory / 'relances.db').as_posix()}")
     os.environ["SMR_ENVIRONMENT"] = "desktop"
     os.environ["SMR_LOCAL_LOGIN_TOKEN"] = token

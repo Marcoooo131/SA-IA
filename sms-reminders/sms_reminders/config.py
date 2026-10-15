@@ -36,6 +36,14 @@ class Settings(BaseSettings):
 
     # --- SMS provider: "simulation" (default, nothing leaves the server), "twilio", "disabled".
     sms_provider: str = "simulation"
+    # "telephone": the company's Android phones send the SMS from their own SIM (SMS Gate app,
+    # local server mode, no account). One phone per service.
+    phone_movers_url: str = ""
+    phone_movers_user: str = ""
+    phone_movers_password: SecretStr = SecretStr("")
+    phone_takeovers_url: str = ""
+    phone_takeovers_user: str = ""
+    phone_takeovers_password: SecretStr = SecretStr("")
     twilio_account_sid: str = ""
     twilio_auth_token: SecretStr = SecretStr("")
     twilio_api_base: str = "https://api.twilio.com"
@@ -65,8 +73,8 @@ class Settings(BaseSettings):
     @field_validator("sms_provider")
     @classmethod
     def _provider(cls, v: str) -> str:
-        if v not in {"simulation", "twilio", "disabled"}:
-            raise ValueError("sms_provider must be simulation, twilio or disabled")
+        if v not in {"simulation", "telephone", "twilio", "disabled"}:
+            raise ValueError("sms_provider must be simulation, telephone, twilio or disabled")
         return v
 
     @property

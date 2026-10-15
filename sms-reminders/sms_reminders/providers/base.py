@@ -13,6 +13,7 @@ class OutboundSms:
     body: str
     idempotency_key: str  # stable per job (sms_job.dedup_key)
     status_callback_url: str | None = None
+    service: str | None = None  # movers | takeovers (routing to the right phone)
 
 
 @dataclass(frozen=True)

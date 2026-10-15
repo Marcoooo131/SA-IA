@@ -9,16 +9,36 @@ l'expéditeur…) mais rien ne quitte le serveur. Ces SMS ont le statut « Simul
 | Valeur | Effet |
 |---|---|
 | `simulation` | défaut ; aucun envoi réel, bandeau « MODE SIMULATION » sur toutes les pages |
-| `twilio` | envoi réel via l'API Twilio Programmable Messaging |
+| `telephone` | envoi réel par les téléphones de l'entreprise (SIM du numéro), sans compte — § 2 |
+| `twilio` | envoi réel via l'API Twilio Programmable Messaging — § 3 |
 | `disabled` | aucun fournisseur : tous les envois sont bloqués (« aucun fournisseur SMS configuré ») |
 
 Les envois réels restent en plus bloqués tant que l'administrateur n'a pas coché la validation
 de conformité (*Paramètres → Conformité*).
 
-## 2. Twilio
+## 2. Téléphones de l'entreprise (`telephone`) — sans compte ni abonnement
+
+Les SMS partent des téléphones Android de l'entreprise, depuis leur carte SIM (le client reçoit le
+vrai numéro). Chaque téléphone exécute l'application gratuite et open source **SMS Gate** (« SMS
+Gateway for Android », sms-gate.app) en mode **Serveur local** ; l'application de relance lui
+transmet les SMS par le réseau local (`POST http://<adresse>/message`, authentification de base).
+
+```
+SMR_SMS_PROVIDER=telephone
+SMR_PHONE_MOVERS_URL=192.168.1.23:8080      SMR_PHONE_MOVERS_USER=…      SMR_PHONE_MOVERS_PASSWORD=…
+SMR_PHONE_TAKEOVERS_URL=192.168.1.24:8080   SMR_PHONE_TAKEOVERS_USER=…   SMR_PHONE_TAKEOVERS_PASSWORD=…
+```
+
+Dans l'application de bureau, ces valeurs se saisissent dans *Paramètres → Téléphones d'envoi*.
+Erreurs : téléphone injoignable → nouvelle tentative dans la fenêtre de validité ; pas de réponse à
+temps → « À vérifier » (vérifier sur le téléphone, jamais renvoyé automatiquement) ; identifiants
+refusés → « Erreur ». Un service sans téléphone relié garde ses SMS « Bloqués ».
+Testé contre un téléphone simulé ; à valider avec un vrai téléphone (SMS de test).
+
+## 3. Twilio
 
 > L'adaptateur suit le contrat public de l'API Twilio et est testé contre un serveur simulé.
-> **Il n'a jamais été testé avec un vrai compte.** Faire la recette décrite au § 5 avant usage.
+> **Il n'a jamais été testé avec un vrai compte.** Faire la recette décrite au § 6 avant usage.
 
 Variables (fournies par l'administrateur du compte Twilio, stockées dans le gestionnaire de
 secrets, jamais dans le dépôt) :
@@ -40,7 +60,7 @@ SMR_PUBLIC_BASE_URL=https://relances.exemple.interne     # URL HTTPS joignable p
   dépassé → « À vérifier » (la requête a pu être reçue) ; codes définitifs (21211 numéro
   invalide, 21610 désinscrit…) → « Erreur » ; 21610 ajoute le numéro à la liste d'opposition.
 
-## 3. Numéros d'expédition (dans l'application)
+## 4. Numéros d'expédition (dans l'application)
 
 *Paramètres → Numéros d'expédition* (administrateur) : un expéditeur pour **Movers**, un pour
 **Takeovers**. Valeurs possibles selon le fournisseur et le contrat : numéro au format
@@ -50,7 +70,7 @@ réponse), identifiant de service de messagerie (`MG…`).
 Il n'existe aucun expéditeur par défaut : un rendez-vous sans service, ou un service sans
 expéditeur, ne peut rien envoyer (« numéro d'expédition … non configuré »).
 
-## 4. Ajouter un autre fournisseur
+## 5. Ajouter un autre fournisseur
 
 Créer une classe dans `sms_reminders/providers/` qui implémente `SmsProvider`
 (`providers/base.py`) :
@@ -64,7 +84,7 @@ Créer une classe dans `sms_reminders/providers/` qui implémente `SmsProvider`
 L'enregistrer dans `providers/__init__.py:build_provider` et dans le validateur de
 `config.Settings.sms_provider`. Le moteur, l'interface et les tests ne changent pas.
 
-## 5. Recette avant production
+## 6. Recette avant production
 
 1. Comptes de test et numéros de mobiles de l'équipe uniquement.
 2. Configurer expéditeurs, templates et fournisseur sur un environnement `staging`.

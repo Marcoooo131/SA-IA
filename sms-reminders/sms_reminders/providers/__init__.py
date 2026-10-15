@@ -10,6 +10,10 @@ __all__ = ["DeliveryUpdate", "OutboundSms", "SendResult", "SmsProvider", "build_
 def build_provider(settings: Settings) -> SmsProvider:
     if settings.sms_provider == "simulation":
         return SimulationProvider()
+    if settings.sms_provider == "telephone":
+        from .phone_gateway import PhoneGatewayProvider
+
+        return PhoneGatewayProvider(settings)
     if settings.sms_provider == "twilio":
         from .twilio import TwilioProvider
 

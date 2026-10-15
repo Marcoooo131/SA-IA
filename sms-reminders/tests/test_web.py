@@ -329,32 +329,44 @@ class FakeStore:
         self.saved = None
 
     def describe(self):
-        return {"provider": "simulation", "account_sid": "", "has_token": False, "location": "x"}
+        return {"provider": "telephone", "location": "x",
+                "phones": {sv: {"url": "", "user": "", "has_password": False} for sv in ("movers", "takeovers")}}
 
-    def save(self, provider, sid, token):
-        self.saved = (provider, sid, token)
+    def save_phones(self, provider, phones):
+        self.saved = (provider, phones)
 
 
-def test_provider_configuration_from_the_ui(env, clock):
+def test_phone_configuration_from_the_ui(env, clock):
     from sms_reminders.config import get_settings
     from sms_reminders.container import Container
-    from sms_reminders.providers.simulation import SimulationProvider
+    from sms_reminders.providers import build_provider
     from sms_reminders.web.app import create_app
 
+    get_settings.cache_clear()
+    settings = get_settings().model_copy(update={"sms_provider": "telephone"})
     store = FakeStore()
-    c = Container(settings=get_settings(), provider=SimulationProvider(), clock=clock, provider_store=store)
+    c = Container(settings=settings, provider=build_provider(settings), clock=clock, provider_store=store)
     app = create_app(c)
     admin = client_for(app, "ada")
-    assert "Fournisseur SMS" in admin.get("/settings").text
-    post(admin, "/settings/provider", {"sms_provider": "twilio", "twilio_account_sid": "bad"}, page="/settings")
-    assert store.saved is None and c.provider.name == "simulation"
-    sid = "AC" + "a" * 32
-    post(admin, "/settings/provider", {"sms_provider": "twilio", "twilio_account_sid": sid, "twilio_auth_token": "tok"}, page="/settings")
-    assert store.saved == ("twilio", sid, "tok")
-    assert c.provider.name == "twilio" and not c.provider.simulated and c.settings.twilio_account_sid == sid
-    assert "MODE SIMULATION" not in admin.get("/").text
+    import html as htmllib
+
+    page = htmllib.unescape(admin.get("/").text)
+    assert "aucun téléphone d'envoi relié" in page and "MODE SIMULATION" not in page
+    html = htmllib.unescape(admin.get("/settings").text)
+    assert "Téléphones d'envoi" in html and "SMS Gate" in html and "Twilio" not in html
+    post(admin, "/settings/provider", {"phone_movers_url": "bad url!"}, page="/settings")
+    assert store.saved is None
+    post(admin, "/settings/provider", {"phone_movers_url": "192.168.1.23:8080", "phone_movers_user": "sms",
+                                       "phone_movers_password": "secret", "compliance_validated": "on"}, page="/settings")
+    assert store.saved == ("telephone", {"movers": ("192.168.1.23:8080", "sms", "secret"), "takeovers": ("", "", None)})
+    assert c.provider.name == "telephone" and c.provider.ready_for("movers") and not c.provider.ready_for("takeovers")
+    assert "Téléphone d'envoi non relié : Takeovers" in htmllib.unescape(admin.get("/").text)
+    from sms_reminders.policy import load_policy
+
+    with session_scope() as s:
+        assert load_policy(s).compliance_validated
     sup = client_for(app, "sam")
-    assert post(sup, "/settings/provider", {"sms_provider": "simulation"}, page="/settings").status_code == 403
+    assert post(sup, "/settings/provider", {}, page="/settings").status_code == 403
 
 
 def test_provider_test_sms(env, clock):
@@ -374,6 +386,7 @@ def test_provider_test_sms(env, clock):
         s.get(ServiceConfig, "movers").sender_id = "+33600000900"
     post(admin, "/settings/provider/test", {"phone": "0600000001", "service": "movers"}, page="/settings")
     assert len(prov.calls) == 1 and prov.calls[0].sender == "+33600000900" and prov.calls[0].to == "+33600000001"
+    assert prov.calls[0].service == "movers"
     assert "SMS de test accepté" in admin.get("/settings").text
 
 
