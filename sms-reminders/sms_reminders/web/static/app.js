@@ -68,3 +68,11 @@ if (document.body.dataset.latePoll) {
   showLateDialog();
   setInterval(pollLate, 30000);
 }
+
+// Desktop application: confirm before quitting (reminders stop until the next launch).
+document.addEventListener("submit", (event) => {
+  if (!event.target.classList.contains("js-quit")) return;
+  if (!window.confirm("Quitter Relances SMS ? Les relances ne partiront plus jusqu'au prochain lancement.")) {
+    event.preventDefault();
+  }
+});

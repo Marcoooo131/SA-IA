@@ -6,8 +6,10 @@
   secret token then goes to the Windows Credential Manager.
 - Server bound to 127.0.0.1 on a random port; access through a one-time token generated at each
   launch (the Windows user is logged in as administrator). Nothing listens on the network.
+- Window: Microsoft Edge in « app » mode (separate profile), or the default browser. No embedded
+  engine / .NET (pywebview failed when Windows blocked its DLLs in a downloaded zip).
 - The scheduler runs in a background thread while the application is open. Closing the window
-  stops it: reminders only go out while the application is open and the computer is on.
+  (or « Quitter l'application ») stops it: reminders only go out while the application is open and the computer is on.
 """
 
 from __future__ import annotations
@@ -165,6 +167,8 @@ class Runtime:
         self.port = self.sock.getsockname()[1]
         self.server = None
         self.scheduler = SchedulerThread(self.container, self.container.settings.worker_poll_seconds)
+        self.quit_requested = threading.Event()
+        self.container.on_quit = self.quit_requested.set
 
     @property
     def base_url(self) -> str:
@@ -224,10 +228,60 @@ def selftest(directory: Path | None = None) -> int:
         rt.stop()
 
 
+def find_edge() -> str | None:
+    """Microsoft Edge (present on Windows 10/11): used in « app » mode as the application window.
+    No embedded browser engine, no .NET: nothing that Windows can block in a downloaded zip."""
+    import shutil
+
+    candidates = []
+    for var in ("PROGRAMFILES(X86)", "PROGRAMFILES", "LOCALAPPDATA"):
+        base = os.environ.get(var)
+        if base:
+            candidates.append(Path(base) / "Microsoft" / "Edge" / "Application" / "msedge.exe")
+    for path in candidates:
+        if path.is_file():
+            return str(path)
+    return shutil.which("msedge")
+
+
+def open_window(url: str, profile_dir: Path):
+    """Open the application window. Returns the Edge process, or None if the default browser
+    was used instead."""
+    import subprocess
+    import webbrowser
+
+    edge = find_edge()
+    if edge:
+        try:
+            return subprocess.Popen([
+                edge, f"--app={url}", f"--user-data-dir={profile_dir}", "--no-first-run",
+                "--no-default-browser-check", "--disable-features=Translate", "--window-size=1440,900",
+            ])
+        except OSError:
+            log.warning("could not start Edge, using the default browser")
+    webbrowser.open(url)
+    return None
+
+
+def wait_until_closed(rt: Runtime, window, handoff_seconds: float = 5) -> None:
+    """Run until the window is closed or « Quitter l'application » is clicked.
+    If Edge handed the window over to an already running Edge (process ends at once), the
+    window cannot be tracked: the application then runs until « Quitter »."""
+    opened = time.time()
+    while not rt.quit_requested.is_set():
+        if window is not None and window.poll() is not None:
+            if time.time() - opened > handoff_seconds:
+                log.info("window closed")
+                return
+            window = None
+        rt.quit_requested.wait(0.5)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="RelancesSMS")
-    parser.add_argument("--browser", action="store_true", help="ouvrir dans le navigateur au lieu d'une fenêtre")
+    parser.add_argument("--browser", action="store_true", help="ouvrir dans le navigateur par défaut")
     parser.add_argument("--selftest", action="store_true", help="démarrer, vérifier, quitter")
+    parser.add_argument("--window-test", action="store_true", help=argparse.SUPPRESS)  # CI: open the window, quit
     parser.add_argument("--data-dir", help="dossier des données (défaut : %%LOCALAPPDATA%%\\RelancesSMS)")
     args = parser.parse_args(argv)
     directory = Path(args.data_dir) if args.data_dir else data_dir()
@@ -239,23 +293,26 @@ def main(argv: list[str] | None = None) -> int:
     rt = Runtime(directory)
     rt.start()
     try:
-        if not args.browser:
-            try:
-                import webview  # pywebview: Edge WebView2 on Windows
-            except ImportError:
-                args.browser = True
+        if args.window_test:
+            window = open_window(rt.login_url, directory / "fenetre")
+            time.sleep(5)
+            ok = window is not None
+            log.info("window test: edge=%s", ok)
+            if window is not None and window.poll() is None:
+                window.terminate()
+            return 0 if ok else 2
         if args.browser:
             import webbrowser
 
             webbrowser.open(rt.login_url)
-            print(f"Relances SMS ouvert dans le navigateur ({rt.base_url}). Ctrl+C pour quitter.")
-            while True:
-                time.sleep(1)
+            window = None
         else:
-            webview.create_window(WINDOW_TITLE, rt.login_url, width=1440, height=900, min_size=(1000, 650))
-            webview.start(private_mode=True)  # returns when the window is closed
+            window = open_window(rt.login_url, directory / "fenetre")
+        wait_until_closed(rt, window)
     except KeyboardInterrupt:
         pass
+    except Exception:  # never leave the user with a Python error dialog
+        log.exception("unexpected error")
     finally:
         rt.stop()
     return 0

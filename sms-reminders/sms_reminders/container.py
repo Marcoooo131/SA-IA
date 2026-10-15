@@ -21,6 +21,8 @@ class Container:
     # Desktop application only: lets an administrator configure the SMS provider from the UI
     # (sms_desktop.provider_store). None on servers: the provider comes from environment variables.
     provider_store: object | None = None
+    # Desktop application only: stops the application (« Quitter » button).
+    on_quit: Callable[[], None] | None = None
 
     def now(self) -> datetime:
         return self.clock()

@@ -217,6 +217,22 @@ def create_app(container: Container | None = None) -> FastAPI:
             record(s, login, "login", "Connexion (application de bureau).")
         return back("/")
 
+    @app.post("/desktop/quit")
+    async def desktop_quit(request: Request):
+        user, _ = await form_user(request, Role.ADMIN)
+        if settings.environment != Environment.DESKTOP or c.on_quit is None:
+            raise HTTPException(404, "réservé à l'application de bureau")
+        with session_scope() as s:
+            record(s, user.login, "desktop_quit", "Application de bureau fermée.")
+        import threading
+
+        threading.Timer(0.5, c.on_quit).start()  # let this page reach the window first
+        return HTMLResponse(
+            "<!doctype html><html lang='fr'><meta charset='utf-8'><title>Relances SMS fermé</title>"
+            "<body style='font-family:system-ui;padding:40px'><h1>Relances SMS est fermé</h1>"
+            "<p>Les relances ne partiront plus jusqu'au prochain lancement. Vous pouvez fermer cette fenêtre.</p></body></html>"
+        )
+
     @app.post("/logout")
     async def logout(request: Request):
         form = await request.form()

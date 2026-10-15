@@ -34,10 +34,16 @@ relance. Aucune installation de Python, de serveur ou de base de données n'est 
    votre fichier.
 4. *Paramètres et templates* : numéros d'expédition, textes des six templates, politique de relance.
 5. Laisser l'application ouverte : les relances programmées partent à leur heure.
-   Fermer la fenêtre arrête le moteur de relance.
+   Fermer la fenêtre (ou « Quitter l'application ») arrête le moteur de relance.
 
-Sans WebView2 (rare sous Windows 10/11 à jour) : `RelancesSMS.exe --browser` ouvre l'interface dans
-le navigateur par défaut.
+La fenêtre est une fenêtre **Microsoft Edge en mode application** (sans barre d'adresse), avec un
+profil séparé ; sans Edge, l'interface s'ouvre dans le navigateur par défaut (`RelancesSMS.exe --browser`
+pour le forcer). Aucun composant .NET n'est utilisé (la version précédente plantait avec
+« Failed to resolve Python.Runtime.Loader.Initialize » quand Windows bloquait ses DLL dans le zip téléchargé).
+
+Pour arrêter l'application : fermer la fenêtre, ou **Quitter l'application** en haut à droite.
+En cas de problème au démarrage, un message s'affiche et le détail est écrit dans
+`%LOCALAPPDATA%\RelancesSMS\erreur-demarrage.txt`.
 
 ## Mettre en service l'envoi réel (une seule fois)
 

@@ -12,10 +12,17 @@
   <div class="brand"><span class="dot"></span> Relances SMS <small>Movers & Takeovers</small></div>
   {% if user %}
   <div class="who">{{ user.login }} · {{ ROLE_LABELS[user.role] }}
+    {% if settings.environment.value == 'desktop' %}
+    <form method="post" action="/desktop/quit" class="inline js-quit">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <button class="link">Quitter l'application</button>
+    </form>
+    {% else %}
     <form method="post" action="/logout" class="inline">
       <input type="hidden" name="csrf" value="{{ csrf }}">
       <button class="link">Déconnexion</button>
     </form>
+    {% endif %}
   </div>
   {% endif %}
 </header>
