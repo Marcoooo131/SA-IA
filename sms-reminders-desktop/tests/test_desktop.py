@@ -42,7 +42,8 @@ def test_selftest(tmp_path):
     assert desk.selftest(tmp_path / "data") == 0
 
 
-def test_runtime_serves_locally_and_sends_simulated_reminders(tmp_path):
+def test_runtime_serves_locally_and_sends_simulated_reminders(tmp_path, monkeypatch):
+    monkeypatch.setenv("SMR_SMS_PROVIDER", "simulation")  # explicit: the default is real sending
     rt = desk.Runtime(tmp_path / "data")
     rt.start()
     try:
@@ -197,3 +198,58 @@ def test_quit_route_absent_on_servers():
     c = Container(settings=get_settings(), provider=SimulationProvider())
     cl = TestClient(create_app(c))
     assert cl.post("/desktop/quit", data={}).status_code in (401, 403, 404)
+
+
+def test_preset_senders_and_templates_real_mode_by_default(tmp_path):
+    from sms_reminders.db import session_scope
+    from sms_reminders.models import ServiceConfig, TemplateSlot
+
+    rt = desk.Runtime(tmp_path / "data")
+    try:
+        # Real provider by default, blocked (not simulated) until the credentials are entered.
+        assert rt.container.provider.name == "twilio" and not rt.container.provider.simulated
+        assert rt.container.provider.ready is False
+        with session_scope() as s:
+            assert s.get(ServiceConfig, "movers").sender_id == "+33644645942"
+            assert s.get(ServiceConfig, "takeovers").sender_id == "+33757599289"
+            slots = s.query(TemplateSlot).all()
+            assert len(slots) == 6 and all(sl.active_version is not None for sl in slots)
+            j2 = next(sl for sl in slots if sl.service == "movers" and sl.step == "j2").active_version.body
+            assert "installation de votre alarme" in j2 and "{{date_rendez_vous}}" in j2
+            # Edited by the user: never overwritten (preset applied once).
+            s.get(ServiceConfig, "movers").sender_id = "SectorAlarm"
+    finally:
+        rt.stop()
+    rt2 = desk.Runtime(tmp_path / "data")
+    try:
+        with session_scope() as s:
+            assert s.get(ServiceConfig, "movers").sender_id == "SectorAlarm"
+            assert all(len(sl.versions) == 1 for sl in s.query(TemplateSlot).all())
+    finally:
+        rt2.stop()
+
+
+def test_reminder_blocked_not_simulated_without_credentials(tmp_path):
+    from datetime import datetime, timedelta, timezone
+
+    from sms_reminders.appointments import AppointmentData, create_appointment
+    from sms_reminders.db import session_scope
+    from sms_reminders.models import SmsJob
+    from sms_reminders.policy import load_policy
+    from sms_reminders.scheduler import run_due
+    from sms_reminders.timeutil import PARIS
+
+    rt = desk.Runtime(tmp_path / "data")
+    try:
+        now = datetime.now(timezone.utc)
+        local = (now + timedelta(hours=72)).astimezone(PARIS)
+        with session_scope() as s:
+            create_appointment(s, AppointmentData("CLI-1", "Marie", "Dupont", "0600000001", local.date(),
+                                                  local.time().replace(second=0, microsecond=0), "movers"),
+                               actor="t", policy=load_policy(s), now=now)
+        run_due(rt.container, now + timedelta(hours=24, minutes=1))
+        with session_scope() as s:
+            job = s.query(SmsJob).filter_by(step="j2").one()
+            assert job.status == "blocked" and "identifiants" in job.status_reason and not job.simulated
+    finally:
+        rt.stop()

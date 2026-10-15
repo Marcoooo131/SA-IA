@@ -55,6 +55,7 @@ class DisabledProvider:
 
     name = "disabled"
     simulated = False
+    ready = False
 
     def send(self, message: OutboundSms) -> SendResult:
         return SendResult(ok=False, error_code="provider_disabled", error_message="Aucun fournisseur SMS configuré.")

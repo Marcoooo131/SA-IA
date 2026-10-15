@@ -45,6 +45,21 @@ Pour arrêter l'application : fermer la fenêtre, ou **Quitter l'application** e
 En cas de problème au démarrage, un message s'affiche et le détail est écrit dans
 `%LOCALAPPDATA%\RelancesSMS\erreur-demarrage.txt`.
 
+## Configuration Sector Alarm incluse
+
+Au premier lancement, l'application est préremplie (modifiable ensuite dans *Paramètres*) :
+
+| Élément | Valeur |
+|---|---|
+| Expéditeur Movers | 06 44 64 59 42 |
+| Expéditeur Takeovers | 07 57 59 92 89 |
+| SMS à 48 h (Movers et Takeovers) | « Bonjour, confirmation du rdv d'installation de votre alarme prévu le {{date_rendez_vous}}. Vous recevrez un appel la veille si vous maintenez le rendez-vous sélectionné. Absence facturée 100 €. Rdv modifiable jusqu'à 17h la veille au 0644645942. » (2 SMS) |
+| 1er et 2e SMS à 24 h (Movers et Takeovers) | « Bonjour, nous avons rendez-vous pour la remise de votre système de télésurveillance le {{date_rendez_vous}}. Je vous remercie de bien vouloir nous rappeler au 0644645942. Sans confirmation de votre part nous annulerons votre rendez-vous. Cordialement, Sector Alarm. » (2 SMS) |
+
+L'application est en **envoi réel** (pas de simulation). Tant que les identifiants du fournisseur ne
+sont pas saisis, un bandeau rouge l'indique et les SMS restent en attente (« Bloqué ») : aucun SMS
+n'est simulé ni perdu, ils partent dès la saisie s'ils sont encore dans leur fenêtre de validité.
+
 ## Mettre en service l'envoi réel (une seule fois)
 
 Dans *Paramètres et templates* (la liste « État de la configuration » indique ce qui manque) :

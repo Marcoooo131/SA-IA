@@ -37,6 +37,11 @@ class TwilioProvider:
     name = "twilio"
     simulated = False
 
+    @property
+    def ready(self) -> bool:
+        """False while the account credentials are missing: sending is then blocked, not failed."""
+        return bool(self.account_sid and self.auth_token)
+
     def __init__(self, settings: Settings, transport: httpx.BaseTransport | None = None):
         self.account_sid = settings.twilio_account_sid
         self.auth_token = settings.twilio_auth_token.get_secret_value()
