@@ -76,6 +76,9 @@ class Settings(BaseSettings):
     whisper_compute_type: str = "int8"
     whisper_cpu_threads: int = 0
     vocabulary: str = "Sector Alarm, télésurveillance, alarme, centrale, détecteur, badge, déménagement, résiliation"
+    # text enhancer (transcript/enhancer.py): hesitations, stutters, vocabulary, phone numbers, typography
+    text_enhancer: bool = True
+    text_corrections: str = ""  # extra corrections "mal entendu=>Correct; autre=>Autre"
     transcription_finish_timeout_s: float = 120.0
 
     # --- Notes

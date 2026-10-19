@@ -32,6 +32,11 @@ du micro (aucun son n'est enregistré).
 2. Cocher la confirmation d'information de l'interlocuteur (si l'entreprise l'exige), cliquer **Démarrer**.
    Bandeau rouge et chronomètre visibles pendant toute la capture ; vu-mètres « son détecté ».
 3. La transcription s'affiche en direct (gris = provisoire, noir = définitif, souligné = incertain).
+   Chaque phrase définitive passe par l'**améliorateur de texte** local : hésitations (« euh ») et
+   bégaiements retirés, vocabulaire métier corrigé (« secteur alarme » → « Sector Alarm »), numéros
+   de téléphone groupés (« 06, 12, 34… » → « 06 12 34… »), ponctuation française. Aucun mot ni chiffre
+   n'est ajouté ; le texte brut reste visible au survol. `PCD_TEXT_ENHANCER=false` le désactive ;
+   `PCD_TEXT_CORRECTIONS=mal entendu=>Correct; …` ajoute des corrections propres à l'entreprise.
 4. **Fin** (ou Échap) : l'écoute s'arrête immédiatement, les derniers mots sont transcrits, la note est générée.
 5. Relire, **Modifier la note** si besoin, **Copier la note**, coller dans le champ Phone Call du CRM.
 6. **Nouvelle conversation** efface tout.
@@ -56,7 +61,7 @@ du micro (aucun son n'est enregistré).
 phonecall_desktop/
   audio/        sources (WASAPI, fichiers de test), périphériques, capture supervisée, traitement du flux
   stt/          segmentation, transcription en flux, faster-whisper, reconnaisseur scripté (tests)
-  transcript/   assemblage : ordre, doublons, écho
+  transcript/   assemblage : ordre, doublons, écho ; améliorateur de texte (enhancer.py)
   notes/        note : synthèse sans IA (local_summary.py, par défaut), client direct Claude
                 (clé du coffre Windows) ou client de la passerelle (moteur phonecall_agent.note_service)
   web/          serveur local sécurisé + interface (HTML/CSS/JS sans dépendance externe)

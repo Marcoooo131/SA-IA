@@ -248,6 +248,42 @@ def _numbers(text: str) -> set[str]:
     return {re.sub(r"\D", "", m) for m in re.findall(r"\d(?:[\d .-]*\d)?", text)}
 
 
+PHONE_RE = re.compile(r"(?:\+33[ .-]?|\b0)[1-9](?:[ .,-]{0,2}\d{2}){4}\b")
+
+
+def _national(digits: str) -> str:
+    return "0" + digits[2:] if digits.startswith("33") else digits
+
+
+def phone_flags(label: str, item: str, transcript_text: str) -> list[dict]:
+    """A phone number of the note must have been dictated, digit for digit.
+
+    - found in one dictation (digits separated only by spaces, commas, dots): OK;
+    - only by joining several pieces (« 0649 … 98 12 … 34 »): warning, to read back to the customer;
+    - nowhere: blocking (invented or mistyped number).
+    Other dictations starting like it but different (« 07 61… » then « 07 71… », a wrong read-back by
+    the advisor) mean the number was given in several ways: warning.
+    """
+    runs = [re.sub(r"\D", "", r) for r in re.findall(r"\d(?:[ .,-]{0,2}\d)*", transcript_text)]
+    runs = [_national(r) for r in runs]
+    flags = []
+    for match in sorted({_national(re.sub(r"\D", "", m)) for m in PHONE_RE.findall(item)}):
+        shown = " ".join(match[i:i + 2] for i in range(0, 10, 2))
+        if not any(match in r for r in runs):
+            if match in "".join(runs):
+                flags.append(_flag("numero_en_morceaux", "warning",
+                                   f"{label} : {shown} reconstitué à partir de plusieurs passages, à relire au client."))
+            else:
+                flags.append(_flag("numero_non_trouve", "blocking", f"{label} : {shown} n'a pas été dicté dans l'appel."))
+                continue
+        variants = sorted({r for r in runs if len(r) >= 4 and r[:2] == match[:2] and r not in match and match not in r})
+        if variants:
+            flags.append(_flag("numero_variantes", "warning",
+                               f"{label} : {shown} — d'autres chiffres ont été dictés ou relus "
+                               f"({', '.join(variants)}), à vérifier avec le client."))
+    return flags
+
+
 def check(note: FilledNote, transcript_text: str, metadata_text: str = "") -> list[dict]:
     """Verification before display. Normalises what can be (absent wording, unreliable statuses)
     and returns the flags shown to the advisor. ``transcript_text``: the whole conversation."""
@@ -283,7 +319,9 @@ def check(note: FilledNote, transcript_text: str, metadata_text: str = "") -> li
                     if q.rstrip("…").strip() not in quotes_ok:
                         flags.append(_flag("citation_introuvable", "blocking",
                                            f"{spec.label} : citation absente de la transcription ({q[:60]})."))
-                unknown = [n for n in _numbers(item) if n not in source_numbers and len(n) > 1]
+                # phone numbers are checked as a whole (they are often dictated in pieces)
+                flags += phone_flags(spec.label, item, transcript_text)
+                unknown = [n for n in _numbers(PHONE_RE.sub(" ", item)) if n not in source_numbers and len(n) > 1]
                 if unknown and v.status == "present":
                     flags.append(_flag("chiffre_non_trouve", "blocking",
                                        f"{spec.label} : {', '.join(sorted(unknown))} ne figure ni dans la conversation "
@@ -295,6 +333,12 @@ def check(note: FilledNote, transcript_text: str, metadata_text: str = "") -> li
                     flags.append(_flag("action_non_effectuee", "blocking",
                                        "Actions réellement effectuées : un élément ressemble à une proposition ou à une "
                                        "action future — vérifier qu'il a vraiment été fait."))
+    # consistency of the Movers fields
+    moving, move_date = note.values.get("demenagement"), note.values.get("date_demenagement")
+    if moving and move_date and moving.status == "present" and move_date.status == "present" \
+            and any(i.strip().lower().startswith("non") for i in moving.items):
+        flags.append(_flag("incoherence", "blocking",
+                           "Déménagement : « Non » alors qu'une date de déménagement est renseignée."))
     if missing:
         flags.append(_flag("champs_manquants", "blocking", "Champs non renseignés (mis à « "
                            + t.absent + " ») : " + ", ".join(missing)))

@@ -132,6 +132,7 @@ function drawTranscript() {
     const div = document.createElement("div");
     div.className = `seg ${s.speaker}` + (s.final ? "" : " partial") + (s.uncertain && s.final ? " uncertain" : "") + (s.echo ? " echo" : "");
     if (s.echo) div.title = "Écho de la voix de l'interlocuteur capté par le micro : ignoré.";
+    else if (s.raw_text) div.title = "Texte reconnu avant amélioration : " + s.raw_text;
     const ts = document.createElement("span"); ts.className = "ts"; ts.textContent = fmt(s.t_start);
     const who = document.createElement("span"); who.className = "who"; who.textContent = s.speaker_label;
     const txt = document.createElement("span"); txt.className = "txt"; txt.textContent = s.text + (s.final ? "" : " …");

@@ -18,6 +18,7 @@ from dataclasses import asdict, dataclass
 
 from ..audio.types import SPEAKER_OF_CHANNEL, Channel
 from ..stt.base import TranscriptEvent
+from .enhancer import TextEnhancer
 
 SPEAKER_LABELS = {"advisor": "Conseiller", "remote": "Interlocuteur"}
 
@@ -32,6 +33,7 @@ class Segment:
     final: bool
     uncertain: bool = False
     echo: bool = False
+    raw_text: str | None = None  # recognition output before the text enhancer (None: unchanged)
 
     @property
     def speaker(self) -> str:
@@ -59,7 +61,9 @@ def similarity(a: str, b: str) -> float:
 
 
 class TranscriptAssembler:
-    def __init__(self, echo_similarity: float = 0.6, echo_time_tolerance_s: float = 1.0):
+    def __init__(self, echo_similarity: float = 0.6, echo_time_tolerance_s: float = 1.0,
+                 enhancer: TextEnhancer | None = None):
+        self.enhancer = enhancer
         self._finals: dict[str, Segment] = {}
         self._partials: dict[str, Segment] = {}
         self._lock = threading.Lock()
@@ -80,7 +84,9 @@ class TranscriptAssembler:
                 self.version += 1
                 return [seg]
             self._partials.pop(ev.utterance_id, None)
-            seg = Segment(ev.utterance_id, ev.channel, ev.t_start, ev.t_end, ev.text, final=True, uncertain=ev.uncertain)
+            text = self.enhancer.enhance(ev.text) if self.enhancer else ev.text
+            seg = Segment(ev.utterance_id, ev.channel, ev.t_start, ev.t_end, text, final=True, uncertain=ev.uncertain,
+                          raw_text=ev.text if text != ev.text else None)
             self._finals[ev.utterance_id] = seg
             changed = [seg] + self._update_echo(seg)
             self.version += 1

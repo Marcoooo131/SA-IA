@@ -18,7 +18,7 @@
 #   help           ce que le champ doit contenir (consigne pour Copilot et Claude)
 #   rule           règle de remplissage sans IA (voir notes/template/rules.py)
 
-version: "2026-10-equipe-v1"
+version: "2026-10-equipe-v2"
 title: ""
 section_case: as_is
 blank_lines: false
@@ -159,7 +159,7 @@ sections:
       - id: tiers
         label: Contact Repreneurs
         when: [movers]
-        help: "Repreneurs, propriétaires, agence ou futurs occupants, et ce qui est prévu avec eux."
+        help: "Repreneurs, propriétaires, agence ou futurs occupants : nom et téléphone s'ils sont donnés, et ce qui est prévu avec eux."
         rule: {quotes: {speaker: any, max: 3, markers: [repreneur, propriétaire, propriétaires, futurs acheteurs, acheteur, acquéreur, agence, locataire, locataires, location, futurs occupants]}}
       - id: reponse
         bare: true

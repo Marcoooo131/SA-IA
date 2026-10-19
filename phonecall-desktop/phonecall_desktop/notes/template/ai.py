@@ -50,6 +50,28 @@ def system_prompt(t: Template) -> str:
         f"variant parmi {', '.join(t.call_types)} : "
         + "; ".join(f"{k} = {v.get('label', k)}" for k, v in t.call_types.items()) + ".",
         "",
+        "Transcription automatique et cohérence :",
+        "- Les noms propres, les rues et les mots rares sont souvent mal reconnus (« Bas tiens » pour « Bastien », un "
+        "nom épelé lettre par lettre). Restitue la forme la plus probable seulement si le contexte la rend évidente "
+        "(épellation, répétition, nom repris par l'autre locuteur), avec status \"uncertain\" ; ne reconstruis jamais "
+        "un mot incompréhensible.",
+        "- Un numéro de téléphone peut être dicté en plusieurs morceaux, répété ou relu par le conseiller : reprends la "
+        "version complète la plus explicite au format 06 12 34 56 78 ; si les chiffres diffèrent d'une dictée ou d'une "
+        "relecture à l'autre, status \"uncertain\" avec les variantes entendues dans reason.",
+        "- N'attribue jamais une cause qui n'est pas dite : une reprise de contrat par un nouvel occupant n'implique ni "
+        "vente, ni location, ni décès, sauf si c'est prononcé.",
+        "- Une demande du client n'est jamais une offre commerciale : l'offre est ce que PROPOSE le conseiller.",
+        "- Ce que le conseiller fait pendant l'appel (« je demande à ce qu'on le rappelle tout de suite », « c'est "
+        "noté ») est une action réalisée.",
+        "- Les champs sont cohérents entre eux : si le client a quitté le logement ou si un nouvel occupant a emménagé, "
+        "Déménagement = « Oui » et la date ou « Déjà réalisé » va dans la date de déménagement.",
+        "- Les noms lus par le conseiller à l'écran (comptes trouvés dans le système) ne sont pas forcément ceux de "
+        "l'interlocuteur : status \"uncertain\".",
+        "- Coordonnées d'un repreneur (nom, téléphone) : à reporter dans le champ des repreneurs ; l'adresse concernée "
+        "va dans les informations complémentaires.",
+        "- Rien d'utile ne doit être perdu : toute information qui n'a pas de champ dédié va dans les informations "
+        "complémentaires, une par élément, sans répéter les autres champs.",
+        "",
         "- Rédige des éléments courts et factuels, comme dans l'exemple ci-dessous s'il y en a un.",
         "",
         "Champs (id — intitulé — consigne ; les champs « si … » ne concernent que ces types d'appel, sinon "

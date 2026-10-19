@@ -37,6 +37,7 @@ from .notes.client import NoteClient, NoteResult, new_request_id
 from .stt.base import Recognizer, TranscriptEvent
 from .stt.streaming import StreamingTranscriber
 from .transcript.assembler import TranscriptAssembler
+from .transcript.enhancer import TextEnhancer
 
 log = logging.getLogger(__name__)
 
@@ -133,13 +134,17 @@ class SessionController:
         self.history = history
         self.emit = emit
         self._lock = threading.RLock()
-        self.current = Call(id=new_request_id())
+        self.current = self._new_call()
         self.calls: list[Call] = []  # started calls of this session (current one included)
         self.notices: list[dict] = []
         self._tpl_cache = None
         self._timer: threading.Timer | None = None
         self.recognizer_ready = False
         self.recognizer_status = "idle"  # idle | loading | ready | error
+
+    def _new_call(self) -> Call:
+        enhancer = TextEnhancer.from_settings(self.settings.text_corrections, self.settings.text_enhancer)
+        return Call(id=new_request_id(), assembler=TranscriptAssembler(enhancer=enhancer))
 
     # ------------------------------------------------------------------ helpers
 
@@ -233,7 +238,7 @@ class SessionController:
             self.recognizer.warmup()  # raises RECOGNIZER_UNAVAILABLE before any capture
             self.recognizer_ready = True
             # A new call; the previous one keeps finishing in the queue (or stays there, finished)
-            call = Call(id=new_request_id())
+            call = self._new_call()
             if self.current not in self.calls or not self.current.busy and not self.current.note_text \
                     and not self.current.assembler.final_segments():
                 self._forget(self.current)
@@ -483,7 +488,7 @@ class SessionController:
             if self.state == State.CAPTURING:
                 raise AppError(ErrorCode.INVALID_STATE, "terminez d'abord la conversation en cours")
             self._forget(self.current)
-            self.current = Call(id=new_request_id())
+            self.current = self._new_call()
             self._set_state(State.READY)
 
     # ------------------------------------------------------------------ list of calls (queue)
@@ -505,7 +510,7 @@ class SessionController:
                 raise AppError(ErrorCode.INVALID_STATE, "cet appel n'est pas terminé")
             self.calls.remove(call)
             if call is self.current:
-                self.current = Call(id=new_request_id())
+                self.current = self._new_call()
                 self.emit("state", self.snapshot_state())
             self.emit("calls", {"calls": self.calls_summary(), "current_id": self.current.id})
 
