@@ -138,7 +138,7 @@ export function createWorldScene(quality: Quality): CineScene {
   // rayons de soleil dans les nuages
   const rays: THREE.Mesh[] = [];
   for (let i = 0; i < 6; i++) {
-    const ray = godRay({ length: 420, radiusTop: 8, radiusBottom: 34, color: 0xffe2b0, opacity: 0.16 });
+    const ray = godRay({ length: 420, radiusTop: 8, radiusBottom: 34, color: 0xffe2b0, opacity: 0.08 });
     ray.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), sunDir.clone().negate());
     // décalés latéralement : vus de l'extérieur, ils balaient le cadre sans aveugler la caméra
     const along = path.at(r.range(21.3, 24.5));
@@ -276,8 +276,8 @@ export function createWorldScene(quality: Quality): CineScene {
       const inCloud = smoothstep(20.6, 21.6, t) * (1 - smoothstep(23.4, 24.2, t));
       const reveal = smoothstep(24, 25.5, t);
       return {
-        exposure: 0.95 + inCloud * 0.08 + reveal * 0.05,
-        bloomStrength: 0.5 + inCloud * 0.4 + reveal * 0.2,
+        exposure: 0.95 - inCloud * 0.12 + reveal * 0.05,
+        bloomStrength: 0.5 + inCloud * 0.1 + reveal * 0.2,
         bloomThreshold: 0.78,
         saturation: 0.9,
         aberration: inShot('2b', t) ? 0.012 : 0.006,

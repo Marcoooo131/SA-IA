@@ -82,6 +82,13 @@ export class AudioEngine {
     const d = this.noise.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     this.newSession();
+    // iOS/Android : la synthèse vocale doit être « débloquée » pendant le geste utilisateur
+    if ('speechSynthesis' in window) {
+      speechSynthesis.getVoices();
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0;
+      speechSynthesis.speak(u);
+    }
     if (ctx.state === 'suspended') await ctx.resume();
     await this.loadOptionalAssets();
   }

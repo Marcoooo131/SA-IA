@@ -92,6 +92,7 @@ function endCinematic() {
 
 function enterHome() {
   state = 'home';
+  homeClock = 0;
   show('end', false);
   show('home', true);
   director.get('title')?.setMode?.('home');

@@ -322,7 +322,7 @@ export function createBattleScene(quality: Quality): CineScene {
       // ---------------- LE MAGE
       mage.rig.apply(addPose(idle(t, 0, 0.5), mageClip.sample(t)));
       mage.cape.sway(t, 1.2, t > HITS.fireballLaunch && t < 63 ? 0.4 : 0);
-      const runeIn = smoothstep(60.4, 61.0, t) * (1 - smoothstep(61.8, 62.3, t));
+      const runeIn = smoothstep(60.4, 61.0, t) * (1 - smoothstep(61.3, 61.55, t));
       mageRunes.forEach((m, i) => {
         m.visible = runeIn > 0.01;
         m.scale.setScalar(runeIn * (1 + i * 0.1) * (1 + Math.sin(t * 8) * 0.03));
@@ -358,7 +358,7 @@ export function createBattleScene(quality: Quality): CineScene {
       if (fireball.visible) {
         fireball.position.copy(target);
         fireball.scale.setScalar(0.5 + ease.outCubic(clamp(exSim / 0.6)) * 4.2);
-        (fireball.material as THREE.MeshBasicMaterial).opacity = 1 - clamp(exSim / 0.9);
+        (fireball.material as THREE.MeshBasicMaterial).opacity = 0.55 * (1 - clamp(exSim / 0.9));
         (fireball.material as THREE.MeshBasicMaterial).color.setHSL(0.58 - exSim * 0.4, 0.8, 0.75 - exSim * 0.3);
       }
       shock.position.set(target.x, 0.1, target.z);
@@ -369,7 +369,7 @@ export function createBattleScene(quality: Quality): CineScene {
       });
       L1.position.copy(orb.visible ? orb.position : target);
       L1.color.set(0x8ad0ff);
-      L1.intensity = orb.visible ? 12 + smoothstep(60.95, 61.5, t) * 18 : exSim >= 0 ? Math.max(0, 300 * (1 - exSim / 0.8)) : 0;
+      L1.intensity = orb.visible ? 12 + smoothstep(60.95, 61.5, t) * 18 : exSim >= 0 ? Math.max(0, 140 * (1 - exSim / 0.8)) : 0;
       L1.distance = 40;
 
       // ---------------- L'ÉPÉISTE
@@ -702,7 +702,7 @@ export function createBattleScene(quality: Quality): CineScene {
     },
     post(t): Partial<PostParams> {
       const ex = t - HITS.fireballImpact;
-      const flash = (ex >= 0 && ex < 0.6 ? (1 - ex / 0.6) * 0.32 : 0) + (t >= HITS.maulSmash && t < HITS.maulSmash + 0.25 ? 0.3 * (1 - (t - HITS.maulSmash) / 0.25) : 0) + (t >= HITS.parry && t < HITS.parry + 0.08 ? 0.12 : 0);
+      const flash = (ex >= 0 && ex < 0.6 ? (1 - ex / 0.6) * 0.18 : 0) + (t >= HITS.maulSmash && t < HITS.maulSmash + 0.25 ? 0.3 * (1 - (t - HITS.maulSmash) / 0.25) : 0) + (t >= HITS.parry && t < HITS.parry + 0.08 ? 0.12 : 0);
       const slow = timeScale(t) < 1;
       return {
         flash,
