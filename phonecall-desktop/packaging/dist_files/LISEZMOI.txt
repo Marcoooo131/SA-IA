@@ -68,6 +68,18 @@ la coller dans le CRM.
    - Pendant l'appel, « Copier la transcription » (au-dessus de la transcription) copie le texte
      déjà transcrit, à coller directement dans Copilot. Les phrases encore en cours finissent par « … ».
 
+5 bis. « Mettre en forme la transcription » (au-dessus de la transcription)
+   - Transforme la transcription en Phone Call au format de l'équipe, en un clic : celle de l'appel
+     en cours est reprise automatiquement, ou collez n'importe quelle transcription (une ligne par
+     prise de parole : « Conseiller : … » / « Interlocuteur : … »). Choisissez le type d'appel si besoin,
+     puis « Mettre en forme » et « Copier la Phone Call ».
+   - Avec une clé API Claude enregistrée (bouton « Clé API » en haut) : rédaction par Claude, de la
+     même qualité qu'une réponse de Copilot, sans copier-coller. Seule la transcription (texte) est
+     envoyée ; coût de l'ordre de quelques centimes par appel. Usage à faire valider par l'entreprise.
+   - Sans clé : mise en forme sans IA (phrases de l'appel rangées dans les rubriques).
+   - Les numéros de téléphone sont vérifiés : un numéro jamais dicté bloque, un numéro dicté en
+     plusieurs fois ou de plusieurs façons est signalé « à vérifier ».
+
 6. Enchaîner les appels (liste d'attente)
    - Après « Fin », vous pouvez cliquer « Démarrer » tout de suite : l'appel précédent finit sa
      transcription et sa note en arrière-plan.

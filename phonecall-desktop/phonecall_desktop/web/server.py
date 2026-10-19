@@ -50,6 +50,11 @@ class CopilotAnswerBody(BaseModel):
     text: str = Field(min_length=1, max_length=50_000)
 
 
+class FormatBody(BaseModel):
+    text: str = Field(min_length=1, max_length=200_000)
+    variant: str | None = Field(default=None, pattern=r"^[a-z]{1,20}$")
+
+
 class AIKeyBody(BaseModel):
     key: str = Field(max_length=2_000)
     check: bool = True
@@ -205,14 +210,18 @@ def create_app(controller: SessionController, token: str, port_getter, hub: Hub)
 
     def direct_client():
         client = controller.note_client
-        if getattr(client, "name", None) != "anthropic":
-            raise AppError(ErrorCode.INVALID_STATE, "le mode « clé API dans l'application » n'est pas activé")
-        return client
+        if getattr(client, "name", None) == "anthropic":
+            return client
+        if controller.settings.notes_client == "local":  # key used by « Mettre en forme la transcription »
+            from ..notes.direct import DirectAINoteClient
+
+            return DirectAINoteClient(controller.settings, lambda: secrets_store.get_ai_key(controller.settings))
+        raise AppError(ErrorCode.INVALID_STATE, "le mode « clé API dans l'application » n'est pas activé")
 
     def ai_key_status() -> dict:
         settings = controller.settings
         return {"mode": settings.notes_client, "model": settings.anthropic_model,
-                "configured": settings.notes_client == "anthropic" and bool(secrets_store.get_ai_key(settings))}
+                "configured": settings.notes_client in ("anthropic", "local") and bool(secrets_store.get_ai_key(settings))}
 
     @app.get("/api/ai-key")
     def ai_key_get():
@@ -238,6 +247,10 @@ def create_app(controller: SessionController, token: str, port_getter, hub: Hub)
         return ai_key_status()
 
     # ------------------------------------------------------------------ calls of the session (queue)
+
+    @app.post("/api/format")
+    def format_transcript(body: FormatBody):
+        return controller.format_transcript(body.text, body.variant or None)
 
     @app.get("/api/transcript/text")
     def transcript_text(call: str | None = None):

@@ -41,6 +41,11 @@ du micro (aucun son n'est enregistré).
 5. Relire, **Modifier la note** si besoin, **Copier la note**, coller dans le champ Phone Call du CRM.
 6. **Nouvelle conversation** efface tout.
 
+**Mettre en forme la transcription** (au-dessus de la transcription) : transforme la transcription de
+l'appel, ou une transcription collée, en Phone Call au format de l'équipe. Avec une clé API Claude
+enregistrée (bouton « Clé API », disponible aussi en mode sans IA), c'est Claude qui rédige ; sans clé,
+la note sans IA est utilisée. Rien n'est conservé.
+
 ## Documents
 
 | Document | Contenu |

@@ -267,7 +267,8 @@ def test_ui_note_without_ai(running_app_local, tmp_path):
         browser = p.chromium.launch(executable_path=CHROMIUM)
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         page.goto(url)
-        expect(page.locator("#btn-ai-key")).to_be_hidden()
+        # without AI, the key only serves « Mettre en forme la transcription »: no banner
+        expect(page.locator("#btn-ai-key")).to_be_visible()
         expect(page.locator("#ai-key-banner")).to_be_hidden()
         page.check("#consent")
         page.click("#btn-start")
@@ -279,6 +280,17 @@ def test_ui_note_without_ai(running_app_local, tmp_path):
         assert "Date de déménagement : le mois prochain" in note and "\nInformations Complémentaires :\n" in note
         expect(page.locator("#flags")).to_contain_text("Note sans IA")
         page.screenshot(path=str(tmp_path / "note_sans_ia.png"))
+        # « Mettre en forme la transcription »: the transcript of the call, or a pasted one
+        page.click("#btn-format")
+        expect(page.locator("#format-input")).not_to_have_value("")
+        expect(page.locator("#format-engine")).to_contain_text("sans IA")
+        page.fill("#format-input", "Conseiller : Sector Alarm bonjour\nInterlocuteur : euh je déménage le mois prochain "
+                  "et je voudrais garder mon alarme\nConseiller : très bien je note")
+        page.select_option("#format-variant", "movers")
+        page.click("#format-run")
+        expect(page.locator("#format-output")).to_be_visible(timeout=10000)
+        assert page.locator("#format-output").input_value().startswith("Interlocuteur :")
+        expect(page.locator("#format-copy")).to_be_visible()
         browser.close()
     out = os.environ.get("PCD_SCREENSHOT_DIR")
     if out:

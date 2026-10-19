@@ -83,6 +83,7 @@
     <div class="panel-head">
       <h2>Transcription en direct</h2>
       <button id="btn-copy-transcript" class="small" disabled title="Copier toute la transcription (même pendant l'appel), par exemple pour Copilot">Copier la transcription</button>
+      <button id="btn-format" class="small primary" title="Transformer la transcription (de cet appel ou collée) en Phone Call au format de l'équipe">Mettre en forme la transcription</button>
     </div>
     <div id="transcript" class="transcript-body">
       <p class="empty" id="transcript-empty">La transcription s'affichera ici pendant l'appel.</p>
@@ -138,6 +139,28 @@
   <h3>Transcription</h3>
   <textarea id="call-transcript" readonly aria-label="Transcription de l'appel"></textarea>
   <div class="note-buttons"><button id="call-copy-transcript">Copier la transcription</button></div>
+</dialog>
+
+<dialog id="format-dialog">
+  <div class="dialog-head"><h2>Mettre en forme la transcription</h2><button id="format-close" class="ghost">Fermer</button></div>
+  <p class="hint">La transcription de l'appel en cours est reprise ci-dessous. Vous pouvez aussi coller une autre
+    transcription (une ligne par prise de parole, « Conseiller : … » / « Interlocuteur : … »).</p>
+  <textarea id="format-input" aria-label="Transcription à mettre en forme" placeholder="Collez ici une transcription"></textarea>
+  <div class="note-buttons">
+    <label for="format-variant">Type d'appel</label>
+    <select id="format-variant">
+      <option value="">Détection automatique</option>
+      <option value="movers">Movers</option>
+      <option value="frontline">Frontline</option>
+      <option value="autre">Autre appel</option>
+    </select>
+    <button id="format-run" class="primary">Mettre en forme</button>
+  </div>
+  <p id="format-engine" class="hint"></p>
+  <p id="format-error" class="error-text" hidden role="alert"></p>
+  <textarea id="format-output" readonly aria-label="Phone Call mise en forme" hidden></textarea>
+  <ul id="format-flags" class="flags"></ul>
+  <div class="note-buttons"><button id="format-copy" class="primary" hidden>Copier la Phone Call</button></div>
 </dialog>
 
 <dialog id="copilot-dialog">

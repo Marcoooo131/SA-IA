@@ -86,3 +86,6 @@ dialog { width: min(720px, 92vw); border: 1px solid var(--line); border-radius: 
 .calls .call-preview { color: var(--muted); margin: 3px 0 5px; }
 .calls .call-actions button { margin-right: 4px; }
 #call-note, #call-transcript { width: 100%; min-height: 180px; box-sizing: border-box; font: 13.5px/1.45 "Segoe UI", system-ui, sans-serif; padding: 8px; }
+#format-input, #format-output { width: 100%; min-height: 200px; box-sizing: border-box; font: 13.5px/1.45 "Segoe UI", system-ui, sans-serif; padding: 8px; }
+#format-output { min-height: 320px; }
+#format-dialog .note-buttons label { align-self: center; }

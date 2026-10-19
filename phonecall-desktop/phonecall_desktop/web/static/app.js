@@ -419,18 +419,81 @@ async function useCopilotAnswer() {
   }
 }
 
+// ------------------------------------------------------------------ « Mettre en forme la transcription »
+
+let aiKeyConfigured = false;
+
+function formatEngineHint() {
+  $("format-engine").textContent = aiKeyConfigured
+    ? "Rédaction par Claude (clé enregistrée sur ce PC) : seule la transcription (texte) est envoyée."
+    : "Aucune clé API Claude sur ce PC : mise en forme sans IA (phrases recopiées). Pour une rédaction comme Copilot, enregistrez une clé avec le bouton « Clé API ».";
+}
+
+async function openFormat() {
+  $("format-error").hidden = true;
+  try {
+    const r = await api("/api/transcript/text");
+    if (r.text) $("format-input").value = r.text.replace(/ …$/gm, "");
+  } catch (e) { /* the advisor can paste a transcript */ }
+  formatEngineHint();
+  if (!$("format-dialog").open) $("format-dialog").showModal();
+}
+
+async function runFormat() {
+  const text = $("format-input").value.trim();
+  if (!text) { $("format-error").hidden = false; $("format-error").textContent = "La transcription est vide."; return; }
+  const btn = $("format-run");
+  btn.disabled = true; btn.textContent = "Mise en forme…";
+  $("format-error").hidden = true;
+  try {
+    const r = await api("/api/format", { method: "POST", body: JSON.stringify({ text, variant: $("format-variant").value || null }) });
+    $("format-output").value = r.text;
+    $("format-output").hidden = false;
+    $("format-copy").hidden = false;
+    const flags = $("format-flags");
+    flags.innerHTML = "";
+    for (const f of r.flags || []) {
+      if (f.severity === "info") continue;
+      const li = document.createElement("li");
+      li.className = f.severity;
+      li.textContent = (f.severity === "blocking" ? "À corriger : " : "À vérifier : ") + f.message;
+      flags.append(li);
+    }
+    for (const p of r.points_to_verify || []) {
+      const li = document.createElement("li");
+      li.textContent = "Point à confirmer : " + p;
+      flags.append(li);
+    }
+  } catch (e) {
+    $("format-error").hidden = false;
+    $("format-error").textContent = e.message;
+  } finally {
+    btn.disabled = false; btn.textContent = "Mettre en forme";
+  }
+}
+
+async function copyFormat() {
+  if (await copyText($("format-output").value)) {
+    $("format-copy").textContent = "Copiée ✓";
+    setTimeout(() => { $("format-copy").textContent = "Copier la Phone Call"; }, 1500);
+  }
+}
+
 // ------------------------------------------------------------------ AI key (write-only)
 
 async function loadAIKey() {
   try {
     const s = await api("/api/ai-key");
     const direct = s.mode === "anthropic";
-    $("btn-ai-key").hidden = !direct;
+    aiKeyConfigured = s.configured;
+    // in the « local » mode, the key is only used by « Mettre en forme la transcription »
+    $("btn-ai-key").hidden = !(direct || s.mode === "local");
     $("ai-key-banner").hidden = !(direct && !s.configured);
     $("ai-key-status").textContent = s.configured
       ? `Une clé est enregistrée sur ce PC (modèle : ${s.model}). Saisissez-en une nouvelle pour la remplacer.`
       : "Aucune clé enregistrée sur ce PC.";
     $("ai-key-delete").disabled = !s.configured;
+    formatEngineHint();
   } catch (e) { /* the button stays hidden */ }
 }
 
@@ -483,6 +546,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // Escape key = immediate stop of the capture
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && current.state === "capturing") stop(); });
   $("btn-copy-transcript").onclick = copyTranscript;
+  $("btn-format").onclick = openFormat;
+  $("format-close").onclick = () => $("format-dialog").close();
+  $("format-run").onclick = runFormat;
+  $("format-copy").onclick = copyFormat;
   $("call-close").onclick = () => $("call-dialog").close();
   $("btn-copilot-prepare").onclick = prepareCopilot;
   $("btn-copilot-paste").onclick = openCopilotAnswer;

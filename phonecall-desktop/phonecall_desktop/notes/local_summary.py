@@ -202,7 +202,8 @@ def find_phone(sentences: list[Sentence]) -> str | None:
 
 
 def transcript_text(segments: list[Segment]) -> str:
-    return " ".join(s.text.strip() for s in segments)
+    # one line per utterance: digits of two different utterances never form one number
+    return "\n".join(s.text.strip() for s in segments)
 
 
 def metadata_text(ctx) -> str:
