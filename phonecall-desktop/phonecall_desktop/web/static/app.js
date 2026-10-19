@@ -421,21 +421,12 @@ async function useCopilotAnswer() {
 
 // ------------------------------------------------------------------ « Mettre en forme la transcription »
 
-let aiKeyConfigured = false;
-
-function formatEngineHint() {
-  $("format-engine").textContent = aiKeyConfigured
-    ? "Rédaction par Claude (clé enregistrée sur ce PC) : seule la transcription (texte) est envoyée."
-    : "Aucune clé API Claude sur ce PC : mise en forme sans IA (phrases recopiées). Pour une rédaction comme Copilot, enregistrez une clé avec le bouton « Clé API ».";
-}
-
 async function openFormat() {
   $("format-error").hidden = true;
   try {
     const r = await api("/api/transcript/text");
     if (r.text) $("format-input").value = r.text.replace(/ …$/gm, "");
   } catch (e) { /* the advisor can paste a transcript */ }
-  formatEngineHint();
   if (!$("format-dialog").open) $("format-dialog").showModal();
 }
 
@@ -485,15 +476,12 @@ async function loadAIKey() {
   try {
     const s = await api("/api/ai-key");
     const direct = s.mode === "anthropic";
-    aiKeyConfigured = s.configured;
-    // in the « local » mode, the key is only used by « Mettre en forme la transcription »
-    $("btn-ai-key").hidden = !(direct || s.mode === "local");
+    $("btn-ai-key").hidden = !direct;
     $("ai-key-banner").hidden = !(direct && !s.configured);
     $("ai-key-status").textContent = s.configured
       ? `Une clé est enregistrée sur ce PC (modèle : ${s.model}). Saisissez-en une nouvelle pour la remplacer.`
       : "Aucune clé enregistrée sur ce PC.";
     $("ai-key-delete").disabled = !s.configured;
-    formatEngineHint();
   } catch (e) { /* the button stays hidden */ }
 }
 

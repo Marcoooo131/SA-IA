@@ -18,7 +18,7 @@ Copy-Item -Path packaging\dist_files\* -Destination dist\PhoneCallDesktop\ -Recu
 if (-not (Test-Path dist\PhoneCallDesktop\config.env)) { throw "config.env absent du paquet (packaging\dist_files\config.env)" }
 # Business configuration (categories) and Phone Call template: editable copies next to the .exe
 Copy-Item -Path ..\phonecall-agent\config\business.example.yaml -Destination dist\PhoneCallDesktop\business.yaml -Force
-Copy-Item -Path phonecall_desktop\notes\template\phone_call_template*.yaml -Destination dist\PhoneCallDesktop\ -Force
+Copy-Item -Path phonecall_desktop\notes\template\phone_call_template*.yaml, phonecall_desktop\notes\template\phone_call_facts.yaml -Destination dist\PhoneCallDesktop\ -Force
 if (-not $NoModel) {
   # Downloaded here (build machine), delivered in models\<name> next to the .exe
   python -c "import sys; from faster_whisper import download_model; download_model(sys.argv[1], output_dir=sys.argv[2])" $WhisperModel "dist\PhoneCallDesktop\models\$WhisperModel"

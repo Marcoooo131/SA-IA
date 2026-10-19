@@ -79,6 +79,12 @@ def selftest() -> int:
                   + (f" error={devices['error']['code']}" if devices.get("error") else ""))
             for d in devices["devices"]:
                 print(f"  - [{d['channel']}] {d['name']}{' (défaut)' if d['is_default'] else ''}")
+            # « Mettre en forme la transcription »: script, template and rules files found in the package
+            sample = ("Interlocuteur : bonjour, je déménage le mois prochain et le nouvel occupant va reprendre "
+                      "mon contrat, c'est Monsieur Exemple au 06 39 98 12 34\nConseiller : très bien, c'est noté")
+            r = c.post("/api/format", json={"text": sample}).json()
+            assert r["text"].startswith("Interlocuteur :"), r
+            print(f"format ok: engine={r['engine']} lines={r['text'].count(chr(10)) + 1}")
         if settings.recognizer == "whisper":
             from .factory import whisper_model_source
 

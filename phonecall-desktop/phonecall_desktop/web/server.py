@@ -210,18 +210,14 @@ def create_app(controller: SessionController, token: str, port_getter, hub: Hub)
 
     def direct_client():
         client = controller.note_client
-        if getattr(client, "name", None) == "anthropic":
-            return client
-        if controller.settings.notes_client == "local":  # key used by « Mettre en forme la transcription »
-            from ..notes.direct import DirectAINoteClient
-
-            return DirectAINoteClient(controller.settings, lambda: secrets_store.get_ai_key(controller.settings))
-        raise AppError(ErrorCode.INVALID_STATE, "le mode « clé API dans l'application » n'est pas activé")
+        if getattr(client, "name", None) != "anthropic":
+            raise AppError(ErrorCode.INVALID_STATE, "le mode « clé API dans l'application » n'est pas activé")
+        return client
 
     def ai_key_status() -> dict:
         settings = controller.settings
         return {"mode": settings.notes_client, "model": settings.anthropic_model,
-                "configured": settings.notes_client in ("anthropic", "local") and bool(secrets_store.get_ai_key(settings))}
+                "configured": settings.notes_client == "anthropic" and bool(secrets_store.get_ai_key(settings))}
 
     @app.get("/api/ai-key")
     def ai_key_get():

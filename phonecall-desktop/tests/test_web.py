@@ -267,8 +267,7 @@ def test_ui_note_without_ai(running_app_local, tmp_path):
         browser = p.chromium.launch(executable_path=CHROMIUM)
         page = browser.new_page(viewport={"width": 1400, "height": 900})
         page.goto(url)
-        # without AI, the key only serves « Mettre en forme la transcription »: no banner
-        expect(page.locator("#btn-ai-key")).to_be_visible()
+        expect(page.locator("#btn-ai-key")).to_be_hidden()
         expect(page.locator("#ai-key-banner")).to_be_hidden()
         page.check("#consent")
         page.click("#btn-start")
@@ -283,7 +282,6 @@ def test_ui_note_without_ai(running_app_local, tmp_path):
         # « Mettre en forme la transcription »: the transcript of the call, or a pasted one
         page.click("#btn-format")
         expect(page.locator("#format-input")).not_to_have_value("")
-        expect(page.locator("#format-engine")).to_contain_text("sans IA")
         page.fill("#format-input", "Conseiller : Sector Alarm bonjour\nInterlocuteur : euh je déménage le mois prochain "
                   "et je voudrais garder mon alarme\nConseiller : très bien je note")
         page.select_option("#format-variant", "movers")

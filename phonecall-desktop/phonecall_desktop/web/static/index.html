@@ -83,7 +83,7 @@
     <div class="panel-head">
       <h2>Transcription en direct</h2>
       <button id="btn-copy-transcript" class="small" disabled title="Copier toute la transcription (même pendant l'appel), par exemple pour Copilot">Copier la transcription</button>
-      <button id="btn-format" class="small primary" title="Transformer la transcription (de cet appel ou collée) en Phone Call au format de l'équipe">Mettre en forme la transcription</button>
+      <button id="btn-format" class="small primary" title="Transformer la transcription (de cet appel ou collée) en Phone Call au format de l'équipe, par script, sans IA">Mettre en forme la transcription</button>
     </div>
     <div id="transcript" class="transcript-body">
       <p class="empty" id="transcript-empty">La transcription s'affichera ici pendant l'appel.</p>
@@ -156,7 +156,9 @@
     </select>
     <button id="format-run" class="primary">Mettre en forme</button>
   </div>
-  <p id="format-engine" class="hint"></p>
+  <p class="hint">Mise en forme par script, sans IA et sans connexion : les situations reconnues (reprise de
+    contrat, déménagement, rappel…) sont rédigées, le contact du repreneur, l'adresse et le numéro sont repris.
+    Règles modifiables dans phone_call_facts.yaml.</p>
   <p id="format-error" class="error-text" hidden role="alert"></p>
   <textarea id="format-output" readonly aria-label="Phone Call mise en forme" hidden></textarea>
   <ul id="format-flags" class="flags"></ul>

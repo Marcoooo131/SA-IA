@@ -131,7 +131,6 @@ class SessionController:
         self.backend = backend
         self.recognizer = recognizer
         self.note_client = note_client
-        self._direct_formatter: NoteClient | None = None
         self.history = history
         self.emit = emit
         self._lock = threading.RLock()
@@ -521,33 +520,23 @@ class SessionController:
 
     # ------------------------------------------------------------------ « Mettre en forme la transcription »
 
-    def _formatter(self) -> NoteClient:
-        """Claude when a key is saved on this PC (quality of the Copilot answer), otherwise the note without AI."""
-        if getattr(self.note_client, "name", "") == "anthropic":
-            return self.note_client
-        from .secrets_store import get_ai_key
-
-        if self.settings.notes_client == "local" and get_ai_key(self.settings):
-            if self._direct_formatter is None:
-                from .notes.direct import DirectAINoteClient
-
-                self._direct_formatter = DirectAINoteClient(self.settings, lambda: get_ai_key(self.settings))
-            return self._direct_formatter
-        return self.note_client
-
     def format_transcript(self, text: str, variant: str | None = None) -> dict:
-        """Phone Call from any transcript (current call, or pasted), in the team format. Nothing is stored."""
+        """Phone Call from any transcript (current call, or pasted), in the team format, by a script
+        (no AI, no network). Nothing is stored."""
+        from .notes.business import load_categories
+        from .notes.formatter import facts_path, format_phone_call, load_facts
+        from .notes.template import CallContext, load_template, template_path
         from .transcript.parse import parse_transcript_text
 
         enhancer = TextEnhancer.from_settings(self.settings.text_corrections, self.settings.text_enhancer)
         segments = parse_transcript_text(text[:200_000], enhancer)
         if not segments:
             raise AppError(ErrorCode.EMPTY_TRANSCRIPT)
-        client = self._formatter()
-        duration = int(max(s.t_end for s in segments))
-        note = client.generate(segments, duration, new_request_id(), meta={"variant": variant} if variant else {})
-        return {"text": note.text, "flags": note.flags, "points_to_verify": note.points_to_verify,
-                "engine": "claude" if getattr(client, "name", "") == "anthropic" else getattr(client, "name", ""),
+        ctx = CallContext(variant=variant, duration_s=int(max(s.t_end for s in segments)),
+                          agent_name=self.settings.agent_name)
+        note = format_phone_call(segments, ctx, load_template(template_path(self.settings)),
+                                 load_categories(self.settings), load_facts(facts_path(self.settings)))
+        return {"text": note.text, "flags": note.flags, "points_to_verify": note.points_to_verify, "engine": "script",
                 "cost_usd": note.cost_usd, "segments": len(segments)}
 
     def transcript_text(self, call_id: str | None = None) -> str:

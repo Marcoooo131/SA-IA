@@ -42,9 +42,10 @@ du micro (aucun son n'est enregistré).
 6. **Nouvelle conversation** efface tout.
 
 **Mettre en forme la transcription** (au-dessus de la transcription) : transforme la transcription de
-l'appel, ou une transcription collée, en Phone Call au format de l'équipe. Avec une clé API Claude
-enregistrée (bouton « Clé API », disponible aussi en mode sans IA), c'est Claude qui rédige ; sans clé,
-la note sans IA est utilisée. Rien n'est conservé.
+l'appel, ou une transcription collée, en Phone Call au format de l'équipe, **par script, sans IA**
+(`notes/formatter.py`). Des règles de situation (`notes/template/phone_call_facts.yaml`, copie modifiable
+à côté de l'exe) rédigent des phrases propres ; le contact du repreneur, l'adresse et les numéros dictés
+sont extraits ; les phrases restantes sont mises à la 3ᵉ personne. Rien n'est conservé.
 
 ## Documents
 
