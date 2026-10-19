@@ -193,8 +193,11 @@ document.addEventListener('visibilitychange', () => {
     // Mode capture : on simule la seconde qui précède pour que particules et animations soient en place.
     $('loader').style.transition = 'none';
     show('loader', false);
-    for (let k = 30; k >= 0; k--) director.render(Math.max(0, still - k / 30), 1 / 30);
-    Object.assign(window, { __ready: true, __director: director });
+    const renderStill = (t: number) => {
+      for (let k = 30; k >= 0; k--) director.render(Math.max(0, t - k / 30), 1 / 30);
+    };
+    renderStill(still);
+    Object.assign(window, { __ready: true, __director: director, __still: renderStill });
     return;
   }
   show('loader', false);

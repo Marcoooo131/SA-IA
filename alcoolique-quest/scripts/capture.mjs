@@ -17,9 +17,11 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width: 960, height: 540 } });
 page.on('console', (m) => m.type() === 'error' && console.log('[console]', m.text()));
 page.on('pageerror', (e) => console.log('[pageerror]', e.message));
+// une seule page : la cinématique est chargée une fois, puis rendue à chaque instant demandé
+await page.goto(`http://127.0.0.1:5199/?still=${list[0]}&quality=${process.env.Q || 'high'}${process.env.EXTRA || ''}`);
+await page.waitForFunction(() => window.__ready === true, null, { timeout: 600000 });
 for (const t of list) {
-  await page.goto(`http://127.0.0.1:5199/?still=${t}&quality=${process.env.Q || 'high'}${process.env.EXTRA || ''}`);
-  await page.waitForFunction(() => window.__ready === true, null, { timeout: 240000 });
+  await page.evaluate((tt) => window.__still(tt), t);
   await page.screenshot({ path: `shots/t${String(t).padStart(6, '0')}.png`, timeout: 180000 });
   console.log('capturé', t);
 }
