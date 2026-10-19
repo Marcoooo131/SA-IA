@@ -31,6 +31,8 @@ class WhisperRecognizer(Recognizer):
         self.hotwords = hotwords or None
         self._model = None
         self._lock = threading.Lock()
+        # One call at a time on the model: the live call and a call finishing in the queue share it
+        self._run_lock = threading.Lock()
 
     def warmup(self) -> None:
         with self._lock:
@@ -52,6 +54,10 @@ class WhisperRecognizer(Recognizer):
     def transcribe(self, audio: np.ndarray, *, context: str = "", fast: bool = False,
                    channel=None, t_start: float = 0.0) -> RecognitionResult:
         self.warmup()
+        with self._run_lock:
+            return self._transcribe(audio, context=context, fast=fast)
+
+    def _transcribe(self, audio: np.ndarray, *, context: str, fast: bool) -> RecognitionResult:
         segments, _info = self._model.transcribe(
             audio.astype(np.float32, copy=False),
             language="fr",

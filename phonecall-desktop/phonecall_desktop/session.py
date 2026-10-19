@@ -1,8 +1,12 @@
 """Session controller: the single place where the conversation life cycle is decided.
 
-States (shown to the user):
+Each call is a ``Call`` (its own transcript, note and state). States (shown to the user):
   ready → capturing → finalizing ("transcription en cours") → generating → done
                                                     ↘ error (transcript kept, retry possible)
+
+Queue: after « Fin », a call can keep finishing (end of transcription, note) in the background
+while the advisor already starts the next call. The controller shows one « current » call; the
+others stay in ``calls`` (memory of this session only) until they are removed.
 
 Rules:
 - capture starts only from ``start()`` (explicit click), after the consent confirmation when the
@@ -10,7 +14,8 @@ Rules:
 - ``stop()`` closes the audio sources synchronously before anything else;
 - capture stops by itself after ``max_session_minutes``, when the window is closed, or when the
   interface has been disconnected for ``ui_disconnect_stop_s``;
-- nothing about the conversation is kept after ``new_conversation()`` (unless history is enabled).
+- nothing about a finished conversation is kept after ``new_conversation()`` or « Retirer »
+  (unless history is enabled); at most ``MAX_CALLS`` calls are kept in memory.
 """
 
 from __future__ import annotations
@@ -19,7 +24,7 @@ import logging
 import threading
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 from .audio.capture import CaptureConfig, CaptureManager
@@ -32,6 +37,7 @@ from .notes.client import NoteClient, NoteResult, new_request_id
 from .stt.base import Recognizer, TranscriptEvent
 from .stt.streaming import StreamingTranscriber
 from .transcript.assembler import TranscriptAssembler
+from .transcript.enhancer import TextEnhancer
 
 log = logging.getLogger(__name__)
 
@@ -55,6 +61,57 @@ STATE_LABELS = {
 }
 
 
+MAX_CALLS = 10
+SPEAKER_LABELS = {"advisor": "Conseiller", "remote": "Interlocuteur"}
+
+
+@dataclass
+class Call:
+    """One phone call: its capture, transcript and note."""
+
+    id: str
+    state: State = State.READY
+    error: dict | None = None
+    assembler: TranscriptAssembler = field(default_factory=TranscriptAssembler)
+    capture: CaptureManager | None = None
+    transcriber: StreamingTranscriber | None = None
+    note: NoteResult | None = None
+    note_text: str = ""  # what the user sees / edits / copies
+    note_edited: bool = False
+    started_at: float | None = None
+    duration_s: int = 0
+    call_meta: dict = field(default_factory=dict)  # PC clock, call direction / type chosen by the advisor
+    metrics: dict = field(default_factory=dict)
+    opened_devices: dict = field(default_factory=dict)
+    session_id: str | None = None  # history id
+    request_id: str | None = None
+    copilot: object = None  # last prompt prepared for Copilot Chat
+
+    @property
+    def busy(self) -> bool:
+        return self.state in (State.FINALIZING, State.GENERATING)
+
+    def transcript_text(self, partials: bool = True) -> str:
+        """Plain text, one line per utterance: « [mm:ss] Interlocuteur : ... » (live partials marked …)."""
+        lines = []
+        for seg in self.assembler.snapshot(include_partials=partials):
+            if seg.echo or not seg.text.strip():
+                continue
+            ts = f"{int(seg.t_start // 60):02d}:{int(seg.t_start % 60):02d}"
+            lines.append(f"[{ts}] {SPEAKER_LABELS.get(seg.speaker, seg.speaker)} : {seg.text.strip()}"
+                         + ("" if seg.final else " …"))
+        return "\n".join(lines)
+
+    def summary(self) -> dict:
+        first = next((s.text for s in self.assembler.snapshot(include_partials=False) if s.text.strip()), "")
+        return {
+            "id": self.id, "state": self.state.value, "label": STATE_LABELS[self.state],
+            "started_at": self.started_at, "duration_s": self.duration_s, "has_note": bool(self.note_text),
+            "error": self.error, "preview": (first[:70] + "…") if len(first) > 70 else first,
+            "segments": len(self.assembler.final_segments()),
+        }
+
+
 @dataclass
 class StartRequest:
     use_system: bool = True
@@ -62,6 +119,8 @@ class StartRequest:
     system_device: str | None = None
     mic_device: str | None = None
     consent: bool = False
+    call_direction: str | None = None  # entrant | sortant | None (automatic detection)
+    call_type: str | None = None  # movers | frontline | autre | None (automatic detection)
 
 
 class SessionController:
@@ -75,30 +134,36 @@ class SessionController:
         self.history = history
         self.emit = emit
         self._lock = threading.RLock()
-        self.state = State.READY
-        self.error: dict | None = None
+        self.current = self._new_call()
+        self.calls: list[Call] = []  # started calls of this session (current one included)
         self.notices: list[dict] = []
-        self.assembler = TranscriptAssembler()
-        self.capture: CaptureManager | None = None
-        self.transcriber: StreamingTranscriber | None = None
-        self.note: NoteResult | None = None
-        self.note_text = ""  # what the user sees / edits / copies
-        self.note_edited = False
-        self.started_at: float | None = None
-        self.duration_s = 0
-        self.opened_devices: dict[str, str] = {}
-        self.session_id: str | None = None
-        self._request_id: str | None = None
+        self._tpl_cache = None
         self._timer: threading.Timer | None = None
-        self.metrics: dict = {}
         self.recognizer_ready = False
+        self.recognizer_status = "idle"  # idle | loading | ready | error
+
+    def _new_call(self) -> Call:
+        enhancer = TextEnhancer.from_settings(self.settings.text_corrections, self.settings.text_enhancer)
+        return Call(id=new_request_id(), assembler=TranscriptAssembler(enhancer=enhancer))
 
     # ------------------------------------------------------------------ helpers
 
-    def _set_state(self, state: State, error: AppError | None = None) -> None:
-        self.state = state
-        self.error = error.to_dict() if error else None
-        self.emit("state", self.snapshot_state())
+    def _set_state(self, state: State, error: AppError | None = None, call: Call | None = None) -> None:
+        call = call or self.current
+        call.state = state
+        call.error = error.to_dict() if error else None
+        if call is self.current:
+            self.emit("state", self.snapshot_state())
+        self.emit("calls", {"calls": self.calls_summary(), "current_id": self.current.id})
+
+    def calls_summary(self) -> list[dict]:
+        return [c.summary() for c in reversed(self.calls)]
+
+    def _call(self, call_id: str) -> Call:
+        call = next((c for c in self.calls if c.id == call_id), None)
+        if call is None:
+            raise AppError(ErrorCode.INVALID_STATE, "appel introuvable")
+        return call
 
     def _notice(self, level: str, message: str, code: str = "") -> None:
         n = {"level": level, "message": message, "code": code, "at": time.time()}
@@ -115,6 +180,9 @@ class SessionController:
             "started_at": self.started_at,
             "duration_s": self.duration_s,
             "recognizer_ready": self.recognizer_ready,
+            "recognizer_status": self.recognizer_status,
+            "call_id": self.current.id,
+            "queue_busy": sum(1 for c in self.calls if c.busy and c is not self.current),
         }
 
     def snapshot(self) -> dict:
@@ -132,23 +200,31 @@ class SessionController:
             "consent_required": self.settings.require_consent_confirmation,
             "consent_label": self.settings.consent_label,
             "history_enabled": self.history is not None,
+            "copilot_enabled": self.settings.copilot_enabled,
             "metrics": self.metrics,
+            "calls": self.calls_summary(),
         }
 
     def warmup(self) -> None:
-        """Load the recognition model in the background at application start."""
+        """Load the recognition model in the background at application start (the first time,
+        faster-whisper downloads it: several minutes)."""
+        self.recognizer_status = "loading"
+        self.emit("state", self.snapshot_state())
         try:
             self.recognizer.warmup()
             self.recognizer_ready = True
+            self.recognizer_status = "ready"
         except AppError as exc:
-            self._notice("error", exc.user_message, exc.code.value)
+            self.recognizer_status = "error"
+            self._notice("error", exc.user_message + " Vérifiez la connexion Internet au premier lancement "
+                         "(téléchargement du modèle), puis relancez l'application.", exc.code.value)
         self.emit("state", self.snapshot_state())
 
     # ------------------------------------------------------------------ start
 
     def start(self, req: StartRequest) -> dict:
         with self._lock:
-            if self.state in (State.CAPTURING, State.FINALIZING, State.GENERATING):
+            if self.state == State.CAPTURING:
                 raise AppError(ErrorCode.INVALID_STATE, "une conversation est déjà en cours")
             if self.settings.require_consent_confirmation and not req.consent:
                 raise AppError(ErrorCode.CONSENT_REQUIRED)
@@ -159,12 +235,21 @@ class SessionController:
                 channels[Channel.MIC] = req.mic_device or None
             if not channels:
                 raise AppError(ErrorCode.NO_SOURCE, "sélectionnez au moins une source")
-            self._reset()
             self.recognizer.warmup()  # raises RECOGNIZER_UNAVAILABLE before any capture
             self.recognizer_ready = True
-            self.transcriber = StreamingTranscriber(self.recognizer, self._on_transcript, list(channels),
-                                                    context_prompt=self.settings.vocabulary)
-            self.capture = CaptureManager(self.backend, self._on_chunk, self._on_capture_event)
+            # A new call; the previous one keeps finishing in the queue (or stays there, finished)
+            call = self._new_call()
+            if self.current not in self.calls or not self.current.busy and not self.current.note_text \
+                    and not self.current.assembler.final_segments():
+                self._forget(self.current)
+            self.current = call
+            self.calls.append(call)
+            self._trim_calls()
+            self.notices = []
+            call.transcriber = StreamingTranscriber(self.recognizer, lambda ev, c=call: self._on_transcript(c, ev),
+                                                    list(channels), context_prompt=self.settings.vocabulary,
+                                                    vocabulary=self.settings.vocabulary)
+            call.capture = CaptureManager(self.backend, self._on_chunk, self._on_capture_event)
             try:
                 self.opened_devices = self.capture.start(CaptureConfig(channels, no_signal_warn_s=self.settings.no_signal_warn_s))
             except AppError as exc:
@@ -173,6 +258,11 @@ class SessionController:
                 self._set_state(State.ERROR, exc)
                 raise
             self.started_at = time.time()
+            self.call_meta = {
+                "started_at": self.started_at,
+                "direction": req.call_direction if req.call_direction in ("entrant", "sortant") else None,
+                "variant": req.call_type if req.call_type in ("movers", "frontline", "autre") else None,
+            }
             self.session_id = new_request_id()
             log.info("capture started channels=%s", ",".join(c.value for c in channels))
             self._set_state(State.CAPTURING)
@@ -187,20 +277,27 @@ class SessionController:
                 self._notice("info", "Seul le micro est capté : la voix de l'interlocuteur ne sera transcrite que si le micro l'entend.")
             return self.snapshot_state()
 
-    def _reset(self) -> None:
-        self.assembler = TranscriptAssembler()
-        self.note, self.note_text, self.note_edited = None, "", False
-        self.error, self.notices, self.metrics = None, [], {}
-        self.duration_s, self.opened_devices = 0, {}
+    def _forget(self, call: Call) -> None:
+        if call in self.calls and not call.busy and call.state != State.CAPTURING:
+            self.calls.remove(call)
+
+    def _trim_calls(self) -> None:
+        """Keeps at most MAX_CALLS calls in memory: the oldest finished ones go first."""
+        while len(self.calls) > MAX_CALLS:
+            old = next((c for c in self.calls if not c.busy and c.state != State.CAPTURING and c is not self.current), None)
+            if old is None:
+                break
+            self.calls.remove(old)
 
     def _on_chunk(self, chunk: AudioChunk) -> None:
         t = self.transcriber
         if t is not None:
             t.feed(chunk)
 
-    def _on_transcript(self, ev: TranscriptEvent) -> None:
-        for seg in self.assembler.apply(ev):
-            self.emit("segment", seg.to_dict())
+    def _on_transcript(self, call: Call, ev: TranscriptEvent) -> None:
+        for seg in call.assembler.apply(ev):
+            if call is self.current:
+                self.emit("segment", {**seg.to_dict(), "call_id": call.id})
 
     def _on_capture_event(self, kind: str, payload: dict) -> None:
         if kind == "levels":
@@ -244,7 +341,8 @@ class SessionController:
             log.info("capture stopped after %ss", self.duration_s)
             self._set_state(State.FINALIZING)
             snapshot = self.snapshot_state()  # state at the moment of the stop
-        worker = threading.Thread(target=self._finalize, daemon=True, name="finalize")
+            call = self.current
+        worker = threading.Thread(target=self._finalize, args=(call,), daemon=True, name="finalize")
         worker.start()
         if wait:
             worker.join()
@@ -257,60 +355,120 @@ class SessionController:
                 self._timer.cancel()
             if self.capture is not None:
                 self.capture.stop()
-            if self.transcriber is not None:
-                self.transcriber.close()
+            for call in self.calls:  # also the calls still finishing in the queue
+                if call.transcriber is not None:
+                    call.transcriber.close()
             if self.state == State.CAPTURING:
                 self.state = State.READY
 
-    def _finalize(self) -> None:
-        t = self.transcriber
+    def _finalize(self, call: Call) -> None:
+        t = call.transcriber
         try:
             t.finish(timeout=self.settings.transcription_finish_timeout_s)
         except AppError as exc:
             self._notice("warning", exc.user_message, exc.code.value)
         finally:
-            self.metrics["transcription"] = {k: v for k, v in t.stats.items() if k != "final_latency_s"}
+            call.metrics["transcription"] = {k: v for k, v in t.stats.items() if k != "final_latency_s"}
             lat = t.stats["final_latency_s"]
             if lat:
-                self.metrics["transcription"]["final_latency_median_s"] = sorted(lat)[len(lat) // 2]
+                call.metrics["transcription"]["final_latency_median_s"] = sorted(lat)[len(lat) // 2]
             t.close()
-        self.emit("transcript", {"segments": [s.to_dict() for s in self.assembler.snapshot()]})
-        if not self.assembler.final_segments():
-            err = AppError(ErrorCode.EMPTY_TRANSCRIPT)
-            self._set_state(State.ERROR, err)
+        if call is self.current:
+            self.emit("transcript", {"segments": [s.to_dict() for s in call.assembler.snapshot()], "call_id": call.id})
+        if not call.assembler.final_segments():
+            self._set_state(State.ERROR, AppError(ErrorCode.EMPTY_TRANSCRIPT), call)
             return
-        self._request_id = new_request_id()
-        self._generate()
+        call.request_id = new_request_id()
+        self._generate(call)
 
-    def _generate(self) -> None:
-        self._set_state(State.GENERATING)
+    def _generate(self, call: Call | None = None) -> None:
+        call = call or self.current
+        self._set_state(State.GENERATING, call=call)
         try:
             t0 = time.monotonic()
-            note = self.note_client.generate(self.assembler.final_segments(), self.duration_s, self._request_id)
-            self.metrics["generation_s"] = round(time.monotonic() - t0, 2)
-            self.metrics["generation_cost_usd"] = note.cost_usd
+            note = self.note_client.generate(call.assembler.final_segments(), call.duration_s, call.request_id,
+                                             meta=call.call_meta)
+            call.metrics["generation_s"] = round(time.monotonic() - t0, 2)
+            call.metrics["generation_cost_usd"] = note.cost_usd
         except AppError as exc:
             log.warning("note generation failed: %s", exc.code.value)
-            self._set_state(State.ERROR, exc)
+            self._set_state(State.ERROR, exc, call)
             return
         except Exception:  # noqa: BLE001
             log.exception("unexpected error during generation")
-            self._set_state(State.ERROR, AppError(ErrorCode.INTERNAL))
+            self._set_state(State.ERROR, AppError(ErrorCode.INTERNAL), call)
             return
-        self.note, self.note_text, self.note_edited = note, note.text, False
-        self.emit("note", {"text": note.text, "meta": self.snapshot()["note_meta"]})
-        self._set_state(State.DONE)
-        self._save_history("generated")
+        call.note, call.note_text, call.note_edited = note, note.text, False
+        if call is self.current:
+            self.emit("note", {"text": note.text, "meta": self.snapshot()["note_meta"]})
+        else:
+            when = time.strftime("%H:%M", time.localtime(call.started_at)) if call.started_at else ""
+            self._notice("info", f"Note prête pour l'appel de {when} (liste des appels).", "queue_done")
+        self._set_state(State.DONE, call=call)
+        self._save_history("generated", call)
 
     def regenerate(self) -> None:
         with self._lock:
             if self.state not in (State.ERROR, State.DONE) or not self.assembler.final_segments():
                 raise AppError(ErrorCode.INVALID_STATE, "aucune transcription à résumer")
             if self.state == State.DONE:
-                self._request_id = new_request_id()  # explicit new generation
-        threading.Thread(target=self._generate, daemon=True).start()
+                self.current.request_id = new_request_id()  # explicit new generation
+            call = self.current
+        threading.Thread(target=self._generate, args=(call,), daemon=True).start()
 
     # ------------------------------------------------------------------ note actions
+
+    # ------------------------------------------------------------------ Microsoft 365 Copilot Chat
+
+    def _call_context(self):
+        from .notes.template import CallContext
+
+        meta = self.call_meta or {}
+        return CallContext(direction=meta.get("direction"), variant=meta.get("variant"), started_at=meta.get("started_at"),
+                           duration_s=self.duration_s, agent_name=self.settings.agent_name)
+
+    def _template_and_categories(self):
+        if self._tpl_cache is None:
+            from .notes.business import load_categories
+            from .notes.template import load_template, template_path
+
+            self._tpl_cache = (load_template(template_path(self.settings)), load_categories(self.settings))
+        return self._tpl_cache
+
+    def copilot_prompt(self) -> dict:
+        """Prompt to paste into Copilot Chat: instructions + template + transcript (after « Fin »)."""
+        from .notes.copilot import build_prompt
+
+        with self._lock:
+            segments = self.assembler.final_segments()
+            if self.state not in (State.DONE, State.ERROR) or not segments:
+                raise AppError(ErrorCode.INVALID_STATE, "terminez d'abord la conversation (Fin)")
+            ctx = self._call_context()
+        template, categories = self._template_and_categories()
+        self.current.copilot = build_prompt(template, segments, ctx, categories)
+        text = self.current.copilot.text
+        return {"prompt": text, "chars": len(text), "max_chars": self.settings.copilot_max_chars,
+                "too_long": len(text) > self.settings.copilot_max_chars}
+
+    def apply_copilot_answer(self, answer: str) -> None:
+        """Copilot's answer pasted by the advisor becomes the note, after the automatic check."""
+        from .notes.copilot import check_answer
+        from .notes.local_summary import metadata_text, transcript_text
+
+        with self._lock:
+            prompt = self.current.copilot
+            if prompt is None or self.state not in (State.DONE, State.ERROR):
+                raise AppError(ErrorCode.INVALID_STATE, "préparez d'abord la demande pour Copilot")
+            template, _categories = self._template_and_categories()
+            text, flags, points = check_answer(template, prompt, answer[:50_000],
+                                               transcript_text(self.assembler.final_segments()),
+                                               metadata_text(self._call_context()))
+            self.note = NoteResult(text=text, flags=flags, points_to_verify=points, prompt_version=template.version,
+                                   model="Microsoft 365 Copilot Chat")
+            self.note_text, self.note_edited = text, False
+        self.emit("note", {"text": text, "meta": self.snapshot()["note_meta"]})
+        self._set_state(State.DONE)
+        self._save_history("copilot")
 
     def update_note(self, text: str) -> None:
         with self._lock:
@@ -324,20 +482,86 @@ class SessionController:
         self._save_history("copied")
 
     def new_conversation(self) -> None:
+        """Empty screen for a new call. A call still finishing stays in the queue; a finished one is
+        cleared (as before), unless it is kept in the history."""
         with self._lock:
-            if self.state in (State.CAPTURING, State.FINALIZING, State.GENERATING):
+            if self.state == State.CAPTURING:
                 raise AppError(ErrorCode.INVALID_STATE, "terminez d'abord la conversation en cours")
-            self._reset()
-            self.session_id = None
+            self._forget(self.current)
+            self.current = self._new_call()
             self._set_state(State.READY)
 
-    def _save_history(self, status: str) -> None:
-        if self.history is None or not self.note_text:
+    # ------------------------------------------------------------------ list of calls (queue)
+
+    def select(self, call_id: str) -> dict:
+        """Shows another call of the list (not during a capture: the live call stays on screen)."""
+        with self._lock:
+            if self.state == State.CAPTURING:
+                raise AppError(ErrorCode.INVALID_STATE, "terminez d'abord l'appel en cours (Fin) pour en ouvrir un autre")
+            call = self._call(call_id)
+            self.current = call
+            self.emit("state", self.snapshot_state())
+            return self.snapshot()
+
+    def remove(self, call_id: str) -> None:
+        with self._lock:
+            call = self._call(call_id)
+            if call.busy or call.state == State.CAPTURING:
+                raise AppError(ErrorCode.INVALID_STATE, "cet appel n'est pas terminé")
+            self.calls.remove(call)
+            if call is self.current:
+                self.current = self._new_call()
+                self.emit("state", self.snapshot_state())
+            self.emit("calls", {"calls": self.calls_summary(), "current_id": self.current.id})
+
+    def call_details(self, call_id: str) -> dict:
+        call = self._call(call_id)
+        return {**call.summary(), "transcript": call.transcript_text(partials=True), "note": call.note_text}
+
+    # ------------------------------------------------------------------ « Mettre en forme la transcription »
+
+    def format_transcript(self, text: str, variant: str | None = None) -> dict:
+        """Phone Call from any transcript (current call, or pasted), in the team format, by a script
+        (no AI, no network). Nothing is stored."""
+        from .notes.business import load_categories
+        from .notes.formatter import facts_path, format_phone_call, load_facts
+        from .notes.template import CallContext, load_template, template_path
+        from .transcript.parse import parse_transcript_text
+
+        enhancer = TextEnhancer.from_settings(self.settings.text_corrections, self.settings.text_enhancer)
+        segments = parse_transcript_text(text[:200_000], enhancer)
+        if not segments:
+            raise AppError(ErrorCode.EMPTY_TRANSCRIPT)
+        ctx = CallContext(variant=variant, duration_s=int(max(s.t_end for s in segments)),
+                          agent_name=self.settings.agent_name)
+        note = format_phone_call(segments, ctx, load_template(template_path(self.settings)),
+                                 load_categories(self.settings), load_facts(facts_path(self.settings)))
+        return {"text": note.text, "flags": note.flags, "points_to_verify": note.points_to_verify, "engine": "script",
+                "cost_usd": note.cost_usd, "segments": len(segments)}
+
+    def transcript_text(self, call_id: str | None = None) -> str:
+        call = self._call(call_id) if call_id else self.current
+        return call.transcript_text(partials=True)
+
+    def _save_history(self, status: str, call: Call | None = None) -> None:
+        call = call or self.current
+        if self.history is None or not call.note_text:
             return
         try:
-            self.session_id = self.history.save(
-                session_id=self.session_id, duration_s=self.duration_s, status=status, note=self.note_text,
-                transcript=self.assembler.plain_text(),
+            call.session_id = self.history.save(
+                session_id=call.session_id, duration_s=call.duration_s, status=status, note=call.note_text,
+                transcript=call.assembler.plain_text(),
             )
         except Exception:  # noqa: BLE001 - history must never break the main flow
             log.exception("history save failed")
+
+
+# Per-call attributes read and written through the controller act on the current call
+# (``controller.state``, ``controller.assembler``, ``controller.note_text``...).
+def _delegate(name: str) -> property:
+    return property(lambda self: getattr(self.current, name), lambda self, value: setattr(self.current, name, value))
+
+
+for _name in ("state", "error", "assembler", "capture", "transcriber", "note", "note_text", "note_edited", "started_at",
+              "duration_s", "call_meta", "metrics", "opened_devices", "session_id"):
+    setattr(SessionController, _name, _delegate(_name))

@@ -1,0 +1,179 @@
+# TEMPLATE PHONE CALL — format de l'équipe (Movers / Frontline / Appel sortant).
+#
+# Configuration centrale du compte rendu : l'application, la note sans IA, la demande préparée
+# pour Copilot, la note rédigée par Claude et la vérification automatique en dépendent toutes.
+# Une copie modifiable est livrée à côté de PhoneCallDesktop.exe (phone_call_template.yaml).
+# Autre template disponible : phone_call_template_general.yaml (8 rubriques).
+#
+# Mise en page :
+#   title          ligne au-dessus de la note ("" = aucune)
+#   section_case   as_is (titres tels quels) ou upper (en majuscules)
+#   blank_lines    ligne vide entre les rubriques
+#   list_style     inline (« Intitulé : a ; b ») ou bullets (une ligne « - » par élément)
+# Champs :
+#   id, label      identifiant stable et intitulé affiché
+#   bare: true     pas d'intitulé : lignes libres sous le titre de la rubrique
+#   when / unless  le champ n'apparaît que pour / jamais pour ces types : movers, frontline, autre,
+#                  entrant, sortant
+#   help           ce que le champ doit contenir (consigne pour Copilot et Claude)
+#   rule           règle de remplissage sans IA (voir notes/template/rules.py)
+
+version: "2026-10-equipe-v2"
+title: ""
+section_case: as_is
+blank_lines: false
+list_style: inline
+absent: "Non communiqué"
+uncertain: "À confirmer"
+not_applicable: "Non applicable"
+
+# Exemple de Phone Call attendu (appel Movers), donné à Copilot et à Claude comme modèle de forme.
+# Données anonymisées.
+example: |
+  Interlocuteur :
+  Nom : Non communiqué
+  Numéro de téléphone : Non communiqué
+  Agent : Camille
+  Raison de l'appel :
+  Déménagement : Oui, déménagement à 1 km de l'adresse actuelle
+  Raison Résiliation : Aucune (demande de transfert de l'installation)
+  Situation :
+  Matériel sur place : Matériel existant laissé sur place. Nouveau matériel installé à la nouvelle adresse sans frais.
+  Audit : Nouveau logement prêt, électricité disponible, aucun gros travaux à prévoir.
+  Numéro WO : Non communiqué
+  Date de déménagement : Emménagement prévu autour du 29 octobre
+  Réponse apporté :
+  Date de rendez-vous : 30 octobre
+  Offre commercial : Installation du nouveau matériel sans frais. Possibilité de bénéficier de 2 mois offerts si les futurs occupants reprennent l'installation existante.
+  Contact Repreneurs : Logement actuel en location via l'agence Exemple Immobilier. Sector Alarm prendra contact avec l'agence et/ou les futurs locataires pour proposer la reprise du matériel.
+  Informations Complémentaires :
+  Le client possède déjà son nouveau logement et souhaitait savoir si l'installation pouvait être réalisée avant le déménagement.
+  Explication donnée sur le process Movers : conservation ou reprise du matériel existant selon la décision de l'agence/propriétaire/futurs occupants.
+  Si le matériel n'est pas repris, il sera retiré et recyclé sans impact pour le client.
+  Le client indiquera à l'agence la présence du système d'alarme.
+  Rendez-vous du 30 octobre validé par le client.
+
+call_types:
+  movers:
+    label: Movers
+    keywords: [déménage, déménagement, nouvelle adresse, nouveau logement, repreneur, emménage, transfert de l'installation]
+  frontline:
+    label: Frontline
+  autre:
+    label: Autre appel
+directions:
+  entrant: Appel entrant
+  sortant: Appel sortant
+
+sections:
+  - title: "Interlocuteur :"
+    fields:
+      - id: nom
+        label: Nom
+        help: "Nom du client s'il est dit (sinon Non communiqué). Entendu seulement dans la transcription : « À confirmer — entendu : ... »."
+        rule: {extract: customer_name}
+      - id: telephone
+        label: Numéro de téléphone
+        help: "Numéro dicté pendant l'appel (sinon Non communiqué), « À confirmer » s'il est seulement entendu."
+        rule: {extract: phone}
+      - id: agent
+        label: Agent
+        help: "Prénom du conseiller (valeur du poste si elle est donnée, sinon celui qui se présente dans l'appel)."
+        rule: {meta: agent}
+      - id: service
+        label: Service concernée
+        unless: [movers]
+        help: "Service ou motif métier concerné."
+        rule: {meta: service}
+      - id: interlocuteur_vise
+        label: Interlocuteur visé
+        when: [sortant]
+        unless: [movers]
+        help: "Personne que le conseiller cherche à joindre (appel sortant)."
+        rule: {quotes: {speaker: advisor, max: 1, markers: [je cherche à joindre, je souhaiterais parler, je voudrais parler, est-ce que je suis bien, suis-je bien, je suis bien chez]}}
+
+  - title: "Raison de l'appel :"
+    fields:
+      - id: demenagement
+        label: Déménagement
+        when: [movers]
+        help: "Oui/Non, avec les précisions données (distance, ville, contexte), en une phrase."
+        rule: {quotes: {speaker: remote, max: 2, markers: [déménage, déménagement, nouvelle adresse, nouveau logement, emménage, je pars, on part]}}
+      - id: resiliation
+        label: Raison Résiliation
+        when: [movers]
+        help: "Raison de la résiliation si le client résilie ; s'il ne résilie pas : « Aucune » avec la précision (ex. demande de transfert de l'installation)."
+        rule: {quotes: {speaker: remote, max: 2, markers: [résilier, résiliation, arrêter le contrat, mettre fin, trop cher, je ne veux plus]}}
+      - id: motif
+        bare: true
+        unless: [movers]
+        help: "Raison de l'appel en une ou deux phrases."
+        rule: {quotes: {speaker: remote, max: 3, fallback: true, markers: [je voudrais, je souhaite, je veux, j'aimerais, je vous appelle, j'appelle, j'ai besoin, problème, souci, ne marche, ne fonctionne, en panne, sonne, se déclenche, bip], exclude: [non merci, je ne souhaite pas, je refuse, je ne veux pas]}}
+      - id: objectif
+        label: Objectif de l'appel
+        when: [sortant]
+        unless: [movers]
+        help: "Pourquoi le conseiller appelle (appel sortant)."
+        rule: {quotes: {speaker: advisor, max: 1, markers: [je vous appelle, je vous appelais, je me permets de vous appeler, je vous contacte, c'est au sujet de, c'est concernant, par rapport à votre demande]}}
+
+  - title: "Situation :"
+    fields:
+      - id: materiel
+        label: Matériel sur place
+        when: [movers]
+        help: "Matériel installé actuellement et ce qu'il devient (laissé, repris, nouveau matériel à la nouvelle adresse)."
+        rule: {quotes: {speaker: any, max: 2, questions: exclude, markers: [matériel, centrale, détecteur, caméra, sirène, badge, clavier, équipement, nouveau matériel]}}
+      - id: audit
+        label: Audit
+        when: [movers]
+        help: "Réponses aux questions sur le nouveau logement : électricité, travaux, logement prêt, accès, audit ou visite technique."
+        rule: {quotes: {speaker: any, max: 3, markers: [audit, étude, visite technique, électricité, travaux, tout est prêt, logement est prêt]}}
+      - id: numero_wo
+        label: Numéro WO
+        when: [movers]
+        help: "Numéro de Work Order cité (sinon Non communiqué), « À confirmer » s'il est seulement entendu."
+        rule: {extract: wo_number}
+      - id: date_demenagement
+        label: Date de déménagement
+        when: [movers]
+        help: "Date ou période de déménagement / d'emménagement annoncée."
+        rule: {extract: move_date}
+      - id: situation
+        bare: true
+        unless: [movers]
+        help: "Situation du client : faits, contexte, historique utile, contraintes."
+        rule: {quotes: {speaker: remote, max: 6, questions: exclude, exclude_used: true, exclude: [d'accord, ça me va, non merci, je refuse, je vais, merci beaucoup, au revoir]}}
+
+  - title: "Réponse apporté :"
+    fields:
+      - id: rendez_vous
+        label: Date de rendez-vous
+        when: [movers]
+        help: "Date (et heure) du rendez-vous retenu ; « À confirmer » s'il est seulement proposé."
+        rule: {extract: appointment}
+      - id: offre
+        label: Offre commercial
+        when: [movers]
+        help: "Offres et gestes commerciaux proposés (installation sans frais, mois offerts...) et leurs conditions."
+        rule: {quotes: {speaker: advisor, max: 3, markers: [offert, offerts, gratuit, sans frais, remise, réduction, geste commercial, mois offerts]}}
+      - id: tiers
+        label: Contact Repreneurs
+        when: [movers]
+        help: "Repreneurs, propriétaires, agence ou futurs occupants : nom et téléphone s'ils sont donnés, et ce qui est prévu avec eux."
+        rule: {quotes: {speaker: any, max: 3, markers: [repreneur, propriétaire, propriétaires, futurs acheteurs, acheteur, acquéreur, agence, locataire, locataires, location, futurs occupants]}}
+      - id: reponse
+        bare: true
+        unless: [movers]
+        help: "Réponse apportée par le conseiller : informations, solutions, actions faites."
+        rule: {quotes: {speaker: advisor, max: 6, questions: exclude, markers: [je vous propose, je peux vous proposer, j'ai, je viens de, c'est noté, je vais, vous allez, il faut, c'est, nous pouvons, on peut, je vous envoie, je vous l'envoie, je vous les envoie]}}
+
+  - title: "Informations Complémentaires :"
+    fields:
+      - id: complements_echanges
+        bare: true
+        help: "Autres informations utiles, une par ligne : précisions du client, explications données, engagements, actions restantes, décision du client."
+        rule: {extract: additional_info}
+      - id: complements
+        bare: true
+        help: "Montants, dates et références cités qui ne figurent pas déjà plus haut."
+        rule: {extract: complements}

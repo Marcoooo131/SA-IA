@@ -5,24 +5,33 @@ from __future__ import annotations
 from pathlib import Path
 
 from .audio.devices import build_backend
-from .config import Settings, app_dir
+from .config import Settings, app_dir, bundled_model_dir
 from .history import History, keyring_key
 from .notes.client import GatewayNoteClient, NoteClient, SimulatedNoteClient
-from .secrets_store import get_gateway_token
+from .secrets_store import get_ai_key, get_gateway_token
 from .session import SessionController
 from .stt.base import Recognizer
 from .synthetic import ensure_test_audio
+
+
+def whisper_model_source(settings: Settings) -> tuple[str, bool]:
+    """(model name or folder, local files only). Order: folder deployed by IT, model delivered in the
+    package, then download from Hugging Face (first launch only)."""
+    if settings.whisper_model_dir:
+        return str(settings.whisper_model_dir / settings.whisper_model), True
+    if (bundled := bundled_model_dir(settings.whisper_model)) is not None:
+        return str(bundled), True
+    return settings.whisper_model, False
 
 
 def build_recognizer(settings: Settings, test_audio_dir: Path | None = None) -> Recognizer:
     if settings.recognizer == "whisper":
         from .stt.whisper_local import WhisperRecognizer
 
+        model, local = whisper_model_source(settings)
         return WhisperRecognizer(
-            model=str(settings.whisper_model_dir / settings.whisper_model) if settings.whisper_model_dir else settings.whisper_model,
-            device=settings.whisper_device, compute_type=settings.whisper_compute_type,
-            cpu_threads=settings.whisper_cpu_threads, hotwords=settings.vocabulary,
-            local_files_only=settings.whisper_model_dir is not None,
+            model=model, device=settings.whisper_device, compute_type=settings.whisper_compute_type,
+            cpu_threads=settings.whisper_cpu_threads, hotwords=settings.vocabulary, local_files_only=local,
         )
     if settings.recognizer == "scripted":
         from .stt.scripted import ScriptedRecognizer
@@ -36,6 +45,17 @@ def build_recognizer(settings: Settings, test_audio_dir: Path | None = None) -> 
 def build_note_client(settings: Settings) -> NoteClient:
     if settings.notes_client == "simulated":
         return SimulatedNoteClient()
+    if settings.notes_client == "local":
+        from .notes.business import load_categories
+        from .notes.local_summary import LocalSummaryNoteClient
+        from .notes.template import load_template, template_path
+
+        return LocalSummaryNoteClient(load_categories(settings), settings.agent_name,
+                                      load_template(template_path(settings)))
+    if settings.notes_client == "anthropic":
+        from .notes.direct import DirectAINoteClient
+
+        return DirectAINoteClient(settings, lambda: get_ai_key(settings))
     if not settings.gateway_url:
         from .errors import AppError, ErrorCode
 

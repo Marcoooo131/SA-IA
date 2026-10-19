@@ -23,6 +23,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Resp
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from .. import secrets_store
 from ..errors import AppError, ErrorCode
 from ..session import SessionController, StartRequest, State
 
@@ -37,10 +38,26 @@ class StartBody(BaseModel):
     system_device: str | None = None
     mic_device: str | None = None
     consent: bool = False
+    call_direction: str | None = Field(default=None, pattern=r"^(entrant|sortant)$")
+    call_type: str | None = Field(default=None, pattern=r"^(movers|frontline|autre)$")
 
 
 class NoteBody(BaseModel):
     text: str = Field(max_length=20_000)
+
+
+class CopilotAnswerBody(BaseModel):
+    text: str = Field(min_length=1, max_length=50_000)
+
+
+class FormatBody(BaseModel):
+    text: str = Field(min_length=1, max_length=200_000)
+    variant: str | None = Field(default=None, pattern=r"^[a-z]{1,20}$")
+
+
+class AIKeyBody(BaseModel):
+    key: str = Field(max_length=2_000)
+    check: bool = True
 
 
 class Hub:
@@ -159,6 +176,100 @@ def create_app(controller: SessionController, token: str, port_getter, hub: Hub)
     def new():
         controller.new_conversation()
         return controller.snapshot()
+
+    # Microsoft 365 Copilot Chat: prompt copied by the page, Copilot opened in the default browser,
+    # answer pasted back by the advisor. The transcript never goes into a URL.
+
+    def copilot_on():
+        if not controller.settings.copilot_enabled:
+            raise AppError(ErrorCode.INVALID_STATE, "Copilot est désactivé (PCD_COPILOT_ENABLED)")
+
+    @app.post("/api/copilot/prompt")
+    def copilot_prompt():
+        copilot_on()
+        return controller.copilot_prompt()
+
+    @app.post("/api/copilot/open")
+    def copilot_open():
+        copilot_on()
+        url = controller.settings.copilot_url
+        if not url.startswith("https://"):
+            raise AppError(ErrorCode.CONFIG, "PCD_COPILOT_URL doit commencer par https://")
+        import webbrowser
+
+        opened = webbrowser.open(url, new=2)
+        return {"opened": bool(opened), "url": url}
+
+    @app.post("/api/copilot/answer")
+    def copilot_answer(body: CopilotAnswerBody):
+        copilot_on()
+        controller.apply_copilot_answer(body.text)
+        return controller.snapshot()
+
+    # The AI key is write-only: the interface can save, check or delete it, never read it back.
+
+    def direct_client():
+        client = controller.note_client
+        if getattr(client, "name", None) != "anthropic":
+            raise AppError(ErrorCode.INVALID_STATE, "le mode « clé API dans l'application » n'est pas activé")
+        return client
+
+    def ai_key_status() -> dict:
+        settings = controller.settings
+        return {"mode": settings.notes_client, "model": settings.anthropic_model,
+                "configured": settings.notes_client == "anthropic" and bool(secrets_store.get_ai_key(settings))}
+
+    @app.get("/api/ai-key")
+    def ai_key_get():
+        return ai_key_status()
+
+    @app.put("/api/ai-key")
+    def ai_key_put(body: AIKeyBody):
+        client = direct_client()
+        from ..notes.direct import validate_key_format
+
+        key = validate_key_format(body.key)
+        if body.check:
+            client.check_key(key)
+        secrets_store.set_ai_key(key)
+        log.info("AI key saved in the credential vault")
+        return ai_key_status()
+
+    @app.delete("/api/ai-key")
+    def ai_key_delete():
+        direct_client()
+        secrets_store.delete_ai_key()
+        log.info("AI key deleted from the credential vault")
+        return ai_key_status()
+
+    # ------------------------------------------------------------------ calls of the session (queue)
+
+    @app.post("/api/format")
+    def format_transcript(body: FormatBody):
+        return controller.format_transcript(body.text, body.variant or None)
+
+    @app.get("/api/transcript/text")
+    def transcript_text(call: str | None = None):
+        """Transcription as plain text (live partials included), to copy into Copilot."""
+        text = controller.transcript_text(call)
+        return {"text": text, "chars": len(text)}
+
+    @app.get("/api/calls")
+    def calls():
+        return {"calls": controller.calls_summary(), "current_id": controller.current.id}
+
+    @app.get("/api/calls/{call_id}")
+    def call_details(call_id: str):
+        return controller.call_details(call_id)
+
+    @app.post("/api/calls/{call_id}/select")
+    def call_select(call_id: str):
+        return controller.select(call_id)
+
+    @app.delete("/api/calls/{call_id}")
+    def call_remove(call_id: str):
+        controller.remove(call_id)
+        return {"ok": True}
 
     @app.get("/api/history")
     def history_list():

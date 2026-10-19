@@ -1,0 +1,108 @@
+PHONE CALL — prise de notes assistée
+====================================
+
+Pendant l'appel : transcription en direct, calculée sur le PC.
+À la fin de l'appel : la note Phone Call au format de l'équipe (Interlocuteur, Raison de l'appel,
+Situation, Réponse apporté, Informations Complémentaires ; champs Movers : Déménagement, Raison
+Résiliation, Matériel sur place, Audit, Numéro WO, Date de déménagement, Date de rendez-vous, Offre
+commercial, Contact Repreneurs). Chaque champ a une valeur : « Non communiqué » si l'appel n'en
+parle pas, « À confirmer » si l'information est incertaine.
+Le plus proche de l'exemple de l'équipe : faire rédiger la note par Copilot (section 5). Sans
+Copilot, le programme remplit la note SANS IA avec les phrases de l'appel.
+Rien n'est envoyé sur Internet, aucun coût. Relisez et complétez toujours la note avant de
+la coller dans le CRM.
+
+1. Démarrer
+   - Double-cliquez sur PhoneCallDesktop.exe.
+   - Si Windows affiche « Windows a protégé votre ordinateur » (application non signée) :
+     cliquez sur « Informations complémentaires » puis « Exécuter quand même ».
+   - Le moteur de transcription est livré dans le dossier « models » : aucun téléchargement,
+     aucun accès Internet nécessaire. Ne déplacez pas l'exe hors de ce dossier.
+   - Au lancement, le moteur se prépare quelques secondes (message bleu dans la fenêtre).
+
+2. Autoriser le micro (une seule fois)
+   - Paramètres Windows › Confidentialité et sécurité › Microphone :
+       « Accès au microphone » = Activé
+       « Autoriser les applications de bureau à accéder à votre microphone » = Activé
+   - Le son du PC (voix de l'interlocuteur) ne demande aucune autorisation : il est capté
+     sur le périphérique choisi dans l'application.
+
+3. Utiliser
+   - Choisissez « Son du PC » = le périphérique où vous entendez l'appel (souvent le casque),
+     et « Micro » = le micro du casque.
+   - Choisissez le « Sens » (entrant / sortant) et le « Type » (Frontline, Movers, autre) de l'appel :
+     sinon ils sont détectés automatiquement et marqués « À confirmer ».
+   - Cochez la case d'information, cliquez Démarrer. Le bandeau rouge indique que l'écoute est active.
+   - Cliquez Fin (ou touche Échap) : l'écoute s'arrête, la note s'affiche.
+   - Pour que le champ « Agent » soit rempli automatiquement : ouvrez config.env avec le
+     Bloc-notes et écrivez votre nom après PCD_AGENT_NAME= (une seule fois).
+   - La date et l'heure de l'appel viennent de l'horloge du PC.
+   - Relisez, modifiez si besoin, Copier la note, collez dans le CRM.
+
+4. Comment la note sans IA est remplie
+   - Le programme ne « comprend » pas l'appel : il recopie les phrases, entre guillemets, et
+     les range dans les champs par des règles (« je voudrais » = demande, « j'ai envoyé » =
+     action effectuée, « je vais » / « vous devez » = action restante avec son responsable,
+     montants, dates, numéros, adresses...).
+   - Nom, numéro de téléphone, numéro WO, adresse : « À confirmer » (la transcription peut se tromper).
+   - Deux versions différentes (deux numéros, deux dates, accord puis refus) : « Contradiction
+     à vérifier », avec les deux versions.
+   - Les champs, leur ordre, leurs règles et l'exemple de note donné à Copilot sont dans
+     phone_call_template.yaml (modifiable avec le Bloc-notes) ; les services dans business.yaml.
+     Autre présentation disponible (8 rubriques) : PCD_NOTE_TEMPLATE=phone_call_template_general.yaml
+     dans config.env.
+   - Une vérification automatique s'affiche sous la note : points à confirmer, contradictions,
+     prochaines étapes manquantes. Relisez et complétez toujours la note.
+
+5. Faire rédiger la note par Copilot Chat (Microsoft 365, gratuit avec le compte professionnel)
+   - Après « Fin », cliquez « 1. Préparer pour Copilot » : les consignes, la template et la
+     transcription sont copiées, et Copilot Chat s'ouvre dans le navigateur.
+   - Vérifiez que vous êtes connecté avec votre COMPTE PROFESSIONNEL (bouclier « protégé » visible) :
+     jamais avec un compte Microsoft personnel, la conversation contient des données clients.
+   - Collez (Ctrl+V) dans Copilot et envoyez. Copiez sa réponse (bouton « Copier »).
+   - Revenez dans Phone Call : « 2. Coller la réponse de Copilot », collez, « Vérifier et utiliser ».
+     L'application vérifie la réponse (champs manquants, chiffres absents de l'appel, actions
+     annoncées comme faites alors qu'elles étaient proposées...) et affiche les points à confirmer.
+   - Usage à faire valider par l'entreprise (données clients dans Copilot Chat).
+
+   - Pendant l'appel, « Copier la transcription » (au-dessus de la transcription) copie le texte
+     déjà transcrit, à coller directement dans Copilot. Les phrases encore en cours finissent par « … ».
+
+5 bis. « Mettre en forme la transcription » (au-dessus de la transcription)
+   - Transforme la transcription en Phone Call au format de l'équipe, en un clic, PAR SCRIPT :
+     sans IA, sans Internet, sans coût. Celle de l'appel en cours est reprise automatiquement, ou
+     collez n'importe quelle transcription (une ligne par prise de parole : « Conseiller : … » /
+     « Interlocuteur : … »). Choisissez le type d'appel si besoin, puis « Mettre en forme » et
+     « Copier la Phone Call ».
+   - Les situations reconnues (reprise de contrat, déménagement, rappel demandé, résiliation, panne…)
+     sont rédigées en phrases propres ; le nom et le numéro du repreneur, l'adresse et les numéros
+     dictés sont repris. Les règles sont dans phone_call_facts.yaml (à côté de l'exe, modifiable avec
+     le Bloc-notes) : on peut en ajouter sans toucher au programme.
+   - Les numéros de téléphone sont vérifiés : un numéro jamais dicté bloque, un numéro dicté en
+     plusieurs fois ou de plusieurs façons est signalé « à vérifier ».
+
+6. Enchaîner les appels (liste d'attente)
+   - Après « Fin », vous pouvez cliquer « Démarrer » tout de suite : l'appel précédent finit sa
+     transcription et sa note en arrière-plan.
+   - « Appels de la session » (colonne de gauche) liste les appels : « Voir » affiche la note et
+     la transcription (avec boutons de copie), « Ouvrir » remet l'appel à l'écran (hors capture),
+     « Retirer » l'efface. Un message prévient quand une note est prête.
+   - Une seule capture à la fois. Les 10 derniers appels sont gardés en mémoire, jamais sur le disque.
+   - Si plusieurs appels sont traités en même temps, la transcription en direct peut prendre un peu
+     de retard : elle se rattrape à la fin.
+
+7. Outils
+   - « Mode demonstration.bat » : conversation fictive, sans micro.
+   - « Diagnostic audio.bat » : vérifie en 10 s que le son du PC et le micro sont captés.
+
+8. Option : note rédigée par Claude (IA, payante)
+   - Dans config.env, remplacez PCD_NOTES_CLIENT=local par PCD_NOTES_CLIENT=anthropic,
+     relancez, puis bouton « Clé API ». La transcription (texte) est alors envoyée à Anthropic.
+
+9. Limites
+   - Avec des haut-parleurs (sans casque), la voix de l'interlocuteur peut apparaître en double.
+   - Aucun son n'est enregistré sur le disque ; la transcription est effacée par « Nouvelle conversation » ou « Retirer »,
+     et à la fermeture de l'application.
+
+Journaux techniques (sans contenu des conversations) :
+   %LOCALAPPDATA%\PhoneCallDesktop\logs

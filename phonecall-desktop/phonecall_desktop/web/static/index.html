@@ -15,6 +15,7 @@
     <span id="state-badge" class="badge s-ready" role="status" aria-live="polite">Prêt</span>
     <span id="timer" class="timer" hidden>00:00</span>
   </div>
+  <button id="btn-ai-key" class="ghost" hidden>Clé API</button>
   <button id="btn-history" class="ghost" hidden>Historique</button>
 </header>
 
@@ -23,6 +24,8 @@
   Cliquez sur <strong>Fin</strong> pour arrêter immédiatement.
 </div>
 <div id="test-banner" class="test-banner" hidden></div>
+<div id="ai-key-banner" class="test-banner" hidden>Aucune clé API Claude enregistrée : la transcription fonctionne,
+  mais la note ne pourra pas être rédigée. <button id="ai-key-banner-btn" class="small">Saisir la clé</button></div>
 
 <main class="layout">
   <section class="panel controls" aria-label="Capture">
@@ -43,18 +46,45 @@
     <p class="hint">Choisissez le périphérique sur lequel vous entendez l'appel (souvent le casque).
       Avec des haut-parleurs, la voix de l'interlocuteur est aussi captée par le micro : préférez un casque.</p>
 
+    <h2>Type d'appel</h2>
+    <div class="call-kind">
+      <select id="call-direction" aria-label="Sens de l'appel">
+        <option value="">Sens : auto</option>
+        <option value="entrant">Appel entrant</option>
+        <option value="sortant">Appel sortant</option>
+      </select>
+      <select id="call-type" aria-label="Type d'appel">
+        <option value="">Type : auto</option>
+        <option value="frontline">Frontline</option>
+        <option value="movers">Movers</option>
+        <option value="autre">Autre appel</option>
+      </select>
+    </div>
+    <p class="hint">Choisir le type avant l'appel rend le compte rendu plus fiable (sinon il est détecté et marqué « À confirmer »).</p>
+
     <label class="check consent" id="consent-row"><input type="checkbox" id="consent"> <span id="consent-label"></span></label>
 
+    <p id="engine-status" class="engine-status" hidden>Préparation du moteur de transcription…
+      Quelques secondes (plusieurs minutes si le modèle doit d'abord être téléchargé).</p>
     <div class="main-buttons">
       <button id="btn-start" class="primary big">Démarrer</button>
       <button id="btn-stop" class="stop big" disabled>Fin</button>
     </div>
     <div id="lag" class="hint" hidden></div>
     <ul id="notices" class="notices" aria-live="polite"></ul>
+    <div id="calls-box" class="calls-box" hidden>
+      <h2>Appels de la session</h2>
+      <p class="hint">Après « Fin », un appel peut finir de se transcrire ici pendant que vous démarrez le suivant.</p>
+      <ul id="calls" class="calls"></ul>
+    </div>
   </section>
 
   <section class="panel transcript" aria-label="Transcription">
-    <h2>Transcription en direct</h2>
+    <div class="panel-head">
+      <h2>Transcription en direct</h2>
+      <button id="btn-copy-transcript" class="small" disabled title="Copier toute la transcription (même pendant l'appel), par exemple pour Copilot">Copier la transcription</button>
+      <button id="btn-format" class="small primary" title="Transformer la transcription (de cet appel ou collée) en Phone Call au format de l'équipe, par script, sans IA">Mettre en forme la transcription</button>
+    </div>
     <div id="transcript" class="transcript-body">
       <p class="empty" id="transcript-empty">La transcription s'affichera ici pendant l'appel.</p>
     </div>
@@ -71,6 +101,10 @@
       <button id="btn-retry" hidden>Relancer la génération</button>
       <button id="btn-new">Nouvelle conversation</button>
     </div>
+    <div class="note-buttons copilot" id="copilot-row" hidden>
+      <button id="btn-copilot-prepare" disabled>1. Préparer pour Copilot</button>
+      <button id="btn-copilot-paste" disabled>2. Coller la réponse de Copilot</button>
+    </div>
     <p class="hint">Relisez la note avant de la coller dans le CRM : elle est générée automatiquement et peut contenir des erreurs.</p>
   </section>
 </main>
@@ -80,6 +114,64 @@
   <ul id="history-list" class="history"></ul>
   <textarea id="history-note" readonly hidden></textarea>
   <div class="note-buttons"><button id="history-delete-all" class="danger">Tout supprimer</button></div>
+</dialog>
+<dialog id="ai-key-dialog">
+  <div class="dialog-head"><h2>Clé API Claude</h2><button id="ai-key-close" class="ghost">Fermer</button></div>
+  <p id="ai-key-status"></p>
+  <label for="ai-key-input">Nouvelle clé (elle commence par « sk-ant- »)</label>
+  <input id="ai-key-input" type="password" autocomplete="off" spellcheck="false">
+  <p class="hint">La clé est vérifiée auprès d'Anthropic, puis rangée dans le coffre Windows
+    (Gestionnaire d'identification). Elle n'est jamais réaffichée ni écrite dans un fichier.
+    À la fin de chaque appel, seule la transcription (texte) est envoyée à Claude pour rédiger la note :
+    l'audio ne quitte jamais le PC.</p>
+  <p id="ai-key-error" class="error-text" hidden role="alert"></p>
+  <div class="note-buttons">
+    <button id="ai-key-save" class="primary">Vérifier et enregistrer</button>
+    <button id="ai-key-delete" class="danger">Supprimer la clé de ce PC</button>
+  </div>
+</dialog>
+<dialog id="call-dialog">
+  <div class="dialog-head"><h2 id="call-title">Appel</h2><button id="call-close" class="ghost">Fermer</button></div>
+  <p id="call-status" class="hint"></p>
+  <h3>Note Phone Call</h3>
+  <textarea id="call-note" readonly aria-label="Note de l'appel"></textarea>
+  <div class="note-buttons"><button id="call-copy-note" class="primary">Copier la note</button></div>
+  <h3>Transcription</h3>
+  <textarea id="call-transcript" readonly aria-label="Transcription de l'appel"></textarea>
+  <div class="note-buttons"><button id="call-copy-transcript">Copier la transcription</button></div>
+</dialog>
+
+<dialog id="format-dialog">
+  <div class="dialog-head"><h2>Mettre en forme la transcription</h2><button id="format-close" class="ghost">Fermer</button></div>
+  <p class="hint">La transcription de l'appel en cours est reprise ci-dessous. Vous pouvez aussi coller une autre
+    transcription (une ligne par prise de parole, « Conseiller : … » / « Interlocuteur : … »).</p>
+  <textarea id="format-input" aria-label="Transcription à mettre en forme" placeholder="Collez ici une transcription"></textarea>
+  <div class="note-buttons">
+    <label for="format-variant">Type d'appel</label>
+    <select id="format-variant">
+      <option value="">Détection automatique</option>
+      <option value="movers">Movers</option>
+      <option value="frontline">Frontline</option>
+      <option value="autre">Autre appel</option>
+    </select>
+    <button id="format-run" class="primary">Mettre en forme</button>
+  </div>
+  <p class="hint">Mise en forme par script, sans IA et sans connexion : les situations reconnues (reprise de
+    contrat, déménagement, rappel…) sont rédigées, le contact du repreneur, l'adresse et le numéro sont repris.
+    Règles modifiables dans phone_call_facts.yaml.</p>
+  <p id="format-error" class="error-text" hidden role="alert"></p>
+  <textarea id="format-output" readonly aria-label="Phone Call mise en forme" hidden></textarea>
+  <ul id="format-flags" class="flags"></ul>
+  <div class="note-buttons"><button id="format-copy" class="primary" hidden>Copier la Phone Call</button></div>
+</dialog>
+
+<dialog id="copilot-dialog">
+  <div class="dialog-head"><h2>Réponse de Copilot</h2><button id="copilot-close" class="ghost">Fermer</button></div>
+  <p class="hint">Dans Copilot Chat, copiez sa réponse (bouton « Copier » sous la réponse), puis collez-la ici
+    (Ctrl+V). L'application vérifie la note avant de l'afficher.</p>
+  <textarea id="copilot-answer" aria-label="Réponse de Copilot" placeholder="Collez ici la réponse de Copilot"></textarea>
+  <p id="copilot-error" class="error-text" hidden role="alert"></p>
+  <div class="note-buttons"><button id="copilot-use" class="primary">Vérifier et utiliser comme note</button></div>
 </dialog>
 </body>
 </html>

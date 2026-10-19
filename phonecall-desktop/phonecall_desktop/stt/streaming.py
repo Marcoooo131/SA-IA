@@ -61,15 +61,30 @@ def collapse_repetitions(text: str, max_repeat: int = 2) -> tuple[str, bool]:
     return " ".join(out), changed
 
 
-def is_hallucination(text: str) -> bool:
+def _bare(text: str) -> str:
+    return re.sub(r"[^\w']+", " ", text.lower()).strip()
+
+
+def is_hallucination(text: str, vocabulary_terms: tuple[str, ...] = ()) -> bool:
+    """Known subtitle phrases, or a segment made only of a vocabulary word (« Sector Alarm. »): the
+    vocabulary given to Whisper as hotwords tends to be « heard » in silences and noise."""
     t = text.lower().strip()
-    return any(h in t for h in HALLUCINATIONS)
+    if any(h in t for h in HALLUCINATIONS):
+        return True
+    bare = _bare(text)
+    return bool(bare) and any(re.fullmatch(rf"(?:{re.escape(term)}\s*)+", bare) for term in vocabulary_terms)
+
+
+def vocabulary_terms(vocabulary: str) -> tuple[str, ...]:
+    return tuple(t for t in (_bare(v) for v in vocabulary.split(",")) if t)
 
 
 class StreamingTranscriber:
     def __init__(self, recognizer: Recognizer, on_event: Callable[[TranscriptEvent], None],
-                 channels: list[Channel], seg_cfg: SegmenterConfig | None = None, context_prompt: str = ""):
+                 channels: list[Channel], seg_cfg: SegmenterConfig | None = None, context_prompt: str = "",
+                 vocabulary: str = ""):
         self.recognizer = recognizer
+        self.vocabulary_terms = vocabulary_terms(vocabulary)
         self.on_event = on_event
         self.context_prompt = context_prompt
         self._segmenters = {ch: Segmenter(ch, seg_cfg) for ch in channels}
@@ -147,7 +162,7 @@ class StreamingTranscriber:
         self.stats["recognition_seconds"] += elapsed
         text = res.text.strip()
         uncertain = res.uncertain
-        if text and is_hallucination(text):
+        if text and is_hallucination(text, self.vocabulary_terms):
             self.stats["dropped_hallucinations"] += 1
             text = ""
         if text:

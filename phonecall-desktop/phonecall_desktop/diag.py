@@ -27,8 +27,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--system", help="device id of the output to capture (see list)")
     ap.add_argument("--mic", help="device id of the microphone (see list)")
     args = ap.parse_args(argv)
-    if hasattr(sys.stdout, "reconfigure"):  # accents readable when the output is redirected (logs, CI)
-        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    if hasattr(sys.stdout, "reconfigure") and getattr(sys.stdout, "encoding", "").lower() != "utf-8":
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # accents readable in redirected output
     print(f"Python {sys.version.split()[0]} — plateforme {sys.platform}")
     try:
         from .audio.devices import WasapiBackend

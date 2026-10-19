@@ -1,0 +1,126 @@
+# RÈGLES DE MISE EN FORME — bouton « Mettre en forme la transcription » (sans IA).
+#
+# Chaque règle repère une situation dans la conversation et écrit une phrase propre (pas de citation)
+# dans la Phone Call. Modifiable par l'équipe : une copie est livrée à côté de PhoneCallDesktop.exe
+# (phone_call_facts.yaml) ; elle est prise en priorité.
+#
+#   id         identifiant (utilisé par « requires » / « unless »)
+#   speaker    remote (interlocuteur), advisor (conseiller) ou any
+#   any        expressions régulières ; la règle s'applique si l'une d'elles est trouvée
+#              (minuscules, accents et apostrophes ignorés)
+#   requires   la règle ne s'applique que si ces autres règles ont été trouvées
+#   unless     la règle ne s'applique pas si ces autres règles ont été trouvées
+#   set        champs de la template remplis (ils remplacent les phrases recopiées)
+#   info       phrase ajoutée aux Informations Complémentaires ({1}, {2}… = parties entre parenthèses)
+#   variant    type d'appel déduit (movers, frontline, autre) si le conseiller ne l'a pas choisi
+#   context    contact_tiers : les nom et numéro dictés sont ceux d'un tiers (repreneur), pas de l'interlocuteur
+#
+# L'ordre compte : les phrases apparaissent dans l'ordre des règles.
+
+version: "2026-10-facts-v1"
+
+facts:
+  - id: reprise_contrat
+    speaker: remote
+    any:
+      - "reprendre (mon|le|son|notre) contrat"
+      - "reprise (du|de|de mon) contrat"
+      - "repreneur"
+      - "nouvel? occupant"
+      - "nouveaux? (proprietaire|locataire|acquereur)s?"
+      - "transferer le contact"
+      - "transmettre (son|ses|leur|leurs) (contact|coordonnees)"
+    set:
+      resiliation: "Reprise du contrat par le nouvel occupant (changement d'occupant)"
+    info: "Le client souhaite transmettre le contact du repreneur, qui va reprendre son contrat."
+    variant: movers
+    context: contact_tiers
+
+  - id: deja_client
+    speaker: remote
+    any: ["je suis (ete |deja )?(chez|client|cliente) (de )?sector alarm", "j'ai (une alarme|un contrat) (chez|avec) sector alarm"]
+    set:
+      materiel: "Installation Sector Alarm déjà en place au logement"
+    info: "Le client est déjà équipé chez Sector Alarm."
+
+  - id: occupant_emmenage
+    speaker: remote
+    any: ["(il|elle|ils|elles) (a|ont|est|sont) (deja )?(emmenage|installe|arrive)"]
+    set:
+      demenagement: "Oui"
+      date_demenagement: "Déjà réalisé"
+    info: "Le nouvel occupant a déjà emménagé dans le logement."
+    variant: movers
+
+  - id: client_deja_demenage
+    speaker: remote
+    any: ["(j'ai|on a|nous avons) (deja )?(demenage|quitte le logement|vendu)", "je suis (deja )?parti"]
+    set:
+      demenagement: "Oui"
+      date_demenagement: "Déjà réalisé"
+    info: "Le client a déjà quitté le logement."
+    variant: movers
+
+  - id: client_demenage
+    speaker: remote
+    any: ["je (vais )?demenage", "on (va )?demenage", "nous (allons )?demenag", "je vais (bientot )?habiter"]
+    unless: [client_deja_demenage]
+    set:
+      demenagement: "Oui"
+    info: "Le client annonce un déménagement."
+    variant: movers
+
+  - id: besoin_urgent_repreneur
+    speaker: remote
+    any: ["au plus vite", "rapidement", "(il|elle) en a besoin", "urgent"]
+    requires: [reprise_contrat]
+    info: "Le client demande que le repreneur soit contacté au plus vite."
+
+  - id: besoin_urgent
+    speaker: remote
+    any: ["au plus vite", "c'est urgent", "rapidement"]
+    unless: [reprise_contrat]
+    info: "Le client souhaite un traitement rapide de sa demande."
+
+  - id: comptes_multiples
+    speaker: advisor
+    any: ["(deux|trois|2|3|plusieurs) comptes( clients?)?"]
+    info: "Le conseiller trouve {1} comptes clients associés au numéro de téléphone du client."
+
+  - id: meme_adresse
+    speaker: remote
+    any: ["(la )?meme adresse"]
+    requires: [reprise_contrat]
+    info: "La reprise concerne la même adresse que l'installation actuelle."
+
+  - id: rappel_repreneur
+    speaker: advisor
+    any:
+      - "je demande (a ce )?qu'on (l'|le |la )?(r?appelle|contacte)"
+      - "(on|nous) (va|allons) (le|la|l') ?(r?appeler|contacter)"
+      - "je (transmets|fais) (une|la) demande de rappel"
+    requires: [reprise_contrat]
+    set:
+      rendez_vous: "Aucun rendez-vous fixé (demande de rappel du repreneur transmise)"
+    info: "Le conseiller a transmis une demande de rappel immédiat du repreneur."
+
+  - id: rappel_client
+    speaker: advisor
+    any:
+      - "je demande (a ce )?qu'on vous (r?appelle|contacte)"
+      - "(on|nous) (va|allons) vous (r?appeler|recontacter|contacter)"
+      - "un (conseiller|technicien|collegue) (va|vous) (vous )?(r?appeler|contacter)"
+    unless: [reprise_contrat]
+    info: "Le conseiller a transmis une demande de rappel du client."
+
+  - id: resiliation
+    speaker: remote
+    any: ["(je veux|je voudrais|je souhaite|j'aimerais) (resilier|arreter mon contrat|mettre fin)", "resiliation de mon contrat"]
+    unless: [reprise_contrat]
+    info: "Le client demande la résiliation de son contrat."
+
+  - id: panne
+    speaker: remote
+    any: ["(ne marche|ne fonctionne) (plus|pas)", "en panne", "(sonne|se declenche) (tout le temps|sans arret|pour rien|toute seule)", "ca bip"]
+    info: "Le client signale un dysfonctionnement de son installation."
+    variant: frontline

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>PHONE CALL AI — vidéo</title>
+  <style>
+    html, body { margin: 0; background: #0B0B0D; }
+    canvas { display: block; }
+    body.preview { display: grid; place-items: center; min-height: 100vh; }
+    body.preview canvas { height: 92vh; width: auto; box-shadow: 0 0 60px rgba(0,0,0,.8); }
+    #bar { position: fixed; bottom: 10px; left: 10px; color: #aaa; font: 13px Inter, sans-serif; }
+  </style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<div id="bar"></div>
+<script type="module">
+  // Rendering page.
+  // - Final render (render.mjs): window.renderAt(t) draws the frame at t seconds and returns a PNG.
+  // - Preview: open with ?preview (plays in real time with sound), ?t=12.5 (still), &safe (safe zone).
+  import { createRenderer } from "./src/scene.js";
+  import { renderSoundtrack, toWavBase64 } from "./src/audio.js";
+  import { VIDEO } from "./src/config.js";
+
+  const params = new URLSearchParams(location.search);
+  const canvas = document.getElementById("c");
+  const render = createRenderer(canvas, { debugSafe: params.has("safe") });
+
+  await Promise.all([
+    document.fonts.load("900 100px 'Inter Display'"),
+    document.fonts.load("800 100px 'Inter Display'"),
+    document.fonts.load("500 30px Inter"),
+    document.fonts.load("600 30px Inter"),
+    document.fonts.load("700 30px Inter"),
+    document.fonts.load("800 30px Inter"),
+    document.fonts.load("900 30px Inter"),
+  ]);
+
+  window.renderAt = async (t, type = "image/png", quality = 1) => {
+    render(t);
+    return canvas.toDataURL(type, quality);
+  };
+  window.renderAudio = async () => toWavBase64(await renderSoundtrack());
+  window.videoReady = true;
+
+  if (params.has("t")) render(parseFloat(params.get("t")));
+  if (params.has("preview")) {
+    document.body.classList.add("preview");
+    const buffer = await renderSoundtrack();
+    const bar = document.getElementById("bar");
+    bar.textContent = "Cliquer pour lire";
+    document.body.addEventListener("click", () => {
+      const ac = new AudioContext();
+      const src = ac.createBufferSource();
+      src.buffer = buffer;
+      src.connect(ac.destination);
+      const t0 = ac.currentTime + 0.1;
+      src.start(t0);
+      const loop = () => {
+        const t = Math.min(VIDEO.duration, ac.currentTime - t0); // the AUDIO clock drives the image
+        if (t >= 0) render(t);
+        bar.textContent = `${t.toFixed(2)} s`;
+        if (t < VIDEO.duration) requestAnimationFrame(loop);
+      };
+      loop();
+    }, { once: true });
+  }
+</script>
+</body>
+</html>

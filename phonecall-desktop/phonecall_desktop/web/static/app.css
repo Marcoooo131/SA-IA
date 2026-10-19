@@ -64,3 +64,28 @@ dialog { width: min(720px, 92vw); border: 1px solid var(--line); border-radius: 
 .history { list-style: none; padding: 0; max-height: 40vh; overflow-y: auto; }
 .history li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid #eee; font-size: 13px; }
 #history-note { width: 100%; min-height: 160px; }
+.engine-status { background: #e8f0fe; color: #1a3d7c; padding: 8px; border-radius: 6px; font-size: 13px; }
+#ai-key-input { width: 100%; padding: 6px; font: inherit; border: 1px solid #bbb; border-radius: 4px; margin: 4px 0 8px; box-sizing: border-box; }
+.error-text { color: var(--red); font-size: 13px; }
+#ai-key-banner button { margin-left: 8px; }
+#copilot-answer { width: 100%; min-height: 320px; box-sizing: border-box; font: 13.5px/1.45 "Segoe UI", system-ui, sans-serif; padding: 8px; }
+.note-buttons.copilot { margin-top: 6px; }
+.call-kind { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.panel-head h2 { margin-bottom: 0; }
+.calls-box { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 8px; }
+.calls { list-style: none; padding: 0; margin: 6px 0 0; max-height: 260px; overflow-y: auto; }
+.calls li { border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; margin-bottom: 6px; font-size: 13px; }
+.calls li.current { border-color: var(--red); }
+.calls .call-head { display: flex; justify-content: space-between; gap: 6px; font-weight: 600; }
+.calls .call-state { font-size: 12px; padding: 1px 7px; border-radius: 10px; background: #eee; white-space: nowrap; }
+.calls .s-finalizing, .calls .s-generating { background: #fff3cd; }
+.calls .s-capturing { background: var(--red); color: #fff; }
+.calls .s-done { background: #e3f4e6; }
+.calls .s-error { background: #fde8e8; }
+.calls .call-preview { color: var(--muted); margin: 3px 0 5px; }
+.calls .call-actions button { margin-right: 4px; }
+#call-note, #call-transcript { width: 100%; min-height: 180px; box-sizing: border-box; font: 13.5px/1.45 "Segoe UI", system-ui, sans-serif; padding: 8px; }
+#format-input, #format-output { width: 100%; min-height: 200px; box-sizing: border-box; font: 13.5px/1.45 "Segoe UI", system-ui, sans-serif; padding: 8px; }
+#format-output { min-height: 320px; }
+#format-dialog .note-buttons label { align-self: center; }

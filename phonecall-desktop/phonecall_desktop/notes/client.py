@@ -2,7 +2,8 @@
 
 ``GatewayNoteClient`` calls the company gateway (``phonecall-agent``: ``POST /api/v1/notes``),
 which holds the AI provider key, applies the versioned prompt and the anti-invention checks.
-The desktop never talks to the AI provider directly and never holds its key.
+``direct.DirectAINoteClient`` runs the same code inside the app, with a key stored in the
+Windows Credential Manager (chosen for a small number of workstations).
 """
 
 from __future__ import annotations
@@ -47,11 +48,29 @@ def segments_payload(segments: list[Segment]) -> list[dict]:
     ]
 
 
+def note_from_payload(data: dict) -> NoteResult:
+    """Payload of ``POST /api/v1/notes`` (gateway) or of ``phonecall_agent.note_service`` (direct mode)."""
+    quality = data.get("quality") or {}
+    return NoteResult(
+        text=data.get("note_text", ""),
+        no_usable_content=bool(data.get("no_usable_content")),
+        category=data.get("category"),
+        flags=list(quality.get("flags") or []),
+        points_to_verify=list(data.get("points_to_verify") or []),
+        quality_score=quality.get("score"),
+        prompt_version=data.get("prompt_version"),
+        model=data.get("model"),
+        cost_usd=float(data.get("cost_usd") or 0.0),
+    )
+
+
 class NoteClient(ABC):
     name = "abstract"
 
     @abstractmethod
-    def generate(self, segments: list[Segment], duration_s: int, request_id: str) -> NoteResult: ...
+    def generate(self, segments: list[Segment], duration_s: int, request_id: str,
+                 meta: dict | None = None) -> NoteResult:
+        """``meta``: authorised data of the PC (started_at, call direction / type chosen by the advisor)."""
 
 
 class GatewayNoteClient(NoteClient):
@@ -69,7 +88,8 @@ class GatewayNoteClient(NoteClient):
             headers={"User-Agent": "phonecall-desktop/0.1"},
         )
 
-    def generate(self, segments: list[Segment], duration_s: int, request_id: str) -> NoteResult:
+    def generate(self, segments: list[Segment], duration_s: int, request_id: str,
+                 meta: dict | None = None) -> NoteResult:
         token = self.token_provider()
         if not token:
             raise AppError(ErrorCode.NOTE_AUTH, "aucun jeton configuré")
@@ -100,18 +120,7 @@ class GatewayNoteClient(NoteClient):
 
     @staticmethod
     def _parse(data: dict) -> NoteResult:
-        quality = data.get("quality") or {}
-        return NoteResult(
-            text=data.get("note_text", ""),
-            no_usable_content=bool(data.get("no_usable_content")),
-            category=data.get("category"),
-            flags=list(quality.get("flags") or []),
-            points_to_verify=list(data.get("points_to_verify") or []),
-            quality_score=quality.get("score"),
-            prompt_version=data.get("prompt_version"),
-            model=data.get("model"),
-            cost_usd=float(data.get("cost_usd") or 0.0),
-        )
+        return note_from_payload(data)
 
     def health(self) -> bool:
         token = self.token_provider()
@@ -132,7 +141,8 @@ class SimulatedNoteClient(NoteClient):
         self.fail_times = fail_times
         self.calls = 0
 
-    def generate(self, segments: list[Segment], duration_s: int, request_id: str) -> NoteResult:
+    def generate(self, segments: list[Segment], duration_s: int, request_id: str,
+                 meta: dict | None = None) -> NoteResult:
         self.calls += 1
         if self.fail_times > 0:
             self.fail_times -= 1

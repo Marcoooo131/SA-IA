@@ -63,7 +63,7 @@ Tarifs relevés le 13/10/2026 sur les pages publiques ou des comparateurs : **à
 grilles officielles avant toute décision. Les deux canaux (conseiller / interlocuteur) sont deux
 flux, sauf si le fournisseur facture un flux multicanal au prix d'un seul.
 
-## 3. Coût de la note (passerelle, Claude)
+## 3. Coût de la note (Claude, mode passerelle ou clé dans l'application)
 
 Hypothèses : appel de 4 minutes, transcription ~1 000–1 500 jetons, prompt ~1 500 jetons,
 sortie structurée + raisonnement 1 500–3 500 jetons. Tarifs publics Anthropic (USD / million de
@@ -71,11 +71,11 @@ jetons, entrée / sortie) : Opus 5.5 4 / 20 ; Sonnet 5.5 2 / 10 ; Haiku 5.5 0,10
 
 | Modèle | Par appel | Par heure d'appels (15 appels de 4 min) |
 |---|---|---|
-| Claude Opus 5.5 (configuration par défaut de la passerelle) | 0,04 – 0,09 $ | 0,60 – 1,35 $ |
+| Claude Opus 5.5 (configuration par défaut) | 0,04 – 0,09 $ | 0,60 – 1,35 $ |
 | Claude Sonnet 5.5 | 0,02 – 0,045 $ | 0,30 – 0,70 $ |
 | Claude Haiku 5.5 | < 0,003 $ | < 0,05 $ |
 
-Le coût réel de chaque note est renvoyé par la passerelle (`cost_usd`) et visible dans les
+Le coût estimé de chaque note (`cost_usd`, calculé sur les jetons réellement consommés) est visible dans les
 métriques de session. Le modèle se choisit sur la **qualité mesurée** (grille d'évaluation),
 pas sur le prix seul.
 
@@ -83,11 +83,14 @@ pas sur le prix seul.
 
 | Scénario | Transcription | Note | Total par appel | Total par heure d'appels |
 |---|---|---|---|---|
+| **Local + note sans IA** (paquet téléchargeable) | 0 € | 0 € | **0 €** | 0 € |
 | Local + Opus 5.5 | 0 € | 0,04 – 0,09 $ | **0,04 – 0,09 $** | 0,60 – 1,35 $ |
 | Local + Sonnet 5.5 | 0 € | 0,02 – 0,045 $ | 0,02 – 0,045 $ | 0,30 – 0,70 $ |
 | AssemblyAI (2 flux) + Sonnet 5.5 | ~0,02 $ | 0,02 – 0,045 $ | ~0,04 – 0,065 $ | ~0,60 – 1,00 $ |
 | Local + Haiku 5.5 | 0 € | < 0,003 $ | < 0,003 $ | < 0,05 $ |
 
-À ajouter : hébergement de la passerelle (petite instance, mutualisée avec `phonecall-agent`,
+En mode « clé dans l'application », il n'y a pas de passerelle à héberger : seule la consommation
+Claude est facturée, sur le compte Anthropic de la clé (régler une limite de dépense mensuelle dans
+la console). En mode passerelle, ajouter : hébergement de la passerelle (petite instance, mutualisée avec `phonecall-agent`,
 quelques dizaines d'euros par mois) et, pour la transcription locale, le temps de mesure et
 d'éventuelles mises à niveau de postes.

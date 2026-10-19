@@ -7,7 +7,7 @@ synthèse) — jamais avec un vrai client avant validation.
 
 Préparation :
 
-1. `PhoneCallDiag.exe` (ou `python -m phonecall_desktop.diag`) : noter la liste des périphériques.
+1. « Diagnostic audio.bat » (ou `python -m phonecall_desktop.diag`) : noter la liste des périphériques.
 2. Profil de test : `PCD_ENVIRONMENT=dev`, `PCD_AUDIO_BACKEND=wasapi`, `PCD_RECOGNIZER=whisper`,
    `PCD_NOTES_CLIENT=simulated` (ou `gateway` vers une passerelle de **recette**).
 3. Script d'appel : utiliser les scénarios de `phonecall_desktop/synthetic.py` (déménagement,
