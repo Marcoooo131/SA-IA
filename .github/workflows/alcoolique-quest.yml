@@ -1,0 +1,31 @@
+# Cinématique d'Alcoolique Quest (Three.js) : vérification TypeScript et build de production.
+name: Alcoolique Quest — build
+
+on:
+  push:
+    paths: ["alcoolique-quest/**", ".github/workflows/alcoolique-quest.yml"]
+  pull_request:
+    paths: ["alcoolique-quest/**", ".github/workflows/alcoolique-quest.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: alcoolique-quest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: alcoolique-quest/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: alcoolique-quest-dist
+          path: alcoolique-quest/dist

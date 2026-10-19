@@ -15,6 +15,10 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > Application Windows prête à lancer : [`sms-reminders-desktop/`](sms-reminders-desktop/README.md)
 > (`RelancesSMS.exe`, à télécharger dans les *Releases* du dépôt).
 
+> 🎬 **Alcoolique Quest : La Sobriété Perdue** (Three.js, distinct de l'application Movers) :
+> [`alcoolique-quest/`](alcoolique-quest/README.md) — cinématique d'introduction en temps réel d'un RPG dark fantasy
+> humoristique (scènes 3D procédurales, musique et bruitages synthétisés, logo, écran d'accueil provisoire).
+
 > 📞 **Prototypes « Phone Call »** (Python, distincts de l'application Movers) :
 > - [`phonecall-desktop/`](phonecall-desktop/README.md) — poste conseiller Windows : capture du son du PC et du micro,
 >   transcription en direct, note Phone Call à copier dans le CRM (indépendant de Twilio) ;
