@@ -32,6 +32,7 @@ user_view_id = ""
 [agent]
 default_mode = "simulation"          # "simulation" ou "supervise" ; "automatique" n'est jamais un défaut
 automatic_allowed = false            # à passer à true seulement après validation des règles par le métier
+readiness_streak = 100               # propositions validées d'affilée sans correction avant l'Automatique
 worked_by_navigation = "workerid_systemuser"   # vérifié par `discover` dans les métadonnées
 database = "movers_dispatch.db"
 max_items_per_run = 200

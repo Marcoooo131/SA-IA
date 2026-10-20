@@ -110,6 +110,45 @@ class Journal:
                 rows = self.db.execute("SELECT * FROM events ORDER BY id DESC LIMIT ?", (limit,)).fetchall()
         return [dict(r) for r in rows]
 
+    def supervision(self, readiness_streak: int) -> dict:
+        """What the people supervising the agent answered: accepted as is, corrected, rejected,
+        assigned by hand — and how many proposals in a row were accepted without correction."""
+        with self.lock:
+            rows = self.db.execute(
+                "SELECT e.id, e.ts, e.queueitem_id, e.action, e.detail, e.actor, i.subject FROM events e "
+                "LEFT JOIN items i ON i.queueitem_id = e.queueitem_id "
+                "WHERE e.action IN ('validation_humaine', 'correction', 'attribution_manuelle') ORDER BY e.id").fetchall()
+        out = {"acceptees": 0, "corrigees": 0, "refusees": 0, "manuelles": 0, "serie": 0, "corrections": []}
+        verdicts = []
+        for r in rows:
+            d = json.loads(r["detail"] or "{}")
+            if r["action"] == "attribution_manuelle":
+                out["manuelles"] += 1
+                continue
+            if r["action"] == "correction":
+                out["corrigees"] += 1
+                verdicts.append(False)
+                out["corrections"].append({"ts": r["ts"], "queueitem_id": r["queueitem_id"], "subject": r["subject"],
+                                           "propose": d.get("propose"), "retenu": d.get("worked_by"),
+                                           "case_propose": d.get("case_propose"), "cases_vus": d.get("cases_vus", []),
+                                           "note": d.get("note", ""), "actor": r["actor"]})
+            elif d.get("decision") == "acceptee":
+                out["acceptees"] += 1
+                verdicts.append(True)
+            elif d.get("decision") == "refusee":
+                out["refusees"] += 1
+                verdicts.append(False)
+        for ok in reversed(verdicts):
+            if not ok:
+                break
+            out["serie"] += 1
+        judged = out["acceptees"] + out["corrigees"] + out["refusees"]
+        out["taux_accord"] = round(100 * out["acceptees"] / judged) if judged else None
+        out["objectif"] = readiness_streak
+        out["pret"] = out["serie"] >= readiness_streak
+        out["corrections"].reverse()
+        return out
+
     def counters(self) -> dict:
         with self.lock:
             rows = self.db.execute("SELECT status, COUNT(*) n FROM items GROUP BY status").fetchall()

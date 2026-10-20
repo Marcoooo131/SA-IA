@@ -163,13 +163,23 @@ def cmd_serve(args) -> None:
 def cmd_journal(args) -> None:
     cfg = _load(args)
     j = Journal(cfg.database)
-    rows = j.events() if args.events else j.items()
+    if args.corrections:
+        rows = [{**c, "cases_vus": " | ".join(c["cases_vus"])} for c in j.supervision(cfg.readiness_streak)["corrections"]]
+    else:
+        rows = j.events() if args.events else j.items()
     if not rows:
-        print("Journal vide.")
+        print("Rien à exporter pour l'instant.")
         return
-    w = csv.DictWriter(sys.stdout, fieldnames=list(rows[0].keys()), delimiter=";")
-    w.writeheader()
-    w.writerows(rows)
+    # utf-8 with BOM: Excel opens the accents correctly
+    out = open(args.output, "w", encoding="utf-8-sig", newline="") if args.output else sys.stdout
+    try:
+        w = csv.DictWriter(out, fieldnames=list(rows[0].keys()), delimiter=";")
+        w.writeheader()
+        w.writerows(rows)
+    finally:
+        if args.output:
+            out.close()
+            print(f"{len(rows)} ligne(s) exportée(s) dans {args.output}")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -208,6 +218,8 @@ def main(argv: list[str] | None = None) -> None:
     sp = sub.add_parser("journal", help="exporte le journal (CSV ; séparateur point-virgule)")
     common(sp)
     sp.add_argument("--events", action="store_true", help="historique détaillé au lieu de l'état des éléments")
+    sp.add_argument("--corrections", action="store_true", help="corrections faites en mode Supervisé (à analyser)")
+    sp.add_argument("--output", "-o", help="fichier CSV à écrire (sinon : affichage)")
     sp.set_defaults(func=cmd_journal)
 
     args = p.parse_args(argv)

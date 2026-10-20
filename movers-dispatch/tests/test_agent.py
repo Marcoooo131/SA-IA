@@ -342,3 +342,32 @@ def test_journal_keeps_no_email_body_and_truncates_subject():
     r = agent.journal.items()[0]
     assert len(r["subject"]) <= 80
     assert "body" not in r and "description" not in r
+
+
+def test_correction_writes_the_right_collaborator_and_keeps_what_the_agent_saw():
+    agent, crm = make(readiness_streak=2)
+    good = crm.add("a", "s", "c", [("CAS-1", "kader", 0)])
+    wrong = crm.add("b", "s", "c", [("CAS-2", "chloe", 0), ("CAS-3", "estefania", 1)])   # agent proposes Chloé
+    agent.run(Mode.SUPERVISED)
+    agent.approve(good, "marc-antoine")
+    r = agent.correct(wrong, "estefania", "marc-antoine", "le Case résolu était le bon")
+    assert r["status"] == Status.ASSIGNED.value and crm.items[wrong].worker.id == USERS["estefania"].id
+    s = agent.journal.supervision(agent.cfg.readiness_streak)
+    assert (s["acceptees"], s["corrigees"], s["serie"], s["taux_accord"], s["pret"]) == (1, 1, 0, 50, False)
+    c = s["corrections"][0]
+    assert (c["propose"], c["retenu"], c["case_propose"], c["note"]) == ("Chloé", "Estefania", "CAS-2", "le Case résolu était le bon")
+    assert any("CAS-3 « Mover » résolu" in x for x in c["cases_vus"])
+
+
+def test_correction_rules_and_readiness_streak():
+    agent, crm = make(readiness_streak=2)
+    ids = [crm.add(str(n), "s", "c", [(f"CAS-{n}", "kader", 0)]) for n in range(3)]
+    agent.run(Mode.SUPERVISED)
+    with pytest.raises(RunBlocked, match="Valider"):
+        agent.correct(ids[0], "kader", "local")          # same as the proposal
+    agent.approve(ids[0], "local")
+    with pytest.raises(RunBlocked, match="n'attend pas"):
+        agent.correct(ids[0], "chloe", "local")          # already decided
+    agent.approve(ids[1], "local")
+    s = agent.journal.supervision(2)
+    assert s["serie"] == 2 and s["pret"] is True

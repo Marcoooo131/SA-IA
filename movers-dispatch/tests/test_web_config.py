@@ -112,3 +112,17 @@ def test_automatic_cannot_be_the_default(tmp_path):
     p.write_text('[agent]\ndefault_mode = "automatique"\n[[collaborators]]\nfirst_name = "Kader"\n')
     with pytest.raises(config_mod.ConfigError):
         config_mod.load(p)
+
+
+def test_supervision_endpoints():
+    c, agent, crm = client()
+    c.get("/?token=secret-token")
+    c.post("/api/run", json={"mode": "supervise"}, headers=H)
+    time.sleep(0.05)
+    wait(agent)
+    pending = [i for i in c.get("/api/state").json()["items"] if i["status"] == "a_valider"]
+    target = next(k for k in ("kader", "chloe") if k != pending[0]["worked_by_name"].lower().replace("é", "e"))
+    r = c.post(f"/api/items/{pending[0]['queueitem_id']}/correct", json={"collaborator": target, "note": "test"}, headers=H)
+    assert r.status_code == 200 and r.json()["status"] == "affecte"
+    s = c.get("/api/supervision").json()
+    assert s["corrigees"] == 1 and s["corrections"][0]["note"] == "test" and s["objectif"] == 100

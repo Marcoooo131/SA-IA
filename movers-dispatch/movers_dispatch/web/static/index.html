@@ -54,6 +54,27 @@
   </section>
 
   <section class="card">
+    <h2>Bilan de la supervision</h2>
+    <p class="muted">L'agent n'apprend pas tout seul : chaque correction est enregistrée ici, puis sert à corriger ses règles.
+      Exporter : <code>journal --corrections</code>.</p>
+    <div class="counters small-counters">
+      <div><b id="s-acceptees">0</b><span>validées telles quelles</span></div>
+      <div class="warn"><b id="s-corrigees">0</b><span>corrigées</span></div>
+      <div><b id="s-refusees">0</b><span>refusées</span></div>
+      <div><b id="s-manuelles">0</b><span>attribuées à la main</span></div>
+      <div><b id="s-taux">–</b><span>taux d'accord</span></div>
+      <div><b id="s-serie">0</b><span>validées d'affilée</span></div>
+    </div>
+    <p id="s-ready" class="ready wait"></p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>Sujet</th><th>Proposé par l'agent</th><th>Bonne réponse</th><th>Cases vus</th><th>Pourquoi</th></tr></thead>
+        <tbody id="corrections"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
     <h2>Historique</h2>
     <ol id="events" class="events"></ol>
   </section>

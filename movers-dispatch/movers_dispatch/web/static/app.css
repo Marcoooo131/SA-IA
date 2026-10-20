@@ -56,6 +56,10 @@ td.actions { white-space: nowrap; }
   td { border: 0; padding: 2px 0; }
   td[data-label]::before { content: attr(data-label) " : "; color: var(--muted); }
 }
+.small-counters b { font-size: 20px; }
+.ready { padding: 8px 12px; border-radius: 6px; margin: 4px 0 12px; }
+.ready.wait { background: var(--warn-bg); color: var(--warn); }
+.ready.ok { background: var(--ok-bg); color: var(--ok); }
 .events { margin: 0; padding-left: 18px; font-size: 13px; max-height: 320px; overflow: auto; }
 .events li { margin: 2px 0; }
 .events code { font-size: 12px; }

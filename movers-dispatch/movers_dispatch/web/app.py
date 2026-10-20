@@ -113,6 +113,18 @@ def create_app(agent: Agent, token: str, actor: str = "local") -> FastAPI:
             raise HTTPException(409, str(e))
         return {k: item[k] for k in ITEM_FIELDS}
 
+    @app.get("/api/supervision")
+    def supervision():
+        return agent.journal.supervision(agent.cfg.readiness_streak)
+
+    @app.post("/api/items/{queueitem_id}/correct")
+    def correct(queueitem_id: str, payload: dict = Body(...)):
+        try:
+            item = agent.correct(queueitem_id, str(payload.get("collaborator", "")), actor, str(payload.get("note", "")))
+        except RunBlocked as e:
+            raise HTTPException(409, str(e))
+        return {k: item[k] for k in ITEM_FIELDS}
+
     @app.post("/api/items/{queueitem_id}/reject")
     def reject(queueitem_id: str, payload: dict = Body(default={})):
         try:
