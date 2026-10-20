@@ -60,6 +60,7 @@ class Case:
     owner: Lookup | None
     created_on: str = ""
     fields: dict = field(default_factory=dict)   # extra fields named in the configuration rules
+    customer: Lookup | None = None               # customerid: the account the case belongs to
 
 
 @dataclass(frozen=True)

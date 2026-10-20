@@ -36,7 +36,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_GET(self):
-        if self.path == "/":
+        if "/api/" not in self.path:   # the CRM page itself (on-premises: https://<server>/<Organisation>)
             return self._send(200, {}, [("Set-Cookie", "CrmOwinAuth=ok; Path=/")])
         if "session=1" not in self.headers.get("Cookie", "") and "CrmOwinAuth=ok" not in self.headers.get("Cookie", ""):
             return self._send(401, {"error": {"message": "unauthorized"}})
@@ -59,7 +59,7 @@ class Handler(BaseHTTPRequestHandler):
 def transport(tmp_path_factory):
     srv = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
-    conn = Connection(kind="browser", environment_url=f"http://127.0.0.1:{srv.server_port}", browser_headless=True,
+    conn = Connection(kind="browser", environment_url=f"http://127.0.0.1:{srv.server_port}/SectorAlarmDemo", browser_headless=True,
                       browser_executable=os.environ.get("MD_TEST_BROWSER", ""), timeout_seconds=1)
     t = BrowserSessionTransport(conn, tmp_path_factory.mktemp("profile"))
     try:
@@ -74,12 +74,12 @@ def transport(tmp_path_factory):
 def test_get_with_params_and_annotations(transport):
     r = transport.request("GET", "queueitems(a)", params={"$select": "title"}, headers={"Prefer": 'odata.include-annotations="*"'})
     assert r.status == 200 and r.body["@odata.etag"] == 'W/"5"' and r.headers["etag"] == 'W/"5"'
-    assert SEEN[-1][1] == "/api/data/v9.2/queueitems(a)?%24select=title" and "include-annotations" in SEEN[-1][2]
+    assert SEEN[-1][1] == "/SectorAlarmDemo/api/data/v8.2/queueitems(a)?%24select=title" and "include-annotations" in SEEN[-1][2]
 
 
 def test_patch_sends_json_and_if_match(transport):
     r = transport.request("PATCH", "queueitems(a)", json={"k": "v"}, headers={"If-Match": 'W/"5"'})
-    assert r.status == 204 and SEEN[-1] == ("PATCH", "/api/data/v9.2/queueitems(a)", 'W/"5"', {"k": "v"})
+    assert r.status == 204 and SEEN[-1] == ("PATCH", "/SectorAlarmDemo/api/data/v8.2/queueitems(a)", 'W/"5"', {"k": "v"})
     assert transport.request("PATCH", "queueitems(a)", json={}, headers={"If-Match": 'W/"4"'}).status == 412
 
 

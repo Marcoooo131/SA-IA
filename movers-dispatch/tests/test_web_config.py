@@ -86,7 +86,8 @@ def test_example_configuration_loads_and_blocks_writes(tmp_path):
 
     cfg = config_mod.load(Path(__file__).parent.parent / "config" / "dispatch.example.toml")
     assert cfg.default_mode.value == "simulation" and not cfg.automatic_allowed
-    assert len(cfg.problems()) == 5        # four user ids + the source
+    assert len(cfg.problems()) == 5        # four user ids + the CRM address
+    assert cfg.source.queue_name == "Movers" and not cfg.cases.active_only
 
 
 def test_automatic_cannot_be_the_default(tmp_path):

@@ -51,7 +51,8 @@ class CaseRule:
 
 @dataclass(frozen=True)
 class CaseRules:
-    active_only: bool = True
+    # In the recorded procedure the retained cases were "Canceled": status is not a criterion by default.
+    active_only: bool = False
     rules: tuple[CaseRule, ...] = ()
     # Several relevant cases, all owned by the same collaborator: "review" (default) or "assign".
     multiple_same_owner: str = "review"
@@ -74,7 +75,7 @@ class Source:
 class Connection:
     kind: str = "fake"                  # "fake" (demo data), "msal" or "browser"
     environment_url: str = ""           # e.g. https://<org>.crm4.dynamics.com
-    api_version: str = "v9.2"
+    api_version: str = "v8.2"           # on-premises Dynamics 365 (8.x); `discover` reports the version that answers
     tenant_id: str = ""
     client_id: str = ""                 # app registration approved by IT (msal only)
     browser_profile_dir: str = ".browser-profile"
@@ -108,7 +109,7 @@ class Config:
             if len(c.systemuser_id) != GUID_LEN:
                 out.append(f"Collaborateur « {c.first_name} » : systemuserid non renseigné (voir `discover`).")
         if self.connection.kind != "fake":
-            if not self.connection.environment_url.startswith("https://"):
+            if not self.connection.environment_url.startswith("https://") or "SERVEUR-CRM" in self.connection.environment_url:
                 out.append("connection.environment_url doit être l'adresse https de l'environnement Dynamics 365.")
             if not (self.source.queue_name or self.source.saved_view_id or self.source.user_view_id):
                 out.append("source : indiquer queue_name, saved_view_id ou user_view_id (voir `discover`).")
@@ -149,7 +150,7 @@ def parse(raw: dict, path: Path | None = None) -> Config:
         connection=Connection(**raw.get("connection", {})),
         source=Source(**raw.get("source", {})),
         collaborators=collabs,
-        cases=CaseRules(active_only=cases.get("active_only", True),
+        cases=CaseRules(active_only=cases.get("active_only", False),
                         rules=tuple(_rule(r) for r in cases.get("rules", [])), multiple_same_owner=multiple),
         default_mode=mode,
         automatic_allowed=bool(agent.get("automatic_allowed", False)),

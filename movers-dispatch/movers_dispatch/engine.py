@@ -82,10 +82,15 @@ class Agent:
         if email.regarding and email.regarding.entity == "account":
             ev.account_id, ev.account_name = email.regarding.id, email.regarding.name
             cases = gw.list_cases(email.regarding.id, self.cfg.cases.extra_fields)
-            for c in cases:
-                if c.owner and c.owner.entity == "systemuser" and self.cfg.collaborator_for(c.owner.id) \
-                        and c.owner.id not in users:
-                    users[c.owner.id] = gw.get_user(c.owner.id)
+        elif email.regarding and email.regarding.entity == "incident":
+            case = gw.get_case(email.regarding.id, self.cfg.cases.extra_fields)
+            cases = [case]
+            if case.customer:
+                ev.account_id, ev.account_name = case.customer.id, case.customer.name
+        for c in cases or []:
+            if c.owner and c.owner.entity == "systemuser" and self.cfg.collaborator_for(c.owner.id) \
+                    and c.owner.id not in users:
+                users[c.owner.id] = gw.get_user(c.owner.id)
         ev.decision = decide(self.cfg, item, email, cases, users)
         return ev
 

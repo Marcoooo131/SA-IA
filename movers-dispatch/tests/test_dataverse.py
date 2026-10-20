@@ -86,6 +86,23 @@ def test_email_regarding_cases_and_user_are_parsed():
     assert g.get_user(U).first_name == "Kader"
 
 
+def test_regarding_case_is_read_with_its_customer():
+    g, t = gw([("GET", "incidents(", Response(200, {"incidentid": gid("c"), "ticketnumber": "CAS-2", "title": "MOVERS",
+                                                    "statecode": 2, **lk("ownerid", U, "systemuser", "Kader E."),
+                                                    **lk("customerid", ACC, "account", "Client")}, {}))])
+    case = g.get_case(gid("c"), ("title",))
+    assert case.state == 2 and case.owner.id == U and case.customer.id == ACC and case.title == "MOVERS"
+    assert "_customerid_value" in t.calls[0][2]["$select"] and t.calls[0][2]["$select"].count("title") == 1
+
+
+def test_api_version_probe():
+    from dataclasses import replace
+
+    g, t = gw([("GET", "https://crm.example/Org/api/data/v8.2/WhoAmI", Response(200, {}, {}))])
+    g.cfg = replace(g.cfg, connection=replace(g.cfg.connection, environment_url="https://crm.example/Org/"))
+    assert g.api_versions() == ["v8.2"] and len(t.calls) == 6
+
+
 def test_single_write_binds_worked_by_with_etag():
     g, t = gw([("PATCH", "queueitems(", Response(204, None, {}))])
     g.set_worked_by(QueueItem(QI, "t", None, None, 'W/"7"'), U)
@@ -129,7 +146,8 @@ def test_preflight_checks_worked_by_metadata():
         ("GET", "EntityDefinitions(LogicalName='queueitem')/Attributes", Response(200, {
             "IsValidForUpdate": True, "DisplayName": {"UserLocalizedLabel": {"Label": "Worked By"}}}, {})),
         ("GET", "EntityDefinitions(LogicalName='queueitem')/ManyToOneRelationships", Response(200, ok_rel, {})),
-        ("GET", "queues", Response(200, {"value": [{"queueid": gid("q"), "name": "Movers Emails (démo)"}]}, {})),
+        ("GET", "EntityDefinitions(LogicalName='incident')/Attributes(LogicalName='title')", Response(200, {}, {})),
+        ("GET", "queues", Response(200, {"value": [{"queueid": gid("q"), "name": "Movers"}]}, {})),
     ]
     g, _ = gw(routes)
     assert g.preflight() == []

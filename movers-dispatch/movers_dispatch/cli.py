@@ -63,7 +63,13 @@ def cmd_discover(args) -> None:
         if not isinstance(gw, DataverseGateway):
             print("Connexion de démonstration : rien à découvrir.")
             return
-        print("== Contrôles préalables")
+        print("== Versions du Web API qui répondent")
+        versions = gw.api_versions()
+        print(f"  {', '.join(versions) or 'aucune'}  (configurée : {cfg.connection.api_version})")
+        if versions and cfg.connection.api_version not in versions:
+            print(f"  ! Mettre connection.api_version = \"{versions[0]}\" puis relancer discover.")
+            return
+        print("\n== Contrôles préalables")
         problems = gw.preflight()
         print("  OK" if not problems else "\n".join(f"  ! {p}" for p in problems))
         print(f"\n== Files dont le nom contient « {args.text} »")

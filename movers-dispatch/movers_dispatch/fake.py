@@ -10,7 +10,7 @@ import itertools
 import uuid
 from dataclasses import dataclass, field, replace
 
-from .config import CaseRules, Collaborator, Config, Connection, Source
+from .config import CaseRule, CaseRules, Collaborator, Config, Connection, Source
 from .dataverse import ConcurrentModification, CrmError, SessionExpired, UncertainWrite
 from .models import Case, Email, Lookup, QueueItem, User
 
@@ -30,9 +30,9 @@ USERS = {
 
 def demo_config(database: str = ":memory:", **agent) -> Config:
     return Config(
-        connection=Connection(kind="fake"), source=Source(queue_name="Movers Emails (démo)"),
+        connection=Connection(kind="fake"), source=Source(queue_name="Movers"),
         collaborators=tuple(Collaborator(k, u.first_name, u.id) for k, u in USERS.items() if k != "autre"),
-        cases=CaseRules(), database=database, **agent)
+        cases=CaseRules(rules=(CaseRule("title", contains="mover"),)), database=database, **agent)
 
 
 @dataclass
@@ -56,23 +56,29 @@ class FakeCrm:
             raise SessionExpired("Session Dynamics 365 expirée ou non connectée.", 401)
 
     # --- building data
-    def add(self, label: str, subject: str, account: str | None, cases: list[tuple[str, str, int]],
-            worker: str | None = None, regarding_entity: str = "account") -> str:
-        """cases: (ticket number, owner key in USERS or "team", statecode)."""
+    def add(self, label: str, subject: str, account: str | None, cases: list[tuple],
+            worker: str | None = None, regarding_entity: str = "account", regarding_case: int = 0) -> str:
+        """cases: (ticket number, owner key in USERS or "team", statecode[, title — default "Mover"]).
+        regarding_entity "incident": the mail's Regarding is the case at index ``regarding_case``."""
         qid, eid, aid = gid(f"qi/{label}"), gid(f"em/{label}"), gid(f"acc/{label}")
-        regarding = Lookup(aid, regarding_entity, account) if account else None
-        self.emails[eid] = Email(eid, subject, regarding)
         w = USERS[worker] if worker else None
         self.items[qid] = QueueItem(qid, subject, Lookup(eid, "email", subject),
                                     Lookup(w.id, "systemuser", w.full_name) if w else None, f'W/"{next(self._etags)}"')
         rows = []
-        for n, (number, owner, state) in enumerate(cases):
+        for n, (number, owner, state, *title) in enumerate(cases):
             if owner == "team":
                 lk = Lookup(gid(f"team/{label}"), "team", "Équipe Movers")
             else:
                 lk = Lookup(USERS[owner].id, "systemuser", USERS[owner].full_name)
-            rows.append(Case(gid(f"case/{label}/{n}"), number, "Déménagement", state, None, lk, f"2026-10-{10 + n:02d}"))
+            rows.append(Case(gid(f"case/{label}/{n}"), number, title[0] if title else "Mover", state, None, lk,
+                             f"2026-10-{10 + n:02d}", customer=Lookup(aid, "account", account or "")))
         self.cases[aid] = rows
+        if regarding_entity == "incident":
+            c = rows[regarding_case]
+            regarding = Lookup(c.id, "incident", c.title)
+        else:
+            regarding = Lookup(aid, regarding_entity, account) if account else None
+        self.emails[eid] = Email(eid, subject, regarding)
         return qid
 
     # --- Gateway
@@ -98,6 +104,14 @@ class FakeCrm:
         self._check()
         return list(self.cases.get(account_id, []))
 
+    def get_case(self, case_id: str, extra_fields) -> Case:
+        self._check()
+        for rows in self.cases.values():
+            for c in rows:
+                if c.id == case_id:
+                    return c
+        raise CrmError("Lecture du Case (Regarding) : HTTP 404", 404)
+
     def get_user(self, systemuser_id: str) -> User:
         self._check()
         return self.users[systemuser_id]
@@ -118,15 +132,20 @@ class FakeCrm:
 
 
 def demo_crm() -> FakeCrm:
-    """Fictitious queue covering the cases listed in the specification."""
+    """Fictitious queue covering the cases listed in the specification and the two recorded mails."""
     crm = FakeCrm()
-    crm.add("1", "Déménagement — demande de transfert (démo 1)", "Client Démo A", [("CAS-1001", "kader", 0)])
-    crm.add("2", "Changement d'adresse (démo 2)", "Client Démo B", [("CAS-1002", "estefania", 0)])
-    crm.add("3", "Nouveau logement (démo 3)", "Client Démo C", [("CAS-1003", "marc-antoine", 0), ("CAS-0950", "kader", 1)])
-    crm.add("4", "Transfert d'installation (démo 4)", "Client Démo D", [("CAS-1004", "chloe", 0)])
-    crm.add("5", "Déménagement (démo 5)", "Client Démo E", [("CAS-1005", "kader", 0), ("CAS-1006", "chloe", 0)])
-    crm.add("6", "Question sur contrat (démo 6)", "Client Démo F", [("CAS-1007", "chloe", 1)])
-    crm.add("7", "Déménagement (démo 7)", "Client Démo G", [("CAS-1008", "autre", 0), ("CAS-1009", "team", 0)])
-    crm.add("8", "Déménagement (démo 8)", "Client Démo H", [("CAS-1010", "estefania", 0)], worker="estefania")
+    # recorded mail 1: Regarding = account, one "Mover" case, Canceled (statecode 2)
+    crm.add("1", "Voir document joint (démo 1)", "Client Démo A", [("CAS-1001", "estefania", 2)])
+    # recorded mail 2: Regarding = the "MOVERS" case (Canceled), the account also has a resolved "Mover" case
+    crm.add("2", "Re : Contrat (démo 2)", "Client Démo B",
+            [("CAS-1002", "estefania", 1, "Mover"), ("CAS-1003", "kader", 2, "MOVERS")],
+            regarding_entity="incident", regarding_case=1)
+    crm.add("3", "Changement de titulaire (démo 3)", "Client Démo C",
+            [("CAS-1004", "marc-antoine", 0), ("CAS-0950", "kader", 1, "CARE - Separation Contrat")])
+    crm.add("4", "Résiliation et restitution (démo 4)", "Client Démo D", [("CAS-1005", "chloe", 0)])
+    crm.add("5", "Déménagement (démo 5)", "Client Démo E", [("CAS-1006", "kader", 1), ("CAS-1007", "chloe", 0)])
+    crm.add("6", "Question sur contrat (démo 6)", "Client Démo F", [("CAS-1008", "chloe", 1, "Reactive Upgrade")])
+    crm.add("7", "Déménagement (démo 7)", "Client Démo G", [("CAS-1009", "autre", 0), ("CAS-1010", "team", 0)])
+    crm.add("8", "Déménagement (démo 8)", "Client Démo H", [("CAS-1011", "estefania", 0)], worker="estefania")
     crm.add("9", "Mail sans compte (démo 9)", None, [])
     return crm

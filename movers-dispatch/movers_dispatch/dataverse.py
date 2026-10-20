@@ -67,6 +67,7 @@ class Gateway(Protocol):
     def get_queue_item(self, queueitem_id: str) -> QueueItem: ...
     def get_email(self, email_id: str) -> Email: ...
     def list_cases(self, account_id: str, extra_fields: tuple[str, ...]) -> list[Case]: ...
+    def get_case(self, case_id: str, extra_fields: tuple[str, ...]) -> Case: ...
     def get_user(self, systemuser_id: str) -> User: ...
     def set_worked_by(self, item: QueueItem, systemuser_id: str) -> None: ...
 
@@ -192,14 +193,28 @@ class DataverseGateway:
         row = self._get(f"emails({guid(email_id)})", "Lecture du mail", {"$select": "activityid,subject,_regardingobjectid_value"})
         return Email(id=row["activityid"].lower(), subject=row.get("subject") or "", regarding=_lookup(row, "regardingobjectid"))
 
+    _CASE_BASE = ["incidentid", "ticketnumber", "title", "statecode", "statuscode", "_ownerid_value",
+                  "_customerid_value", "createdon"]
+
+    @staticmethod
+    def _case(r: dict, extra_fields: tuple[str, ...]) -> Case:
+        return Case(id=r["incidentid"].lower(), number=r.get("ticketnumber") or "", title=r.get("title") or "",
+                    state=r.get("statecode", -1), status=r.get("statuscode"), owner=_lookup(r, "ownerid"),
+                    created_on=r.get("createdon", ""), fields={f: r.get(f) for f in extra_fields},
+                    customer=_lookup(r, "customerid"))
+
+    def _case_select(self, extra_fields: tuple[str, ...]) -> str:
+        return ",".join(self._CASE_BASE + [f for f in extra_fields if f not in self._CASE_BASE + ["title"]])
+
     def list_cases(self, account_id: str, extra_fields: tuple[str, ...]) -> list[Case]:
-        base = ["incidentid", "ticketnumber", "title", "statecode", "statuscode", "_ownerid_value", "createdon"]
         rows = self._get_all("incidents", "Lecture des Cases du compte", {
-            "$select": ",".join(base + [f for f in extra_fields if f not in base]),
+            "$select": self._case_select(extra_fields),
             "$filter": f"_customerid_value eq {guid(account_id)}", "$orderby": "createdon desc"})
-        return [Case(id=r["incidentid"].lower(), number=r.get("ticketnumber") or "", title=r.get("title") or "",
-                     state=r.get("statecode", -1), status=r.get("statuscode"), owner=_lookup(r, "ownerid"),
-                     created_on=r.get("createdon", ""), fields={f: r.get(f) for f in extra_fields}) for r in rows]
+        return [self._case(r, extra_fields) for r in rows]
+
+    def get_case(self, case_id: str, extra_fields: tuple[str, ...]) -> Case:
+        r = self._get(f"incidents({guid(case_id)})", "Lecture du Case (Regarding)", {"$select": self._case_select(extra_fields)})
+        return self._case(r, extra_fields)
 
     def get_user(self, systemuser_id: str) -> User:
         r = self._get(f"systemusers({guid(systemuser_id)})", "Lecture de l'utilisateur",
@@ -221,6 +236,18 @@ class DataverseGateway:
             raise _error(resp, "Enregistrement de Worked By")
 
     # --- discovery helpers (read-only, used by the `discover` command)
+    def api_versions(self) -> list[str]:
+        """Web API versions that answer for this session (on-premises 8.x or online 9.x)."""
+        root = self.cfg.connection.environment_url.rstrip("/")
+        ok = []
+        for v in ("v9.2", "v9.1", "v9.0", "v8.2", "v8.1", "v8.0"):
+            try:
+                if self.t.request("GET", f"{root}/api/data/{v}/WhoAmI").status == 200:
+                    ok.append(v)
+            except (CrmError, TimeoutError):
+                pass
+        return ok
+
     def find_queues(self, text: str) -> list[dict]:
         return self._get("queues", "Recherche des files", {"$select": "queueid,name",
                          "$filter": f"contains(name,'{_q(text)}')"}).get("value", [])

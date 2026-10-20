@@ -26,10 +26,15 @@ class Decision:
         return self.status is Status.ASSIGNED
 
 
+STANDARD = {"title": lambda c: c.title, "ticketnumber": lambda c: c.number, "statecode": lambda c: c.state,
+            "statuscode": lambda c: c.status}
+
+
 def relevant(case: Case, rules: CaseRules) -> bool:
     if rules.active_only and case.state != 0:
         return False
-    return all(r.matches(case.fields.get(r.field)) for r in rules.rules)
+    return all(r.matches(STANDARD[r.field](case) if r.field in STANDARD else case.fields.get(r.field))
+               for r in rules.rules)
 
 
 def _label(case: Case) -> str:
@@ -39,17 +44,28 @@ def _label(case: Case) -> str:
 
 def decide(cfg: Config, item: QueueItem, email: Email | None, cases: list[Case] | None,
            users: dict[str, User]) -> Decision:
-    """``users`` holds the systemuser records of the configured collaborators that own a case."""
+    """``users`` holds the systemuser records of the configured collaborators that own a case.
+
+    Regarding = a case: the mail is attached to that very case, which is the one retained whatever its
+    title or status (recorded procedure, 2nd mail: Regarding "MOVERS", Canceled → its owner).
+    Regarding = an account: the account's cases filtered by the [cases] rules (1st mail).
+    """
     if email is None or email.regarding is None:
         return Decision(Status.REVIEW, "Mail sans champ Regarding : compte client inconnu.")
-    if email.regarding.entity != "account":
-        return Decision(Status.REVIEW, f"Regarding ne pointe pas vers un compte client ({email.regarding.entity}).")
     cases = cases or []
     considered = tuple(_label(c) for c in cases)
-    pertinent = [c for c in cases if relevant(c, cfg.cases)]
-    if not pertinent:
-        return Decision(Status.REVIEW, "Aucun Case pertinent sur le compte client : aucune affectation.",
-                        considered=considered)
+    if email.regarding.entity == "incident":
+        if not cases:
+            return Decision(Status.ERROR, "Case indiqué dans Regarding illisible.")
+        pertinent = cases[:1]
+    elif email.regarding.entity == "account":
+        pertinent = [c for c in cases if relevant(c, cfg.cases)]
+        if not pertinent:
+            return Decision(Status.REVIEW, "Aucun Case pertinent sur le compte client : aucune affectation.",
+                            considered=considered)
+    else:
+        return Decision(Status.REVIEW, f"Regarding ne pointe ni vers un compte client ni vers un Case "
+                        f"({email.regarding.entity}).")
     owned = [c for c in pertinent if c.owner and c.owner.entity == "systemuser" and cfg.collaborator_for(c.owner.id)]
     if not owned:
         return Decision(Status.REVIEW, "Owner non reconnu : aucun Case pertinent n'appartient à Kader, Estefania, "

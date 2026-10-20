@@ -36,8 +36,9 @@ def test_case_owned_by_each_collaborator_is_assigned(owner, first):
 
 def test_several_cases_only_the_relevant_one_counts():
     agent, crm = make(automatic_allowed=True)
-    # resolved case of Kader + active case of Marc-Antoine: only the active one is relevant
-    qid = crm.add("a", "s", "c", [("CAS-OLD", "kader", 1), ("CAS-NEW", "marc-antoine", 0)])
+    # a non-Movers case of Kader + a Canceled "Mover" case of Marc-Antoine: only the Mover one is relevant,
+    # whatever its status (in the recorded procedure the retained cases were Canceled)
+    qid = crm.add("a", "s", "c", [("CAS-OLD", "kader", 1, "CARE - Separation Contrat"), ("CAS-NEW", "marc-antoine", 2)])
     agent.run(Mode.AUTOMATIC, confirm_automatic=True)
     r = row(agent, qid)
     assert r["status"] == Status.ASSIGNED.value and r["case_number"] == "CAS-NEW" and r["worked_by_name"] == "Marc-Antoine"
@@ -61,7 +62,7 @@ def test_several_cases_same_owner_follow_configuration():
 def test_no_relevant_case_means_no_assignment():
     agent, crm = make(automatic_allowed=True)
     q1 = crm.add("a", "s", "c", [])
-    q2 = crm.add("b", "s", "c", [("CAS-1", "chloe", 2)])
+    q2 = crm.add("b", "s", "c", [("CAS-1", "chloe", 0, "Reactive Upgrade - 108180")])
     agent.run(Mode.AUTOMATIC, confirm_automatic=True)
     for q in (q1, q2):
         assert row(agent, q)["status"] == Status.REVIEW.value
@@ -135,6 +136,43 @@ def test_expired_session_stops_without_writing():
     assert not agent.state.running
 
 
+def test_recorded_mail_1_account_with_one_canceled_mover_case():
+    """Video, 1st mail: Regarding = account; its only case "Mover" is Canceled, owner Estefania."""
+    agent, crm = make(automatic_allowed=True)
+    qid = crm.add("a", "Voir document joint", "Client fictif", [("CAS-186840", "estefania", 2)])
+    agent.run(Mode.AUTOMATIC, confirm_automatic=True)
+    assert row(agent, qid)["worked_by_name"] == "Estefania" and row(agent, qid)["status"] == Status.ASSIGNED.value
+
+
+def test_recorded_mail_2_regarding_is_the_movers_case():
+    """Video, 2nd mail: Regarding = the case "MOVERS" (Canceled, owner Kader). The account also holds a more
+    recent resolved "Mover" case of Estefania: the case named in Regarding wins."""
+    agent, crm = make(automatic_allowed=True)
+    qid = crm.add("a", "Re :Contrat", "Client fictif",
+                  [("CAS-167719", "estefania", 1, "Mover"), ("CAS-163699", "kader", 2, "MOVERS"),
+                   ("CAS-151076", "autre", 1, "108180 - CARE - Separation Contrat")],
+                  regarding_entity="incident", regarding_case=1)
+    agent.run(Mode.AUTOMATIC, confirm_automatic=True)
+    r = row(agent, qid)
+    assert r["status"] == Status.ASSIGNED.value and r["case_number"] == "CAS-163699" and r["worked_by_name"] == "Kader"
+    assert r["account_name"] == "Client fictif"
+
+
+def test_same_account_seen_from_account_regarding_is_ambiguous():
+    """Same cases as the 2nd mail but Regarding = account: two Movers cases, two owners → human review."""
+    agent, crm = make(automatic_allowed=True)
+    qid = crm.add("a", "s", "c", [("CAS-167719", "estefania", 1, "Mover"), ("CAS-163699", "kader", 2, "MOVERS")])
+    agent.run(Mode.AUTOMATIC, confirm_automatic=True)
+    assert row(agent, qid)["status"] == Status.REVIEW.value and crm.writes == 0
+
+
+def test_regarding_case_owned_by_someone_else_is_not_assigned():
+    agent, crm = make(automatic_allowed=True)
+    qid = crm.add("a", "s", "c", [("CAS-1", "autre", 0, "MOVERS")], regarding_entity="incident")
+    agent.run(Mode.AUTOMATIC, confirm_automatic=True)
+    assert "Owner non reconnu" in row(agent, qid)["reason"] and crm.writes == 0
+
+
 def test_mail_without_account_and_inactive_collaborator():
     agent, crm = make(automatic_allowed=True)
     no_account = crm.add("a", "s", None, [])
@@ -144,7 +182,7 @@ def test_mail_without_account_and_inactive_collaborator():
     crm.users[u.id] = type(u)(u.id, u.first_name, u.full_name, True)
     agent.run(Mode.AUTOMATIC, confirm_automatic=True)
     assert "Regarding" in row(agent, no_account)["reason"]
-    assert "compte client" in row(agent, contact)["reason"]
+    assert "ni vers un Case" in row(agent, contact)["reason"]
     assert "inactif" in row(agent, inactive)["reason"]
     assert crm.writes == 0
 
@@ -214,7 +252,7 @@ def test_supervised_approval_refused_when_crm_changed():
     agent.run(Mode.SUPERVISED)
     # meanwhile a second relevant case owned by someone else appears
     account = crm.emails[crm.items[qid].object.id].regarding.id
-    crm.cases[account].append(type(crm.cases[account][0])("x", "CAS-2", "t", 0, None,
+    crm.cases[account].append(type(crm.cases[account][0])("x", "CAS-2", "Mover", 0, None,
                               crm.cases[account][0].owner.__class__(USERS["kader"].id, "systemuser", "Kader Exemple")))
     r = agent.approve(qid, "local")
     assert r["status"] == Status.REVIEW.value and "changé" in r["reason"] and crm.writes == 0
