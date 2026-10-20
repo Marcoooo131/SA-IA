@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="Cinématique d'introduction d'Alcoolique Quest : La Sobriété Perdue — un RPG dark fantasy (humoristique)." />
+    <title>Alcoolique Quest</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23000'/%3E%3Cpath d='M28 6h8v6l4 6v38a2 2 0 0 1-2 2H26a2 2 0 0 1-2-2V18l4-6z' fill='none' stroke='%23c9a24a' stroke-width='3'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div id="stage">
+      <canvas id="view" aria-label="Cinématique en temps réel"></canvas>
+      <div id="subtitle" aria-live="polite"></div>
+    </div>
+
+    <!-- Chargement -->
+    <section id="loader" class="screen visible">
+      <div class="loader-inner">
+        <div class="sigil" aria-hidden="true"></div>
+        <p class="loader-text">Le monde s'éveille…</p>
+        <div class="bar"><div id="bar-fill"></div></div>
+        <p id="loader-step" class="hint"></p>
+      </div>
+    </section>
+
+    <!-- Écran de lancement (nécessaire pour activer le son) -->
+    <section id="start" class="screen">
+      <div class="start-inner">
+        <p class="eyebrow">Une cinématique en temps réel</p>
+        <button id="btn-start" class="btn btn-primary">Lancer la cinématique</button>
+        <p class="hint">Casque recommandé · Plein écran conseillé · ≈ 2 minutes</p>
+        <p class="hint rotate-hint">Tournez votre téléphone pour une expérience en 16:9.</p>
+      </div>
+    </section>
+
+    <!-- Commandes discrètes pendant la lecture -->
+    <div id="controls" aria-hidden="true">
+      <button id="btn-mute" class="ctl" title="Couper le son (M)" aria-label="Couper le son">♪</button>
+      <button id="btn-fs" class="ctl" title="Plein écran (F)" aria-label="Plein écran">⛶</button>
+    </div>
+    <button id="btn-skip" class="skip" aria-label="Passer la cinématique">Passer ›</button>
+
+    <!-- Fin de cinématique -->
+    <section id="end" class="screen">
+      <div class="end-inner">
+        <button id="btn-replay" class="btn">Revoir la cinématique</button>
+        <button id="btn-enter" class="btn btn-primary">Entrer dans l'aventure</button>
+      </div>
+    </section>
+
+    <!-- Écran d'accueil provisoire du jeu -->
+    <section id="home" class="screen">
+      <nav class="home-menu" aria-label="Menu principal">
+        <button class="menu-item" data-action="new">Nouvelle partie</button>
+        <button class="menu-item" data-action="continue" disabled>Continuer</button>
+        <button class="menu-item" data-action="replay">Revoir la cinématique</button>
+        <button class="menu-item" data-action="credits">Crédits</button>
+      </nav>
+      <p id="home-toast" class="toast" role="status"></p>
+      <div id="credits" class="credits" hidden>
+        <h2>Crédits</h2>
+        <p>Cinématique temps réel — Three.js, WebGL &amp; Web Audio.<br />Modèles, textures, musique et bruitages entièrement générés par le code.</p>
+        <p>Polices : Cinzel, Cinzel Decorative, Cormorant Garamond (SIL Open Font License).</p>
+        <button class="btn" id="btn-credits-close">Fermer</button>
+      </div>
+    </section>
+
+    <div id="debug" hidden></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
