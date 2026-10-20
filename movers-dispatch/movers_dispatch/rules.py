@@ -1,0 +1,95 @@
+"""Pure decision: from what was read in the CRM, which Worked By (if any) may be written.
+
+No I/O here, so every business case is tested directly. The decision only ever proposes the
+owner of the relevant case; when that owner cannot be established with certainty the item goes
+to human review, it is never guessed.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+from .config import CaseRules, Config, normalize_name
+from .models import Case, Email, QueueItem, Status, User
+
+
+@dataclass(frozen=True)
+class Decision:
+    status: Status            # ASSIGNED here means "may be assigned"; SKIPPED, REVIEW or ERROR otherwise
+    reason: str
+    case: Case | None = None
+    user: User | None = None
+    considered: tuple[str, ...] = field(default_factory=tuple)   # "CAS-001 (Kader)" — trace only
+
+    @property
+    def assignable(self) -> bool:
+        return self.status is Status.ASSIGNED
+
+
+STANDARD = {"title": lambda c: c.title, "ticketnumber": lambda c: c.number, "statecode": lambda c: c.state,
+            "statuscode": lambda c: c.status}
+
+
+def relevant(case: Case, rules: CaseRules) -> bool:
+    if rules.active_only and case.state != 0:
+        return False
+    return all(r.matches(STANDARD[r.field](case) if r.field in STANDARD else case.fields.get(r.field))
+               for r in rules.rules)
+
+
+def _label(case: Case) -> str:
+    owner = case.owner.name if case.owner else "sans owner"
+    return f"{case.number or case.id} ({owner})"
+
+
+def decide(cfg: Config, item: QueueItem, email: Email | None, cases: list[Case] | None,
+           users: dict[str, User]) -> Decision:
+    """``users`` holds the systemuser records of the configured collaborators that own a case.
+
+    Regarding = a case: the mail is attached to that very case, which is the one retained whatever its
+    title or status (recorded procedure, 2nd mail: Regarding "MOVERS", Canceled → its owner).
+    Regarding = an account: the account's cases filtered by the [cases] rules (1st mail).
+    """
+    if email is None or email.regarding is None:
+        return Decision(Status.REVIEW, "Mail sans champ Regarding : compte client inconnu.")
+    cases = cases or []
+    considered = tuple(_label(c) for c in cases)
+    if email.regarding.entity == "incident":
+        if not cases:
+            return Decision(Status.ERROR, "Case indiqué dans Regarding illisible.")
+        pertinent = cases[:1]
+    elif email.regarding.entity == "account":
+        pertinent = [c for c in cases if relevant(c, cfg.cases)]
+        if not pertinent:
+            return Decision(Status.REVIEW, "Aucun Case pertinent sur le compte client : aucune affectation.",
+                            considered=considered)
+    else:
+        return Decision(Status.REVIEW, f"Regarding ne pointe ni vers un compte client ni vers un Case "
+                        f"({email.regarding.entity}).")
+    owned = [c for c in pertinent if c.owner and c.owner.entity == "systemuser" and cfg.collaborator_for(c.owner.id)]
+    if not owned:
+        return Decision(Status.REVIEW, "Owner non reconnu : aucun Case pertinent n'appartient à Kader, Estefania, "
+                        "Marc-Antoine ou Chloé.", considered=considered)
+    owners = {c.owner.id.lower() for c in owned}
+    if len(owners) > 1:
+        return Decision(Status.REVIEW, "Plusieurs Cases pertinents avec des Owners différents : choix impossible "
+                        "avec certitude.", considered=considered)
+    if len(owned) > 1 and cfg.cases.multiple_same_owner != "assign":
+        return Decision(Status.REVIEW, "Plusieurs Cases pertinents (même Owner) : validation demandée par la "
+                        "configuration.", considered=considered)
+    case = sorted(owned, key=lambda c: c.created_on, reverse=True)[0]
+    collab = cfg.collaborator_for(case.owner.id)
+    user = users.get(case.owner.id.lower())
+    if user is None:
+        return Decision(Status.ERROR, "Fiche utilisateur de l'Owner illisible.", case, considered=considered)
+    if user.disabled:
+        return Decision(Status.REVIEW, f"Collaborateur {user.full_name} inactif dans Dynamics 365.", case, user, considered)
+    if normalize_name(user.first_name) != normalize_name(collab.first_name):
+        return Decision(Status.ERROR, f"Prénom CRM « {user.first_name} » différent du prénom configuré "
+                        f"« {collab.first_name} » pour ce systemuserid : configuration à vérifier.", case, user, considered)
+    if item.worker is not None:
+        if item.worker.entity == "systemuser" and item.worker.id.lower() == user.id.lower():
+            return Decision(Status.SKIPPED, "Worked By déjà renseigné avec le bon collaborateur.", case, user, considered)
+        return Decision(Status.REVIEW, f"Worked By déjà renseigné ({item.worker.name or item.worker.id}) avec un autre "
+                        "collaborateur : jamais écrasé automatiquement.", case, user, considered)
+    return Decision(Status.ASSIGNED, f"Case {case.number} — Owner {user.full_name}.", case, user, considered)

@@ -1,0 +1,26 @@
+# Tests of the Movers Emails dispatch agent (Python), on fictitious data only.
+name: Movers Dispatch — tests
+
+on:
+  push:
+    paths: ["movers-dispatch/**", ".github/workflows/movers-dispatch-tests.yml"]
+  pull_request:
+    paths: ["movers-dispatch/**", ".github/workflows/movers-dispatch-tests.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: movers-dispatch
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[browser,msal,dev]"
+      - run: python -m playwright install --with-deps chromium
+      - run: python -m pytest
