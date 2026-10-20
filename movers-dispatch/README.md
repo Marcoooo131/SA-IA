@@ -170,6 +170,9 @@ terme et sa valeur est relue.
 
 ## Installation et utilisation
 
+> **Première fois ? Suivez le [tuto pas à pas pour Windows](TUTORIEL.md)** : installation et lancement
+> par double-clic sur les fichiers de `windows/`, sans taper de commande.
+
 Prérequis : Python 3.11+ (Windows ou Linux).
 
 ```bash
