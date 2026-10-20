@@ -47,6 +47,13 @@ l'appel, ou une transcription collée, en Phone Call au format de l'équipe, **p
 à côté de l'exe) rédigent des phrases propres ; le contact du repreneur, l'adresse et les numéros dictés
 sont extraits ; les phrases restantes sont mises à la 3ᵉ personne. Rien n'est conservé.
 
+**Améliorateur Phone Call (page web séparée)** : la même mise en forme, sans installer l'application, à
+l'adresse `https://<compte>.github.io/SA-IA/ameliorateur/` (publiée par `.github/workflows/deploy-pages.yml`).
+Le script Python tourne **dans le navigateur** (Pyodide, hébergé sur le même site) : la transcription
+collée n'est envoyée à aucun serveur, n'est pas enregistrée et disparaît en fermant la page ; la politique
+de sécurité de la page interdit toute connexion vers un autre site. Sources : `web_ameliorateur/`,
+construction : `scripts/build_web_ameliorateur.py`.
+
 ## Documents
 
 | Document | Contenu |

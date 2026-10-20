@@ -29,7 +29,7 @@ VERSION = "script-1"
 
 PHONE = re.compile(r"(?<![\d+])(?:\+33[ .-]?|0)[1-9](?:[ .-]?\d{2}){4}(?!\d)")
 CIVILITY = re.compile(r"\b(?:Monsieur|Madame|M\.|Mme)\s+([A-ZÀ-Ý][\w'-]+)")
-FIRST_NAME = re.compile(r"\b([A-ZÀ-Ý][\w'-]+),? (?:c'est )?son prénom|\bson prénom,? (?:c'est )?([A-ZÀ-Ý][\w'-]+)", re.I)
+FIRST_NAME = re.compile(r"\b([A-ZÀ-Ý][\w'-]+),? (?:c'est )?son prénom|\bson prénom,? (?:c'est )?([A-ZÀ-Ý][\w'-]+)", re.IGNORECASE)
 ADDRESS = re.compile(
     r"\b(\d{1,4}(?:\s?(?:bis|ter))?)\s*,?\s*(?:\1\s*,?\s*)?"
     r"((?:rue|avenue|boulevard|allée|chemin|place|impasse|route|quai|[A-ZÀ-Ý][\w'-]+)"
@@ -44,7 +44,7 @@ THIRD_PERSON = [
     (r"\bje\b", "{who}"), (r"\bj'", "{who} "), (r"\bmon\b", "son"), (r"\bma\b", "sa"), (r"\bmes\b", "ses"),
     (r"\bmoi\b", "lui"), (r"\bme\b", "se"), (r"\bm'", "s'"),
 ]
-LEADING_FILLERS = re.compile(r"^(?:(?:oui|non|donc|alors|ok|d'accord|bon|bah|ben|voila|eh bien|et)\b[\s,]*)+", re.I)
+LEADING_FILLERS = re.compile(r"^(?:(?:oui|non|donc|alors|ok|d'accord|bon|bah|ben|voila|eh bien|et)\b[\s,]*)+", re.IGNORECASE)
 
 
 @dataclass
@@ -101,7 +101,7 @@ def match_facts(facts: list[Fact], sentences: list[Sentence]) -> dict[str, tuple
 def third_person(text: str, who: str = "le client") -> str:
     text = LEADING_FILLERS.sub("", text.replace("«", "").replace("»", "").strip())
     for pattern, repl in THIRD_PERSON:
-        text = re.sub(pattern, repl.format(who=who), text, flags=re.I)
+        text = re.sub(pattern, repl.format(who=who), text, flags=re.IGNORECASE)
     text = re.sub(r"\s+", " ", text).strip(" ,")
     return text[:1].upper() + text[1:] if text else text
 
@@ -178,7 +178,7 @@ def format_phone_call(segments: list[Segment], ctx, template: Template, categori
         for fid, value in fact.set.items():
             note.values[fid] = _present(value)
         if fact.info:
-            infos.append(re.sub(r"\{(\d)\}", lambda g: m.group(int(g.group(1))) or "", fact.info))
+            infos.append(re.sub(r"\{(\d)\}", lambda g, m=m: m.group(int(g.group(1))) or "", fact.info))
     # 3. contact of a third party (repreneur): it is not the interlocutor's name / number
     if any(f.context == "contact_tiers" for f, _s, _m in found.values()):
         first, last, phone = _contact(sentences)
@@ -200,3 +200,21 @@ def format_phone_call(segments: list[Segment], ctx, template: Template, categori
     _prettify(note)
     return NoteResult(text=render(note), category=note.variant, flags=flags, points_to_verify=points_to_verify(note),
                       prompt_version=f"{VERSION}/{template.version}", model="script", cost_usd=0.0)
+
+
+def format_transcript_text(text: str, template: Template, facts: list[Fact], categories=(), variant: str | None = None,
+                           enhancer=None, agent_name: str = "", with_duration: bool = True) -> dict | None:
+    """Pasted or copied transcript (« [mm:ss] Conseiller : … ») → Phone Call. None if there is no text.
+
+    Shared by the button of the desktop app and by the web « Améliorateur Phone Call »."""
+    from ..transcript.parse import parse_transcript_text
+    from .template import CallContext
+
+    segments = parse_transcript_text(text[:200_000], enhancer)
+    if not segments:
+        return None
+    duration = int(max(s.t_end for s in segments)) if with_duration else 0
+    ctx = CallContext(variant=variant or None, duration_s=duration, agent_name=agent_name)
+    note = format_phone_call(segments, ctx, template, list(categories), facts)
+    return {"text": note.text, "flags": note.flags, "points_to_verify": note.points_to_verify, "engine": "script",
+            "cost_usd": note.cost_usd, "segments": len(segments)}

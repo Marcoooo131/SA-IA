@@ -22,6 +22,8 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > 📞 **Prototypes « Phone Call »** (Python, distincts de l'application Movers) :
 > - [`phonecall-desktop/`](phonecall-desktop/README.md) — poste conseiller Windows : capture du son du PC et du micro,
 >   transcription en direct, note Phone Call à copier dans le CRM (indépendant de Twilio) ;
+> - **Améliorateur Phone Call** (page web, `…/SA-IA/ameliorateur/` sur GitHub Pages) — colle une transcription,
+>   rend la Phone Call au format de l'équipe, par script et entièrement dans le navigateur (rien n'est envoyé ni conservé) ;
 > - [`phonecall-agent/`](phonecall-agent/README.md) — passerelle IA (`/api/v1/notes`) et traitement des
 >   enregistrements Twilio.
 

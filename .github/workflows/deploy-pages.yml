@@ -28,6 +28,17 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      # « Améliorateur Phone Call » (…/ameliorateur/) : the formatter of phonecall-desktop run in the
+      # browser by Pyodide, hosted here (no third-party site; the transcript never leaves the page)
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      - name: Build the Améliorateur Phone Call page
+        run: |
+          pip install pyyaml
+          curl -fsSL -o /tmp/pyodide.tar.bz2 https://github.com/pyodide/pyodide/releases/download/0.26.4/pyodide-core-0.26.4.tar.bz2
+          echo "70dba93432f3653155998cc9001f9c200182343c2f95165a2f9e9e4673fa35e8  /tmp/pyodide.tar.bz2" | sha256sum -c -
+          mkdir -p /tmp/pyodide-core && tar -xjf /tmp/pyodide.tar.bz2 -C /tmp/pyodide-core
+          python phonecall-desktop/scripts/build_web_ameliorateur.py dist/ameliorateur --pyodide /tmp/pyodide-core/pyodide
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

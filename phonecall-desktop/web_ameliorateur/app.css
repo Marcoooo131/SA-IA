@@ -1,0 +1,28 @@
+:root { --red: #e30613; --ink: #111; --muted: #666; --line: #e2e2e2; --bg: #f5f5f5; --ok: #1b7f3b; font-size: 15px; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; color: var(--ink); background: var(--bg); }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 18px; background: #000; color: #fff; flex-wrap: wrap; }
+.brand { font-weight: 700; font-size: 17px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.brand small { font-weight: 400; opacity: .65; font-size: 13px; }
+.logo-dot { width: 12px; height: 12px; background: var(--red); border-radius: 50%; display: inline-block; }
+.badge { padding: 4px 12px; border-radius: 14px; font-weight: 600; background: #3a3a3a; font-size: 13px; }
+.badge.ready { background: var(--ok); }
+.badge.failed { background: #7a0000; }
+.privacy { margin: 0; padding: 8px 18px; background: #eaf5ee; color: #0f4d24; font-size: 13.5px; border-bottom: 1px solid #cfe6d7; }
+.layout { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 12px; max-width: 1500px; margin: 0 auto; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; padding: 12px 16px; } }
+.panel { background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; min-width: 0; }
+.panel h2 { font-size: 15px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: .03em; }
+.hint { color: var(--muted); font-size: 13px; margin: 4px 0 8px; }
+textarea { width: 100%; min-height: 55vh; font: 14px/1.5 "Segoe UI", system-ui, sans-serif; padding: 10px; border: 1px solid #ccc; border-radius: 6px; resize: vertical; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+select { padding: 6px; font: inherit; border: 1px solid #bbb; border-radius: 4px; }
+button { font: inherit; padding: 7px 14px; border-radius: 6px; border: 1px solid #bbb; background: #fff; cursor: pointer; }
+button.primary { background: var(--red); border-color: var(--red); color: #fff; font-weight: 600; }
+button.ghost { background: transparent; }
+button:disabled { opacity: .5; cursor: default; }
+.flags { list-style: none; padding: 0; margin: 8px 0 0; font-size: 13px; }
+.flags li { padding: 4px 8px; margin-bottom: 3px; border-radius: 4px; background: #fff4e0; color: #6b4200; }
+.flags li.blocking { background: #fde2e1; color: #8a0000; }
+.error { background: #fde2e1; color: #8a0000; padding: 6px 10px; border-radius: 4px; margin: 0 0 8px; }
