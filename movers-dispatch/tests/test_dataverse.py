@@ -63,6 +63,36 @@ def test_queue_name_must_match_exactly_one_queue():
         g.list_queue_items()
 
 
+def test_two_views_by_name_are_merged_without_duplicates():
+    v1, v2 = gid("v1"), gid("v2")
+    g, t = gw([
+        ("GET", "savedqueries", Response(200, {"value": [{"savedqueryid": v1, "name": "x"}]}, {})),
+        ("GET", "queueitems", Response(200, {"value": [
+            {"queueitemid": QI, "title": "Mail", **lk("objectid", EM, "email", "Mail")},
+            {"queueitemid": gid("qi2"), "title": "Tâche", **lk("objectid", gid("tk"), "task", "Tâche")},
+            {"queueitemid": gid("qi3"), "title": "RDV", **lk("objectid", gid("ap"), "appointment", "RDV")}]}, {})),
+    ], view_names=("Queue Item - Movers - Emails", "Queue Item - Movers tasks"))
+    items = g.list_queue_items()
+    assert [i.object.entity for i in items] == ["email", "task"]          # deduplicated, appointment ignored
+    lookups = [c for c in t.calls if c[1] == "savedqueries"]
+    assert "name eq 'Queue Item - Movers - Emails'" in lookups[0][2]["$filter"]
+    assert "name eq 'Queue Item - Movers tasks'" in lookups[1][2]["$filter"]
+
+
+def test_unknown_view_name_is_an_error():
+    g, _ = gw([("GET", "savedqueries", Response(200, {"value": []}, {})),
+               ("GET", "userqueries", Response(200, {"value": []}, {}))], view_names=("Inconnue",))
+    with pytest.raises(CrmError, match="Inconnue"):
+        g.list_queue_items()
+
+
+def test_task_is_read_from_the_tasks_set():
+    g, t = gw([("GET", "tasks(", Response(200, {"activityid": gid("tk"), "subject": "Rappel",
+                                                **lk("regardingobjectid", ACC, "account", "Client")}, {}))])
+    act = g.get_activity("task", gid("tk"))
+    assert act.kind == "task" and act.regarding.entity == "account" and t.calls[0][1].startswith("tasks(")
+
+
 def test_saved_view_is_used_as_is():
     vid = gid("view")
     g, t = gw([("GET", "queueitems", Response(200, {"value": []}, {}))], saved_view_id=vid)
@@ -148,6 +178,7 @@ def test_preflight_checks_worked_by_metadata():
         ("GET", "EntityDefinitions(LogicalName='queueitem')/ManyToOneRelationships", Response(200, ok_rel, {})),
         ("GET", "EntityDefinitions(LogicalName='incident')/Attributes(LogicalName='title')", Response(200, {}, {})),
         ("GET", "queues", Response(200, {"value": [{"queueid": gid("q"), "name": "Movers"}]}, {})),
+        ("GET", "savedqueries", Response(200, {"value": [{"savedqueryid": gid("v"), "name": "v"}]}, {})),
     ]
     g, _ = gw(routes)
     assert g.preflight() == []

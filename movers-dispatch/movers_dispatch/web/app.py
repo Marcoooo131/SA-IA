@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from ..engine import Agent, RunBlocked
-from ..models import Mode
+from ..models import Mode, Status
 
 STATIC = Path(__file__).parent / "static"
 COOKIE = "md_session"
@@ -60,9 +60,10 @@ def create_app(agent: Agent, token: str, actor: str = "local") -> FastAPI:
                       "message": s.message, "problems": s.problems},
             "config": {"default_mode": agent.cfg.default_mode.value, "automatic_allowed": agent.cfg.automatic_allowed,
                        "connection": agent.cfg.connection.kind, "problems": agent.cfg.problems(),
-                       "collaborators": [c.first_name for c in agent.cfg.collaborators]},
+                       "collaborators": [{"key": c.key, "first_name": c.first_name} for c in agent.cfg.collaborators]},
             "counters": agent.journal.counters(),
-            "items": [{k: i[k] for k in ITEM_FIELDS} for i in agent.journal.items()],
+            # items already correctly filled in (« ignoré ») are counted but not listed
+            "items": [{k: i[k] for k in ITEM_FIELDS} for i in agent.journal.items() if i["status"] != Status.SKIPPED.value],
         }
 
     @app.get("/api/events")
@@ -100,6 +101,14 @@ def create_app(agent: Agent, token: str, actor: str = "local") -> FastAPI:
     def approve(queueitem_id: str):
         try:
             item = agent.approve(queueitem_id, actor)
+        except RunBlocked as e:
+            raise HTTPException(409, str(e))
+        return {k: item[k] for k in ITEM_FIELDS}
+
+    @app.post("/api/items/{queueitem_id}/assign")
+    def assign(queueitem_id: str, payload: dict = Body(...)):
+        try:
+            item = agent.assign_manually(queueitem_id, str(payload.get("collaborator", "")), actor)
         except RunBlocked as e:
             raise HTTPException(409, str(e))
         return {k: item[k] for k in ITEM_FIELDS}

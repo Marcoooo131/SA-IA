@@ -45,9 +45,12 @@ class QueueItem:
 
 @dataclass(frozen=True)
 class Email:
+    """The activity carried by the queue item: an email or a task (same fields used)."""
+
     id: str
     subject: str
     regarding: Lookup | None
+    kind: str = "email"
 
 
 @dataclass(frozen=True)

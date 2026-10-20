@@ -1,15 +1,16 @@
 # Dispatch Movers Emails — agent Dynamics 365
 
-Agent qui parcourt la file **Movers** du CRM (sous-tableau *Queue Item - Movers - Emails*), retrouve le
-**Case** Movers indiqué par le champ **Regarding** du mail, lit l'**Owner** de ce Case et renseigne le même
-collaborateur dans le champ **Worked By** du Queue Item. Seuls Kader, Estefania, Marc-Antoine et Chloé
-peuvent être affectés.
+Agent qui parcourt les mails et tâches Movers du CRM (sous-tableaux *Queue Item - Movers - Emails* et
+*Queue Item - Movers tasks*), retrouve le **Case** Movers indiqué par le champ **Regarding**, lit l'**Owner**
+de ce Case et renseigne le même collaborateur dans le champ **Worked By** du Queue Item. Seuls Kader,
+Estefania, Marc-Antoine et Chloé peuvent être affectés. Quand aucun Case ne désigne l'un d'eux, une liste
+déroulante du tableau de bord permet de choisir à qui attribuer l'élément.
 
 > **État actuel : à lire avant toute utilisation**
 >
 > | Élément | État |
 > |---|---|
-> | Règles de décision, modes Simulation / Supervisé / Automatique, arrêt immédiat, journal, tableau de bord | **Opérationnels**, testés sur des données **fictives** (54 tests), dont les deux mails de la vidéo reproduits |
+> | Règles de décision, modes Simulation / Supervisé / Automatique, arrêt immédiat, journal, tableau de bord | **Opérationnels**, testés sur des données **fictives** (63 tests), dont les deux mails de la vidéo reproduits |
 > | Connexion « navigateur » (session CRM de l'utilisateur) | Testée dans un vrai Chromium face à un **serveur imitant le Web API** d'un CRM sur site, jamais face au vrai CRM |
 > | Connexion « msal » | **Sans objet** pour le CRM Sector Alarm, qui est installé sur site (pas Dynamics 365 en ligne) |
 > | Vidéo de la procédure | **Analysée** (2 mails traités, § 1). Ce qu'elle montre a corrigé les règles (§ 2) |
@@ -99,19 +100,26 @@ une relecture qui confirme l'enregistrement.
 |---|---|
 | Un seul Case retenu, Owner parmi les 4, actif, Worked By vide | **affectable** |
 | Worked By déjà égal au bon collaborateur | ignoré (déjà traité) |
-| Worked By déjà renseigné avec quelqu'un d'autre | validation humaine (**jamais écrasé**) |
-| Regarding = compte et plusieurs Cases Movers avec des Owners différents | validation humaine |
+| Worked By déjà renseigné avec quelqu'un d'autre que l'Owner trouvé | validation humaine (**jamais écrasé**) |
+| Worked By déjà renseigné et aucun collaborateur à proposer | ignoré (déjà traité) |
+| Regarding = compte, Cases Movers d'Owners différents : un seul est **actif ou annulé**, les autres **résolus** | **affectable** à l'Owner du Case actif ou annulé |
+| Regarding = compte, plusieurs Cases Movers **actifs ou annulés** d'Owners différents (ou tous résolus) | validation humaine |
 | Plusieurs Cases Movers, même Owner | validation humaine (ou affectation si `multiple_same_owner = "assign"`) |
-| Aucun Case Movers / Owner hors des 4 (autre personne, équipe) | validation humaine, aucune affectation |
+| Aucun Case Movers / Owner hors des 4 (autre personne, équipe) | validation humaine, avec **liste déroulante** pour attribuer à la main |
 | Mail sans Regarding / Regarding ni compte ni Case | validation humaine |
 | Collaborateur inactif | validation humaine |
 | Prénom CRM ≠ prénom configuré pour cet identifiant | erreur de configuration |
 
 5. Selon le mode : proposer, attendre la validation, ou écrire **une fois** puis relire.
 
-Le mail 2 montre pourquoi le Regarding compte : son compte a deux Cases Movers (Estefania, Kader). Avec
-le compte seul, l'agent demanderait une validation humaine. Avec le Regarding sur « MOVERS », il retient
-Kader, comme dans la vidéo.
+Sur chaque ligne en **validation humaine**, le tableau de bord propose une **liste déroulante** des quatre
+collaborateurs et un bouton **Attribuer**. L'agent relit alors l'élément et refuse d'écraser un Worked By
+déjà rempli. Il écrit une fois, relit la valeur, et note dans l'historique qui a fait ce choix. Les éléments
+**ignorés** (déjà bien renseignés) sont comptés mais ne sont pas listés.
+
+Le mail 2 illustre les deux règles : son compte a un Case « Mover » **résolu** (Estefania) et un Case
+« MOVERS » **annulé** (Kader). Que l'agent passe par le Regarding (le Case « MOVERS ») ou par le compte
+(l'annulé l'emporte sur le résolu), il retient Kader, comme dans la vidéo.
 
 ### Modes
 
