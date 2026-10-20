@@ -182,6 +182,12 @@ Les voix sont jouées dans la réverbération de cathédrale, légèrement ralen
 
 ## 5. Ressources visuelles
 
+### Plans en images de fond animées
+
+N'importe quel plan peut être remplacé par une image (matte painting) animée en 2,5D : mouvement de caméra,
+parallaxe, brume, rayons, eau, particules, aigle 3D composé devant. Les 25 plans de la planche fournie sont intégrés (titre resté en 3D) :
+voir **[PLATES.md](PLATES.md)** pour le manifeste, la liste des images à fournir et les prompts proposés.
+
 ### Ressources externes intégrées (licence CC0 1.0)
 
 Les sites de ressources (Poly Haven, ambientCG…) ne sont pas joignables depuis l'environnement de

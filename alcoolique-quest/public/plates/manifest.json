@@ -1,0 +1,611 @@
+{
+ "plates": [
+  {
+   "start": 0,
+   "end": 5.2,
+   "image": "plates/01.jpg",
+   "from": {
+    "zoom": 1.35,
+    "x": 0.02,
+    "y": -0.04
+   },
+   "to": {
+    "zoom": 1.08,
+    "x": 0,
+    "y": 0
+   },
+   "parallax": [
+    0.01,
+    0.004
+   ],
+   "easing": "out",
+   "fadeIn": 1.5
+  },
+  {
+   "start": 5.2,
+   "end": 11.0,
+   "image": "plates/02.jpg",
+   "from": {
+    "zoom": 1.04,
+    "x": -0.02
+   },
+   "to": {
+    "zoom": 1.2,
+    "x": 0.03,
+    "y": -0.03
+   },
+   "parallax": [
+    0.04,
+    0.01
+   ],
+   "particles": "dust",
+   "cloudShadows": 0.15
+  },
+  {
+   "start": 11.0,
+   "end": 18.0,
+   "image": "plates/03.jpg",
+   "from": {
+    "zoom": 1.06,
+    "x": -0.03
+   },
+   "to": {
+    "zoom": 1.2,
+    "x": 0.03,
+    "y": 0.01
+   },
+   "parallax": [
+    0.035,
+    0.01
+   ],
+   "water": {
+    "y": 0.3,
+    "strength": 1
+   },
+   "rays": {
+    "x": 0.78,
+    "y": 0.06,
+    "strength": 0.35
+   }
+  },
+  {
+   "start": 18.0,
+   "end": 24.0,
+   "image": "plates/04.jpg",
+   "from": {
+    "zoom": 1.04,
+    "y": 0.03
+   },
+   "to": {
+    "zoom": 1.22,
+    "x": 0.02,
+    "y": -0.02
+   },
+   "parallax": [
+    0.03,
+    0.012
+   ],
+   "rays": {
+    "x": 0.86,
+    "y": 0.08,
+    "strength": 0.45
+   },
+   "mist": {
+    "amount": 0.25,
+    "height": 0.55,
+    "color": "#ffffff",
+    "speed": 2.5
+   }
+  },
+  {
+   "start": 24.0,
+   "end": 30.0,
+   "image": "plates/05.jpg",
+   "from": {
+    "zoom": 1.05,
+    "x": -0.03
+   },
+   "to": {
+    "zoom": 1.2,
+    "x": 0.03,
+    "y": 0.02
+   },
+   "parallax": [
+    0.035,
+    0.01
+   ],
+   "mist": {
+    "amount": 0.2,
+    "height": 0.6,
+    "color": "#eef2f6"
+   },
+   "particles": "snow"
+  },
+  {
+   "start": 30.0,
+   "end": 32.6,
+   "image": "plates/06.jpg",
+   "from": {
+    "zoom": 1.06,
+    "x": -0.02
+   },
+   "to": {
+    "zoom": 1.14,
+    "x": 0.02
+   },
+   "parallax": [
+    0.03,
+    0.008
+   ],
+   "cloudShadows": 0.25,
+   "mist": {
+    "amount": 0.15,
+    "height": 0.4,
+    "color": "#e8eef4"
+   }
+  },
+  {
+   "start": 32.6,
+   "end": 35.2,
+   "image": "plates/07.jpg",
+   "from": {
+    "zoom": 1.12,
+    "y": 0.03
+   },
+   "to": {
+    "zoom": 1.04,
+    "y": 0
+   },
+   "parallax": [
+    0.04,
+    0.01
+   ],
+   "cloudShadows": 0.2,
+   "particles": "dust"
+  },
+  {
+   "start": 35.2,
+   "end": 38.0,
+   "image": "plates/08.jpg",
+   "from": {
+    "zoom": 1.04,
+    "x": 0.03
+   },
+   "to": {
+    "zoom": 1.14,
+    "x": -0.02
+   },
+   "parallax": [
+    0.035,
+    0.01
+   ],
+   "particles": "dust",
+   "cloudShadows": 0.2
+  },
+  {
+   "start": 38.0,
+   "end": 42.0,
+   "image": "plates/09.jpg",
+   "from": {
+    "zoom": 1.04,
+    "y": 0.03
+   },
+   "to": {
+    "zoom": 1.24,
+    "y": -0.01
+   },
+   "parallax": [
+    0.03,
+    0.012
+   ],
+   "cloudShadows": 0.25,
+   "mist": {
+    "amount": 0.12,
+    "height": 0.45,
+    "color": "#e8eef4"
+   },
+   "fadeOut": 0.3
+  },
+  {
+   "start": 42.0,
+   "end": 45.0,
+   "image": "plates/10.jpg",
+   "from": {
+    "zoom": 1.05,
+    "x": -0.03
+   },
+   "to": {
+    "zoom": 1.14,
+    "x": 0.02
+   },
+   "parallax": [
+    0.03,
+    0.008
+   ],
+   "cloudShadows": 0.2
+  },
+  {
+   "start": 45.0,
+   "end": 48.0,
+   "image": "plates/11.jpg",
+   "from": {
+    "zoom": 1.06,
+    "x": 0.03
+   },
+   "to": {
+    "zoom": 1.14,
+    "x": -0.02
+   },
+   "parallax": [
+    0.035,
+    0.008
+   ],
+   "particles": "dust"
+  },
+  {
+   "start": 48.0,
+   "end": 51.0,
+   "image": "plates/12.jpg",
+   "from": {
+    "zoom": 1.14,
+    "x": 0.02
+   },
+   "to": {
+    "zoom": 1.05,
+    "x": -0.01
+   },
+   "parallax": [
+    0.025,
+    0.008
+   ],
+   "particles": "embers",
+   "grade": {
+    "bloomStrength": 0.6,
+    "bloomThreshold": 0.75
+   }
+  },
+  {
+   "start": 51.0,
+   "end": 54.0,
+   "image": "plates/13.jpg",
+   "from": {
+    "zoom": 1.05,
+    "x": -0.02
+   },
+   "to": {
+    "zoom": 1.13,
+    "x": 0.02
+   },
+   "parallax": [
+    0.035,
+    0.008
+   ],
+   "particles": "dust"
+  },
+  {
+   "start": 54.0,
+   "end": 57.0,
+   "image": "plates/14.jpg",
+   "from": {
+    "zoom": 1.04
+   },
+   "to": {
+    "zoom": 1.16,
+    "y": -0.02
+   },
+   "parallax": [
+    0.03,
+    0.01
+   ],
+   "water": {
+    "y": 0.72,
+    "strength": 0.8
+   },
+   "cloudShadows": 0.15
+  },
+  {
+   "start": 57.0,
+   "end": 60.0,
+   "image": "plates/15.jpg",
+   "from": {
+    "zoom": 1.06,
+    "x": -0.03,
+    "y": 0.02
+   },
+   "to": {
+    "zoom": 1.18,
+    "x": 0.02
+   },
+   "parallax": [
+    0.035,
+    0.01
+   ],
+   "mist": {
+    "amount": 0.15,
+    "height": 0.35,
+    "color": "#eef2f6"
+   },
+   "fadeOut": 0.4
+  },
+  {
+   "start": 60.0,
+   "end": 63.6,
+   "image": "plates/16.jpg",
+   "from": {
+    "zoom": 1.04,
+    "x": -0.02
+   },
+   "to": {
+    "zoom": 1.18,
+    "x": 0.03
+   },
+   "parallax": [
+    0.03,
+    0.01
+   ],
+   "particles": "embers",
+   "grade": {
+    "bloomStrength": 0.55,
+    "bloomThreshold": 0.75,
+    "contrast": 1.06
+   }
+  },
+  {
+   "start": 63.6,
+   "end": 67.2,
+   "image": "plates/17.jpg",
+   "from": {
+    "zoom": 1.16,
+    "x": 0.02
+   },
+   "to": {
+    "zoom": 1.05,
+    "x": -0.02
+   },
+   "parallax": [
+    0.03,
+    0.01
+   ],
+   "particles": "embers",
+   "grade": {
+    "bloomStrength": 0.55,
+    "bloomThreshold": 0.75,
+    "contrast": 1.06
+   }
+  },
+  {
+   "start": 67.2,
+   "end": 71.0,
+   "image": "plates/18.jpg",
+   "from": {
+    "zoom": 1.04,
+    "y": 0.03
+   },
+   "to": {
+    "zoom": 1.18,
+    "y": -0.03
+   },
+   "parallax": [
+    0.025,
+    0.012
+   ],
+   "particles": "embers",
+   "grade": {
+    "bloomStrength": 0.55,
+    "bloomThreshold": 0.75,
+    "contrast": 1.06
+   }
+  },
+  {
+   "start": 71.0,
+   "end": 74.6,
+   "image": "plates/19.jpg",
+   "from": {
+    "zoom": 1.05
+   },
+   "to": {
+    "zoom": 1.2,
+    "x": -0.02,
+    "y": -0.02
+   },
+   "parallax": [
+    0.03,
+    0.01
+   ],
+   "easing": "out",
+   "particles": "embers",
+   "grade": {
+    "bloomStrength": 0.55,
+    "bloomThreshold": 0.75,
+    "contrast": 1.06
+   }
+  },
+  {
+   "start": 74.6,
+   "end": 78.0,
+   "image": "plates/20.jpg",
+   "from": {
+    "zoom": 1.06,
+    "x": -0.03
+   },
+   "to": {
+    "zoom": 1.16,
+    "x": 0.03
+   },
+   "parallax": [
+    0.03,
+    0.008
+   ],
+   "particles": "dust",
+   "rays": {
+    "x": 0.97,
+    "y": 0.25,
+    "strength": 0.3
+   }
+  },
+  {
+   "start": 78.0,
+   "end": 82.0,
+   "image": "plates/21.jpg",
+   "from": {
+    "zoom": 1.02,
+    "y": 0.04
+   },
+   "to": {
+    "zoom": 1.2,
+    "y": -0.04
+   },
+   "parallax": [
+    0.03,
+    0.015
+   ],
+   "particles": "ash",
+   "easing": "out",
+   "fadeOut": 0.6
+  },
+  {
+   "start": 82.0,
+   "end": 88.0,
+   "image": "plates/22.jpg",
+   "from": {
+    "zoom": 1.04,
+    "y": 0.02
+   },
+   "to": {
+    "zoom": 1.12
+   },
+   "parallax": [
+    0.02,
+    0.008
+   ],
+   "fadeIn": 1.2,
+   "particles": "feathers",
+   "mist": {
+    "amount": 0.3,
+    "height": 0.7,
+    "color": "#a8a49c",
+    "speed": 0.6
+   }
+  },
+  {
+   "start": 88.0,
+   "end": 91.5,
+   "image": "plates/22.jpg",
+   "from": {
+    "zoom": 1.18,
+    "y": -0.03
+   },
+   "to": {
+    "zoom": 1.3,
+    "y": -0.05
+   },
+   "parallax": [
+    0.015,
+    0.008
+   ],
+   "particles": "feathers",
+   "mist": {
+    "amount": 0.3,
+    "height": 0.7,
+    "color": "#a8a49c",
+    "speed": 0.6
+   }
+  },
+  {
+   "start": 91.5,
+   "end": 94.5,
+   "image": "plates/23.jpg",
+   "from": {
+    "zoom": 1.05,
+    "x": 0.04
+   },
+   "to": {
+    "zoom": 1.25,
+    "x": 0.1
+   },
+   "parallax": [
+    0.02,
+    0.008
+   ],
+   "particles": "dust",
+   "grade": {
+    "bloomStrength": 0.6,
+    "bloomThreshold": 0.7
+   }
+  },
+  {
+   "start": 94.5,
+   "end": 99.3,
+   "image": "plates/24.jpg",
+   "from": {
+    "zoom": 1.05
+   },
+   "to": {
+    "zoom": 1.2,
+    "x": 0.04,
+    "y": -0.03
+   },
+   "parallax": [
+    0.02,
+    0.008
+   ],
+   "particles": "feathers",
+   "mist": {
+    "amount": 0.3,
+    "height": 0.7,
+    "color": "#a8a49c",
+    "speed": 0.6
+   }
+  },
+  {
+   "start": 99.3,
+   "end": 104.2,
+   "image": "plates/24.jpg",
+   "from": {
+    "zoom": 1.18,
+    "x": 0.02,
+    "y": -0.1
+   },
+   "to": {
+    "zoom": 1.3,
+    "x": 0.04,
+    "y": -0.12
+   },
+   "parallax": [
+    0.015,
+    0.006
+   ],
+   "particles": "feathers",
+   "mist": {
+    "amount": 0.3,
+    "height": 0.7,
+    "color": "#a8a49c",
+    "speed": 0.6
+   }
+  },
+  {
+   "start": 104.2,
+   "end": 108.0,
+   "image": "plates/25.jpg",
+   "from": {
+    "zoom": 1.06
+   },
+   "to": {
+    "zoom": 1.3,
+    "x": 0.06,
+    "y": -0.05
+   },
+   "parallax": [
+    0.025,
+    0.01
+   ],
+   "particles": "embers",
+   "easing": "linear",
+   "grade": {
+    "bloomStrength": 0.7,
+    "bloomThreshold": 0.65
+   },
+   "fadeOut": 0.8
+  }
+ ]
+}

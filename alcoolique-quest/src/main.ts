@@ -9,11 +9,12 @@ import '@fontsource/cormorant-garamond/400.css';
 import '@fontsource/cormorant-garamond/400-italic.css';
 import './style.css';
 import { Director, type Quality } from './core/director';
-import { DURATION, LINES, shotAt } from './core/timeline';
+import { DURATION, LINES, SHOTS, shotAt } from './core/timeline';
 import { AudioEngine } from './audio/engine';
 import { buildScore } from './audio/score';
 import { SCENE_FACTORIES } from './scenes';
 import { loadAssets } from './world/assets';
+import { PlateScene } from './plates/plateScene';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const params = new URLSearchParams(location.search);
@@ -46,11 +47,20 @@ async function load() {
   // ressources CC0 (HDRI, normal maps, nuages) avant la construction des scènes
   step.textContent = 'Lumières et matières';
   await loadAssets(director.renderer, (k) => (fill.style.width = `${k * 15}%`)).catch((e) => console.warn(e));
+  // images de fond animées (facultatives) : public/plates/manifest.json
+  step.textContent = 'Images des plans';
+  const plates = new PlateScene();
+  await plates.load(import.meta.env.BASE_URL);
+  if (plates.count) director.plates = plates;
   for (let i = 0; i < SCENE_FACTORIES.length; i++) {
-    const [label, make] = SCENE_FACTORIES[i];
-    step.textContent = label;
-    await nextFrame();
-    director.add(make(quality));
+    const [label, key, make] = SCENE_FACTORIES[i];
+    // une scène 3D entièrement remplacée par des images n'est pas construite (chargement plus rapide)
+    const covered = plates.count > 0 && SHOTS.filter((s) => s.scene === key).every((s) => plates.coversRange(s.start, s.end));
+    if (!covered || key === 'title') {
+      step.textContent = label;
+      await nextFrame();
+      director.add(make(quality));
+    }
     fill.style.width = `${15 + ((i + 1) / (SCENE_FACTORIES.length + 1)) * 85}%`;
   }
   step.textContent = 'Compilation des shaders';

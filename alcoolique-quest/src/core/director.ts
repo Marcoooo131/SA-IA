@@ -124,6 +124,8 @@ export class Director {
   width = 1280;
   height = 720;
   activeKey: SceneKey | null = null;
+  /** Plans « images de fond animées » : prioritaires sur la scène 3D quand ils couvrent l'instant. */
+  plates: (CineScene & { covers(t: number): boolean }) | null = null;
 
   constructor(public canvas: HTMLCanvasElement, public quality: Quality) {
     this.renderer = new THREE.WebGLRenderer({
@@ -187,7 +189,7 @@ export class Director {
     this.composer.setSize(this.width, this.height);
     this.final.uniforms.uAspect.value = this.width / this.height;
     POINT_SCALE.value = this.height * this.pixelRatio * 1.37;
-    for (const s of this.scenes.values()) {
+    for (const s of [...this.scenes.values(), ...(this.plates ? [this.plates] : [])]) {
       s.camera.aspect = this.width / this.height;
       s.camera.updateProjectionMatrix();
     }
@@ -224,18 +226,21 @@ export class Director {
 
   /** Fait avancer la scène sans la dessiner (préparation des captures). */
   simulate(t: number, dt: number) {
-    this.scenes.get(this.sceneKeyAt(t))?.update(t, dt);
+    if (this.plates?.covers(t)) this.plates.update(t, dt);
+    else this.scenes.get(this.sceneKeyAt(t))?.update(t, dt);
   }
 
   render(t: number, dt: number, opts: { key?: SceneKey; fade?: number } = {}) {
     const key = opts.key ?? this.sceneKeyAt(t);
-    const s = this.scenes.get(key);
+    const s = !opts.key && this.plates?.covers(t) ? this.plates : this.scenes.get(key);
     if (!s) return;
     this.activeKey = key;
     s.update(t, dt);
     const p: PostParams = { ...DEFAULT_POST, ...s.post(t) };
     p.fade = (opts.fade ?? fadeAt(t)) * (s.post(t).fade ?? 1);
 
+    // les images de fond sont déjà étalonnées : pas de tone mapping filmique, sinon elles paraissent délavées
+    this.renderer.toneMapping = s === this.plates ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = p.exposure;
     this.renderPass.scene = s.scene;
     this.renderPass.camera = s.camera;

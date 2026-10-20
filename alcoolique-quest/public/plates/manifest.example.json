@@ -1,0 +1,28 @@
+{
+  "plates": [
+    {
+      "shot": "2d",
+      "image": "plates/2d-montagnes.jpg",
+      "from": { "zoom": 1.05, "x": -0.02, "y": 0 },
+      "to": { "zoom": 1.22, "x": 0.03, "y": 0.02 },
+      "parallax": [0.03, 0.008],
+      "water": { "y": 0.62, "strength": 1 },
+      "rays": { "x": 0.76, "y": 0.12, "strength": 0.4 },
+      "mist": { "amount": 0.25, "height": 0.45, "color": "#eef2f4" },
+      "cloudShadows": 0.25,
+      "eagle": { "from": [-0.6, 0.1, 0.5], "to": [0.4, 0.25, 0.3], "heading": 3.6 }
+    },
+    {
+      "shot": "6f",
+      "image": "plates/6f-pretresse.jpg",
+      "crop": [0, 0.1, 1, 0.9],
+      "from": { "zoom": 1.02, "y": 0.14 },
+      "to": { "zoom": 1.15, "y": 0.17 },
+      "parallax": [0.015, 0.01],
+      "mist": { "amount": 0.4, "height": 0.75, "color": "#c8ccd4", "speed": 0.6 },
+      "rays": { "x": 0.25, "y": 0.1, "strength": 0.3 },
+      "particles": "feathers",
+      "grade": { "saturation": 0.9, "contrast": 1.08 }
+    }
+  ]
+}
