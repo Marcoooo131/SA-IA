@@ -8,6 +8,7 @@ the write by reading it back. Any write failure or expired session stops the run
 
 from __future__ import annotations
 
+import json
 import logging
 import threading
 from dataclasses import dataclass, field
@@ -19,6 +20,13 @@ from .models import Mode, QueueItem, Status, User
 from .rules import Decision, decide
 
 log = logging.getLogger("movers_dispatch")
+
+
+def _json_list(value: str | None) -> list:
+    try:
+        return json.loads(value or "[]")
+    except ValueError:
+        return []
 
 
 class Stopped(Exception):
@@ -254,6 +262,25 @@ class Agent:
         saved = self.journal.item(queueitem_id)
         if not saved or saved["status"] != Status.REVIEW.value:
             raise RunBlocked("Seuls les éléments en validation humaine s'attribuent à la main.")
+        return self._human_assign(saved, collaborator_key, actor, "attribution_manuelle",
+                                  {"motif_initial": saved["reason"], "cases_vus": _json_list(saved["considered"])})
+
+    def correct(self, queueitem_id: str, collaborator_key: str, actor: str, note: str = "") -> dict:
+        """Supervised mode: the proposal is wrong, the person gives the right collaborator. The correction
+        is written to the CRM like a manual assignment and kept with what the agent had seen, so that the
+        rules can be fixed from these cases (the agent does not change its rules by itself)."""
+        saved = self.journal.item(queueitem_id)
+        if not saved or saved["status"] != Status.AWAITING_APPROVAL.value:
+            raise RunBlocked("Cet élément n'attend pas de validation.")
+        collab = next((c for c in self.cfg.collaborators if c.key == collaborator_key), None)
+        if collab and collab.systemuser_id == (saved["worked_by_user_id"] or "") and collab.systemuser_id:
+            raise RunBlocked("C'est déjà la proposition de l'agent : utiliser « Valider ».")
+        return self._human_assign(saved, collaborator_key, actor, "correction", {
+            "propose": saved["worked_by_name"], "case_propose": saved["case_number"], "motif_agent": saved["reason"],
+            "cases_vus": _json_list(saved["considered"]), "note": note[:300]})
+
+    def _human_assign(self, saved: dict, collaborator_key: str, actor: str, action: str, detail: dict) -> dict:
+        queueitem_id = saved["queueitem_id"]
         collab = next((c for c in self.cfg.collaborators if c.key == collaborator_key), None)
         if collab is None:
             raise RunBlocked("Collaborateur inconnu.")
@@ -272,8 +299,7 @@ class Agent:
                 raise RunBlocked(f"{user.full_name} est inactif dans le CRM.")
             if normalize_name(user.first_name) != normalize_name(collab.first_name):
                 raise RunBlocked(f"Prénom CRM « {user.first_name} » différent du prénom configuré « {collab.first_name} ».")
-            self.journal.event(None, queueitem_id, "attribution_manuelle",
-                               {"worked_by": collab.first_name, "motif_initial": saved["reason"]}, actor)
+            self.journal.event(None, queueitem_id, action, {"worked_by": collab.first_name, **detail}, actor)
             ev.decision = Decision(Status.ASSIGNED, "", None, user, ev.decision.considered)
             try:
                 self._write(None, ev, actor, "manuel")

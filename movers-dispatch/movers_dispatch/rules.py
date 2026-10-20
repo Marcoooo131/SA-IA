@@ -39,9 +39,13 @@ def relevant(case: Case, rules: CaseRules) -> bool:
                for r in rules.rules)
 
 
+STATE_LABELS = {0: "actif", 1: "résolu", 2: "annulé"}
+
+
 def _label(case: Case) -> str:
+    """Trace of a case seen, detailed enough to understand a human correction later."""
     owner = case.owner.name if case.owner else "sans owner"
-    return f"{case.number or case.id} ({owner})"
+    return f"{case.number or case.id} « {case.title} » {STATE_LABELS.get(case.state, case.state)} ({owner})"
 
 
 def decide(cfg: Config, item: QueueItem, email: Email | None, cases: list[Case] | None,

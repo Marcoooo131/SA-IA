@@ -24,7 +24,7 @@ avec le Bloc-notes. Comptez 20 à 30 minutes la première fois.
 2. Cliquez sur le bouton vert **Code**, puis sur **Download ZIP**.
 3. Dans *Téléchargements*, faites un clic droit sur `SA-IA-main.zip`, puis **Extraire tout…**, et
    choisissez par exemple `Documents`.
-4. Ouvrez le dossier `Documents\SA-IA-main\movers-dispatch\windows`. Vous y voyez quatre fichiers :
+4. Ouvrez le dossier `Documents\SA-IA-main\movers-dispatch\windows`. Vous y voyez cinq fichiers :
 
 | Fichier | À quoi il sert |
 |---|---|
@@ -32,6 +32,7 @@ avec le Bloc-notes. Comptez 20 à 30 minutes la première fois.
 | `2-demo.bat` | essai sur de **fausses** données, sans toucher au CRM |
 | `3-decouvrir.bat` | lit le CRM pour trouver les informations à recopier dans la configuration |
 | `4-lancer.bat` | lance l'agent sur le vrai CRM |
+| `5-exporter-corrections.bat` | exporte vos corrections dans un fichier Excel (étape 9) |
 
 ## Étape 3 : installer l'agent
 
@@ -128,7 +129,7 @@ Double-cliquez sur **`4-lancer.bat`**. Connectez-vous dans Edge si besoin. Le ta
 Quand la Simulation vous paraît fiable :
 
 1. Cochez **Supervisé**, puis cliquez sur **Lancer le traitement**.
-2. Pour chaque mail, l'agent affiche **Valider Kader** (par exemple) et **Refuser**.
+2. Pour chaque mail, l'agent affiche **Valider Kader** (par exemple), une liste **Corriger**, et **Refuser**.
 3. Cliquez sur **Valider** et confirmez. L'agent écrit *Worked By* dans le CRM, puis relit la valeur pour
    vérifier. La ligne passe à **Affecté**.
 4. Vérifiez les premiers dans le CRM : ouvrez le mail, puis **…** → **Queue Item Details** → *Worked By*.
@@ -146,10 +147,48 @@ dans la case « ignorés ».
 
 Le gros bouton rouge **Arrêt immédiat** stoppe tout : plus aucune écriture après le clic.
 
-> Le mode **Automatique** (sans validation) est volontairement bloqué. Ne l'activez qu'après plusieurs
-> semaines de Supervisé sans erreur, et avec l'accord de votre responsable. Il faut alors mettre
-> `automatic_allowed = true` dans `dispatch.toml` et taper `AUTOMATIQUE` dans le tableau de bord à
-> chaque lancement.
+## Étape 9 : les deux semaines de supervision (corriger l'agent)
+
+**À savoir :** l'agent n'apprend pas tout seul. Il suit des règles écrites, par exemple « le Case actif ou
+annulé passe avant le résolu ». C'est voulu : il ne peut pas changer de comportement sans qu'on le sache.
+Vos corrections servent à **réécrire ses règles**. Voici comment faire.
+
+**Chaque jour**, en mode **Supervisé**, pour chaque proposition :
+
+| L'agent propose… | Vous faites |
+|---|---|
+| le bon collègue | **Valider** |
+| le mauvais collègue | choisissez le bon dans **Corriger : le bon collègue est…**, cliquez sur **Corriger**, puis écrivez en quelques mots **pourquoi** (ex. « le Case Mover résolu était le bon », « le client a rappelé Kader ») |
+| un collègue alors que l'élément ne revient à aucun des quatre | **Refuser** |
+| rien, ligne « Validation humaine » | choisissez dans **Attribuer à…** (étape 8) |
+
+**Corriger** écrit tout de suite la bonne personne dans le CRM, comme une attribution à la main. Le
+« pourquoi » est le plus important : c'est lui qui permet de trouver la règle à changer. N'y mettez pas de
+données client (nom, téléphone…).
+
+En bas du tableau de bord, le **Bilan de la supervision** affiche :
+
+- combien de propositions vous avez **validées telles quelles**, **corrigées** ou **refusées**, et le
+  **taux d'accord** ;
+- la **série** : le nombre de propositions validées d'affilée sans correction (elle repart à 0 à chaque
+  correction ou refus) ;
+- la liste des corrections, avec ce que l'agent avait vu.
+
+**Une fois par semaine** (ou dès qu'une même erreur revient) :
+
+1. Double-cliquez sur **`5-exporter-corrections.bat`** : il crée `corrections.csv` dans le dossier
+   `movers-dispatch` (s'ouvre avec Excel).
+2. Envoyez-moi ce fichier, ou recopiez-moi les lignes. Je transforme les corrections en nouvelles règles,
+   comme on l'a fait pour « actif ou annulé avant résolu ».
+3. Retéléchargez la nouvelle version et continuez la supervision. **Votre fichier `dispatch.toml` et votre
+   journal `movers_dispatch.db` sont à garder** : recopiez-les dans le nouveau dossier `movers-dispatch`.
+
+**Quand passer en Automatique ?** Quand le bilan affiche en vert **« 100 propositions validées d'affilée
+sans correction »**. Ce chiffre se change dans `dispatch.toml`, ligne `readiness_streak`, section
+`[agent]`. Il faut aussi l'accord de votre responsable. Il faut alors mettre `automatic_allowed = true`
+dans `dispatch.toml` et taper `AUTOMATIQUE` dans le tableau de bord à chaque lancement. Même en
+Automatique, l'agent ne traite **que** les cas sûrs : les autres restent en « Validation humaine » avec la
+liste **Attribuer à…**.
 
 ---
 

@@ -10,7 +10,7 @@ déroulante du tableau de bord permet de choisir à qui attribuer l'élément.
 >
 > | Élément | État |
 > |---|---|
-> | Règles de décision, modes Simulation / Supervisé / Automatique, arrêt immédiat, journal, tableau de bord | **Opérationnels**, testés sur des données **fictives** (63 tests), dont les deux mails de la vidéo reproduits |
+> | Règles de décision, modes Simulation / Supervisé / Automatique, arrêt immédiat, journal, tableau de bord | **Opérationnels**, testés sur des données **fictives** (66 tests), dont les deux mails de la vidéo reproduits |
 > | Connexion « navigateur » (session CRM de l'utilisateur) | Testée dans un vrai Chromium face à un **serveur imitant le Web API** d'un CRM sur site, jamais face au vrai CRM |
 > | Connexion « msal » | **Sans objet** pour le CRM Sector Alarm, qui est installé sur site (pas Dynamics 365 en ligne) |
 > | Vidéo de la procédure | **Analysée** (2 mails traités, § 1). Ce qu'elle montre a corrigé les règles (§ 2) |
@@ -128,6 +128,14 @@ Le mail 2 illustre les deux règles : son compte a un Case « Mover » **résolu
 | **Simulation** (défaut) | aucune : le connecteur lui-même refuse toute écriture | par défaut |
 | **Supervisé** | une par validation humaine. Avant d'écrire, l'agent relit tout : si la situation a changé, il n'écrit pas | choix dans le tableau de bord |
 | **Automatique** | cas non ambigus uniquement | `automatic_allowed = true` dans la configuration **et** saisie de `AUTOMATIQUE` à chaque lancement (ou `--confirm-automatic`) |
+
+**Supervision et corrections.** En mode Supervisé, chaque proposition peut être **validée**, **corrigée**
+(liste « Corriger : le bon collègue est… » avec une raison courte, la bonne personne étant écrite dans le
+CRM) ou **refusée**. L'agent ne modifie pas ses règles tout seul. Les corrections sont conservées avec les
+Cases qu'il avait vus (n°, titre, statut, Owner), affichées dans le *Bilan de la supervision*, et
+exportables (`journal --corrections -o corrections.csv`, ou `windows/5-exporter-corrections.bat`) pour
+réviser les règles. Le bilan indique la **série** de propositions validées d'affilée sans correction.
+L'objectif avant le mode Automatique est réglable : `readiness_streak`, 100 par défaut.
 
 **Arrêt immédiat** (bouton rouge) : plus aucune écriture après le clic. Une requête déjà partie va à son
 terme et sa valeur est relue.

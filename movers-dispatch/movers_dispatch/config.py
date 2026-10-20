@@ -101,6 +101,8 @@ class Config:
     worked_by_navigation: str = "workerid_systemuser"
     database: str = "movers_dispatch.db"
     max_items_per_run: int = 200
+    # supervised decisions in a row accepted without correction before Automatic mode is advisable
+    readiness_streak: int = 100
     path: Path | None = None
 
     def collaborator_for(self, systemuser_id: str) -> Collaborator | None:
@@ -162,6 +164,7 @@ def parse(raw: dict, path: Path | None = None) -> Config:
         worked_by_navigation=agent.get("worked_by_navigation", "workerid_systemuser"),
         database=db,
         max_items_per_run=int(agent.get("max_items_per_run", 200)),
+        readiness_streak=int(agent.get("readiness_streak", 100)),
         path=path,
     )
 

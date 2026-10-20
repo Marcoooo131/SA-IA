@@ -63,14 +63,37 @@ function renderRows(items) {
       <td data-label="Motif">${esc(i.reason)}</td>
       <td class="actions">${i.status === "a_valider" ? `
         <button class="small primary" data-approve="${esc(i.queueitem_id)}">Valider ${esc(i.worked_by_name)}</button>
+        ${pick(i.queueitem_id, "Corriger : le bon collègue est…")}
+        <button class="small" data-correct="${esc(i.queueitem_id)}">Corriger</button>
         <button class="small" data-reject="${esc(i.queueitem_id)}">Refuser</button>` : ""}${i.status === "validation_humaine" ? `
-        <select class="small" data-pick="${esc(i.queueitem_id)}" aria-label="Attribuer à">
-          <option value="">Attribuer à…</option>
-          ${collaborators.map((c) => `<option value="${esc(c.key)}">${esc(c.first_name)}</option>`).join("")}
-        </select>
+        ${pick(i.queueitem_id, "Attribuer à…")}
         <button class="small primary" data-assign="${esc(i.queueitem_id)}">Attribuer</button>` : ""}
         <button class="small" data-history="${esc(i.queueitem_id)}">Historique</button></td>
     </tr>`).join("");
+}
+
+function pick(id, label) {
+  return `<select class="small" data-pick="${esc(id)}" aria-label="${esc(label)}">
+    <option value="">${esc(label)}</option>
+    ${collaborators.map((c) => `<option value="${esc(c.key)}">${esc(c.first_name)}</option>`).join("")}
+  </select>`;
+}
+
+function renderSupervision(s) {
+  for (const k of ["acceptees", "corrigees", "refusees", "manuelles", "serie"]) $("s-" + k).textContent = s[k];
+  $("s-taux").textContent = s.taux_accord === null ? "–" : s.taux_accord + " %";
+  $("s-ready").className = "ready " + (s.pret ? "ok" : "wait");
+  $("s-ready").textContent = s.pret
+    ? `${s.serie} propositions validées d'affilée sans correction : le mode Automatique peut être envisagé (avec l'accord de votre responsable).`
+    : `Objectif avant le mode Automatique : ${s.objectif} propositions validées d'affilée sans correction. Série actuelle : ${s.serie}.`;
+  $("corrections").innerHTML = s.corrections.length ? s.corrections.slice(0, 30).map((c) => `
+    <tr><td data-label="Date"><code>${esc(c.ts.replace("T", " ").slice(0, 16))}</code></td>
+      <td data-label="Sujet">${esc(c.subject)}</td>
+      <td data-label="Proposé">${esc(c.propose)} <span class="muted">(${esc(c.case_propose)})</span></td>
+      <td data-label="Bonne réponse"><b>${esc(c.retenu)}</b></td>
+      <td data-label="Cases vus" class="muted">${esc((c.cases_vus || []).join(" · "))}</td>
+      <td data-label="Pourquoi">${esc(c.note)}</td></tr>`).join("")
+    : `<tr><td colspan="6" class="muted">Aucune correction pour l'instant.</td></tr>`;
 }
 
 function renderEvents(events) {
@@ -102,6 +125,7 @@ async function refresh() {
       const el = document.querySelector(`select[data-pick="${CSS.escape(id)}"]`);
       if (el) el.value = v;
     }
+    renderSupervision(await api("/api/supervision"));
     if (!$("events").dataset.item) renderEvents(await api("/api/events"));
   } catch (e) {
     $("banner").className = "banner err";
@@ -140,6 +164,14 @@ $("rows").addEventListener("click", async (ev) => {
       if (!confirm(`Écrire Worked By = ${name} dans le CRM pour cet élément ?`)) return;
       t.disabled = true;
       await api(`/api/items/${t.dataset.assign}/assign`, { collaborator: sel.value });
+    } else if (t.dataset.correct) {
+      const sel = document.querySelector(`select[data-pick="${CSS.escape(t.dataset.correct)}"]`);
+      if (!sel || !sel.value) { alert("Choisir d'abord le bon collègue dans la liste."); return; }
+      const name = sel.options[sel.selectedIndex].text;
+      const note = prompt(`Écrire Worked By = ${name} dans le CRM.\n\nPourquoi l'agent s'est-il trompé ? (facultatif, ex. « le Case Mover résolu est le bon », sans donnée client)`);
+      if (note === null) return;
+      t.disabled = true;
+      await api(`/api/items/${t.dataset.correct}/correct`, { collaborator: sel.value, note });
     } else if (t.dataset.reject) {
       const note = prompt("Motif du refus (facultatif, sans donnée client) :") ?? null;
       if (note === null) return;
