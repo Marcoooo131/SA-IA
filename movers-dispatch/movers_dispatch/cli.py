@@ -35,7 +35,11 @@ def connect(cfg: config_mod.Config):
 
         t = BrowserSessionTransport(cfg.connection, base / cfg.connection.browser_profile_dir)
         print("Une fenêtre de navigateur s'ouvre : connectez-vous à Dynamics 365 comme d'habitude.")
-        t.wait_for_login()
+        try:
+            t.wait_for_login()
+        except CrmError as e:
+            t.close()
+            sys.exit(f"{e}\nRelancer, puis se connecter dans la fenêtre Edge (5 minutes maximum).")
     else:
         sys.exit(f"connection.kind inconnu : {kind} (fake, msal ou browser).")
     return DataverseGateway(cfg, t), t
@@ -70,7 +74,7 @@ def cmd_discover(args) -> None:
             print(f"  ! Mettre connection.api_version = \"{versions[0]}\" puis relancer discover.")
             return
         print("\n== Contrôles préalables")
-        problems = gw.preflight()
+        problems = cfg.problems() + gw.preflight()
         print("  OK" if not problems else "\n".join(f"  ! {p}" for p in problems))
         print(f"\n== Files dont le nom contient « {args.text} »")
         for q in gw.find_queues(args.text):
@@ -136,7 +140,13 @@ def cmd_serve(args) -> None:
     gw, t = connect(cfg)
     agent = Agent(cfg, gw, Journal(cfg.database))
     token = secrets.token_urlsafe(24)
-    print(f"\nTableau de bord : http://127.0.0.1:{args.port}/?token={token}\n(lien valable pour cette session uniquement)\n")
+    url = f"http://127.0.0.1:{args.port}/?token={token}"
+    print(f"\nTableau de bord : {url}\n(lien valable pour cette session uniquement ; fermer cette fenêtre arrête l'agent)\n")
+    if args.open:
+        import threading
+        import webbrowser
+
+        threading.Timer(1.5, webbrowser.open, [url]).start()
     try:
         uvicorn.run(create_app(agent, token, actor=args.actor), host="127.0.0.1", port=args.port, log_level="warning")
     finally:
@@ -186,6 +196,7 @@ def main(argv: list[str] | None = None) -> None:
     sp = sub.add_parser("serve", help="tableau de bord local")
     common(sp)
     sp.add_argument("--port", type=int, default=8765)
+    sp.add_argument("--open", action="store_true", help="ouvre le tableau de bord dans le navigateur")
     sp.set_defaults(func=cmd_serve)
 
     sp = sub.add_parser("journal", help="exporte le journal (CSV ; séparateur point-virgule)")
