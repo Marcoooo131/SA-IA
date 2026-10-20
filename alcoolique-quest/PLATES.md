@@ -17,7 +17,11 @@ Ce que le moteur fait sur l'image (`src/plates/plateScene.ts`) :
 Le son et la musique restent calés sur la timeline (`src/core/timeline.ts`) : une image remplace un plan
 exactement sur ses bornes.
 
-## Images intégrées
+## Images intégrées (désactivées par défaut)
+
+La version 3D reste la version de référence. Pour réactiver les images, copier
+`public/plates/manifest.storyboard.json` en `public/plates/manifest.json`.
+
 
 La planche de 30 vignettes fournie a été découpée (`public/plates/01.jpg` … `25.jpg`, agrandies en 1600 px
 avec un léger renforcement) et les vignettes 1 à 25 couvrent toute la cinématique jusqu'au titre :

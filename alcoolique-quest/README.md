@@ -185,8 +185,8 @@ Les voix sont jouées dans la réverbération de cathédrale, légèrement ralen
 ### Plans en images de fond animées
 
 N'importe quel plan peut être remplacé par une image (matte painting) animée en 2,5D : mouvement de caméra,
-parallaxe, brume, rayons, eau, particules, aigle 3D composé devant. Les 25 plans de la planche fournie sont intégrés (titre resté en 3D) :
-voir **[PLATES.md](PLATES.md)** pour le manifeste, la liste des images à fournir et les prompts proposés.
+parallaxe, brume, rayons, eau, particules, aigle 3D composé devant. Désactivé par défaut (la version 3D est conservée). Le manifeste prêt à l'emploi des 25 vignettes
+est `public/plates/manifest.storyboard.json` : le copier en `manifest.json` pour l'activer. Voir **[PLATES.md](PLATES.md)** pour le manifeste, la liste des images à fournir et les prompts proposés.
 
 ### Ressources externes intégrées (licence CC0 1.0)
 
