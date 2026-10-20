@@ -1,0 +1,62 @@
+# Configuration de l'agent de dispatch Movers Emails — copier en `dispatch.toml` (non versionné).
+# Toutes les valeurs propres à l'environnement Sector Alarm se lisent dans le CRM avec :
+#   movers-dispatch discover -c dispatch.toml
+# Rien n'est deviné : tant qu'une valeur manque, aucune écriture n'est possible.
+
+[connection]
+# "browser" : fenêtre de navigateur où vous vous connectez vous-même à Dynamics 365 (aucun mot de passe
+#             transmis à l'agent). "msal" : application Entra ID enregistrée et approuvée par l'IT.
+#             "fake" : données fictives de démonstration.
+kind = "browser"
+environment_url = "https://VOTRE-ORGANISATION.crm4.dynamics.com"   # adresse affichée dans la barre du navigateur
+api_version = "v9.2"
+browser_channel = "msedge"          # Edge installé sur le poste ; vide = Chromium de Playwright
+browser_profile_dir = ".browser-profile"
+# msal uniquement :
+tenant_id = ""
+client_id = ""
+
+[source]
+# Une seule des trois clés. Le sous-tableau « Queue Item - Movers Emails » du tableau de bord
+# « Churn - Defence Main activities » est soit une file, soit une vue : `discover` liste les deux.
+queue_name = ""
+saved_view_id = ""
+user_view_id = ""
+
+[agent]
+default_mode = "simulation"          # "simulation" ou "supervise" ; "automatique" n'est jamais un défaut
+automatic_allowed = false            # à passer à true seulement après validation des règles par le métier
+worked_by_navigation = "workerid_systemuser"   # vérifié par `discover` dans les métadonnées
+database = "movers_dispatch.db"
+max_items_per_run = 200
+
+[cases]
+active_only = true                   # seuls les Cases actifs (statecode 0) sont pertinents
+# Plusieurs Cases pertinents avec le même Owner : "review" (validation humaine) ou "assign".
+multiple_same_owner = "review"
+# Règles « Case pertinent pour le processus Movers » — À DÉFINIR AVEC LE MÉTIER. Toutes doivent être vraies.
+# Noms logiques des colonnes vérifiés par `discover`. Exemples (à ne pas activer sans validation) :
+#   rules = [ { field = "casetypecode", in = [3] }, { field = "title", contains = "Movers" } ]
+rules = []
+
+# Les quatre collaborateurs. systemuser_id = identifiant de la fiche utilisateur Dynamics 365,
+# relevé avec `discover` (jamais déduit d'un nom). first_name = prénom attendu dans Worked By (contrôle).
+[[collaborators]]
+key = "kader"
+first_name = "Kader"
+systemuser_id = ""
+
+[[collaborators]]
+key = "estefania"
+first_name = "Estefania"
+systemuser_id = ""
+
+[[collaborators]]
+key = "marc-antoine"
+first_name = "Marc-Antoine"
+systemuser_id = ""
+
+[[collaborators]]
+key = "chloe"
+first_name = "Chloé"
+systemuser_id = ""

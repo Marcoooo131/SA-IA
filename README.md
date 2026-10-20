@@ -15,6 +15,10 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > Application Windows prête à lancer : [`sms-reminders-desktop/`](sms-reminders-desktop/README.md)
 > (`RelancesSMS.exe`, à télécharger dans les *Releases* du dépôt).
 
+> 📨 **Dispatch Movers Emails** (Python, distinct de l'application Movers) :
+> [`movers-dispatch/`](movers-dispatch/README.md) — agent Dynamics 365 qui renseigne *Worked By* sur la file
+> Movers Emails à partir de l'Owner du Case du compte client ; Simulation par défaut, Supervisé, Automatique.
+
 > 🎬 **Alcoolique Quest : La Sobriété Perdue** (Three.js, distinct de l'application Movers) :
 > [`alcoolique-quest/`](alcoolique-quest/README.md) — cinématique d'introduction en temps réel d'un RPG dark fantasy
 > humoristique (scènes 3D procédurales, musique et bruitages synthétisés, logo, écran d'accueil provisoire).
