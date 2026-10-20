@@ -3,10 +3,11 @@
 
 const STATUS_LABELS = {
   en_attente: "En attente", propose: "Proposé (simulation)", a_valider: "À valider", validation_humaine: "Validation humaine",
-  affecte: "Affecté", ignore: "Ignoré", refuse: "Refusé", erreur: "Erreur",
+  affecte: "Affecté", refuse: "Refusé", erreur: "Erreur",
 };
 const $ = (id) => document.getElementById(id);
 let last = null;
+let collaborators = [];
 
 function esc(v) {
   return String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -62,7 +63,12 @@ function renderRows(items) {
       <td data-label="Motif">${esc(i.reason)}</td>
       <td class="actions">${i.status === "a_valider" ? `
         <button class="small primary" data-approve="${esc(i.queueitem_id)}">Valider ${esc(i.worked_by_name)}</button>
-        <button class="small" data-reject="${esc(i.queueitem_id)}">Refuser</button>` : ""}
+        <button class="small" data-reject="${esc(i.queueitem_id)}">Refuser</button>` : ""}${i.status === "validation_humaine" ? `
+        <select class="small" data-pick="${esc(i.queueitem_id)}" aria-label="Attribuer à">
+          <option value="">Attribuer à…</option>
+          ${collaborators.map((c) => `<option value="${esc(c.key)}">${esc(c.first_name)}</option>`).join("")}
+        </select>
+        <button class="small primary" data-assign="${esc(i.queueitem_id)}">Attribuer</button>` : ""}
         <button class="small" data-history="${esc(i.queueitem_id)}">Historique</button></td>
     </tr>`).join("");
 }
@@ -77,6 +83,9 @@ async function refresh() {
   try {
     const s = await api("/api/state");
     last = s;
+    collaborators = s.config.collaborators;
+    // keep a drop-down choice while the list refreshes every 2 seconds
+    const picked = Object.fromEntries([...document.querySelectorAll("select[data-pick]")].map((el) => [el.dataset.pick, el.value]));
     for (const [k, v] of Object.entries(s.counters)) { const el = $("c-" + k); if (el) el.textContent = v; }
     const auto = document.querySelector("input[value=automatique]");
     auto.disabled = !s.config.automatic_allowed;
@@ -89,6 +98,10 @@ async function refresh() {
       : s.state.message;
     renderBanner(s);
     renderRows(s.items);
+    for (const [id, v] of Object.entries(picked)) {
+      const el = document.querySelector(`select[data-pick="${CSS.escape(id)}"]`);
+      if (el) el.value = v;
+    }
     if (!$("events").dataset.item) renderEvents(await api("/api/events"));
   } catch (e) {
     $("banner").className = "banner err";
@@ -120,6 +133,13 @@ $("rows").addEventListener("click", async (ev) => {
       if (!confirm(`Écrire Worked By = ${t.textContent.replace("Valider ", "")} dans Dynamics 365 ?`)) return;
       t.disabled = true;
       await api(`/api/items/${t.dataset.approve}/approve`, {});
+    } else if (t.dataset.assign) {
+      const sel = document.querySelector(`select[data-pick="${CSS.escape(t.dataset.assign)}"]`);
+      if (!sel || !sel.value) { alert("Choisir d'abord un collaborateur dans la liste."); return; }
+      const name = sel.options[sel.selectedIndex].text;
+      if (!confirm(`Écrire Worked By = ${name} dans le CRM pour cet élément ?`)) return;
+      t.disabled = true;
+      await api(`/api/items/${t.dataset.assign}/assign`, { collaborator: sel.value });
     } else if (t.dataset.reject) {
       const note = prompt("Motif du refus (facultatif, sans donnée client) :") ?? null;
       if (note === null) return;

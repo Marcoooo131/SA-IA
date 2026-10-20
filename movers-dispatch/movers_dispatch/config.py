@@ -64,11 +64,16 @@ class CaseRules:
 
 @dataclass(frozen=True)
 class Source:
-    """Where the Movers Emails items come from: a queue (by name) or a saved/personal view."""
+    """Where the Movers items come from: views by name (dashboard sub-grids), a queue, or a view id."""
 
+    view_names: tuple[str, ...] = ()   # e.g. "Queue Item - Movers - Emails", "Queue Item - Movers tasks"
     queue_name: str = ""
     saved_view_id: str = ""
     user_view_id: str = ""
+
+    @property
+    def configured(self) -> bool:
+        return bool(self.view_names or self.queue_name or self.saved_view_id or self.user_view_id)
 
 
 @dataclass(frozen=True)
@@ -111,8 +116,8 @@ class Config:
         if self.connection.kind != "fake":
             if not self.connection.environment_url.startswith("https://") or "SERVEUR-CRM" in self.connection.environment_url:
                 out.append("connection.environment_url doit être l'adresse https de l'environnement Dynamics 365.")
-            if not (self.source.queue_name or self.source.saved_view_id or self.source.user_view_id):
-                out.append("source : indiquer queue_name, saved_view_id ou user_view_id (voir `discover`).")
+            if not self.source.configured:
+                out.append("source : indiquer view_names, queue_name, saved_view_id ou user_view_id (voir `discover`).")
             if self.connection.kind == "msal" and not (self.connection.client_id and self.connection.tenant_id):
                 out.append("connection.client_id / tenant_id requis pour la connexion msal (application approuvée par l'IT).")
         return out
@@ -148,7 +153,7 @@ def parse(raw: dict, path: Path | None = None) -> Config:
         db = str(path.parent / db)
     return Config(
         connection=Connection(**raw.get("connection", {})),
-        source=Source(**raw.get("source", {})),
+        source=Source(**{**raw.get("source", {}), "view_names": tuple(raw.get("source", {}).get("view_names", ()))}),
         collaborators=collabs,
         cases=CaseRules(active_only=cases.get("active_only", False),
                         rules=tuple(_rule(r) for r in cases.get("rules", [])), multiple_same_owner=multiple),

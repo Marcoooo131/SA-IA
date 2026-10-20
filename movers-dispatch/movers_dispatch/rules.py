@@ -26,6 +26,8 @@ class Decision:
         return self.status is Status.ASSIGNED
 
 
+PREFERRED_STATES = (0, 2)   # statecode Active, Canceled — preferred over Resolved (1)
+
 STANDARD = {"title": lambda c: c.title, "ticketnumber": lambda c: c.number, "statecode": lambda c: c.state,
             "statuscode": lambda c: c.status}
 
@@ -44,6 +46,16 @@ def _label(case: Case) -> str:
 
 def decide(cfg: Config, item: QueueItem, email: Email | None, cases: list[Case] | None,
            users: dict[str, User]) -> Decision:
+    d = _decide(cfg, item, email, cases, users)
+    if d.status is Status.REVIEW and d.user is None and item.worker is not None:
+        # nothing to propose but someone already filled Worked By (by hand or with the drop-down): handled
+        return Decision(Status.SKIPPED, f"Worked By déjà renseigné ({item.worker.name or item.worker.id}) : "
+                        "élément déjà traité.", d.case, None, d.considered)
+    return d
+
+
+def _decide(cfg: Config, item: QueueItem, email: Email | None, cases: list[Case] | None,
+            users: dict[str, User]) -> Decision:
     """``users`` holds the systemuser records of the configured collaborators that own a case.
 
     Regarding = a case: the mail is attached to that very case, which is the one retained whatever its
@@ -51,7 +63,7 @@ def decide(cfg: Config, item: QueueItem, email: Email | None, cases: list[Case] 
     Regarding = an account: the account's cases filtered by the [cases] rules (1st mail).
     """
     if email is None or email.regarding is None:
-        return Decision(Status.REVIEW, "Mail sans champ Regarding : compte client inconnu.")
+        return Decision(Status.REVIEW, "Élément sans champ Regarding : compte client inconnu.")
     cases = cases or []
     considered = tuple(_label(c) for c in cases)
     if email.regarding.entity == "incident":
@@ -72,8 +84,14 @@ def decide(cfg: Config, item: QueueItem, email: Email | None, cases: list[Case] 
                         "Marc-Antoine ou Chloé.", considered=considered)
     owners = {c.owner.id.lower() for c in owned}
     if len(owners) > 1:
-        return Decision(Status.REVIEW, "Plusieurs Cases pertinents avec des Owners différents : choix impossible "
-                        "avec certitude.", considered=considered)
+        # Rule from the business: between cases of different collaborators, the Active or Canceled one
+        # wins over a Resolved one. Still several owners after that → a human decides.
+        preferred = [c for c in owned if c.state in PREFERRED_STATES]
+        if preferred and len({c.owner.id.lower() for c in preferred}) == 1:
+            owned = preferred
+        else:
+            return Decision(Status.REVIEW, "Plusieurs Cases pertinents (actifs ou annulés) avec des Owners différents : "
+                            "choix impossible avec certitude.", considered=considered)
     if len(owned) > 1 and cfg.cases.multiple_same_owner != "assign":
         return Decision(Status.REVIEW, "Plusieurs Cases pertinents (même Owner) : validation demandée par la "
                         "configuration.", considered=considered)

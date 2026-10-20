@@ -81,13 +81,30 @@ def test_supervised_approval_endpoint():
     assert r.status_code == 200 and r.json()["status"] == "affecte" and crm.writes == 1
 
 
+def test_dropdown_assignment_and_ignored_items_hidden():
+    c, agent, crm = client()
+    c.get("/?token=secret-token")
+    c.post("/api/run", json={"mode": "simulation"}, headers=H)
+    time.sleep(0.05)
+    wait(agent)
+    s = c.get("/api/state").json()
+    assert all(i["status"] != "ignore" for i in s["items"]) and s["counters"]["ignores"] == 1
+    assert {"key": "chloe", "first_name": "Chloé"} in s["config"]["collaborators"]
+    review = [i for i in s["items"] if "Owner non reconnu" in (i["reason"] or "")]
+    r = c.post(f"/api/items/{review[0]['queueitem_id']}/assign", json={"collaborator": "chloe"}, headers=H)
+    assert r.status_code == 200 and r.json()["status"] == "affecte" and r.json()["worked_by_name"] == "Chloé"
+    proposed = [i for i in s["items"] if i["status"] == "propose"][0]
+    assert c.post(f"/api/items/{proposed['queueitem_id']}/assign", json={"collaborator": "chloe"}, headers=H).status_code == 409
+
+
 def test_example_configuration_loads_and_blocks_writes(tmp_path):
     from pathlib import Path
 
     cfg = config_mod.load(Path(__file__).parent.parent / "config" / "dispatch.example.toml")
     assert cfg.default_mode.value == "simulation" and not cfg.automatic_allowed
     assert len(cfg.problems()) == 5        # four user ids + the CRM address
-    assert cfg.source.queue_name == "Movers" and not cfg.cases.active_only
+    assert cfg.source.view_names == ("Queue Item - Movers - Emails", "Queue Item - Movers tasks")
+    assert not cfg.cases.active_only
 
 
 def test_automatic_cannot_be_the_default(tmp_path):

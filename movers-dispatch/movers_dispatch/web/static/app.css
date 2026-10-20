@@ -30,7 +30,7 @@ button { font: inherit; border-radius: 6px; padding: 7px 14px; border: 1px solid
 button:disabled { opacity: .5; cursor: not-allowed; }
 button.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 button.danger { background: var(--red); color: #fff; border-color: var(--red); font-weight: 700; }
-button.small { padding: 3px 9px; font-size: 13px; }
+button.small, select.small { padding: 3px 9px; font-size: 13px; }
 .counters { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 14px; }
 .counters div { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; }
 .counters b { font-size: 24px; font-variant-numeric: tabular-nums; }

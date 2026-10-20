@@ -20,6 +20,8 @@ ANNOTATIONS = 'odata.include-annotations="*"'
 LOOKUP_NAME = "@OData.Community.Display.V1.FormattedValue"
 LOOKUP_ENTITY = "@Microsoft.Dynamics.CRM.lookuplogicalname"
 EMAIL_OTC = 4202          # objecttypecode of the email activity
+TASK_OTC = 4212           # objecttypecode of the task activity
+ACTIVITY_SETS = {"email": "emails", "task": "tasks"}   # activities the agent handles → Web API entity sets
 _GUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
 
@@ -65,7 +67,7 @@ class Gateway(Protocol):
     def preflight(self) -> list[str]: ...
     def list_queue_items(self) -> list[QueueItem]: ...
     def get_queue_item(self, queueitem_id: str) -> QueueItem: ...
-    def get_email(self, email_id: str) -> Email: ...
+    def get_activity(self, entity: str, activity_id: str) -> Email: ...
     def list_cases(self, account_id: str, extra_fields: tuple[str, ...]) -> list[Case]: ...
     def get_case(self, case_id: str, extra_fields: tuple[str, ...]) -> Case: ...
     def get_user(self, systemuser_id: str) -> User: ...
@@ -149,9 +151,29 @@ class DataverseGateway:
                 problems.append(f"Règle de Case : la colonne incident.{f} n'existe pas.")
         try:
             self.queue_id()
+            self.views()
         except CrmError as e:
             problems.append(str(e))
         return problems
+
+    def views(self) -> list[dict]:
+        """Resolves each configured view name to exactly one system view, else one personal view."""
+        if getattr(self, "_views", None) is None:
+            out = []
+            for name in self.cfg.source.view_names:
+                flt = f"returnedtypecode eq 'queueitem' and name eq '{_q(name)}'"
+                rows = self._get("savedqueries", "Recherche de vue", {"$select": "savedqueryid,name", "$filter": flt}).get("value", [])
+                if len(rows) == 1:
+                    out.append({"name": name, "param": "savedQuery", "id": rows[0]["savedqueryid"].lower()})
+                    continue
+                mine = self._get("userqueries", "Recherche de vue personnelle", {"$select": "userqueryid,name", "$filter": flt}).get("value", [])
+                if len(rows) == 0 and len(mine) == 1:
+                    out.append({"name": name, "param": "userQuery", "id": mine[0]["userqueryid"].lower()})
+                    continue
+                raise CrmError(f"Vue « {name} » : {len(rows) + len(mine)} résultat(s), une seule attendue "
+                               "(vérifier le nom exact avec `discover`).")
+            self._views = out
+        return self._views
 
     def queue_id(self) -> str | None:
         src = self.cfg.source
@@ -173,25 +195,41 @@ class DataverseGateway:
     def list_queue_items(self) -> list[QueueItem]:
         src = self.cfg.source
         select = "queueitemid,title,objecttypecode,_objectid_value,_workerid_value,modifiedon,statecode"
-        if src.saved_view_id or src.user_view_id:
+        if src.view_names:
+            rows = []
+            for v in self.views():
+                rows += self._get_all("queueitems", f"Lecture de la vue « {v['name']} »", {v["param"]: v["id"]})
+        elif src.saved_view_id or src.user_view_id:
             params = {"savedQuery": guid(src.saved_view_id)} if src.saved_view_id else {"userQuery": guid(src.user_view_id)}
-            rows = self._get_all("queueitems", "Lecture de la vue Movers Emails", params)
+            rows = self._get_all("queueitems", "Lecture de la vue Movers", params)
         else:
             params = {"$select": select, "$orderby": "createdon asc",
-                      "$filter": f"_queueid_value eq {self.queue_id()} and statecode eq 0 and objecttypecode eq {EMAIL_OTC}"}
-            rows = self._get_all("queueitems", "Lecture de la file Movers Emails", params)
-        items = [self._item(r) for r in rows]
-        # a view may carry other activity types or omit columns: keep emails only, re-read when needed
-        return [i for i in items if i.object is None or i.object.entity in ("email", "")]
+                      "$filter": f"_queueid_value eq {self.queue_id()} and statecode eq 0 and "
+                                 f"(objecttypecode eq {EMAIL_OTC} or objecttypecode eq {TASK_OTC})"}
+            rows = self._get_all("queueitems", "Lecture de la file Movers", params)
+        items, seen = [], set()
+        for i in (self._item(r) for r in rows):
+            # the same item can appear in two views; a view may carry other activity types or omit columns
+            if i.id not in seen and (i.object is None or i.object.entity in (*ACTIVITY_SETS, "")):
+                seen.add(i.id)
+                items.append(i)
+        return items
 
     def get_queue_item(self, queueitem_id: str) -> QueueItem:
         row = self._get(f"queueitems({guid(queueitem_id)})", "Lecture du Queue Item",
                         {"$select": "queueitemid,title,_objectid_value,_workerid_value,modifiedon,statecode"})
         return self._item(row)
 
+    def get_activity(self, entity: str, activity_id: str) -> Email:
+        if entity not in ACTIVITY_SETS:
+            raise CrmError(f"Type d'activité non pris en charge : {entity}")
+        row = self._get(f"{ACTIVITY_SETS[entity]}({guid(activity_id)})", "Lecture du mail" if entity == "email" else "Lecture de la tâche",
+                        {"$select": "activityid,subject,_regardingobjectid_value"})
+        return Email(id=row["activityid"].lower(), subject=row.get("subject") or "", regarding=_lookup(row, "regardingobjectid"),
+                     kind=entity)
+
     def get_email(self, email_id: str) -> Email:
-        row = self._get(f"emails({guid(email_id)})", "Lecture du mail", {"$select": "activityid,subject,_regardingobjectid_value"})
-        return Email(id=row["activityid"].lower(), subject=row.get("subject") or "", regarding=_lookup(row, "regardingobjectid"))
+        return self.get_activity("email", email_id)
 
     _CASE_BASE = ["incidentid", "ticketnumber", "title", "statecode", "statuscode", "_ownerid_value",
                   "_customerid_value", "createdon"]

@@ -81,7 +81,13 @@ def cmd_discover(args) -> None:
             print(f"  queue_name = \"{q['name']}\"   (queueid {q['queueid']})")
         print(f"\n== Vues de Queue Items dont le nom contient « {args.text} »")
         for v in gw.find_views(args.text):
-            print(f"  {v['type']} = \"{v['id']}\"   ({v['name']})")
+            print(f"  \"{v['name']}\"   ({'vue système' if v['type'] == 'saved_view_id' else 'vue personnelle'})")
+        if cfg.source.view_names:
+            try:
+                for v in gw.views():
+                    print(f"  OK : « {v['name']} » trouvée")
+            except CrmError as e:
+                print(f"  ! {e}")
         print("\n== Utilisateurs Dynamics 365 par prénom (à reporter dans [[collaborators]] après vérification)")
         for c in cfg.collaborators:
             rows = gw.find_users(c.first_name)

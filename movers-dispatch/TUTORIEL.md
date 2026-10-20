@@ -46,7 +46,7 @@ minutes. Attendez le message **« Installation terminée »**, puis appuyez sur 
 Double-cliquez sur **`2-demo.bat`**. Le tableau de bord s'ouvre dans votre navigateur.
 
 1. Laissez **Simulation** coché et cliquez sur **Lancer le traitement**.
-2. Le tableau se remplit de 9 mails **inventés**. Pour chacun, il indique le Case trouvé, l'Owner et le
+2. Le tableau se remplit de 10 mails et tâches **inventés**. Pour chacun, il indique le Case trouvé, l'Owner et le
    prénom qui serait mis dans *Worked By*, ou la raison pour laquelle l'agent préfère vous laisser décider.
 3. Essayez **Supervisé**, puis **Lancer le traitement** : des boutons **Valider Estefania**, **Valider Kader**…
    apparaissent. C'est ce que vous ferez plus tard sur les vrais mails.
@@ -134,7 +134,15 @@ Quand la Simulation vous paraît fiable :
 4. Vérifiez les premiers dans le CRM : ouvrez le mail, puis **…** → **Queue Item Details** → *Worked By*.
 
 Les lignes **Validation humaine** sont les cas où l'agent n'est pas sûr : plusieurs Cases, Owner hors des
-quatre collègues, pas de compte… Traitez-les à la main comme avant.
+quatre collègues, pas de compte… Sur ces lignes :
+
+1. choisissez le collègue dans la liste **Attribuer à…** ;
+2. cliquez sur **Attribuer**, puis confirmez.
+
+L'agent écrit *Worked By* et vérifie. Il refuse toujours de remplacer un *Worked By* déjà rempli.
+
+Les mails et tâches **déjà correctement renseignés** ne sont pas affichés : ils sont seulement comptés
+dans la case « ignorés ».
 
 Le gros bouton rouge **Arrêt immédiat** stoppe tout : plus aucune écriture après le clic.
 

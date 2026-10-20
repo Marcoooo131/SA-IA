@@ -12,7 +12,7 @@ import logging
 import threading
 from dataclasses import dataclass, field
 
-from .config import Config
+from .config import Config, normalize_name
 from .dataverse import ConcurrentModification, CrmError, Gateway, SessionExpired, UncertainWrite
 from .journal import Journal
 from .models import Mode, QueueItem, Status, User
@@ -74,9 +74,9 @@ class Agent:
     # ------------------------------------------------------------------ reading
     def evaluate(self, gw: Gateway, queueitem_id: str, users: dict[str, User]) -> Evaluation:
         item = gw.get_queue_item(queueitem_id)
-        if item.object is None or item.object.entity != "email":
-            return Evaluation(item, Decision(Status.REVIEW, "Le Queue Item ne porte pas un mail."))
-        email = gw.get_email(item.object.id)
+        if item.object is None or item.object.entity not in ("email", "task"):
+            return Evaluation(item, Decision(Status.REVIEW, "Le Queue Item ne porte ni un mail ni une tâche."))
+        email = gw.get_activity(item.object.entity, item.object.id)
         ev = Evaluation(item, Decision(Status.REVIEW, ""), email_id=email.id, subject=email.subject)
         cases = None
         if email.regarding and email.regarding.entity == "account":
@@ -111,7 +111,8 @@ class Agent:
         if self.stop_event.is_set():
             raise Stopped("Arrêt demandé avant l'enregistrement.")
         user = ev.decision.user
-        detail = {"case": ev.decision.case.number, "systemuserid": user.id, "worked_by": user.first_name}
+        case_no = ev.decision.case.number if ev.decision.case else None
+        detail = {"case": case_no, "systemuserid": user.id, "worked_by": user.first_name}
         self.journal.event(run_id, ev.item.id, "ecriture_worked_by", detail, actor)
         try:
             self.gw.set_worked_by(ev.item, user.id)
@@ -131,7 +132,8 @@ class Agent:
             self._record(run_id, ev, Status.ERROR, f"Vérification échouée : Worked By relu = {found}.", mode)
             self.journal.event(run_id, ev.item.id, "verification_echouee", {"relu": found}, actor)
             raise Stopped("Worked By relu différent de la valeur enregistrée.")
-        self._record(run_id, ev, Status.ASSIGNED, f"Worked By = {user.first_name} (Case {ev.decision.case.number}), vérifié.", mode)
+        origin = f"Case {case_no}" if case_no else f"choix manuel de {actor}"
+        self._record(run_id, ev, Status.ASSIGNED, f"Worked By = {user.first_name} ({origin}), vérifié.", mode)
         self.journal.event(run_id, ev.item.id, "worked_by_verifie", detail, actor)
 
     def _writes_blocked(self) -> list[str]:
@@ -239,6 +241,42 @@ class Agent:
                 return self.journal.item(queueitem_id)
             try:
                 self._write(None, ev, actor, Mode.SUPERVISED.value)
+            except Stopped:
+                pass
+            return self.journal.item(queueitem_id)
+        finally:
+            self.busy.release()
+
+    def assign_manually(self, queueitem_id: str, collaborator_key: str, actor: str) -> dict:
+        """Dashboard drop-down on an item in human review (no case owned by one of the four, ambiguity…):
+        a person picks the collaborator; the agent re-reads the item, never overwrites a Worked By,
+        writes once and reads back."""
+        saved = self.journal.item(queueitem_id)
+        if not saved or saved["status"] != Status.REVIEW.value:
+            raise RunBlocked("Seuls les éléments en validation humaine s'attribuent à la main.")
+        collab = next((c for c in self.cfg.collaborators if c.key == collaborator_key), None)
+        if collab is None:
+            raise RunBlocked("Collaborateur inconnu.")
+        if not self.busy.acquire(timeout=30):
+            raise RunBlocked("Un traitement est en cours, réessayer dans un instant.")
+        self.stop_event.clear()
+        try:
+            problems = self._writes_blocked()
+            if problems:
+                raise RunBlocked("Contrôles préalables non satisfaits : " + " ; ".join(problems))
+            ev = self.evaluate(self.gw, queueitem_id, {})
+            if ev.item.worker is not None:
+                raise RunBlocked(f"Worked By déjà renseigné ({ev.item.worker.name or ev.item.worker.id}) : jamais écrasé.")
+            user = self.gw.get_user(collab.systemuser_id)
+            if user.disabled:
+                raise RunBlocked(f"{user.full_name} est inactif dans le CRM.")
+            if normalize_name(user.first_name) != normalize_name(collab.first_name):
+                raise RunBlocked(f"Prénom CRM « {user.first_name} » différent du prénom configuré « {collab.first_name} ».")
+            self.journal.event(None, queueitem_id, "attribution_manuelle",
+                               {"worked_by": collab.first_name, "motif_initial": saved["reason"]}, actor)
+            ev.decision = Decision(Status.ASSIGNED, "", None, user, ev.decision.considered)
+            try:
+                self._write(None, ev, actor, "manuel")
             except Stopped:
                 pass
             return self.journal.item(queueitem_id)

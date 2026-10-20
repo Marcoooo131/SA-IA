@@ -158,12 +158,64 @@ def test_recorded_mail_2_regarding_is_the_movers_case():
     assert r["account_name"] == "Client fictif"
 
 
-def test_same_account_seen_from_account_regarding_is_ambiguous():
-    """Same cases as the 2nd mail but Regarding = account: two Movers cases, two owners → human review."""
+def test_different_owners_the_active_or_canceled_case_wins_over_resolved():
+    """Business rule: same cases as the 2nd mail but Regarding = account — Resolved (Estefania) vs
+    Canceled (Kader): the Canceled one wins. Same with Active vs Resolved."""
     agent, crm = make(automatic_allowed=True)
-    qid = crm.add("a", "s", "c", [("CAS-167719", "estefania", 1, "Mover"), ("CAS-163699", "kader", 2, "MOVERS")])
+    q1 = crm.add("a", "s", "c", [("CAS-167719", "estefania", 1, "Mover"), ("CAS-163699", "kader", 2, "MOVERS")])
+    q2 = crm.add("b", "s", "c", [("CAS-1", "chloe", 0), ("CAS-2", "estefania", 1)])
     agent.run(Mode.AUTOMATIC, confirm_automatic=True)
+    assert row(agent, q1)["worked_by_name"] == "Kader" and row(agent, q1)["case_number"] == "CAS-163699"
+    assert row(agent, q2)["worked_by_name"] == "Chloé" and row(agent, q2)["status"] == Status.ASSIGNED.value
+
+
+def test_different_owners_both_active_or_canceled_stay_ambiguous():
+    agent, crm = make(automatic_allowed=True)
+    q1 = crm.add("a", "s", "c", [("CAS-1", "chloe", 0), ("CAS-2", "estefania", 2)])
+    q2 = crm.add("b", "s", "c", [("CAS-3", "chloe", 1), ("CAS-4", "estefania", 1)])   # both Resolved
+    agent.run(Mode.AUTOMATIC, confirm_automatic=True)
+    assert row(agent, q1)["status"] == row(agent, q2)["status"] == Status.REVIEW.value and crm.writes == 0
+
+
+def test_tasks_of_the_movers_tasks_view_are_processed_like_mails():
+    agent, crm = make(automatic_allowed=True)
+    qid = crm.add("t", "Rappeler le client", "c", [("CAS-9", "marc-antoine", 0, "MOVERS")], kind="task")
+    agent.run(Mode.AUTOMATIC, confirm_automatic=True)
+    assert row(agent, qid)["worked_by_name"] == "Marc-Antoine" and row(agent, qid)["status"] == Status.ASSIGNED.value
+
+
+def test_manual_assignment_from_the_dropdown():
+    agent, crm = make()
+    qid = crm.add("a", "s", "c", [("CAS-1", "autre", 0)])            # owner is not one of the four
+    agent.run(Mode.SIMULATION)
     assert row(agent, qid)["status"] == Status.REVIEW.value and crm.writes == 0
+    r = agent.assign_manually(qid, "chloe", "marc-antoine.b")
+    assert r["status"] == Status.ASSIGNED.value and "choix manuel de marc-antoine.b" in r["reason"]
+    assert crm.items[qid].worker.id == USERS["chloe"].id and crm.writes == 1
+    assert any(e["action"] == "attribution_manuelle" and e["actor"] == "marc-antoine.b" for e in agent.journal.events(qid))
+    agent.run(Mode.SIMULATION)                        # next pass: stays assigned, no drop-down again
+    assert row(agent, qid)["status"] == Status.ASSIGNED.value and crm.writes == 1
+
+
+def test_worked_by_filled_elsewhere_without_proposal_is_ignored():
+    agent, crm = make()
+    qid = crm.add("a", "s", "c", [("CAS-1", "autre", 0)], worker="kader")   # filled by hand in the CRM
+    agent.run(Mode.SIMULATION)
+    assert row(agent, qid)["status"] == Status.SKIPPED.value
+
+
+def test_manual_assignment_never_overwrites_and_needs_review_status():
+    agent, crm = make()
+    other = crm.add("a", "s", "c", [("CAS-1", "kader", 0)], worker="chloe")   # review: Worked By set by someone else
+    proposed = crm.add("b", "s", "c", [("CAS-2", "kader", 0)])                # simulation proposal, not review
+    agent.run(Mode.SIMULATION)
+    with pytest.raises(RunBlocked, match="jamais écrasé"):
+        agent.assign_manually(other, "kader", "local")
+    with pytest.raises(RunBlocked, match="validation humaine"):
+        agent.assign_manually(proposed, "kader", "local")
+    with pytest.raises(RunBlocked, match="inconnu"):
+        agent.assign_manually(other, "personne", "local")
+    assert crm.writes == 0
 
 
 def test_regarding_case_owned_by_someone_else_is_not_assigned():

@@ -30,7 +30,7 @@ USERS = {
 
 def demo_config(database: str = ":memory:", **agent) -> Config:
     return Config(
-        connection=Connection(kind="fake"), source=Source(queue_name="Movers"),
+        connection=Connection(kind="fake"), source=Source(view_names=("Queue Item - Movers - Emails", "Queue Item - Movers tasks")),
         collaborators=tuple(Collaborator(k, u.first_name, u.id) for k, u in USERS.items() if k != "autre"),
         cases=CaseRules(rules=(CaseRule("title", contains="mover"),)), database=database, **agent)
 
@@ -57,12 +57,13 @@ class FakeCrm:
 
     # --- building data
     def add(self, label: str, subject: str, account: str | None, cases: list[tuple],
-            worker: str | None = None, regarding_entity: str = "account", regarding_case: int = 0) -> str:
+            worker: str | None = None, regarding_entity: str = "account", regarding_case: int = 0,
+            kind: str = "email") -> str:
         """cases: (ticket number, owner key in USERS or "team", statecode[, title — default "Mover"]).
         regarding_entity "incident": the mail's Regarding is the case at index ``regarding_case``."""
         qid, eid, aid = gid(f"qi/{label}"), gid(f"em/{label}"), gid(f"acc/{label}")
         w = USERS[worker] if worker else None
-        self.items[qid] = QueueItem(qid, subject, Lookup(eid, "email", subject),
+        self.items[qid] = QueueItem(qid, subject, Lookup(eid, kind, subject),
                                     Lookup(w.id, "systemuser", w.full_name) if w else None, f'W/"{next(self._etags)}"')
         rows = []
         for n, (number, owner, state, *title) in enumerate(cases):
@@ -78,7 +79,7 @@ class FakeCrm:
             regarding = Lookup(c.id, "incident", c.title)
         else:
             regarding = Lookup(aid, regarding_entity, account) if account else None
-        self.emails[eid] = Email(eid, subject, regarding)
+        self.emails[eid] = Email(eid, subject, regarding, kind)
         return qid
 
     # --- Gateway
@@ -96,9 +97,9 @@ class FakeCrm:
             raise CrmError("Lecture du Queue Item : HTTP 404", 404)
         return self.items[queueitem_id]
 
-    def get_email(self, email_id: str) -> Email:
+    def get_activity(self, entity: str, activity_id: str) -> Email:
         self._check()
-        return self.emails[email_id]
+        return self.emails[activity_id]
 
     def list_cases(self, account_id: str, extra_fields) -> list[Case]:
         self._check()
@@ -148,4 +149,6 @@ def demo_crm() -> FakeCrm:
     crm.add("7", "Déménagement (démo 7)", "Client Démo G", [("CAS-1009", "autre", 0), ("CAS-1010", "team", 0)])
     crm.add("8", "Déménagement (démo 8)", "Client Démo H", [("CAS-1011", "estefania", 0)], worker="estefania")
     crm.add("9", "Mail sans compte (démo 9)", None, [])
+    crm.add("10", "Rappeler le client (tâche démo 10)", "Client Démo I", [("CAS-1012", "marc-antoine", 0, "MOVERS")],
+            kind="task")
     return crm

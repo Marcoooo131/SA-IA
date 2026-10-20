@@ -20,10 +20,12 @@ tenant_id = ""
 client_id = ""
 
 [source]
-# Une seule des trois clés. Dans la vidéo, le Queue Item Detail des mails indique la file « Movers ».
-# Le sous-tableau « Queue Item - Movers - Emails » du tableau de bord « Churn - Defence Main activites »
-# est une vue sur cette file : on peut aussi la désigner (`discover` liste les vues et leur identifiant).
-queue_name = "Movers"
+# Les éléments traités sont ceux des deux sous-tableaux Movers du tableau de bord
+# « Churn - Defence Main activites », désignés par le nom exact de leur vue (`discover` les liste).
+# Un élément présent dans les deux vues n'est traité qu'une fois. Mails et tâches sont pris en charge.
+view_names = ["Queue Item - Movers - Emails", "Queue Item - Movers tasks"]
+# Autres possibilités (laisser vides si view_names est renseigné) : toute la file, ou une vue par identifiant.
+queue_name = ""
 saved_view_id = ""
 user_view_id = ""
 
