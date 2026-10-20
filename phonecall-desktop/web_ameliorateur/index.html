@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Nothing leaves the browser: no request to any other site, scripts and data only from this site -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; style-src 'self'; img-src 'self' data:; form-action 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<title>Améliorateur Phone Call</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo-dot"></span>Améliorateur Phone Call <small>transcription → Phone Call, sans IA</small></div>
+  <div id="engine-status" class="badge loading">Chargement…</div>
+</header>
+
+<p class="privacy" role="note">
+  <strong>Confidentialité :</strong> la mise en forme est faite <strong>dans votre navigateur</strong>, par un script.
+  La transcription n'est envoyée à aucun serveur, n'est pas enregistrée et disparaît dès que vous cliquez
+  « Effacer », rechargez ou fermez la page. Aucune IA, aucun cookie.
+</p>
+
+<main class="layout">
+  <section class="panel">
+    <h2>1. Transcription</h2>
+    <p class="hint">Collez la transcription (Ctrl+V), une ligne par prise de parole :
+      « [00:06] Interlocuteur : … » / « Conseiller : … ».</p>
+    <textarea id="input" spellcheck="false" aria-label="Transcription"
+      placeholder="[00:03] Conseiller : Sector Alarm, bonjour&#10;[00:06] Interlocuteur : bonjour, je vous appelle parce que…"></textarea>
+    <div class="row">
+      <label for="variant">Type d'appel</label>
+      <select id="variant">
+        <option value="">Détection automatique</option>
+        <option value="movers">Movers</option>
+        <option value="frontline">Frontline</option>
+        <option value="autre">Autre appel</option>
+      </select>
+      <button id="run" class="primary" disabled>Mettre en forme</button>
+      <button id="clear" class="ghost">Effacer</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>2. Phone Call</h2>
+    <p id="error" class="error" role="alert" hidden></p>
+    <textarea id="output" readonly aria-label="Phone Call" placeholder="La Phone Call mise en forme s'affichera ici."></textarea>
+    <ul id="flags" class="flags"></ul>
+    <div class="row">
+      <button id="copy" class="primary" disabled>Copier la Phone Call</button>
+    </div>
+    <p class="hint">Relisez avant de coller dans le CRM : les points « à vérifier » sont listés ci-dessus.</p>
+  </section>
+</main>
+
+<script src="pyodide/pyodide.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

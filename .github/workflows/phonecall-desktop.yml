@@ -22,7 +22,13 @@ jobs:
         with: { python-version: "3.12" }
       - run: pip install -e ".[dev]" -e ../phonecall-agent
       - run: python -m playwright install --with-deps chromium
+      - name: Pyodide (web « Améliorateur Phone Call », browser test)
+        run: |
+          curl -fsSL -o /tmp/pyodide.tar.bz2 https://github.com/pyodide/pyodide/releases/download/0.26.4/pyodide-core-0.26.4.tar.bz2
+          echo "70dba93432f3653155998cc9001f9c200182343c2f95165a2f9e9e4673fa35e8  /tmp/pyodide.tar.bz2" | sha256sum -c -
+          mkdir -p /tmp/pyodide-core && tar -xjf /tmp/pyodide.tar.bz2 -C /tmp/pyodide-core
       - run: python -m pytest
+        env: { PCD_PYODIDE_DIR: /tmp/pyodide-core/pyodide }
 
   stt-benchmark:
     runs-on: ubuntu-latest

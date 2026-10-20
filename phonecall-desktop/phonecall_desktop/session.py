@@ -524,20 +524,17 @@ class SessionController:
         """Phone Call from any transcript (current call, or pasted), in the team format, by a script
         (no AI, no network). Nothing is stored."""
         from .notes.business import load_categories
-        from .notes.formatter import facts_path, format_phone_call, load_facts
-        from .notes.template import CallContext, load_template, template_path
-        from .transcript.parse import parse_transcript_text
+        from .notes.formatter import facts_path, format_transcript_text, load_facts
+        from .notes.template import load_template, template_path
 
-        enhancer = TextEnhancer.from_settings(self.settings.text_corrections, self.settings.text_enhancer)
-        segments = parse_transcript_text(text[:200_000], enhancer)
-        if not segments:
+        result = format_transcript_text(
+            text, load_template(template_path(self.settings)), load_facts(facts_path(self.settings)),
+            load_categories(self.settings), variant,
+            TextEnhancer.from_settings(self.settings.text_corrections, self.settings.text_enhancer),
+            self.settings.agent_name)
+        if result is None:
             raise AppError(ErrorCode.EMPTY_TRANSCRIPT)
-        ctx = CallContext(variant=variant, duration_s=int(max(s.t_end for s in segments)),
-                          agent_name=self.settings.agent_name)
-        note = format_phone_call(segments, ctx, load_template(template_path(self.settings)),
-                                 load_categories(self.settings), load_facts(facts_path(self.settings)))
-        return {"text": note.text, "flags": note.flags, "points_to_verify": note.points_to_verify, "engine": "script",
-                "cost_usd": note.cost_usd, "segments": len(segments)}
+        return result
 
     def transcript_text(self, call_id: str | None = None) -> str:
         call = self._call(call_id) if call_id else self.current
