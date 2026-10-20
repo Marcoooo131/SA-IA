@@ -197,7 +197,7 @@ export function createPlainScene(quality: Quality): CineScene {
   scene.add(farForest(farPts.filter((p) => p.x <= -150 || p.x >= 250), 5, true));
   // sous-bois, buissons, fougères, fleurs, roseaux
   scene.add(bushes(scatter(hi ? 1400 : 600, area, (x, z) => (Math.abs(x - roadX(z)) < 6 || fieldAt(x, z) ? 0 : 0.15 + dens(x, z) * 0.8) * (near(x, z) ? 1 : 0.2), ground, [0.6, 1.4], 31), 31));
-  scene.add(ferns(scatter(hi ? 900 : 400, { x0: -120, x1: 60, z0: -120, z1: 20 }, (x, z) => 0.1 + dens(x, z) + (Math.hypot(x + 22, z + 40) < 18 ? 0.8 : 0), ground, [0.7, 1.3], 32), 32));
+  scene.add(ferns(scatter(hi ? 900 : 400, { x0: -120, x1: 60, z0: -120, z1: 20 }, (x, z) => 0.05 + dens(x, z) + (Math.hypot(x + 22, z + 40) < 14 ? 0.5 : 0), ground, [0.45, 0.8], 32), 32));
   const flowerDens = (x: number, z: number) => {
     if (Math.abs(x - roadX(z)) < 3.5 || fieldAt(x, z) || dens(x, z) > 0.4) return 0;
     const massif = smoothstep(0.0, 0.5, fbm2(x * 0.02 + 5, z * 0.02));

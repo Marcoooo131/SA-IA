@@ -5,9 +5,10 @@ un aigle s'éveille, traverse la mer, les nuages et les montagnes, survole une p
 cité gothique ; cinq héros combattent ; un Colosse se dresse ; la musique se tait… et dans une cathédrale
 abandonnée, la Grande Prêtresse brandit la relique la plus puissante de l'univers : **une bouteille d'eau**.
 
-Tout est calculé dans le navigateur (Three.js / WebGL / Web Audio) : **aucune image, aucun modèle 3D,
-aucun fichier audio externe**. Les décors, personnages, textures, effets, la musique et les bruitages
-sont générés par le code (voir « Ressources » et « Limites » plus bas).
+Tout est calculé dans le navigateur (Three.js / WebGL / Web Audio). Les décors, personnages, la plupart
+des textures, les effets, la musique et les bruitages sont générés par le code ; l'éclairage et le relief
+des matériaux s'appuient sur des **ressources CC0 réellement intégrées** (HDRI Poly Haven, normal maps,
+texture de nuage — voir « Ressources » et « Limites » plus bas).
 
 ---
 
@@ -179,7 +180,23 @@ Les voix sont jouées dans la réverbération de cathédrale, légèrement ralen
 
 ---
 
-## 5. Ressources visuelles (toutes générées)
+## 5. Ressources visuelles
+
+### Ressources externes intégrées (licence CC0 1.0)
+
+Les sites de ressources (Poly Haven, ambientCG…) ne sont pas joignables depuis l'environnement de
+développement ; les ressources proviennent donc du paquet npm **`@pmndrs/assets`** (CC0, auto-hébergé,
+chargé par import dynamique au démarrage — `src/world/assets.ts`) :
+
+| Ressource | Usage |
+|---|---|
+| HDRI `park`, `sky`, `dawn`, `night`… (Poly Haven, 512 px, EXR) | éclairage par l'image (lumière du ciel, reflets de l'eau, du métal et des vitres) selon la scène |
+| Normal maps tuilables (roche, pavés, planches, écorce, enduit, tuiles, tissu, terre, eau) | relief des matériaux ; roches et terrains en **projection triplanaire** (sans UV, sans étirement) |
+| Texture de nuage | cumulus, banc de nuages, fumées de cheminée |
+
+Si une ressource ne se charge pas, les matériaux retombent sur le relief procédural (aucun écran blanc).
+
+### Ressources générées par le code
 
 | Élément | Technique |
 |---|---|
@@ -187,8 +204,11 @@ Les voix sont jouées dans la réverbération de cathédrale, légèrement ralen
 | Mer | vagues de Gerstner (8 trains) en espace monde, Fresnel, reflets solaires, écume ; maillage qui suit la caméra |
 | Relief | champs de hauteurs (bruit simplex, crêtes), couleurs par altitude/pente, **détail rocheux et relief procéduraux en espace monde** (sans étirement sur les parois) |
 | Ciel, nuages, brume | dôme atmosphérique (soleil, halo, voile nuageux), volutes, nappes de brume animées, rayons volumétriques |
-| Plaine | 60 000 brins d'herbe animés par le vent (translucidité en contre-jour), arbres morts récursifs, menhir runique, squelette colossal, carcasses de machines de guerre |
-| Cité | remparts à 22 tours, porte monumentale, statues de 36 m, ~1 700 maisons instanciées (fenêtres éclairées), avenue marchande, forges, canal et ponts, deux cathédrales, tour de 300 m, 520 silhouettes animées |
+| Plaine | collines, rivière (eau réfléchissante animée), chemin de terre à ornières, champs de blé et labours, murets de pierres sèches, clôtures ; jusqu'à 110 000 brins d'herbe, 16 000 fleurs sauvages, 26 000 épis de blé, buissons, fougères, roseaux, animés par le vent |
+| Arbres | chênes, bouleaux, sapins, peupliers, saules, arbres morts : branches récursives, cartes de feuillage aux normales « volumiques », écorce texturée ; forêts lointaines en niveau de détail bas |
+| Hameau | maisons de village et fermes, moulin à vent (ailes en rotation), puits, charrette tirée par un cheval, fumées de cheminées, villageois qui marchent, discutent ou travaillent aux champs, moutons, vaches, poules |
+| Maisons | générateur de maisons médiévales : soubassement de pierre, étages à colombages en encorbellement, poutres et croix de Saint-André en relief, fenêtres à meneaux et volets peints, portes, auvents, enseignes, lucarnes, cheminées, toits de tuiles, d'ardoise ou de chaume ; une vingtaine de modèles instanciés |
+| Cité | remparts à 22 tours, porte monumentale, statues de 36 m, jusqu'à 1 400 maisons détaillées, avenue marchande, forges, canal et ponts, deux cathédrales, tour de 300 m, jardins, rues pavées ; foule animée (marchands, forgerons, passants), chevaux, chiens, poules, charrette, fumées |
 | Personnages | mage, épéiste, invocateur, berserker, rôdeur, Gardes de la Tempérance, bête spectrale, Colosse de 44 m, prêtresse ailée |
 | Relique | bouteille PET de 50 cl (profil de révolution, nervures, étiquette « Source Claire » fictive, bouchon cranté, eau intérieure, matériau transmissif) |
 | Logo | gravé sur canevas : métal biseauté, usure, fissures incandescentes, blason à la bouteille ; révélé par un shader de dissolution |
@@ -199,8 +219,10 @@ Polices : Cinzel, Cinzel Decorative, Cormorant Garamond (SIL Open Font License, 
 
 ## 6. Limites connues (et solutions de remplacement retenues)
 
-- **Pas de modèles 3D sculptés ni de capture de mouvement.** Faute de ressources 3D sous licence dans le
-  projet, tous les modèles sont procéduraux : silhouettes lisibles et stylisées, mais pas le niveau de détail
+- **Pas de modèles 3D sculptés ni de capture de mouvement.** Les bibliothèques de modèles et de textures
+  photographiques (Poly Haven, ambientCG, Sketchfab…) sont bloquées par le réseau de l'environnement de
+  développement ; seules les ressources CC0 du paquet npm `@pmndrs/assets` ont pu être intégrées. Les modèles
+  restent donc procéduraux : silhouettes lisibles et stylisées, mais pas le niveau de détail
   d'une production AAA (visages en particulier — d'où le voile de la prêtresse et les cadrages en
   silhouette). Les personnages utilisent une **hiérarchie d'articulations** (squelette rigide) plutôt qu'un
   maillage déformé par *skinning*. Pour monter en qualité : remplacer les fabriques de `world/characters.ts`,

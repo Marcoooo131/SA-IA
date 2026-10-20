@@ -56,7 +56,8 @@ export function createWorldScene(quality: Quality): CineScene {
     height: relief,
     color: (_x, y, _z, slope, c) => {
       const band = Math.sin(y * 0.12) * 0.05 + Math.sin(y * 0.41) * 0.025;
-      c.setRGB(0.27 + band, 0.25 + band, 0.24 + band); // roche
+      const grain = fbm2(_x * 0.02, y * 0.05) * 0.06;
+      c.setRGB(0.19 + band + grain, 0.175 + band + grain, 0.16 + band + grain); // roche
       if (y < 4) c.setRGB(0.12, 0.12, 0.12); // roche mouillée
       if (slope < 0.32 && y > 4 && y < 330) c.lerp(new THREE.Color(0x4a6a28), 0.75); // alpages et hauts de falaise verdoyants
       if (slope < 0.5 && y > 20 && y < 300) c.lerp(new THREE.Color(0x2a3e1e), 0.35); // forêts
@@ -152,7 +153,7 @@ export function createWorldScene(quality: Quality): CineScene {
     cloudGroup.add(s);
   }
   // mer de nuages sous les sommets : nappes superposées (les intersections avec le relief dessinent des lignes de brume)
-  for (const [y, op, sc, col] of [[198, 0.6, 0.0025, 0xc9beba], [222, 0.38, 0.004, 0xe6d8ca], [246, 0.22, 0.0022, 0xf6e6d4]] as const) {
+  for (const [y, op, sc, col] of [[198, 0.38, 0.0025, 0xb0aeb2], [222, 0.2, 0.004, 0xd0cac4], [246, 0.1, 0.0022, 0xe8e0d8]] as const) {
     const deck = groundMist(9000, col, op, sc, [0.25, 1.0]);
     deck.position.set(0, y, -2600);
     scene.add(deck);
@@ -291,7 +292,7 @@ export function createWorldScene(quality: Quality): CineScene {
       // dans les nuages : brouillard blanc, visibilité réduite
       const inCloud = smoothstep(20.6, 21.6, t) * (1 - smoothstep(23.4, 24.2, t));
       fog.color.copy(fogBase).lerp(cloudFog, inCloud);
-      fog.density = lerp(t > 24 ? 0.00028 : 0.0006, 0.0045, inCloud);
+      fog.density = lerp(t > 24 ? 0.00016 : 0.00045, 0.0045, inCloud);
       for (const ray of rays) ((ray.material as THREE.ShaderMaterial).uniforms.uTime.value = t);
       for (const d of decks) ((d.material as THREE.ShaderMaterial).uniforms.uTime.value = t * 3);
     },
@@ -299,10 +300,11 @@ export function createWorldScene(quality: Quality): CineScene {
       const inCloud = smoothstep(20.6, 21.6, t) * (1 - smoothstep(23.4, 24.2, t));
       const reveal = smoothstep(24, 25.5, t);
       return {
-        exposure: 0.95 - inCloud * 0.12 + reveal * 0.05,
+        exposure: 0.92 - inCloud * 0.12 - reveal * 0.1,
+        contrast: 1.1,
+        saturation: 1.0,
         bloomStrength: 0.5 + inCloud * 0.1 + reveal * 0.2,
         bloomThreshold: 0.78,
-        saturation: 0.9,
         aberration: inShot('2b', t) ? 0.012 : 0.006,
       };
     },
