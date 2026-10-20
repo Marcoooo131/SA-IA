@@ -1,6 +1,7 @@
 // SCÈNE 1 — LE RÉVEIL DE L'AIGLE (0 → 12 s)
 // Promontoire rocheux à l'aube au-dessus d'une mer agitée. Gros plans, envol, vue subjective.
 import * as THREE from 'three';
+import { applyEnvironment } from '../world/assets';
 import type { CineScene, PostParams } from '../core/director';
 import { prog, local, inShot } from '../core/timeline';
 import { setCam } from '../core/camera';
@@ -25,6 +26,7 @@ export function createEagleScene(): CineScene {
   const sky = skyDome({ top: 0x0a1024, horizon: 0xb8703c, bottom: 0x241f26, sunDir, sunColor: 0xffb070, sunSize: 0.9995, glow: 1.1, clouds: 0.6, cloudColor: 0x3a2e3a });
   scene.add(sky);
   const { sun } = sunlight(scene, { dir: sunDir, color: 0xffc489, intensity: 3.2, sky: 0x6a78a0, ground: 0x2a2018, hemi: 0.85 });
+  applyEnvironment(scene, 'dawn', 0.45);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.camera.left = sun.shadow.camera.bottom = -2.5;

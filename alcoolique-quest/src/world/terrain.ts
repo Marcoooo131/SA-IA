@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { fbm2, rng, type Rng } from '../core/math';
+import { ASSETS, type NormalName } from './assets';
 
 export function heightfield(opts: {
   width: number;
@@ -16,6 +17,7 @@ export function heightfield(opts: {
   rockScale?: number;
   rockStrength?: number;
   rockBump?: number;
+  tri?: { name: NormalName; scale: number; k: number } | null;
 }) {
   const geo = new THREE.PlaneGeometry(opts.width, opts.depth, opts.segX, opts.segZ);
   geo.rotateX(-Math.PI / 2);
@@ -37,7 +39,7 @@ export function heightfield(opts: {
     colors[i * 3] = c.r; colors[i * 3 + 1] = c.g; colors[i * 3 + 2] = c.b;
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  const mat = rockify(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, ...opts.material }), opts.rockScale ?? 0.05, opts.rockStrength ?? 0.55, 0.08, opts.rockBump ?? 1);
+  const mat = rockify(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, ...opts.material }), opts.rockScale ?? 0.05, opts.rockStrength ?? 0.55, 0.08, opts.rockBump ?? 1, opts.tri === undefined ? { name: 'rock', scale: 0.12, k: 0.55 } : opts.tri);
   const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;
   return mesh;
@@ -128,8 +130,13 @@ export function ruins(seed: number, scale = 1, mat?: THREE.Material) {
  * Détail rocheux procédural en espace monde (sans UV, donc sans étirement sur les parois verticales) :
  * grain, strates et variations de teinte injectés dans un MeshStandardMaterial.
  */
-export function rockify<T extends THREE.MeshStandardMaterial>(mat: T, scale = 0.08, strength = 0.5, strata = 0.08, bump = 1): T {
+export function rockify<T extends THREE.MeshStandardMaterial>(mat: T, scale = 0.08, strength = 0.5, strata = 0.08, bump = 1, tri: { name: NormalName; scale: number; k: number } | null = { name: 'rock', scale: 0.25, k: 0.6 }): T {
+  // relief photographique : normal map CC0 projetée en triplanaire (espace monde), sans UV
+  const triTex = tri ? ASSETS.normals[tri.name] ?? null : null;
   mat.onBeforeCompile = (sh) => {
+    sh.uniforms.uTri = { value: triTex };
+    sh.uniforms.uTriScale = { value: tri?.scale ?? 1 };
+    sh.uniforms.uTriK = { value: triTex ? tri!.k : 0 };
     sh.uniforms.uRockScale = { value: scale };
     sh.uniforms.uRockStrength = { value: strength };
     sh.uniforms.uStrata = { value: strata };
@@ -143,7 +150,8 @@ export function rockify<T extends THREE.MeshStandardMaterial>(mat: T, scale = 0.
         `#include <common>
         varying vec3 vRockPos;
         varying vec3 vRockN;
-        uniform float uRockScale, uRockStrength, uStrata, uBump;
+        uniform float uRockScale, uRockStrength, uStrata, uBump, uTriScale, uTriK;
+        uniform sampler2D uTri;
         float rh(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
         float rn(vec3 p){ vec3 i = floor(p), f = fract(p); f = f*f*(3.0-2.0*f);
           return mix(mix(mix(rh(i), rh(i+vec3(1,0,0)), f.x), mix(rh(i+vec3(0,1,0)), rh(i+vec3(1,1,0)), f.x), f.y),
@@ -173,9 +181,24 @@ export function rockify<T extends THREE.MeshStandardMaterial>(mat: T, scale = 0.
           float det = dot(sx, r1) * faceDirection;
           vec3 grad = sign(det) * (dH.x * r1 + dH.y * r2);
           normal = normalize(abs(det) * normal - grad);
+          if (uTriK > 0.0) {
+            vec3 wn = normalize(vRockN);
+            vec3 bw = pow(abs(wn), vec3(4.0));
+            bw /= dot(bw, vec3(1.0));
+            vec3 tx = texture2D(uTri, vRockPos.zy * uTriScale).xyz * 2.0 - 1.0;
+            vec3 ty = texture2D(uTri, vRockPos.xz * uTriScale).xyz * 2.0 - 1.0;
+            vec3 tz = texture2D(uTri, vRockPos.xy * uTriScale).xyz * 2.0 - 1.0;
+            // mélange « whiteout » des trois projections
+            vec3 nx = vec3(tx.xy + wn.zy, abs(tx.z) * wn.x).zyx;
+            vec3 ny = vec3(ty.xy + wn.xz, abs(ty.z) * wn.y).xzy;
+            vec3 nz = vec3(tz.xy + wn.xy, abs(tz.z) * wn.z);
+            vec3 wN = normalize(nx * bw.x + ny * bw.y + nz * bw.z);
+            vec3 vN = normalize((viewMatrix * vec4(wN, 0.0)).xyz);
+            normal = normalize(mix(normal, vN, uTriK));
+          }
         }`,
       );
   };
-  mat.customProgramCacheKey = () => `rock-${scale}-${strength}-${strata}-${bump}`;
+  mat.customProgramCacheKey = () => `rock-${scale}-${strength}-${strata}-${bump}-${triTex ? tri!.name + tri!.scale : 'x'}`;
   return mat;
 }

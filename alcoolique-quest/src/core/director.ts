@@ -222,6 +222,11 @@ export class Director {
     }
   }
 
+  /** Fait avancer la scène sans la dessiner (préparation des captures). */
+  simulate(t: number, dt: number) {
+    this.scenes.get(this.sceneKeyAt(t))?.update(t, dt);
+  }
+
   render(t: number, dt: number, opts: { key?: SceneKey; fade?: number } = {}) {
     const key = opts.key ?? this.sceneKeyAt(t);
     const s = this.scenes.get(key);

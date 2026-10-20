@@ -15,6 +15,7 @@
     "@fontsource/cinzel": "^5.3.0",
     "@fontsource/cinzel-decorative": "^5.3.0",
     "@fontsource/cormorant-garamond": "^5.3.0",
+    "@pmndrs/assets": "^1.7.0",
     "three": "^0.180.0"
   },
   "devDependencies": {

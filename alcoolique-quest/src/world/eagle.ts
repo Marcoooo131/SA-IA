@@ -111,6 +111,8 @@ export class Eagle extends THREE.Group {
   ruffle = 0;
   /** Ailes levées en V (posture d'intimidation / préparation à l'envol). */
   raise = 0;
+  /** Repli des ailes en vol plané (0 = ailes tendues). */
+  glideTuck = 0.14;
   private time = 0;
 
   constructor() {
@@ -313,9 +315,12 @@ export class Eagle extends THREE.Group {
   update(dt: number) {
     this.time += dt;
     this.flapPhase += dt * this.flapFreq * Math.PI * 2;
-    const ph = this.flapPhase;
-    const A = this.flapAmp * (1 - this.fold);
-    const fold = this.fold;
+    // battement asymétrique : abaissée puissante et rapide, remontée plus lente
+    const ph = this.flapPhase + 0.45 * Math.sin(this.flapPhase);
+    // en vol plané, l'aigle replie légèrement les ailes (flèche) ; il les étend pour battre
+    const glide = this.legsTuck > 0.5 ? this.glideTuck * Math.max(0, 1 - this.flapAmp / 0.25) : 0;
+    const fold = Math.max(this.fold, glide);
+    const A = this.flapAmp * (1 - fold);
 
     for (const [i, w] of this.wings.entries()) {
       const s = w.s;
@@ -355,7 +360,8 @@ export class Eagle extends THREE.Group {
     });
     // paupières : ouverte = la paupière recule, fermée = elle couvre le globe
     for (const lid of this.lids) lid.rotation.x = 1.25 - this.eyeOpen * 2.15;
-    this.head.rotation.set(this.headPitch, this.headYaw, 0);
+    // micro-mouvements de tête : l'aigle scrute le paysage
+    this.head.rotation.set(this.headPitch + Math.sin(this.time * 1.7) * 0.03, this.headYaw + Math.sin(this.time * 0.6) * 0.06 + Math.sin(this.time * 2.9) * 0.02, Math.sin(this.time * 1.1) * 0.04);
     for (const l of this.legs) l.rotation.x = this.legsTuck * 1.35;
     for (const t of this.toes) t.rotation.x = 0.2 + this.grip * 0.9 + this.legsTuck * 0.4;
   }

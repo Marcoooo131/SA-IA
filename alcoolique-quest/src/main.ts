@@ -13,6 +13,7 @@ import { DURATION, LINES, shotAt } from './core/timeline';
 import { AudioEngine } from './audio/engine';
 import { buildScore } from './audio/score';
 import { SCENE_FACTORIES } from './scenes';
+import { loadAssets } from './world/assets';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const params = new URLSearchParams(location.search);
@@ -42,12 +43,15 @@ async function load() {
   const step = $('loader-step');
   // Les polices doivent être prêtes avant de graver le logo sur canevas.
   await Promise.all(['900 64px "Cinzel"', '700 64px "Cinzel Decorative"', '400 32px "Cinzel"', 'italic 32px "Cormorant Garamond"'].map((f) => document.fonts.load(f).catch(() => null)));
+  // ressources CC0 (HDRI, normal maps, nuages) avant la construction des scènes
+  step.textContent = 'Lumières et matières';
+  await loadAssets(director.renderer, (k) => (fill.style.width = `${k * 15}%`)).catch((e) => console.warn(e));
   for (let i = 0; i < SCENE_FACTORIES.length; i++) {
     const [label, make] = SCENE_FACTORIES[i];
     step.textContent = label;
     await nextFrame();
     director.add(make(quality));
-    fill.style.width = `${((i + 1) / (SCENE_FACTORIES.length + 1)) * 100}%`;
+    fill.style.width = `${15 + ((i + 1) / (SCENE_FACTORIES.length + 1)) * 85}%`;
   }
   step.textContent = 'Compilation des shaders';
   await nextFrame();
@@ -195,7 +199,8 @@ document.addEventListener('visibilitychange', () => {
     $('loader').style.transition = 'none';
     show('loader', false);
     const renderStill = (t: number) => {
-      for (let k = 30; k >= 0; k--) director.render(Math.max(0, t - k / 30), 1 / 30);
+      for (let k = 12; k >= 1; k--) director.simulate(Math.max(0, t - k / 12), 1 / 12);
+      director.render(t, 1 / 30);
     };
     renderStill(still);
     Object.assign(window, { __ready: true, __director: director, __still: renderStill });

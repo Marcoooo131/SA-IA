@@ -2,6 +2,7 @@
 // Six séquences lisibles, chacune centrée sur une action : le mage, l'épéiste, l'invocateur,
 // le berserker, le rôdeur et sa flèche au ralenti, puis le Colosse qui se dresse.
 import * as THREE from 'three';
+import { applyEnvironment } from '../world/assets';
 import type { CineScene, PostParams, Quality } from '../core/director';
 import { HITS, inShot } from '../core/timeline';
 import { impactShake, setCam } from '../core/camera';
@@ -45,6 +46,7 @@ export function createBattleScene(quality: Quality): CineScene {
   back.position.set(-0.5, 0.6, -1).multiplyScalar(50);
   scene.add(back);
   const fill = cameraFill(scene, 0xd0d8ff, 0.8);
+  applyEnvironment(scene, 'dawn', 0.25);
 
   // ------------------------------------------------------------------ décor : plaine dévastée
   const r = rng(13);

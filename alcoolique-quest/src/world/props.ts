@@ -13,7 +13,7 @@ export const WIND = { uTime: { value: 0 }, uStrength: { value: 1 } };
  * Champ d'herbes instancié : brins effilés, couleur d'or sec à olive sombre, ondulation par vagues de vent
  * (décalage dans le vertex shader, plus fort au sommet des brins).
  */
-export function grassField(opts: { count: number; patches: { x: number; z: number; r: number; w: number }[]; height: (x: number, z: number) => number; seed?: number; bladeH?: number }) {
+export function grassField(opts: { count: number; patches: { x: number; z: number; r: number; w: number }[]; height: (x: number, z: number) => number; seed?: number; bladeH?: number; palette?: number[] }) {
   const r = rng(opts.seed ?? 3);
   const H = opts.bladeH ?? 0.9;
   const blade = new THREE.PlaneGeometry(0.07, H, 1, 4);
@@ -52,7 +52,7 @@ export function grassField(opts: { count: number; patches: { x: number; z: numbe
   const mesh = new THREE.InstancedMesh(blade, mat, opts.count);
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3();
   const c = new THREE.Color();
-  const palette = [0xb39a52, 0x8f7a3c, 0x6e6a34, 0xc4a868, 0x5a5a2c];
+  const palette = opts.palette ?? [0xb39a52, 0x8f7a3c, 0x6e6a34, 0xc4a868, 0x5a5a2c];
   const total = opts.patches.reduce((a, b) => a + b.w, 0);
   let k = 0;
   for (const patch of opts.patches) {

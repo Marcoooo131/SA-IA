@@ -54,6 +54,28 @@ builders.priestess = () => {
 };
 builders.bottle = () => waterBottle();
 export function register(name: string, b: () => THREE.Object3D) { builders[name] = b; }
+if (p.get('model') === 'hdri') {
+  const { loadAssets, ASSETS } = await import('./world/assets');
+  await loadAssets(renderer);
+  scene.background = ASSETS.hdri[(p.get('name') ?? 'park') as 'park']!;
+  scene.backgroundBlurriness = 0;
+  cam.fov = 90; cam.updateProjectionMatrix();
+  cam.position.set(0, 0, 0);
+  cam.lookAt(Math.sin(num('yaw', 0)), num('pitch', 0), Math.cos(num('yaw', 0)));
+  renderer.render(scene, cam);
+  (window as unknown as { __ready: boolean }).__ready = true;
+  throw new Error('fin');
+}
+if (['house', 'tree', 'villager', 'spheres'].includes(p.get('model') ?? '')) {
+  const { loadAssets } = await import('./world/assets');
+  await loadAssets(renderer);
+}
+const { makeHouse, HouseSet } = await import('./world/houses');
+const { forest } = await import('./world/vegetation');
+builders.spheres = () => { const g = new THREE.Group(); [[0xffffff, 1, 0], [0xffffff, 0.05, 1], [0x808080, 0.5, 0]].forEach(([c, ro, me], i) => { const m = new THREE.Mesh(new THREE.SphereGeometry(1, 48, 32), new THREE.MeshStandardMaterial({ color: c, roughness: ro, metalness: me })); m.position.x = (i - 1) * 2.4; g.add(m); }); return g; };
+builders.house = () => { const hs = new HouseSet([makeHouse(num('seed', 1), (p.get('style') ?? 'village') as 'village')]); hs.add2(0, new THREE.Vector3(), 0); return hs.build(); };
+builders.tree = () => forest({ species: (p.get('sp') ?? 'oak') as 'oak', points: [new THREE.Vector4(0, 0, 0, 1)], seed: num('seed', 1) });
+if (p.get('env')) { const { applyEnvironment } = await import('./world/assets'); applyEnvironment(scene, p.get('env') as 'park', num('envI', 0.55)); }
 const model = (builders[p.get('model') ?? 'eagle'] ?? builders.eagle)();
 scene.add(model);
 const box = new THREE.Box3().setFromObject(model);

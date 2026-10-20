@@ -4,9 +4,13 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { rng } from '../core/math';
 import { rockify } from './terrain';
-import { bannerTex, facadeEmissiveTex, facadeTex, flagstoneTex, roseWindowTex } from './textures';
+import { bannerTex, flagstoneTex, roseWindowTex } from './textures';
 import { makeMage, makeSwordsman } from './characters';
 import type { Humanoid } from './rig';
+import { HouseSet, makeHouse } from './houses';
+import { CLOTH, Crowd, animalGeometry, cart, goods, villagerGeometry } from './life';
+import { forest } from './vegetation';
+import { normalTex } from './assets';
 
 export const CITY = { R: 300, gateZ: 300, plaza: new THREE.Vector3(0, 0, 20), tower: new THREE.Vector3(0, 0, -90), canalZ: 160 };
 
@@ -59,17 +63,6 @@ function heroStatue(kind: 'sword' | 'goblet', scale: number) {
   return g;
 }
 
-/** Façade de maison : boîte texturée (colombages, fenêtres éclairées) + toit à deux pans. */
-function houseGeometry() {
-  const body = new THREE.BoxGeometry(1, 1, 1);
-  body.translate(0, 0.5, 0);
-  const roofShape = new THREE.Shape();
-  roofShape.moveTo(-0.56, 0); roofShape.lineTo(0, 0.55); roofShape.lineTo(0.56, 0); roofShape.lineTo(-0.56, 0);
-  const roof = new THREE.ExtrudeGeometry(roofShape, { depth: 1.08, bevelEnabled: false });
-  roof.translate(0, 0, -0.54);
-  return { body, roof };
-}
-
 export function buildCity(quality: 'low' | 'high') {
   const hi = quality === 'high';
   const r = rng(77);
@@ -82,7 +75,7 @@ export function buildCity(quality: 'low' | 'high') {
   flag.repeat.set(90, 90);
   flag.needsUpdate = true;
   // sol pavé en deux moitiés : le canal reste à ciel ouvert
-  const groundMat = rockify(new THREE.MeshStandardMaterial({ color: 0x6a645c, map: flag, roughness: 0.95 }), 0.3, 0.3, 0, 0.2);
+  const groundMat = rockify(new THREE.MeshStandardMaterial({ color: 0x7a7266, map: flag, roughness: 0.92, normalMap: normalTex('cobble', 140), normalScale: new THREE.Vector2(1.2, 1.2) }), 0.3, 0.3, 0, 0.1);
   for (const sgn of [-1, 1]) {
     const pts: THREE.Vector2[] = [];
     for (let i = 0; i < 128; i++) {
@@ -201,46 +194,32 @@ export function buildCity(quality: 'low' | 'high') {
   statues[1].rotation.y = -0.25;
   g.add(...statues);
 
-  // ------------------------------------------------------------------ maisons
-  const { body, roof } = houseGeometry();
-  const facade = facadeTex().clone();
-  facade.repeat.set(2, 2);
-  facade.needsUpdate = true;
-  const facadeE = facadeEmissiveTex().clone();
-  facadeE.repeat.set(2, 2);
-  facadeE.needsUpdate = true;
-  const houseMat = new THREE.MeshStandardMaterial({ color: 0xb8a890, map: facade, emissive: 0xffffff, emissiveMap: facadeE, emissiveIntensity: 1.4, roughness: 0.9 });
-  const count = hi ? 1700 : 800;
-  const houses = new THREE.InstancedMesh(body, houseMat, count);
-  const roofsI = new THREE.InstancedMesh(roof, roofMat, count);
-  const m = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), pos = new THREE.Vector3();
-  const col = new THREE.Color();
+  // ------------------------------------------------------------------ maisons (modèles détaillés instanciés)
+  const near = Array.from({ length: hi ? 16 : 10 }, (_, i) => makeHouse(900 + i, 'city'));
+  const far = Array.from({ length: 8 }, (_, i) => makeHouse(950 + i, 'city', false));
+  const houses = new HouseSet([...near, ...far]);
+  const count = hi ? 1400 : 650;
   let k = 0;
-  const place = (x: number, z: number, w: number, d: number, h: number, ang: number) => {
+  const isNear = (x: number, z: number) => (Math.abs(x) < 70 && z > 30) || Math.hypot(x - CITY.plaza.x, z - CITY.plaza.z) < 120 || Math.hypot(x - CITY.tower.x, z - CITY.tower.z) < 110;
+  const place = (x: number, z: number, ang: number, scale = 1) => {
     if (k >= count) return;
-    q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), ang);
-    sc.set(w, h, d);
-    m.compose(pos.set(x, 0, z), q, sc);
-    houses.setMatrixAt(k, m);
-    houses.setColorAt(k, col.setHSL(0.08 + r.range(-0.02, 0.03), r.range(0.1, 0.3), r.range(0.5, 0.75)));
-    // toit à deux pans posé sur la maison, pente proportionnelle à la largeur
-    const rm = new THREE.Matrix4().compose(new THREE.Vector3(x, h, z), q, new THREE.Vector3(w, Math.min(w, d) * r.range(0.8, 1.15), d));
-    roofsI.setMatrixAt(k, rm);
+    const n = isNear(x, z);
+    houses.add2(n ? r.int(0, near.length - 1) : near.length + r.int(0, far.length - 1), new THREE.Vector3(x, 0, z), ang, scale);
     k++;
   };
-  // rangées le long de l'avenue (façades alignées, plus hautes près de la place)
+  // rangées continues le long de l'avenue : façades (pignon sur rue) tournées vers la chaussée
   for (const side of [-1, 1]) {
     for (let z = CITY.gateZ - 26; z > 60; ) {
-      const d = r.range(9, 14);
       if (Math.abs(z - CITY.canalZ) < 16) { z -= 34; continue; }
-      const w = r.range(10, 13);
-      place(side * (11 + w / 2), z - d / 2, w, d, r.range(14, 24), 0);
-      z -= d + r.range(0, 0.8);
+      const sc = r.range(1.0, 1.15);
+      const w = 9.5 * sc;
+      place(side * (12.5 + r.range(0, 1.5)), z - w / 2, side < 0 ? Math.PI / 2 : -Math.PI / 2, sc);
+      z -= w + r.range(0.2, 1.2);
     }
   }
-  // le reste de la ville
+  // le reste de la ville : îlots le long de rues concentriques
   let guard = 0;
-  while (k < count && guard++ < 40000) {
+  while (k < count && guard++ < 60000) {
     const a = r.range(0, Math.PI * 2), d = Math.sqrt(r.range(0.02, 1)) * (CITY.R - 22);
     const x = Math.cos(a) * d, z = Math.sin(a) * d;
     if (Math.abs(x) < 34 && z > 40) continue; // avenue
@@ -248,14 +227,21 @@ export function buildCity(quality: 'low' | 'high') {
     if (Math.hypot(x - CITY.tower.x, z - CITY.tower.z) < 45) continue; // tour
     if (Math.abs(z - CITY.canalZ) < 18) continue; // canal
     if (Math.hypot(x + 150, z + 40) < 60 || Math.hypot(x - 160, z - 60) < 45) continue; // cathédrales
-    const w = r.range(8, 15), dd = r.range(8, 15);
-    // orientation : alignée sur la direction du centre (rues concentriques)
-    place(x, z, w, dd, r.range(10, 22) * (1 - d / 900), a + Math.PI / 2 + r.range(-0.1, 0.1));
+    if ((Math.round(d / 11) % 3) === 0) continue; // rue circulaire
+    place(x, z, -a - Math.PI / 2 + r.range(-0.08, 0.08), r.range(0.95, 1.2));
   }
-  houses.count = roofsI.count = k;
-  houses.castShadow = houses.receiveShadow = true;
-  roofsI.castShadow = true;
-  g.add(houses, roofsI);
+  houses.build(true);
+  g.add(houses);
+  // jardins : quelques arbres entre les maisons
+  const gardenPts: THREE.Vector4[] = [];
+  for (let i = 0; i < 90; i++) {
+    const a = r.range(0, Math.PI * 2), d = r.range(60, CITY.R - 30);
+    const x = Math.cos(a) * d, z = Math.sin(a) * d;
+    if (Math.abs(x) < 30 && z > 40) continue;
+    gardenPts.push(new THREE.Vector4(x, 0, z, r.range(0.6, 0.9)));
+  }
+  g.add(forest({ species: 'oak', points: gardenPts.filter((_, i) => i % 2 === 0), seed: 71 }));
+  g.add(forest({ species: 'birch', points: gardenPts.filter((_, i) => i % 2 === 1), seed: 72 }));
 
   // ------------------------------------------------------------------ canal et ponts
   const water = new THREE.Mesh(new THREE.PlaneGeometry(CITY.R * 2, 22), new THREE.MeshStandardMaterial({ color: 0x0c1418, metalness: 0.9, roughness: 0.12 }));
@@ -481,52 +467,64 @@ export function buildCity(quality: 'low' | 'high') {
     g.add(barrel);
   }
 
-  // ------------------------------------------------------------------ foule instanciée (silhouettes)
-  const personGeo = (() => {
-    const body = new THREE.CylinderGeometry(0.22, 0.38, 1.45, 8);
-    body.translate(0, 0.72, 0);
-    const head = new THREE.SphereGeometry(0.15, 8, 6);
-    head.translate(0, 1.62, 0);
-    const hood = new THREE.ConeGeometry(0.2, 0.35, 8);
-    hood.translate(0, 1.78, -0.03);
-    return merge([body, head, hood]);
-  })();
-  const crowdN = hi ? 520 : 260;
-  const crowd = new THREE.InstancedMesh(personGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.9 }), crowdN);
-  const people: { x: number; z: number; dir: number; speed: number; phase: number; lane: number }[] = [];
-  const pc = [0x3a3028, 0x2a2a30, 0x4a2a20, 0x5a4a3a, 0x24303a, 0x6a6a70, 0x3a1a1a];
-  for (let i = 0; i < crowdN; i++) {
-    const inPlaza = i % 3 === 0;
-    const p = inPlaza
-      ? { x: CITY.plaza.x + r.range(-40, 40), z: CITY.plaza.z + r.range(-30, 34), dir: r.range(0, Math.PI * 2), speed: r.range(0, 1.2), phase: r.range(0, 10), lane: 0 }
-      : { x: r.range(-9, 9), z: r.range(60, 295), dir: r.next() < 0.5 ? 0 : Math.PI, speed: r.range(0.8, 1.6), phase: r.range(0, 10), lane: 1 };
-    if (inPlaza && Math.hypot(p.x - CITY.plaza.x, p.z - (CITY.plaza.z - 6)) < 9) p.x += 18; // laisser la place aux héros
-    people.push(p);
-    crowd.setColorAt(i, col.set(r.pick(pc)).multiplyScalar(r.range(0.7, 1.2)));
+  // ------------------------------------------------------------------ habitants et animaux (animés)
+  const kinds = ['man', 'woman', 'hood', 'hat'] as const;
+  const per = hi ? 90 : 45;
+  const crowds = kinds.map((kd) => new Crowd(villagerGeometry(kd), 'people', per));
+  crowds.forEach((c) => g.add(c));
+  let ci = 0;
+  const who = () => crowds[ci++ % 4];
+  // circulation sur l'avenue, dans les deux sens, sur plusieurs files
+  for (let i = 0; i < per * 2.2; i++) {
+    const lane = r.range(-8.5, 8.5);
+    const dir = r.next() < 0.5;
+    const path = dir ? [new THREE.Vector3(lane, 0, 296), new THREE.Vector3(lane * 0.8, 0, 40)] : [new THREE.Vector3(lane, 0, 40), new THREE.Vector3(lane * 0.8, 0, 296)];
+    who().spawn({ walker: { path, speed: r.range(0.9, 1.5), offset: r.range(0, 260), loop: true }, color: r.pick(CLOTH), seed: i, scale: r.range(0.92, 1.06) });
   }
-  crowd.castShadow = true;
-  crowd.frustumCulled = false;
-  g.add(crowd);
-  const scaleV = new THREE.Vector3();
-  const updateCrowd = (t: number) => {
-    for (let i = 0; i < crowdN; i++) {
-      const p = people[i];
-      let x = p.x, z = p.z;
-      if (p.lane === 1) {
-        z = p.z + Math.cos(p.dir) * p.speed * t;
-        z = 60 + ((((z - 60) % 235) + 235) % 235);
-      } else {
-        x += Math.sin(p.dir) * Math.sin(t * 0.2 + p.phase) * p.speed * 3;
-        z += Math.cos(p.dir) * Math.sin(t * 0.2 + p.phase) * p.speed * 3;
-      }
-      const bob = Math.abs(Math.sin(t * 5 + p.phase)) * 0.06 * Math.min(1, p.speed);
-      q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), p.dir);
-      const s = 0.9 + (i % 7) * 0.035;
-      m.compose(pos.set(x, bob, z), q, scaleV.set(s, s, s));
-      crowd.setMatrixAt(i, m);
+  // badauds sur la place (petits allers-retours) et groupes qui discutent
+  for (let i = 0; i < per * 1.2; i++) {
+    const c = CITY.plaza.clone().add(new THREE.Vector3(r.range(-40, 40), 0, r.range(-30, 36)));
+    if (Math.hypot(c.x - CITY.plaza.x, c.z - (CITY.plaza.z - 6)) < 10) c.x += 20; // laisser la place aux héros
+    if (i % 3 === 0) {
+      const b2 = c.clone().add(new THREE.Vector3(r.range(-14, 14), 0, r.range(-14, 14)));
+      who().spawn({ walker: { path: [c, b2], speed: r.range(0.7, 1.2), offset: r.range(0, 30), loop: false }, color: r.pick(CLOTH), seed: 1000 + i });
+    } else {
+      who().spawn({ pos: c, rotY: r.range(0, 6), color: r.pick(CLOTH), mode: 2, cadence: 0.35, stride: 0.04, seed: 1000 + i });
     }
-    crowd.instanceMatrix.needsUpdate = true;
+  }
+  // marchands derrière leurs étals, forgerons au travail
+  stalls.children.forEach((s2, i) => {
+    const p = s2.position.clone().add(new THREE.Vector3(Math.sign(s2.position.x) * 2.2, 0, 0));
+    who().spawn({ pos: p, rotY: s2.position.x > 0 ? -Math.PI / 2 : Math.PI / 2, color: r.pick(CLOTH), mode: 2, cadence: 0.4, stride: 0.04, seed: 2000 + i });
+  });
+  forges.forEach((f, i) => who().spawn({ pos: f.clone().setY(0).add(new THREE.Vector3(Math.sign(f.x) * -2.2, 0, 1.5)), rotY: f.x > 0 ? Math.PI / 2 : -Math.PI / 2, color: 0x3a2a1e, mode: 1, cadence: 0.6, stride: 0.05, seed: 3000 + i }));
+  // chevaux attachés, charrettes, poules, chiens
+  const horses = new Crowd(animalGeometry('horse'), 'animal', 12, 0x1a1410);
+  for (let i = 0; i < 8; i++) {
+    const z = 200 + i * 9 + r.range(-2, 2), x = (i % 2 ? 1 : -1) * 9.6;
+    horses.spawn({ pos: new THREE.Vector3(x, 0, z), rotY: x > 0 ? Math.PI : 0, color: r.pick([0x3a2a1a, 0x6a4a2a, 0x8a6a4a, 0x2a2420, 0xd8d0c0]), mode: 3, seed: 4000 + i });
+  }
+  horses.spawn({ walker: { path: [new THREE.Vector3(-4, 0, 290), new THREE.Vector3(-4, 0, 60)], speed: 1.1, offset: 40, loop: true }, color: 0x5a3a22, seed: 4100 });
+  g.add(horses);
+  const wagon = cart();
+  g.add(wagon);
+  const chickens = new Crowd(animalGeometry('chicken'), 'animal', 30, 0xc83a2a);
+  for (let i = 0; i < 24; i++) chickens.spawn({ pos: new THREE.Vector3(r.sign() * r.range(8, 10.5), 0, r.range(180, 280)), rotY: r.range(0, 6), color: r.pick([0xf0e8d8, 0x8a5a2a, 0x3a2a1a]), mode: 4, seed: 4200 + i });
+  g.add(chickens);
+  const dogs = new Crowd(animalGeometry('dog'), 'animal', 6, 0x1a1410);
+  for (let i = 0; i < 4; i++) dogs.spawn({ walker: { path: [new THREE.Vector3(r.range(-6, 6), 0, 280), new THREE.Vector3(r.range(-6, 6), 0, 70)], speed: 1.8, offset: r.range(0, 200), loop: true }, color: r.pick([0x6a4a2a, 0x2a2420, 0xb8a080]), seed: 4300 + i, cadence: 2.2, stride: 0.6 });
+  g.add(dogs);
+  g.add(goods(Array.from({ length: 60 }, () => new THREE.Vector4(r.sign() * r.range(9.2, 10.5), 0, r.range(190, 285), r.range(0.8, 1.1))), 9));
+  const updateCrowd = (t: number) => {
+    for (const c of crowds) c.update(t);
+    horses.update(t);
+    dogs.update(t);
+    const hm = new THREE.Matrix4();
+    horses.getMatrixAt(horses.count - 1, hm);
+    const hq = new THREE.Quaternion().setFromRotationMatrix(hm);
+    wagon.position.setFromMatrixPosition(hm).add(new THREE.Vector3(0, 0, -3.4).applyQuaternion(hq));
+    wagon.quaternion.copy(hq);
   };
 
-  return { group: g, forges, plazaBanners, updateCrowd };
+  return { group: g, forges, plazaBanners, updateCrowd, chimneys: houses.chimneys };
 }

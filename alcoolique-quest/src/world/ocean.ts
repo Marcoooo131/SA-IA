@@ -1,6 +1,7 @@
 // Mer agitée : vagues de Gerstner calculées dans le shader (espace monde), reflet du ciel par Fresnel,
 // reflets du soleil, écume sur les crêtes, brouillard atmosphérique. Le maillage suit la caméra.
 import * as THREE from 'three';
+import { ASSETS } from './assets';
 
 const WAVES = [
   // direction x, z, longueur d'onde, raideur
@@ -42,6 +43,8 @@ export class Ocean extends THREE.Mesh {
         uSunColor: { value: new THREE.Color(opts.sunColor) },
         uFogColor: { value: new THREE.Color(opts.fogColor) },
         uFogDensity: { value: opts.fogDensity },
+        uRipple: { value: ASSETS.normals.water ?? null },
+        uHasRipple: { value: ASSETS.normals.water ? 1 : 0 },
       },
       vertexShader: /* glsl */ `
         uniform float uTime, uAmp;
@@ -79,7 +82,8 @@ export class Ocean extends THREE.Mesh {
       fragmentShader: /* glsl */ `
         uniform vec3 uDeep, uShallow, uSky, uSunColor, uFogColor;
         uniform vec3 uSunDir;
-        uniform float uFogDensity, uTime;
+        uniform float uFogDensity, uTime, uHasRipple;
+        uniform sampler2D uRipple;
         varying vec3 vWorld;
         varying vec3 vNormal;
         varying float vCrest;
@@ -95,6 +99,13 @@ export class Ocean extends THREE.Mesh {
           float n0 = n(q + uTime * 0.6), nx = n(q + vec2(e, 0.0) + uTime * 0.6), nz = n(q + vec2(0.0, e) + uTime * 0.6);
           float detail = 0.35 / (1.0 + dist * 0.01);
           vec3 N = normalize(vNormal + vec3(n0 - nx, 0.0, n0 - nz) * detail * 2.0);
+          if (uHasRipple > 0.5) {
+            // ridules : deux couches de normal map CC0 qui défilent en sens contraires
+            vec3 r1 = texture2D(uRipple, vWorld.xz * 0.045 + vec2(uTime * 0.02, uTime * 0.013)).xzy * 2.0 - 1.0;
+            vec3 r2 = texture2D(uRipple, vWorld.xz * 0.11 - vec2(uTime * 0.017, -uTime * 0.025)).xzy * 2.0 - 1.0;
+            float fade = 1.0 / (1.0 + dist * 0.004);
+            N = normalize(N + vec3(r1.x + r2.x, 0.0, r1.z + r2.z) * 0.35 * fade);
+          }
           float fres = pow(1.0 - max(dot(N, V), 0.0), 4.0) * 0.85 + 0.05;
           vec3 water = mix(uDeep, uShallow, clamp(vCrest * 0.8 + vWorld.y * 0.05, 0.0, 1.0));
           vec3 col = mix(water, uSky, fres);

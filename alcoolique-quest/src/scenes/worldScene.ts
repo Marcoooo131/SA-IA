@@ -10,6 +10,8 @@ import { Eagle } from '../world/eagle';
 import { skyDome, sunlight } from '../world/sky';
 import { Ocean } from '../world/ocean';
 import { heightfield, ruins } from '../world/terrain';
+import { farForest } from '../world/vegetation';
+import { ASSETS, applyEnvironment } from '../world/assets';
 import { cloudPuff } from '../world/textures';
 import { ship } from '../world/ship';
 import { Particles } from '../fx/particles';
@@ -25,15 +27,14 @@ export function createWorldScene(quality: Quality): CineScene {
   const fog = new THREE.FogExp2(fogBase.clone(), 0.0006);
   scene.fog = fog;
   const sunDir = new THREE.Vector3(0.75, 0.3, -0.6).normalize();
-  const sky = skyDome({ top: 0x16233f, horizon: 0xd49a6a, bottom: 0x3a3a48, sunDir, sunColor: 0xffc890, sunSize: 0.9994, glow: 1.2, clouds: 0.7, cloudColor: 0x51485a, radius: 12000 });
+  const sky = skyDome({ top: 0x2f5ea8, horizon: 0xf0ccaa, bottom: 0x4a5060, sunDir, sunColor: 0xffd8a8, sunSize: 0.9994, glow: 1.2, clouds: 0.45, cloudColor: 0xf0e4dc, radius: 12000 });
   scene.add(sky);
-  sunlight(scene, { dir: sunDir, color: 0xffd2a0, intensity: 3.2, sky: 0x8a9ac0, ground: 0x2a241e, hemi: 0.95 });
+  sunlight(scene, { dir: sunDir, color: 0xffdcb0, intensity: 3.8, sky: 0xb8c8e0, ground: 0x3a4028, hemi: 0.45 });
+  applyEnvironment(scene, 'sky', 0.45);
 
   // ---------------------------------------------------------------- relief : fjord puis montagnes
   const hi = quality === 'high';
-  const terrain = heightfield({
-    width: 3600, depth: 5200, segX: hi ? 300 : 180, segZ: hi ? 440 : 260, center: [0, -2200],
-    height: (x, z) => {
+  const relief = (x: number, z: number) => {
       const d = Math.abs(x - channelX(z));
       const W = 115 + 30 * Math.sin(z * 0.01);
       const n = fbm2(x * 0.006, z * 0.006, 5);
@@ -43,22 +44,44 @@ export function createWorldScene(quality: Quality): CineScene {
       const m = smoothstep(-500, -1300, z);
       if (m > 0) {
         const valley = smoothstep(60, 520, Math.abs(x + 60 + (z + 1500) * 0.08));
-        const peaks = 160 + ridged2(x * 0.0011 + 7, z * 0.0011) * 820 * (0.35 + 0.65 * valley) + fbm2(x * 0.004, z * 0.004) * 60;
+        // relief déformé (domain warping) : silhouettes irrégulières, plusieurs plans de crêtes
+        const wx = x + fbm2(x * 0.0007, z * 0.0007) * 420, wz = z + fbm2(x * 0.0007 + 5, z * 0.0007) * 420;
+        const peaks = 150 + ridged2(wx * 0.0011 + 7, wz * 0.0011) * 800 * (0.35 + 0.65 * valley) + ridged2(wx * 0.0045, wz * 0.0045) * 70 + fbm2(x * 0.004, z * 0.004) * 50;
         h = lerp(h, Math.max(h, peaks), m);
       }
       return h;
-    },
+  };
+  const terrain = heightfield({
+    width: 3600, depth: 5200, segX: hi ? 300 : 180, segZ: hi ? 440 : 260, center: [0, -2200],
+    height: relief,
     color: (_x, y, _z, slope, c) => {
       const band = Math.sin(y * 0.12) * 0.05 + Math.sin(y * 0.41) * 0.025;
       c.setRGB(0.27 + band, 0.25 + band, 0.24 + band); // roche
       if (y < 4) c.setRGB(0.12, 0.12, 0.12); // roche mouillée
-      if (slope < 0.3 && y > 4 && y < 380) c.lerp(new THREE.Color(0x3a4026), 0.6); // landes
+      if (slope < 0.32 && y > 4 && y < 330) c.lerp(new THREE.Color(0x4a6a28), 0.75); // alpages et hauts de falaise verdoyants
+      if (slope < 0.5 && y > 20 && y < 300) c.lerp(new THREE.Color(0x2a3e1e), 0.35); // forêts
       const snow = smoothstep(300, 430, y + (0.5 - slope) * 160);
       c.lerp(new THREE.Color(0xe8ecf2), snow * (slope < 0.6 ? 1 : 0.4));
     },
     rockScale: 0.06,
   });
   scene.add(terrain);
+  // forêts de conifères sur les pentes et les hauts de falaises
+  {
+    const fr = rng(77);
+    const pts: THREE.Vector4[] = [];
+    let guard = 0;
+    while (pts.length < (hi ? 9000 : 3500) && guard++ < 200000) {
+      const x = fr.range(-1700, 1700), z = fr.range(-4600, 300);
+      const y = relief(x, z);
+      if (y < 12 || y > 330) continue;
+      const slope = Math.abs(relief(x + 6, z) - y) + Math.abs(relief(x, z + 6) - y);
+      if (slope > 6) continue;
+      if (fbm2(x * 0.004, z * 0.004) < -0.15) continue; // clairières
+      pts.push(new THREE.Vector4(x, y, z, fr.range(1.0, 1.9)));
+    }
+    scene.add(farForest(pts, 9, true));
+  }
 
   const ocean = new Ocean({ deep: 0x0b1d28, shallow: 0x2a4c55, sky: 0x9aa0b0, sunDir, sunColor: 0xffc890, fogColor: fogBase, fogDensity: 0.0006, amp: 1.0, size: 4000 });
   scene.add(ocean);
@@ -112,7 +135,7 @@ export function createWorldScene(quality: Quality): CineScene {
   const cloudGroup = new THREE.Group();
   const decks: THREE.Mesh[] = [];
   scene.add(cloudGroup);
-  const mkCloudMat = (color: number, opacity: number) => new THREE.SpriteMaterial({ map: cloudPuff(), color, transparent: true, opacity, depthWrite: false });
+  const mkCloudMat = (color: number, opacity: number) => new THREE.SpriteMaterial({ map: ASSETS.cloud ?? cloudPuff(), color, transparent: true, opacity, depthWrite: false });
   const bankMats = [mkCloudMat(0xf2e6dc, 0.75), mkCloudMat(0xd8cfd0, 0.7), mkCloudMat(0xbfb6c0, 0.65)];
   // banc traversé par l'aigle
   const corridor: THREE.Vector3[] = [];

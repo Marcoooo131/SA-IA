@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { Humanoid } from './rig';
 import { featherTex } from './textures';
+import { WIND } from './props';
 
 /** Matériau « absorbant » : presque noir, avec un liseré violet rasant (Fresnel) pour lire la silhouette. */
 function voidMat(rim: THREE.ColorRepresentation, rimStrength = 1.2) {
@@ -111,8 +112,30 @@ export function makePriestess() {
     const back = Math.max(0, -Math.sin(a));
     rp.setZ(i, rp.getZ(i) - back * Math.pow(Math.max(0, -y - 0.6), 2) * 1.4);
   }
+  // plis verticaux : ondulation radiale qui se creuse vers l'ourlet
+  for (let i = 0; i < rp.count; i++) {
+    const y = rp.getY(i);
+    const a = Math.atan2(rp.getZ(i), rp.getX(i));
+    const k = Math.min(1, -y / 1.15);
+    const fold = (Math.sin(a * 13) * 0.6 + Math.sin(a * 7 + 1.3) * 0.4) * 0.045 * k;
+    const rr = Math.hypot(rp.getX(i), rp.getZ(i));
+    if (rr > 0.01) { rp.setX(i, rp.getX(i) * (1 + fold / rr)); rp.setZ(i, rp.getZ(i) * (1 + fold / rr)); }
+  }
   robeGeo.computeVertexNormals();
-  const robe = new THREE.Mesh(robeGeo, new THREE.MeshStandardMaterial({ color: 0x09070b, roughness: 0.8, side: THREE.DoubleSide }));
+  const robeMat = new THREE.MeshStandardMaterial({ color: 0x0b090d, roughness: 0.62, metalness: 0.05, side: THREE.DoubleSide, sheen: 0 } as THREE.MeshStandardMaterialParameters);
+  // mouvement subtil du tissu (courant d'air de la nef), plus ample vers l'ourlet
+  robeMat.onBeforeCompile = (sh) => {
+    sh.uniforms.uTime = WIND.uTime;
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nuniform float uTime;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        float kk = clamp(-position.y / 1.15, 0.0, 1.0);
+        float an = atan(position.z, position.x);
+        transformed.xz += normalize(position.xz + 0.0001) * sin(uTime * 1.3 + an * 5.0) * 0.025 * kk * kk;
+        transformed.z -= sin(uTime * 0.8) * 0.04 * kk * kk;`);
+  };
+  robeMat.customProgramCacheKey = () => 'robe';
+  const robe = new THREE.Mesh(robeGeo, robeMat);
   rig.wear('hips', robe, [0, 0.06, 0]);
   const bodice = new THREE.Mesh(new THREE.SphereGeometry(0.17, 18, 14, 0, Math.PI * 2, 0, Math.PI * 0.62), black);
   bodice.scale.set(1, 1.35, 0.72);

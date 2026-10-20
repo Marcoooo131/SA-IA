@@ -14,6 +14,8 @@ import type { Pose } from '../world/rig';
 import { waterBottle } from '../world/bottle';
 import { Particles, ambientMotes } from '../fx/particles';
 import { godRay, groundMist, lightningBolt } from '../fx/magic';
+import { applyEnvironment } from '../world/assets';
+import { WIND } from '../world/props';
 
 const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 const DAIS = 1.2;
@@ -267,6 +269,16 @@ export function createCathedralScene(): CineScene {
   msc.left = -16; msc.right = 16; msc.top = 20; msc.bottom = -10; msc.near = 10; msc.far = 120;
   moon.shadow.bias = -0.0008;
   scene.add(moon, moon.target);
+  // la rosace projette ses couleurs sur le dallage et sur la prêtresse
+  const stained = new THREE.SpotLight(0xffffff, 0, 90, 0.42, 0.5, 1);
+  stained.map = roseWindowTex();
+  stained.position.set(0, 18, -74);
+  stained.target.position.set(0, 0, -36);
+  stained.castShadow = true;
+  stained.shadow.mapSize.set(1024, 1024);
+  stained.shadow.bias = -0.0008;
+  scene.add(stained, stained.target);
+  applyEnvironment(scene, 'night', 0.25);
   // lumière violette au pied de l'estrade : projette les ombres géantes des ailes
   const umbra = new THREE.SpotLight(0x9a5aff, 0, 95, 0.62, 0.7, 1.0);
   umbra.position.set(0, 0.4, -44.5);
@@ -377,6 +389,8 @@ export function createCathedralScene(): CineScene {
       for (const m of [motes, beamDust]) (m.material as THREE.ShaderMaterial).uniforms.uTime.value = t;
       for (const ray of roseRays) (ray.material as THREE.ShaderMaterial).uniforms.uTime.value = t;
       roseMat.color.setScalar(0.85 + 0.1 * Math.sin(t * 0.7));
+      stained.intensity = 900 * (0.85 + 0.15 * Math.sin(t * 0.7)) * smoothstep(82.6, 86, t);
+      WIND.uTime.value = t;
 
       // ---------------- particules sombres autour d'elle
       const step = Math.min(0.1, Math.max(0, t - lastT));

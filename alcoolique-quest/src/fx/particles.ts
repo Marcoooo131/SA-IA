@@ -14,6 +14,8 @@ export interface EmitOpts {
   gravity?: number;
   drag?: number;
   alpha?: number;
+  /** Croissance de la taille au cours de la vie (fumée) : 0 = rétrécit, 2 = triple. */
+  grow?: number;
 }
 
 /** Uniforme partagé : focale en pixels (mise à jour au redimensionnement) pour des particules à taille physique. */
@@ -52,7 +54,7 @@ export class Particles extends THREE.Points {
   private sizeAttr: Float32Array;
   private alphaAttr: Float32Array;
   private colAttr: Float32Array;
-  private params: Float32Array; // gravity, drag, alpha
+  private params: Float32Array; // gravity, drag, alpha, grow
   private cursor = 0;
   readonly capacity: number;
 
@@ -85,7 +87,7 @@ export class Particles extends THREE.Points {
     this.sizeAttr = size;
     this.alphaAttr = alpha;
     this.colAttr = col;
-    this.params = new Float32Array(capacity * 3);
+    this.params = new Float32Array(capacity * 4);
   }
 
   emit(n: number, o: EmitOpts) {
@@ -113,9 +115,10 @@ export class Particles extends THREE.Points {
       this.baseSize[i] = size[0] + Math.random() * (size[1] - size[0]);
       tmp.copy(c1).lerp(c2, Math.random());
       this.colAttr[i * 3] = tmp.r; this.colAttr[i * 3 + 1] = tmp.g; this.colAttr[i * 3 + 2] = tmp.b;
-      this.params[i * 3] = o.gravity ?? 0;
-      this.params[i * 3 + 1] = o.drag ?? 0.5;
-      this.params[i * 3 + 2] = o.alpha ?? 1;
+      this.params[i * 4] = o.gravity ?? 0;
+      this.params[i * 4 + 1] = o.drag ?? 0.5;
+      this.params[i * 4 + 2] = o.alpha ?? 1;
+      this.params[i * 4 + 3] = o.grow ?? -1;
     }
   }
 
@@ -124,17 +127,18 @@ export class Particles extends THREE.Points {
     for (let i = 0; i < this.capacity; i++) {
       if (this.life[i] <= 0) { this.alphaAttr[i] = 0; continue; }
       this.life[i] -= dt;
-      const drag = Math.max(0, 1 - this.params[i * 3 + 1] * dt);
+      const drag = Math.max(0, 1 - this.params[i * 4 + 1] * dt);
       this.vel[i * 3] *= drag;
-      this.vel[i * 3 + 1] = this.vel[i * 3 + 1] * drag - this.params[i * 3] * dt;
+      this.vel[i * 3 + 1] = this.vel[i * 3 + 1] * drag - this.params[i * 4] * dt;
       this.vel[i * 3 + 2] *= drag;
       this.pos[i * 3] += this.vel[i * 3] * dt;
       this.pos[i * 3 + 1] += this.vel[i * 3 + 1] * dt;
       this.pos[i * 3 + 2] += this.vel[i * 3 + 2] * dt;
       const k = Math.max(0, this.life[i] / this.maxLife[i]);
       // apparition rapide, extinction douce
-      this.alphaAttr[i] = Math.min(1, (1 - k) * 8) * k * this.params[i * 3 + 2];
-      this.sizeAttr[i] = this.baseSize[i] * (0.6 + 0.4 * k);
+      const grow = this.params[i * 4 + 3];
+      this.alphaAttr[i] = Math.min(1, (1 - k) * (grow >= 0 ? 3 : 8)) * k * this.params[i * 4 + 2];
+      this.sizeAttr[i] = this.baseSize[i] * (grow >= 0 ? 1 + (1 - k) * grow : 0.6 + 0.4 * k);
     }
     const g = this.geometry;
     g.attributes.position.needsUpdate = true;

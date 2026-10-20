@@ -10,6 +10,9 @@ import { Eagle } from '../world/eagle';
 import { cameraFill, skyDome, sunlight } from '../world/sky';
 import { CITY, buildCity } from '../world/city';
 import { Particles, ambientMotes } from '../fx/particles';
+import { ASSETS, applyEnvironment } from '../world/assets';
+import { cloudPuff } from '../world/textures';
+import { WIND } from '../world/props';
 import { groundMist } from '../fx/magic';
 import { makeBerserker, makeMage, makeRanger, makeSummoner, makeSwordsman } from '../world/characters';
 import { addPose, idle, type Pose } from '../world/rig';
@@ -33,6 +36,16 @@ export function createCityScene(quality: Quality): CineScene {
   const fill = cameraFill(scene, 0xc8d0ff, 0.9);
   const city = buildCity(quality);
   scene.add(city.group);
+  applyEnvironment(scene, 'sky', 0.35);
+  // fumées : les cheminées les plus proches des trajets de caméra
+  const chimneys = city.chimneys
+    .map((c) => ({ c, d: Math.min(Math.abs(c.x) + Math.max(0, 40 - c.z), c.distanceTo(new THREE.Vector3(0, c.y, 20)), c.distanceTo(new THREE.Vector3(0, c.y, -90))) }))
+    .sort((a, b) => a.d - b.d)
+    .slice(0, quality === 'high' ? 90 : 40)
+    .map((x) => x.c);
+  const smoke = new Particles(quality === 'high' ? 2200 : 1000, { additive: false, map: ASSETS.cloud ?? cloudPuff() });
+  scene.add(smoke);
+  let lastSmoke = 0;
 
   // forges : braises qui s'élèvent
   const embers = new Particles(quality === 'high' ? 1500 : 700);
@@ -170,6 +183,7 @@ export function createCityScene(quality: Quality): CineScene {
       (sky.material as THREE.ShaderMaterial).uniforms.uTime.value = t;
       (haze.material as THREE.ShaderMaterial).uniforms.uTime.value = t;
       (motes.material as THREE.ShaderMaterial).uniforms.uTime.value = t;
+      WIND.uTime.value = t;
       city.updateCrowd(t);
       for (const b of city.plazaBanners) b.rotation.z = Math.sin(t * 2 + b.position.x) * 0.06;
       heroPoses(t);
@@ -181,6 +195,10 @@ export function createCityScene(quality: Quality): CineScene {
         }
       }
       embers.update(dt);
+      const st = Math.min(0.1, Math.max(0, t - lastSmoke));
+      lastSmoke = t;
+      for (const ch of chimneys) if (Math.random() < st * 3) smoke.emit(1, { pos: ch, spread: 0.3, vel: new THREE.Vector3(0.8, 1.5, -0.4), velSpread: 0.3, life: [4, 8], size: [1.4, 2.6], color: 0xc8c0b8, color2: 0x8a847e, gravity: -0.05, drag: 0.12, alpha: 0.4, grow: 3 });
+      smoke.update(st);
       // zone d'ombres : suit la caméra
       sun.target.position.copy(look).lerp(pos, 0.4);
       sun.position.copy(sun.target.position).addScaledVector(sunDir, 400);
