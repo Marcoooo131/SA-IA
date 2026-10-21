@@ -86,3 +86,73 @@ def test_patch_sends_json_and_if_match(transport):
 def test_slow_answer_is_a_timeout(transport):
     with pytest.raises(TimeoutError):
         transport.request("GET", "slow")
+
+
+class LoginHandler(BaseHTTPRequestHandler):
+    """CRM that redirects to a sign-in page; the 'user' signs in after 2 s and is sent back."""
+
+    def log_message(self, *a):
+        pass
+
+    def _send(self, code, body=b"", headers=()):
+        self.send_response(code)
+        for k, v in headers:
+            self.send_header(k, v)
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        authed = "auth=ok" in self.headers.get("Cookie", "")
+        if self.path.startswith("/Org/api/"):
+            return self._send(200, b'{"UserId":"x"}', [("Content-Type", "application/json")]) if authed else self._send(401)
+        if self.path.startswith("/login"):
+            page = (b"<html><body>login<script>setTimeout(()=>{document.cookie='auth=ok;path=/';"
+                    b"location.href='/Org/main.aspx'}," + self.server.delay_ms + b")</script></body></html>")
+            return self._send(200, page, [("Content-Type", "text/html")])
+        if not authed:
+            return self._send(302, b"", [("Location", "/login")])
+        return self._send(200, b"<html><body>CRM</body></html>", [("Content-Type", "text/html")])
+
+
+def _login_transport(tmp_path, delay_ms: bytes):
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), LoginHandler)
+    srv.delay_ms = delay_ms
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    conn = Connection(kind="browser", environment_url=f"http://127.0.0.1:{srv.server_port}/Org", browser_headless=True,
+                      browser_executable=os.environ.get("MD_TEST_BROWSER", ""))
+    return srv, BrowserSessionTransport(conn, tmp_path)
+
+
+def test_waits_for_the_sign_in_across_page_navigations(tmp_path):
+    """Regression: the wait used to return at once (the page-side check returned a promise, always
+    truthy), so the agent queried the CRM before the user had signed in and got HTTP 401."""
+    from movers_dispatch.dataverse import SessionExpired
+
+    srv, t = _login_transport(tmp_path, b"2000")
+    try:
+        try:
+            t.wait_for_login(timeout_s=20)
+        except SessionExpired as e:
+            if "Executable" in repr(e.__cause__) or "executable" in repr(e.__cause__):
+                pytest.skip("Chromium indisponible")
+            raise
+        assert t.request("GET", "WhoAmI").status == 200
+    finally:
+        t.close()
+        srv.shutdown()
+
+
+def test_sign_in_not_done_in_time_is_reported(tmp_path):
+    from movers_dispatch.dataverse import SessionExpired
+
+    srv, t = _login_transport(tmp_path, b"600000")
+    try:
+        with pytest.raises(SessionExpired) as e:
+            t.wait_for_login(timeout_s=3)
+        if "xecutable" in repr(e.value.__cause__):
+            pytest.skip("Chromium indisponible")
+        assert "délai" in str(e.value)
+    finally:
+        t.close()
+        srv.shutdown()

@@ -199,7 +199,8 @@ liste **Attribuer à…**.
 | « Python est introuvable » | Refaire l'étape 1 en cochant bien **Add python.exe to PATH**, puis redémarrer le PC. |
 | « Lancez d'abord 1-installer.bat » | Faire l'étape 3. |
 | La fenêtre noire se ferme tout de suite | Clic droit sur le `.bat`, puis **Modifier**, pour vérifier qu'il est dans `movers-dispatch\windows`. Sinon, relancer `1-installer.bat`. |
-| « Session Dynamics 365 non ouverte » | Vous ne vous êtes pas connecté dans la fenêtre Edge à temps (5 minutes) : relancer et se connecter. |
+| « Session Dynamics 365 non ouverte » ou « Connexion au CRM non faite dans le délai » | Vous ne vous êtes pas connecté dans la fenêtre Edge à temps (5 minutes) : relancer et se connecter. La fenêtre Edge doit rester ouverte, sur le CRM, tant que l'agent tourne. |
+| « faute de frappe » dans `dispatch.toml` | Le message donne le numéro de ligne : chaque valeur doit être entre guillemets droits `"…"`, sans espace en début de ligne. |
 | `! Mettre connection.api_version = "v9.0"` (ou autre) | Recopier cette valeur dans `dispatch.toml` à la ligne `api_version = …`, puis relancer `3-decouvrir.bat`. |
 | `! Le champ Worked By … n'est pas modifiable` | Votre compte n'a pas le droit de modifier ce champ : en parler à l'administrateur du CRM. |
 | `! systemuserid non renseigné` | Un des quatre `systemuser_id` est vide ou incomplet dans `dispatch.toml` (étape 6). |

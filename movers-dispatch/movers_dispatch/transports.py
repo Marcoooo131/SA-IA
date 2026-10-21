@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json as _json
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -85,6 +86,12 @@ _FETCH_JS = """async ([url, method, headers, body, timeoutMs]) => {
 }"""
 
 
+_WHOAMI_JS = """async (u) => {
+  try { const r = await fetch(u, {credentials: "same-origin", headers: {"Accept": "application/json"}}); return r.status; }
+  catch (e) { return 0; }
+}"""
+
+
 class BrowserSessionTransport:
     """All Playwright calls run on one dedicated thread (the sync API is bound to its thread)."""
 
@@ -115,12 +122,25 @@ class BrowserSessionTransport:
         def run():
             if self.page is None:
                 self._start()
-            self.page.wait_for_function(
-                """async (u) => { try { const r = await fetch(u, {credentials: 'same-origin',
-                     headers: {'Accept': 'application/json'}}); return r.status === 200; } catch (e) { return false; } }""",
-                arg=api_root(self.conn) + "WhoAmI", timeout=timeout_s * 1000, polling=2000)
+            url = api_root(self.conn) + "WhoAmI"
+            deadline = time.monotonic() + timeout_s
+            # Polled from Python: the sign-in navigates (login page, MFA, back to the CRM), which destroys
+            # any wait running inside the page. Each attempt is a plain evaluate; failures mean "not yet".
+            while time.monotonic() < deadline:
+                if self.page.is_closed():
+                    raise SessionExpired("La fenêtre du navigateur a été fermée avant la connexion.")
+                try:
+                    if self.page.evaluate(_WHOAMI_JS, url) == 200:
+                        return
+                except Exception:  # navigation in progress, or a sign-in page on another site
+                    pass
+                self.page.wait_for_timeout(2000)
+            raise SessionExpired("Connexion au CRM non faite dans le délai.")
+
         try:
             self._call(run)
+        except SessionExpired:
+            raise
         except Exception as e:
             raise SessionExpired(f"Session Dynamics 365 non ouverte dans la fenêtre du navigateur ({e.__class__.__name__}).") from e
 
