@@ -18,6 +18,7 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > 📨 **Dispatch Movers Emails** (Python, distinct de l'application Movers) :
 > [`movers-dispatch/`](movers-dispatch/README.md) — agent Dynamics 365 qui renseigne *Worked By* sur la file
 > Movers Emails à partir de l'Owner du Case du compte client ; Simulation par défaut, Supervisé, Automatique.
+> Ancienne version conservée à part (sans le bouton « Corriger ») : [`movers-dispatch-ancienne-version/`](movers-dispatch-ancienne-version/README.md).
 
 > 🎬 **Alcoolique Quest : La Sobriété Perdue** (Three.js, distinct de l'application Movers) :
 > [`alcoolique-quest/`](alcoolique-quest/README.md) — cinématique d'introduction en temps réel d'un RPG dark fantasy

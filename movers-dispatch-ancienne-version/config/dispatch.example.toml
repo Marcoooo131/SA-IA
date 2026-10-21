@@ -1,0 +1,72 @@
+# Configuration de l'agent de dispatch Movers Emails — copier en `dispatch.toml` (non versionné).
+# Toutes les valeurs propres à l'environnement Sector Alarm se lisent dans le CRM avec :
+#   movers-dispatch discover -c dispatch.toml
+# Rien n'est deviné : tant qu'une valeur manque, aucune écriture n'est possible.
+
+[connection]
+# "browser" : fenêtre Edge où vous vous connectez vous-même au CRM (aucun mot de passe transmis à
+#             l'agent). C'est la connexion adaptée au CRM Sector Alarm, installé sur site.
+# "msal"    : Dynamics 365 en ligne uniquement (Microsoft Entra ID) — ne s'applique pas à un CRM sur site.
+# "fake"    : données fictives de démonstration.
+kind = "browser"
+# Adresse du CRM jusqu'au nom de l'organisation, telle qu'affichée dans la barre du navigateur avant
+# « /main.aspx » (forme : https://<serveur>/<Organisation>).
+environment_url = "https://SERVEUR-CRM/ORGANISATION"
+api_version = "v8.2"                 # CRM sur site 8.x ; `discover` indique la version qui répond
+browser_channel = "msedge"          # Edge installé sur le poste ; vide = Chromium de Playwright
+browser_profile_dir = ".browser-profile"
+# msal uniquement :
+tenant_id = ""
+client_id = ""
+
+[source]
+# Les éléments traités sont ceux des deux sous-tableaux Movers du tableau de bord
+# « Churn - Defence Main activites », désignés par le nom exact de leur vue (`discover` les liste).
+# Un élément présent dans les deux vues n'est traité qu'une fois. Mails et tâches sont pris en charge.
+view_names = ["Queue Item - Movers - Emails", "Queue Item - Movers tasks"]
+# Autres possibilités (laisser vides si view_names est renseigné) : toute la file, ou une vue par identifiant.
+queue_name = ""
+saved_view_id = ""
+user_view_id = ""
+
+[agent]
+default_mode = "simulation"          # "simulation" ou "supervise" ; "automatique" n'est jamais un défaut
+automatic_allowed = false            # à passer à true seulement après validation des règles par le métier
+worked_by_navigation = "workerid_systemuser"   # vérifié par `discover` dans les métadonnées
+database = "movers_dispatch.db"
+max_items_per_run = 200
+
+[cases]
+# Ces règles ne servent que lorsque le Regarding du mail est le COMPTE client. Lorsque le Regarding est
+# un Case (2e mail de la vidéo), c'est ce Case qui est retenu, quels que soient son titre et son statut.
+#
+# Statut : dans la vidéo, les deux Cases retenus étaient « Canceled » → le statut n'est pas un critère.
+active_only = false
+# Plusieurs Cases pertinents avec le même Owner : "review" (validation humaine) ou "assign".
+multiple_same_owner = "review"
+# Case pertinent pour Movers : observé dans la vidéo, titre « Mover » ou « MOVERS » (comparaison sans
+# casse ni accents). Toutes les règles doivent être vraies. Autres colonnes possibles, à valider avec le
+# métier et vérifiées par `discover` (ex. type de Case « Takeover », catégorie « Moving Customer »).
+rules = [ { field = "title", contains = "mover" } ]
+
+# Les quatre collaborateurs. systemuser_id = identifiant de la fiche utilisateur Dynamics 365,
+# relevé avec `discover` (jamais déduit d'un nom). first_name = prénom attendu dans Worked By (contrôle).
+[[collaborators]]
+key = "kader"
+first_name = "Kader"
+systemuser_id = ""
+
+[[collaborators]]
+key = "estefania"
+first_name = "Estefania"
+systemuser_id = ""
+
+[[collaborators]]
+key = "marc-antoine"
+first_name = "Marc-Antoine"
+systemuser_id = ""
+
+[[collaborators]]
+key = "chloe"
+first_name = "Chloé"
+systemuser_id = ""

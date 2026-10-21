@@ -171,8 +171,16 @@ def parse(raw: dict, path: Path | None = None) -> Config:
 
 def load(path: str | Path) -> Config:
     p = Path(path)
+    raw = p.read_bytes()
+    # Notepad may save with a BOM (UTF-8) or in ANSI (Windows-1252): accept both
     try:
-        with p.open("rb") as f:
-            return parse(tomllib.load(f), p)
-    except (TypeError, ValueError) as e:  # unknown key in a section, bad enum value, TOML syntax
-        raise ConfigError(f"{p} : {e}") from e
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw.decode("cp1252")
+    try:
+        return parse(tomllib.loads(text), p)
+    except tomllib.TOMLDecodeError as e:
+        raise ConfigError(f"{p.name} : faute de frappe — {e}. Chaque valeur doit être entre guillemets droits, "
+                          'par exemple environment_url = "https://serveur/Organisation" (sans espace avant le nom).') from e
+    except (TypeError, ValueError) as e:  # unknown key in a section, bad enum value
+        raise ConfigError(f"{p.name} : {e}") from e

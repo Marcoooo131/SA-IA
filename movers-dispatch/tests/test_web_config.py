@@ -126,3 +126,20 @@ def test_supervision_endpoints():
     assert r.status_code == 200 and r.json()["status"] == "affecte"
     s = c.get("/api/supervision").json()
     assert s["corrigees"] == 1 and s["corrections"][0]["note"] == "test" and s["objectif"] == 100
+
+
+def test_configuration_saved_by_notepad_and_typos(tmp_path):
+    from pathlib import Path
+
+    example = (Path(__file__).parent.parent / "config" / "dispatch.example.toml").read_text(encoding="utf-8")
+    bom = tmp_path / "bom.toml"
+    bom.write_bytes(b"\xef\xbb\xbf" + example.encode("utf-8"))          # Notepad « UTF-8 avec BOM »
+    ansi = tmp_path / "ansi.toml"
+    ansi.write_bytes(example.encode("cp1252", errors="replace"))         # Notepad « ANSI »
+    assert config_mod.load(bom).collaborators[3].first_name == "Chloé"
+    assert config_mod.load(ansi).collaborators[3].first_name == "Chloé"
+    typo = tmp_path / "typo.toml"
+    typo.write_text(example.replace('environment_url = "https://SERVEUR-CRM/ORGANISATION"',
+                                    "environment_url = https://crm/Org"), encoding="utf-8")
+    with pytest.raises(config_mod.ConfigError, match="guillemets"):
+        config_mod.load(typo)

@@ -10,7 +10,7 @@ déroulante du tableau de bord permet de choisir à qui attribuer l'élément.
 >
 > | Élément | État |
 > |---|---|
-> | Règles de décision, modes Simulation / Supervisé / Automatique, arrêt immédiat, journal, tableau de bord | **Opérationnels**, testés sur des données **fictives** (66 tests), dont les deux mails de la vidéo reproduits |
+> | Règles de décision, modes Simulation / Supervisé / Automatique, arrêt immédiat, journal, tableau de bord | **Opérationnels**, testés sur des données **fictives** (69 tests), dont les deux mails de la vidéo reproduits |
 > | Connexion « navigateur » (session CRM de l'utilisateur) | Testée dans un vrai Chromium face à un **serveur imitant le Web API** d'un CRM sur site, jamais face au vrai CRM |
 > | Connexion « msal » | **Sans objet** pour le CRM Sector Alarm, qui est installé sur site (pas Dynamics 365 en ligne) |
 > | Vidéo de la procédure | **Analysée** (2 mails traités, § 1). Ce qu'elle montre a corrigé les règles (§ 2) |
