@@ -30,6 +30,14 @@
     </div>
   </section>
 
+  <section class="card">
+    <h2>Rotation 1 pour 1</h2>
+    <p class="muted">Quand aucun Case ne désigne l'un des quatre, l'élément va au suivant de la rotation de sa catégorie.
+      Un collègue coché absent est sauté.</p>
+    <div id="rotation-next"></div>
+    <div id="absents" class="absents"></div>
+  </section>
+
   <section class="counters" aria-label="Compteurs">
     <div><b id="c-detectes">0</b><span>détectés</span></div>
     <div><b id="c-traites">0</b><span>traités</span></div>
@@ -47,8 +55,8 @@
     </div>
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Élément</th><th>Sujet</th><th>Compte</th><th>Case</th><th>Owner</th><th>Worked By</th><th>Statut</th><th>Motif</th><th></th></tr></thead>
-        <tbody id="rows"><tr><td colspan="9" class="muted">Aucun élément : lancer un traitement (Simulation par défaut).</td></tr></tbody>
+        <thead><tr><th>Élément</th><th>Sujet</th><th>Catégorie</th><th>Compte</th><th>Case</th><th>Owner</th><th>Worked By</th><th>Statut</th><th>Motif</th><th></th></tr></thead>
+        <tbody id="rows"><tr><td colspan="10" class="muted">Aucun élément : lancer un traitement (Simulation par défaut).</td></tr></tbody>
       </table>
     </div>
   </section>

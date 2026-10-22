@@ -18,7 +18,7 @@ STATIC = Path(__file__).parent / "static"
 COOKIE = "md_session"
 AUTOMATIC_CONFIRMATION = "AUTOMATIQUE"
 ITEM_FIELDS = ("queueitem_id", "subject", "account_name", "case_number", "owner_name", "worked_by_name",
-               "status", "reason", "mode", "updated_at")
+               "status", "reason", "mode", "updated_at", "category", "client_name", "client_via", "client_to_link", "method")
 
 
 def create_app(agent: Agent, token: str, actor: str = "local") -> FastAPI:
@@ -57,11 +57,12 @@ def create_app(agent: Agent, token: str, actor: str = "local") -> FastAPI:
         s = agent.state
         return {
             "state": {"running": s.running, "mode": s.mode, "run_id": s.run_id, "current": s.current,
-                      "message": s.message, "problems": s.problems},
+                      "message": s.message, "problems": s.problems, "warnings": s.warnings},
             "config": {"default_mode": agent.cfg.default_mode.value, "automatic_allowed": agent.cfg.automatic_allowed,
                        "connection": agent.cfg.connection.kind, "problems": agent.cfg.problems(),
                        "collaborators": [{"key": c.key, "first_name": c.first_name} for c in agent.cfg.collaborators]},
             "counters": agent.journal.counters(),
+            "rotation": agent.rotation_state(),
             # items already correctly filled in (« ignoré ») are counted but not listed
             "items": [{k: i[k] for k in ITEM_FIELDS} for i in agent.journal.items() if i["status"] != Status.SKIPPED.value],
         }
@@ -124,6 +125,21 @@ def create_app(agent: Agent, token: str, actor: str = "local") -> FastAPI:
         except RunBlocked as e:
             raise HTTPException(409, str(e))
         return {k: item[k] for k in ITEM_FIELDS}
+
+    @app.post("/api/items/{queueitem_id}/link")
+    def link(queueitem_id: str, payload: dict = Body(...)):
+        try:
+            item = agent.link_client(queueitem_id, str(payload.get("account_number", "")), actor, str(payload.get("note", "")))
+        except RunBlocked as e:
+            raise HTTPException(409, str(e))
+        return {k: item[k] for k in ITEM_FIELDS}
+
+    @app.post("/api/rotation/absent")
+    def absent(payload: dict = Body(...)):
+        try:
+            return agent.set_absent(str(payload.get("key", "")), bool(payload.get("absent")), actor)
+        except RunBlocked as e:
+            raise HTTPException(409, str(e))
 
     @app.post("/api/items/{queueitem_id}/reject")
     def reject(queueitem_id: str, payload: dict = Body(default={})):

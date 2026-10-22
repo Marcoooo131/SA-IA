@@ -50,6 +50,38 @@ multiple_same_owner = "review"
 # métier et vérifiées par `discover` (ex. type de Case « Takeover », catégorie « Moving Customer »).
 rules = [ { field = "title", contains = "mover" } ]
 
+[categories]
+# Lecture des demandes : Résiliation ou Déménagement (décide de la rotation utilisée).
+# Toutes les tâches (chatbot « Termination of contract », « Moving - CS »…) sont des Résiliations :
+taches = "resiliation"
+# Mots cherchés dans le sujet et le texte, sans tenir compte des majuscules ni des accents.
+# Résiliation est testée en premier (« Termination of contract due to moving » = Résiliation).
+resiliation = ["résili", "termination", "désactiv", "décès", "mettre fin", "arrêter mon contrat", "cancel"]
+demenagement = ["déménag", "moving home", "nouvelle adresse", "moving", "changement d'adresse"]
+
+[rotation]
+# 1 pour 1 par catégorie : quand aucun Case ne désigne l'un des quatre, l'élément va au suivant.
+active = true
+# "sans_owner" : seulement s'il n'y a pas de Case d'un des quatre (le client garde son interlocuteur)
+# "toujours"   : chaque élément classé suit la rotation, même s'il existe un Case
+applique = "sans_owner"
+# Ordre de passage (clés des [[collaborators]] ci-dessous). Les absents se cochent dans le tableau de bord.
+resiliation = ["chloe", "kader", "estefania", "marc-antoine"]
+demenagement = ["chloe", "kader", "estefania", "marc-antoine"]
+
+[client]
+# Regarding vide : l'agent cherche le compte comme dans la vidéo (n° client écrit dans le texte, adresse de
+# l'expéditeur, champ « Email » du formulaire HubSpot, téléphone) et ne retient qu'un compte unique.
+active = true
+automatique = false                  # même en mode Automatique, un humain valide le rattachement
+champs_email = ["emailaddress1", "emailaddress2", "emailaddress3"]
+# Colonnes téléphone du compte : `3-decouvrir.bat` liste celles qui existent (Home Phone, Mobile Phone…)
+champs_telephone = ["telephone1", "telephone2", "telephone3"]
+domaines_ignores = ["sectoralarm.fr", "sectoralarm.com", "sectoralarm.net", "hubspot.com", "hubspotemail.net"]
+# Regarding qui pointe vers une autre table (ex. un contrat « C-SFR-… ») : table = colonne « compte »
+# de cette table, relevée avec `3-decouvrir.bat`. Exemple : liens_compte = { contract = "customerid" }
+liens_compte = {}
+
 # Les quatre collaborateurs. systemuser_id = identifiant de la fiche utilisateur Dynamics 365,
 # relevé avec `discover` (jamais déduit d'un nom). first_name = prénom attendu dans Worked By (contrôle).
 [[collaborators]]

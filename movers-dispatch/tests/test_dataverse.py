@@ -193,3 +193,44 @@ def test_preflight_reports_expired_session():
     g, _ = gw([("GET", "WhoAmI", Response(401, None, {}))])
     with pytest.raises(SessionExpired):
         g.preflight()
+
+
+def test_activity_text_and_sender_are_read():
+    g, t = gw([("GET", "emails(", Response(200, {"activityid": EM, "subject": "Résiliation", "sender": " a@example.com ",
+                                                 "description": "<p>Numéro de client&nbsp;: 10008705</p>",
+                                                 "@odata.etag": 'W/"3"'}, {}))])
+    act = g.get_activity("email", EM)
+    assert act.sender == "a@example.com" and "10008705" in act.text and act.etag == 'W/"3"' and act.regarding is None
+    assert "description" in t.calls[0][2]["$select"] and "sender" in t.calls[0][2]["$select"]
+
+
+def test_account_search_is_exact_active_and_escaped():
+    g, t = gw([("GET", "accounts", Response(200, {"value": [{"accountid": ACC.upper(), "name": "Client", "accountnumber": "1001"}]}, {}))])
+    hits = g.find_accounts(("emailaddress1", "emailaddress2"), ["o'neil@example.com"])
+    assert hits[0].id == ACC and hits[0].name == "Client (1001)"
+    flt = t.calls[0][2]["$filter"]
+    assert flt.startswith("statecode eq 0 and (") and "emailaddress2 eq 'o''neil@example.com'" in flt
+    assert g.find_accounts((), ["x"]) == [] and len(t.calls) == 1
+
+
+def test_regarding_write_binds_the_account_with_etag():
+    from movers_dispatch.models import Email as Act
+    g, t = gw([("PATCH", "tasks(", Response(204, None, {}))])
+    g.set_regarding(Act(gid("tk"), "s", None, "task", etag='W/"9"'), ACC)
+    method, path, _, body, headers = t.calls[0]
+    assert path == f"tasks({gid('tk')})" and body == {"regardingobjectid_account_task@odata.bind": f"/accounts({ACC})"}
+    assert headers["If-Match"] == 'W/"9"'
+    with pytest.raises(CrmError, match="ETag"):
+        g.set_regarding(Act(gid("tk"), "s", None, "task"), ACC)
+
+
+def test_client_preflight_reports_missing_columns_and_relations():
+    ok_rel = {"value": [{"ReferencingAttribute": "regardingobjectid", "ReferencedEntity": "account",
+                         "ReferencingEntityNavigationPropertyName": "regardingobjectid_account_email"}]}
+    g, _ = gw([("GET", "EntityDefinitions(LogicalName='account')/Attributes(LogicalName='telephone3')", Response(404, None, {})),
+               ("GET", "EntityDefinitions(LogicalName='account')/Attributes", Response(200, {}, {})),
+               ("GET", "EntityDefinitions(LogicalName='email')/ManyToOneRelationships", Response(200, ok_rel, {})),
+               ("GET", "EntityDefinitions(LogicalName='task')/ManyToOneRelationships", Response(200, {"value": []}, {}))])
+    problems = g.client_preflight()
+    assert any("telephone3" in p for p in problems) and any("Regarding de task" in p for p in problems)
+    assert not any("Regarding de email" in p for p in problems)

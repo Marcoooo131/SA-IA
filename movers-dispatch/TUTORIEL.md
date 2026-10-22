@@ -147,6 +147,35 @@ dans la case « ignorés ».
 
 Le gros bouton rouge **Arrêt immédiat** stoppe tout : plus aucune écriture après le clic.
 
+### Les éléments sans Regarding
+
+L'agent cherche le client comme vous le faites : adresse de l'expéditeur, « Numéro de client » écrit dans
+le mail, champ « Email » du formulaire HubSpot, téléphone. La colonne **Compte** affiche alors
+**à rattacher**, le client trouvé et comment il l'a trouvé.
+
+- C'est le bon client : **Valider client + Kader** (par exemple). L'agent remplit le Regarding, puis Worked By.
+- Ce n'est pas le bon, ou l'agent n'a rien trouvé : tapez le **N° de compte** (Account Number) du client
+  dans la petite case, puis cliquez sur **Corriger le client** (ou **Rattacher le client**). L'agent remplit
+  le Regarding, puis propose le Worked By.
+
+Il ne remplace jamais un Regarding déjà rempli.
+
+### La rotation 1 pour 1
+
+En haut du tableau de bord, **Rotation 1 pour 1** indique qui est le prochain en Résiliation et en
+Déménagement. Quand un mail ou une tâche n'a pas de Case appartenant à l'un des quatre, il va au suivant de
+la rotation de sa catégorie. La colonne **Catégorie** indique alors « (rotation) ». Le matin, **cochez les
+collègues absents** : ils seront sautés jusqu'à ce que vous les décochiez. L'ordre de passage se change
+dans `dispatch.toml` (section `[rotation]`).
+
+**Toutes les tâches** (chatbot, « Moving - CS ») sont classées en Résiliation. Les formulaires HubSpot
+« Moving Home » vont en Déménagement. Pour les autres mails, l'agent cherche des mots comme « résiliation »
+ou « déménagement ». S'il ne trouve rien, la catégorie reste vide et vous choisissez dans **Attribuer à…**.
+
+> Si l'agent affiche « Regarding … pointe vers « contract » » (une tâche rattachée à un contrat C-SFR) :
+> lancez `3-decouvrir.bat`, puis envoyez-moi la partie « Colonnes de « contract » qui pointent vers un compte ».
+> Je vous dirai quoi mettre dans `dispatch.toml`.
+
 ## Étape 9 : les deux semaines de supervision (corriger l'agent)
 
 **À savoir :** l'agent n'apprend pas tout seul. Il suit des règles écrites, par exemple « le Case actif ou

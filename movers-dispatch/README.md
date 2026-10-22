@@ -10,7 +10,7 @@ déroulante du tableau de bord permet de choisir à qui attribuer l'élément.
 >
 > | Élément | État |
 > |---|---|
-> | Règles de décision, modes Simulation / Supervisé / Automatique, arrêt immédiat, journal, tableau de bord | **Opérationnels**, testés sur des données **fictives** (69 tests), dont les deux mails de la vidéo reproduits |
+> | Règles de décision, modes Simulation / Supervisé / Automatique, arrêt immédiat, journal, tableau de bord | **Opérationnels**, testés sur des données **fictives** (95 tests), dont les deux mails de la vidéo reproduits |
 > | Connexion « navigateur » (session CRM de l'utilisateur) | Testée dans un vrai Chromium face à un **serveur imitant le Web API** d'un CRM sur site, jamais face au vrai CRM |
 > | Connexion « msal » | **Sans objet** pour le CRM Sector Alarm, qui est installé sur site (pas Dynamics 365 en ligne) |
 > | Vidéo de la procédure | **Analysée** (2 mails traités, § 1). Ce qu'elle montre a corrigé les règles (§ 2) |
@@ -120,6 +120,49 @@ déjà rempli. Il écrit une fois, relit la valeur, et note dans l'historique qu
 Le mail 2 illustre les deux règles : son compte a un Case « Mover » **résolu** (Estefania) et un Case
 « MOVERS » **annulé** (Kader). Que l'agent passe par le Regarding (le Case « MOVERS ») ou par le compte
 (l'annulé l'emporte sur le résolu), il retient Kader, comme dans la vidéo.
+
+### Regarding vide, catégories et rotation (2e vidéo et exemples du 22/10)
+
+**Retrouver le client.** La 2e vidéo montre la méthode : un indice tiré du mail, une recherche du compte,
+puis le **n° de compte** saisi dans le Regarding. L'indice peut être l'adresse de l'expéditeur, le
+« Numéro de client » écrit dans le texte ou le champ « Email » du formulaire HubSpot. L'agent fait pareil
+avec le Web API, en recherche **exacte** sur les comptes actifs :
+1. n° client écrit dans le texte (`accountnumber`) ;
+2. adresse de l'expéditeur, puis adresses écrites dans le texte (`[client] champs_email`), sans les
+   adresses Sector Alarm et HubSpot ;
+3. téléphones écrits dans le texte, sous leurs différentes écritures (`[client] champs_telephone`).
+
+Il ne retient le client que si **un seul compte** ressort de tous les indices. Deux comptes pour une même
+adresse, ou des indices qui désignent des comptes différents, envoient l'élément en validation humaine.
+Le client trouvé est d'abord proposé (« à rattacher »). Une fois validé, l'agent écrit le Regarding, le
+relit, puis écrit Worked By. Même en mode Automatique, un humain valide ce rattachement tant que
+`[client] automatique = false`. Dans le tableau de bord, la case **N° de compte**, avec **Rattacher le
+client** ou **Corriger le client**, fait ce que vous faites à la main. Le contenu des mails est lu en
+mémoire et jamais enregistré : le journal garde « via adresse de l'expéditeur cl•••@exemple.fr ».
+
+Quand le Regarding pointe vers une autre table (une tâche « Moving - CS » rattachée à un contrat
+« C-SFR-… »), l'agent passe par la colonne « compte » de cette table, indiquée dans `[client]
+liens_compte` et relevée avec `discover --table contract`. Sans ce réglage, l'élément part en validation
+humaine avec la marche à suivre.
+
+**Catégories.** Toute tâche est une **Résiliation** : chatbot « Termination of contract… », « Moving -
+CS ». Pour un mail, l'agent cherche des mots dans le sujet et le texte, sans tenir compte des majuscules
+ni des accents. Les mots de Résiliation sont testés en premier (résili, termination, désactiv, décès…),
+puis ceux de Déménagement (déménag, moving home, nouvelle adresse…). Le formulaire HubSpot « Moving
+Home » est donc un Déménagement. Tous ces mots se règlent dans `[categories]`.
+
+**Rotation 1 pour 1.** Une rotation par catégorie, dans l'ordre de `[rotation]`. Elle s'applique quand
+aucun Case pertinent n'appartient à l'un des quatre (`applique = "sans_owner"`). Si un tel Case existe,
+la règle de l'Owner reste prioritaire et le client garde son interlocuteur. Avec `"toujours"`, la
+rotation s'applique à chaque élément classé. Un collègue coché **absent** dans le tableau de bord est
+sauté. La position de chaque rotation est conservée d'un jour à l'autre et n'avance que lorsqu'un
+Worked By est réellement écrit (jamais en Simulation). Une correction fait repartir la rotation du
+collègue choisi. Un seul poste doit faire tourner l'agent, sinon deux rotations avanceraient en parallèle.
+
+**Pas encore fait :** retrouver le client par **nom + adresse**, et lire les **pièces jointes** (PDF,
+scans). Dans la vidéo, ces indices n'ont pas servi : pour le mail avec un acte de décès, l'adresse de
+l'expéditeur a suffi. Le nom seul ne doit jamais suffire (homonymes), et une photo ou un scan demande une
+lecture d'image moins fiable. Les corrections de la supervision diront si ces indices valent la peine.
 
 ### Modes
 

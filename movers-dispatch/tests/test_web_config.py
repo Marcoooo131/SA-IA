@@ -90,7 +90,7 @@ def test_dropdown_assignment_and_ignored_items_hidden():
     s = c.get("/api/state").json()
     assert all(i["status"] != "ignore" for i in s["items"]) and s["counters"]["ignores"] == 1
     assert {"key": "chloe", "first_name": "Chloé"} in s["config"]["collaborators"]
-    review = [i for i in s["items"] if "Owner non reconnu" in (i["reason"] or "")]
+    review = [i for i in s["items"] if "Aucun Case pertinent" in (i["reason"] or "") and not i["category"]]
     r = c.post(f"/api/items/{review[0]['queueitem_id']}/assign", json={"collaborator": "chloe"}, headers=H)
     assert r.status_code == 200 and r.json()["status"] == "affecte" and r.json()["worked_by_name"] == "Chloé"
     proposed = [i for i in s["items"] if i["status"] == "propose"][0]
