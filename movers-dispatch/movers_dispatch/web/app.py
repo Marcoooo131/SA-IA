@@ -8,7 +8,7 @@ import threading
 from pathlib import Path
 
 from fastapi import Body, FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from ..engine import Agent, RunBlocked
@@ -17,8 +17,9 @@ from ..models import Mode, Status
 STATIC = Path(__file__).parent / "static"
 COOKIE = "md_session"
 AUTOMATIC_CONFIRMATION = "AUTOMATIQUE"
+VIEWABLE = {"application/pdf", "image/png", "image/jpeg", "image/gif", "image/webp", "image/bmp"}
 ITEM_FIELDS = ("queueitem_id", "subject", "account_name", "case_number", "owner_name", "worked_by_name",
-               "status", "reason", "mode", "updated_at", "category", "client_name", "client_via", "client_to_link", "method")
+               "status", "reason", "mode", "updated_at", "category", "client_name", "client_via", "client_to_link", "method", "attachments")
 
 
 def create_app(agent: Agent, token: str, actor: str = "local") -> FastAPI:
@@ -133,6 +134,34 @@ def create_app(agent: Agent, token: str, actor: str = "local") -> FastAPI:
         except RunBlocked as e:
             raise HTTPException(409, str(e))
         return {k: item[k] for k in ITEM_FIELDS}
+
+    @app.get("/api/accounts/check")
+    def check_account(number: str = ""):
+        try:
+            return agent.check_account(number)
+        except RunBlocked as e:
+            raise HTTPException(409, str(e))
+
+    @app.get("/api/items/{queueitem_id}/attachments")
+    def attachments(queueitem_id: str):
+        try:
+            return agent.attachments(queueitem_id)
+        except RunBlocked as e:
+            raise HTTPException(404, str(e))
+
+    @app.get("/api/items/{queueitem_id}/attachments/{attachment_id}")
+    def attachment(queueitem_id: str, attachment_id: str):
+        """Shown in the browser (PDF or image only), read from the CRM on demand, never written to disk."""
+        try:
+            f = agent.attachment(queueitem_id, attachment_id)
+        except RunBlocked as e:
+            raise HTTPException(404, str(e))
+        mime = (f["mimetype"] or "").lower()
+        if mime not in VIEWABLE:
+            raise HTTPException(415, f"Type de fichier non affichable ici ({mime or 'inconnu'}) : l'ouvrir dans le CRM.")
+        name = "".join(ch for ch in f["filename"] if ch.isalnum() or ch in "._- ") or "piece-jointe"
+        return Response(f["content"], media_type=mime, headers={
+            "Content-Disposition": f'inline; filename="{name}"', "X-Content-Type-Options": "nosniff"})
 
     @app.post("/api/rotation/absent")
     def absent(payload: dict = Body(...)):

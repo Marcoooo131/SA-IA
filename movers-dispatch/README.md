@@ -10,7 +10,7 @@ déroulante du tableau de bord permet de choisir à qui attribuer l'élément.
 >
 > | Élément | État |
 > |---|---|
-> | Règles de décision, modes Simulation / Supervisé / Automatique, arrêt immédiat, journal, tableau de bord | **Opérationnels**, testés sur des données **fictives** (95 tests), dont les deux mails de la vidéo reproduits |
+> | Règles de décision, modes Simulation / Supervisé / Automatique, arrêt immédiat, journal, tableau de bord | **Opérationnels**, testés sur des données **fictives** (100 tests), dont les deux mails de la vidéo reproduits |
 > | Connexion « navigateur » (session CRM de l'utilisateur) | Testée dans un vrai Chromium face à un **serveur imitant le Web API** d'un CRM sur site, jamais face au vrai CRM |
 > | Connexion « msal » | **Sans objet** pour le CRM Sector Alarm, qui est installé sur site (pas Dynamics 365 en ligne) |
 > | Vidéo de la procédure | **Analysée** (2 mails traités, § 1). Ce qu'elle montre a corrigé les règles (§ 2) |
@@ -159,10 +159,19 @@ sauté. La position de chaque rotation est conservée d'un jour à l'autre et n'
 Worked By est réellement écrit (jamais en Simulation). Une correction fait repartir la rotation du
 collègue choisi. Un seul poste doit faire tourner l'agent, sinon deux rotations avanceraient en parallèle.
 
-**Pas encore fait :** retrouver le client par **nom + adresse**, et lire les **pièces jointes** (PDF,
-scans). Dans la vidéo, ces indices n'ont pas servi : pour le mail avec un acte de décès, l'adresse de
-l'expéditeur a suffi. Le nom seul ne doit jamais suffire (homonymes), et une photo ou un scan demande une
-lecture d'image moins fiable. Les corrections de la supervision diront si ces indices valent la peine.
+**Courriers scannés (3e vidéo).** Les mails « Voir document joint » viennent du scanner du courrier
+(noreply@sectoralarm.fr). Leur PDF est une **lettre manuscrite**, et le n° client y est écrit à la main.
+L'agent ne lit pas cette écriture lui-même : un chiffre mal lu peut désigner un autre client qui existe
+vraiment. Il signale la pièce jointe dans le motif, et le bouton **Voir la pièce jointe** ouvre le scan
+directement depuis le tableau de bord. Le fichier est lu dans le CRM à la demande, sans être enregistré,
+et seuls les PDF et les images sont affichés. Vous tapez le n° lu. Avant d'écrire, l'agent affiche le
+**nom du compte** correspondant pour confirmation. Comme ces lettres n'ont pas de catégorie lisible, la
+liste **Attribuer à…** propose aussi « Suivant en Résiliation » et « Suivant en Déménagement », pour
+que la rotation 1 pour 1 s'applique.
+
+**Pas encore fait :** retrouver le client par **nom + adresse**. Une lecture automatique des lettres
+scannées par une IA serait possible, mais elle enverrait les courriers des clients à un service externe.
+Elle demande donc l'accord de l'entreprise, et le n° proposé resterait à confirmer par vous.
 
 ### Modes
 

@@ -234,3 +234,18 @@ def test_client_preflight_reports_missing_columns_and_relations():
     problems = g.client_preflight()
     assert any("telephone3" in p for p in problems) and any("Regarding de task" in p for p in problems)
     assert not any("Regarding de email" in p for p in problems)
+
+
+def test_attachments_are_listed_for_the_mail_and_decoded():
+    import base64
+    att = gid("att")
+    g, t = gw([("GET", "activitymimeattachments(", Response(200, {"filename": "lettre.pdf", "mimetype": "application/pdf",
+                                                                  "body": base64.b64encode(b"%PDF-1.4").decode(),
+                                                                  "_objectid_value": EM.upper()}, {})),
+               ("GET", "activitymimeattachments", Response(200, {"value": [{"activitymimeattachmentid": att.upper(),
+                                                                            "filename": "lettre.pdf", "mimetype": "application/pdf",
+                                                                            "filesize": 8}]}, {}))])
+    assert g.list_attachments(EM) == [{"id": att, "filename": "lettre.pdf", "mimetype": "application/pdf", "size": 8}]
+    assert t.calls[0][2]["$filter"] == f"_objectid_value eq {EM}" and "body" not in t.calls[0][2]["$select"]
+    f = g.get_attachment(att)
+    assert f["content"] == b"%PDF-1.4" and f["object_id"] == EM

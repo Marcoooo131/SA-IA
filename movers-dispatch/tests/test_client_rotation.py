@@ -233,3 +233,50 @@ def test_older_journal_is_upgraded_in_place(tmp_path):
     j = Journal(str(path))
     j.upsert("new", status=Status.PROPOSED, category="resiliation", method="rotation")
     assert j.item("old")["status"] == "affecte" and j.item("new")["category"] == "resiliation"
+
+
+# ------------------------------------------------------------------ scanned letters (3rd recording)
+def _letter(crm, label="l", number="10090016", files=None):
+    from movers_dispatch.fake import demo_pdf
+    return crm.add(label, "Voir document joint", "Client Lettre", [], regarding_entity=None, account_number=number,
+                   sender="noreply@sectoralarm.fr", text="%Sector Alarm RENNES CDE",
+                   files=files if files is not None else [("lettre.pdf", "application/pdf", demo_pdf([f"n° client {number}"]))])
+
+
+def test_scanned_letter_is_flagged_and_linked_after_the_person_reads_the_number():
+    agent, crm = make()
+    qid = _letter(crm)
+    agent.run(Mode.SUPERVISED)
+    r = row(agent, qid)
+    assert r["status"] == Status.REVIEW.value and r["attachments"] == 1 and "Voir la pièce jointe" in r["reason"]
+    files = agent.attachments(qid)
+    f = agent.attachment(qid, files[0]["id"])
+    assert f["mimetype"] == "application/pdf" and f["content"].startswith(b"%PDF")
+    with pytest.raises(RunBlocked, match="vérifier la lecture"):
+        agent.check_account("10090018")                          # misread digit: no such account
+    assert agent.check_account("1009 0016")["name"].startswith("Client Lettre")
+    out = agent.link_client(qid, "10090016", "local", "lettre scannée")
+    assert crm.emails[crm.items[qid].object.id].regarding.entity == "account" and crm.writes == 1
+    assert out["status"] in (Status.REVIEW.value, Status.AWAITING_APPROVAL.value)
+
+
+def test_attachment_of_another_element_cannot_be_opened():
+    agent, crm = make()
+    a, b = _letter(crm, "a"), _letter(crm, "b", "10090017")
+    agent.run(Mode.SIMULATION)
+    other = agent.attachments(b)[0]["id"]
+    with pytest.raises(RunBlocked, match="n'appartient pas"):
+        agent.attachment(a, other)
+
+
+def test_next_in_rotation_chosen_by_the_person_for_a_letter():
+    agent, crm = make()
+    qid, other = _letter(crm), _letter(crm, "z", "10090019")
+    agent.run(Mode.SUPERVISED)
+    agent.link_client(qid, "10090016", "local")
+    assert row(agent, qid)["status"] == Status.REVIEW.value          # no category, no case: the person decides
+    out = agent.assign_manually(qid, "rotation:resiliation", "local")
+    assert out["status"] == Status.ASSIGNED.value and out["worked_by_name"] == "Kader" and out["method"] == "rotation"
+    assert out["category"] == "resiliation" and agent.journal.setting("rotation:resiliation") == "kader"
+    with pytest.raises(RunBlocked, match="Catégorie inconnue"):
+        agent.assign_manually(other, "rotation:autre", "local")

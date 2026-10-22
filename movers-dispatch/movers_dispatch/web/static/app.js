@@ -69,19 +69,23 @@ function renderRows(items) {
         ${pick(i.queueitem_id, "Corriger : le bon collègue est…")}
         <button class="small" data-correct="${esc(i.queueitem_id)}">Corriger</button>
         <button class="small" data-reject="${esc(i.queueitem_id)}">Refuser</button>` : ""}${i.status === "validation_humaine" ? `
-        ${pick(i.queueitem_id, "Attribuer à…")}
+        ${pick(i.queueitem_id, "Attribuer à…", true)}
         <button class="small primary" data-assign="${esc(i.queueitem_id)}">Attribuer</button>` : ""}${i.client_to_link && ["a_valider", "validation_humaine"].includes(i.status) ? `
         <span class="link-client"><input class="small" data-acct="${esc(i.queueitem_id)}" inputmode="numeric" size="11"
           placeholder="N° de compte" aria-label="Numéro de compte du client">
         <button class="small" data-link="${esc(i.queueitem_id)}">${i.client_name ? "Corriger le client" : "Rattacher le client"}</button></span>` : ""}
+        ${i.attachments ? `<button class="small" data-attach="${esc(i.queueitem_id)}">Voir la pièce jointe</button>` : ""}
         <button class="small" data-history="${esc(i.queueitem_id)}">Historique</button></td>
     </tr>`).join("");
 }
 
-function pick(id, label) {
+function pick(id, label, withRotation = false) {
+  const turns = withRotation && last && last.rotation.active ? last.rotation.categories.filter((c) => c.prochain)
+    .map((c) => `<option value="rotation:${esc(c.key)}">Suivant en ${esc(c.label)} (${esc(c.prochain)})</option>`).join("") : "";
   return `<select class="small" data-pick="${esc(id)}" aria-label="${esc(label)}">
     <option value="">${esc(label)}</option>
     ${collaborators.map((c) => `<option value="${esc(c.key)}">${esc(c.first_name)}</option>`).join("")}
+    ${turns}
   </select>`;
 }
 
@@ -194,12 +198,20 @@ $("rows").addEventListener("click", async (ev) => {
     } else if (t.dataset.link) {
       const input = document.querySelector(`input[data-acct="${CSS.escape(t.dataset.link)}"]`);
       if (!input || !input.value.trim()) { alert("Saisir le numéro de compte (Account Number) du client."); return; }
-      const note = prompt(`Rattacher cet élément au compte n° ${input.value.trim()} (écrit dans le Regarding du CRM).\n\n`
-        + "Comment l'avez-vous trouvé ? (facultatif, ex. « par le téléphone », sans donnée client)");
+      // show which account the number designates first: a misread digit can be another real client
+      const acc = await api(`/api/accounts/check?number=${encodeURIComponent(input.value.trim())}`);
+      const note = prompt(`Le n° ${acc.number} correspond au compte :\n\n    ${acc.name}\n\nEst-ce le bon client ? `
+        + "OK = rattacher (écrit dans le Regarding du CRM), Annuler = ne rien faire.\n\n"
+        + "Comment l'avez-vous trouvé ? (facultatif, ex. « lettre scannée », sans donnée client)");
       if (note === null) return;
       t.disabled = true;
       await api(`/api/items/${t.dataset.link}/link`, { account_number: input.value.trim(), note });
       input.blur();
+    } else if (t.dataset.attach) {
+      const files = await api(`/api/items/${t.dataset.attach}/attachments`);
+      if (!files.length) { alert("Aucune pièce jointe."); return; }
+      for (const f of files) window.open(`/api/items/${t.dataset.attach}/attachments/${f.id}`, "_blank", "noopener");
+      return;
     } else if (t.dataset.reject) {
       const note = prompt("Motif du refus (facultatif, sans donnée client) :") ?? null;
       if (note === null) return;
