@@ -1,38 +1,55 @@
-# Tuto : lancer l'agent Dispatch Movers sur votre PC (Windows)
+# Tuto : l'agent Dispatch Movers, pas à pas (Windows)
 
-Pas besoin de savoir programmer : on **double-clique** des fichiers et on modifie **un** fichier texte
-avec le Bloc-notes. Comptez 20 à 30 minutes la première fois.
+Pas besoin de savoir programmer. On **double-clique** des fichiers et on modifie **un** fichier texte avec
+le Bloc-notes.
 
-> Tant que vous n'avez pas validé une affectation vous-même, l'agent **ne modifie rien** dans le CRM.
-> Le mode par défaut est la **Simulation** : il lit et propose, c'est tout.
+> **Rassurant :** tant que vous ne validez rien vous-même, l'agent **ne modifie rien** dans le CRM.
+> Son mode de départ est la **Simulation** : il lit et il propose, c'est tout.
+
+**Sommaire**
+
+- **A. Installation (une seule fois, environ 30 minutes)** : étapes 1 à 6
+- **B. Chaque jour** : étapes 7 à 10
+- **C. Les deux semaines de supervision, puis le mode Automatique** : étape 11
+- **D. Installer une nouvelle version** : étape 12
+- **En cas de souci**
 
 ---
 
-## Étape 1 : installer Python (une seule fois)
+# A. Installation (une seule fois)
+
+## Étape 1 : installer Python
 
 1. Allez sur **https://www.python.org/downloads/** et cliquez sur le bouton jaune *Download Python 3.x*.
 2. Ouvrez le fichier téléchargé.
-3. ⚠️ **Avant de cliquer sur « Install Now », cochez la case « Add python.exe to PATH »** en bas de la fenêtre.
+3. ⚠️ **Avant de cliquer sur « Install Now », cochez la case « Add python.exe to PATH »**, en bas de la fenêtre.
 4. Cliquez sur **Install Now** et attendez la fin.
 
 > Si votre PC professionnel refuse l'installation (droits administrateur), demandez au support
 > informatique d'installer **Python 3.12** avec l'option « Add to PATH ».
 
-## Étape 2 : récupérer l'agent
+## Étape 2 : récupérer l'agent (hors OneDrive)
 
-1. Ouvrez la page du projet sur GitHub : **https://github.com/Marcoooo131/SA-IA**
-2. Cliquez sur le bouton vert **Code**, puis sur **Download ZIP**.
-3. Dans *Téléchargements*, faites un clic droit sur `SA-IA-main.zip`, puis **Extraire tout…**, et
-   choisissez par exemple `Documents`.
-4. Ouvrez le dossier `Documents\SA-IA-main\movers-dispatch\windows`. Vous y voyez cinq fichiers :
+1. Ouvrez **https://github.com/Marcoooo131/SA-IA**, cliquez sur le bouton vert **Code**, puis sur
+   **Download ZIP**.
+2. ⚠️ **Ne l'extrayez pas dans Documents ni sur le Bureau** : chez vous, ces dossiers sont dans OneDrive,
+   qui ralentit ou bloque l'installation. Faites plutôt ceci :
+   - dans la barre d'adresse de l'Explorateur, tapez `%USERPROFILE%`, puis appuyez sur Entrée ;
+   - créez-y un dossier **`SA-IA`** ;
+   - faites un clic droit sur `SA-IA-main.zip` (dans *Téléchargements*), choisissez **Extraire tout…** et
+     indiquez ce dossier.
+3. Ouvrez `SA-IA-main\movers-dispatch\windows`. Vous y trouvez cinq fichiers :
 
 | Fichier | À quoi il sert |
 |---|---|
-| `1-installer.bat` | installe l'agent (une seule fois) |
+| `1-installer.bat` | installe l'agent |
 | `2-demo.bat` | essai sur de **fausses** données, sans toucher au CRM |
-| `3-decouvrir.bat` | lit le CRM pour trouver les informations à recopier dans la configuration |
-| `4-lancer.bat` | lance l'agent sur le vrai CRM |
-| `5-exporter-corrections.bat` | exporte vos corrections dans un fichier Excel (étape 9) |
+| `3-decouvrir.bat` | lit le CRM (sans rien modifier) pour trouver les informations à recopier dans la configuration |
+| `4-lancer.bat` | lance l'agent sur le vrai CRM : **c'est celui de tous les jours** |
+| `5-exporter-corrections.bat` | exporte vos corrections dans un fichier Excel (étape 11) |
+
+> Le dossier `movers-dispatch-ancienne-version` est une copie de secours de l'ancienne version (sans le
+> bouton Corriger). Vous n'en avez normalement pas besoin.
 
 ## Étape 3 : installer l'agent
 
@@ -44,190 +61,206 @@ minutes. Attendez le message **« Installation terminée »**, puis appuyez sur 
 
 ## Étape 4 : essayer sans risque (données fictives)
 
-Double-cliquez sur **`2-demo.bat`**. Le tableau de bord s'ouvre dans votre navigateur.
+Double-cliquez sur **`2-demo.bat`**. Le tableau de bord s'ouvre dans votre navigateur, avec des mails, des
+tâches, des formulaires HubSpot et une lettre scannée, **tous inventés**.
 
-1. Laissez **Simulation** coché et cliquez sur **Lancer le traitement**.
-2. Le tableau se remplit de 10 mails et tâches **inventés**. Pour chacun, il indique le Case trouvé, l'Owner et le
-   prénom qui serait mis dans *Worked By*, ou la raison pour laquelle l'agent préfère vous laisser décider.
-3. Essayez **Supervisé**, puis **Lancer le traitement** : des boutons **Valider Estefania**, **Valider Kader**…
-   apparaissent. C'est ce que vous ferez plus tard sur les vrais mails.
-4. Pour arrêter, fermez la fenêtre noire.
+1. Laissez **Simulation** coché et cliquez sur **Lancer le traitement** : chaque ligne indique ce que
+   l'agent ferait.
+2. Cochez **Supervisé** et relancez : les boutons **Valider**, **Corriger**, **Attribuer à…**, **Voir la
+   pièce jointe** et **N° de compte** apparaissent. Essayez-les librement, rien ne part dans le CRM.
+3. Pour arrêter, fermez la fenêtre noire.
 
-## Étape 5 : indiquer l'adresse du CRM
+## Étape 5 : remplir la configuration (`dispatch.toml`)
 
-1. Dans le dossier `movers-dispatch`, ouvrez **`dispatch.toml`** avec le **Bloc-notes** (clic droit,
-   **Ouvrir avec**, **Bloc-notes**). Ce fichier a été créé à l'étape 3.
-2. Ouvrez le CRM dans Edge comme d'habitude et regardez la barre d'adresse, par exemple :
-   `https://serveur.exemple.net/SectorAlarmFR/main.aspx#219231512`
-3. Gardez tout **jusqu'à `/SectorAlarmFR`** (sans `/main.aspx…`) et collez-le à cette ligne :
+Dans le dossier `movers-dispatch`, ouvrez **`dispatch.toml`** avec le **Bloc-notes** : clic droit, puis
+**Ouvrir avec**, puis **Bloc-notes**. Ce fichier a été créé à l'étape 3.
 
-   ```toml
-   environment_url = "https://serveur.exemple.net/SectorAlarmFR"
-   ```
-4. Enregistrez (**Ctrl + S**).
+**a) L'adresse du CRM.** Ouvrez le CRM dans Edge et regardez la barre d'adresse, par exemple
+`https://serveur.exemple.net/SectorAlarmFR/main.aspx#219231512`. Gardez tout **jusqu'à `/SectorAlarmFR`**
+et recopiez-le ainsi :
 
-## Étape 6 : trouver vos quatre collègues dans le CRM
+```toml
+environment_url = "https://serveur.exemple.net/SectorAlarmFR"
+```
+
+**b) L'ordre de la rotation.** Vérifiez la section `[rotation]`. Mettez les collègues dans l'ordre de
+passage voulu, avec leur clé en minuscules : `chloe`, `kader`, `estefania`, `marc-antoine`.
+
+```toml
+resiliation = ["chloe", "kader", "estefania", "marc-antoine"]
+demenagement = ["chloe", "kader", "estefania", "marc-antoine"]
+```
+
+Enregistrez (**Ctrl + S**). Règle d'or : **chaque valeur entre guillemets droits** `"…"`.
+
+## Étape 6 : relier l'agent au CRM (`3-decouvrir.bat`)
 
 Double-cliquez sur **`3-decouvrir.bat`**.
 
-1. Une fenêtre **Edge** s'ouvre sur le CRM. Connectez-vous comme d'habitude si on vous le demande.
-2. Revenez à la fenêtre noire et attendez. L'agent **lit seulement**, il ne modifie rien.
-3. Le résultat s'affiche. Il est aussi enregistré dans **`decouverte.txt`**, dans le dossier `movers-dispatch`.
+1. Une fenêtre **Edge** s'ouvre sur le CRM. Connectez-vous comme d'habitude. L'agent **attend** que vous
+   soyez connecté (5 minutes maximum) et ne lit rien avant.
+2. Revenez à la fenêtre noire. Le résultat s'affiche et est aussi enregistré dans **`decouverte.txt`**,
+   dans le dossier `movers-dispatch`.
 
-Voici à quoi il ressemble (exemple inventé) :
+Voici ce qu'il faut en faire, rubrique par rubrique (les exemples sont inventés) :
+
+**« Utilisateurs Dynamics 365 par prénom »** : recopiez dans `dispatch.toml`, en bas, le
+`systemuser_id` de chacun des quatre collègues.
 
 ```
-== Versions du Web API qui répondent
-  v8.2  (configurée : v8.2)
-
-== Contrôles préalables
-  ! Collaborateur « Kader » : systemuserid non renseigné (voir `discover`).
-  ! Collaborateur « Estefania » : systemuserid non renseigné (voir `discover`).
-  ...
-
-== Files dont le nom contient « Movers »
-  queue_name = "Movers"   (queueid …)
-
-== Utilisateurs Dynamics 365 par prénom (à reporter dans [[collaborators]] après vérification)
   Kader : 1 résultat(s)
     systemuser_id = "1a2b3c4d-0000-0000-0000-000000000001"   Kader Nom  <DOMAINE\kader.nom>  actif
-  Estefania : 1 résultat(s)
-    systemuser_id = "1a2b3c4d-0000-0000-0000-000000000002"   Estefania Nom  <DOMAINE\estefania.nom>  actif
-  ...
+```
+```toml
+[[collaborators]]
+key = "kader"
+first_name = "Kader"
+systemuser_id = "1a2b3c4d-0000-0000-0000-000000000001"
 ```
 
-4. Dans `dispatch.toml`, en bas du fichier, recopiez pour chaque collègue la valeur `systemuser_id`
-   (le long code entre guillemets) de la **bonne personne** :
+Si plusieurs personnes ont le même prénom, prenez celle dont le **nom complet** est le bon et qui est
+**actif**.
 
-   ```toml
-   [[collaborators]]
-   key = "kader"
-   first_name = "Kader"
-   systemuser_id = "1a2b3c4d-0000-0000-0000-000000000001"
-   ```
+**« Colonnes « téléphone » du compte »** : elles servent à retrouver un client par son numéro de
+téléphone. Recopiez leurs noms dans la section `[client]`, par exemple
+`champs_telephone = ["telephone1", "telephone2", "new_mobilephone"]`, ou envoyez-moi cette partie.
 
-   Si plusieurs personnes portent le même prénom, choisissez celle dont le **nom complet** correspond
-   à votre collègue et qui est **actif**.
-5. Enregistrez (**Ctrl + S**) et relancez `3-decouvrir.bat` pour vérifier.
+**« Colonnes de « contract » qui pointent vers un compte »** : envoyez-moi cette partie. Elle sert
+aux tâches « Moving - CS » rattachées à un contrat C-SFR. En attendant, ces tâches partent en validation
+humaine.
 
-Au premier passage, les quatre lignes « ! … systemuserid non renseigné » sont **normales** : elles
-disparaissent une fois les codes recopiés. Quand tout est bon, la rubrique *Contrôles préalables* affiche **OK**.
-Toute autre ligne qui commence par **`!`** est un problème à régler : voir **En cas de souci** en bas.
+Enregistrez, puis **relancez `3-decouvrir.bat`**. Au premier passage, les lignes
+« ! … systemuserid non renseigné » sont normales. Quand tout est bon, *Contrôles préalables* affiche
+**OK**. Toute autre ligne qui commence par **`!`** est à régler : voir **En cas de souci**.
 
-## Étape 7 : lancer sur le vrai CRM, d'abord en Simulation
+---
 
-Double-cliquez sur **`4-lancer.bat`**. Connectez-vous dans Edge si besoin. Le tableau de bord s'ouvre ensuite.
+# B. Chaque jour
 
-1. Laissez **Simulation** coché et cliquez sur **Lancer le traitement**.
-2. Comparez chaque ligne avec ce que **vous** auriez fait à la main. La colonne *Worked By* donne le
-   prénom proposé, et la colonne *Motif* explique pourquoi.
-3. Faites-le **plusieurs jours** de suite, tant que les propositions ne sont pas toujours justes.
-   Pendant toute cette phase, **rien n'est modifié** dans le CRM.
+## Étape 7 : lancer l'agent le matin
 
-## Étape 8 : faire les affectations (mode Supervisé)
-
-Quand la Simulation vous paraît fiable :
-
-1. Cochez **Supervisé**, puis cliquez sur **Lancer le traitement**.
-2. Pour chaque mail, l'agent affiche **Valider Kader** (par exemple), une liste **Corriger**, et **Refuser**.
-3. Cliquez sur **Valider** et confirmez. L'agent écrit *Worked By* dans le CRM, puis relit la valeur pour
-   vérifier. La ligne passe à **Affecté**.
-4. Vérifiez les premiers dans le CRM : ouvrez le mail, puis **…** → **Queue Item Details** → *Worked By*.
-
-Les lignes **Validation humaine** sont les cas où l'agent n'est pas sûr : plusieurs Cases, Owner hors des
-quatre collègues, pas de compte… Sur ces lignes :
-
-1. choisissez le collègue dans la liste **Attribuer à…** ;
-2. cliquez sur **Attribuer**, puis confirmez.
-
-L'agent écrit *Worked By* et vérifie. Il refuse toujours de remplacer un *Worked By* déjà rempli.
-
-Les mails et tâches **déjà correctement renseignés** ne sont pas affichés : ils sont seulement comptés
-dans la case « ignorés ».
+1. Double-cliquez sur **`4-lancer.bat`**, puis connectez-vous dans la fenêtre Edge si on vous le demande.
+   Le tableau de bord s'ouvre tout seul. **Laissez la fenêtre Edge et la fenêtre noire ouvertes** tant
+   que vous travaillez.
+2. En haut, dans **Rotation 1 pour 1**, **cochez les collègues absents** du jour : ils seront sautés.
+   Pensez à les décocher à leur retour.
+3. Choisissez le mode :
+   - **Simulation** les premiers jours : rien n'est écrit, vous comparez avec ce que vous auriez fait ;
+   - **Supervisé** ensuite : vous validez chaque affectation.
+4. Cliquez sur **Lancer le traitement**. L'agent lit les vues **« Queue Item - Movers - Emails »** et
+   **« Queue Item - Movers tasks »**.
 
 Le gros bouton rouge **Arrêt immédiat** stoppe tout : plus aucune écriture après le clic.
 
-### Les éléments sans Regarding
+## Étape 8 : lire le tableau
 
-L'agent cherche le client comme vous le faites : adresse de l'expéditeur, « Numéro de client » écrit dans
-le mail, champ « Email » du formulaire HubSpot, téléphone. La colonne **Compte** affiche alors
-**à rattacher**, le client trouvé et comment il l'a trouvé.
-
-- C'est le bon client : **Valider client + Kader** (par exemple). L'agent remplit le Regarding, puis Worked By.
-- Ce n'est pas le bon, ou l'agent n'a rien trouvé : tapez le **N° de compte** (Account Number) du client
-  dans la petite case, puis cliquez sur **Corriger le client** (ou **Rattacher le client**). L'agent remplit
-  le Regarding, puis propose le Worked By.
-
-Il ne remplace jamais un Regarding déjà rempli.
-
-**Les courriers scannés** (« Voir document joint », lettre manuscrite en pièce jointe) :
-
-1. cliquez sur **Voir la pièce jointe** : le scan s'ouvre dans un nouvel onglet ;
-2. lisez le n° client écrit sur la lettre, tapez-le dans la case **N° de compte**, puis cliquez sur
-   **Rattacher le client** ;
-3. l'agent affiche **le nom du compte** qui correspond à ce numéro : vérifiez que c'est bien le client de la
-   lettre avant de cliquer sur OK (un chiffre mal lu peut désigner un autre client) ;
-4. dans **Attribuer à…**, choisissez **Suivant en Résiliation** ou **Suivant en Déménagement** selon la
-   lettre : l'agent donne l'élément au prochain de la rotation.
-
-### La rotation 1 pour 1
-
-En haut du tableau de bord, **Rotation 1 pour 1** indique qui est le prochain en Résiliation et en
-Déménagement. Quand un mail ou une tâche n'a pas de Case appartenant à l'un des quatre, il va au suivant de
-la rotation de sa catégorie. La colonne **Catégorie** indique alors « (rotation) ». Le matin, **cochez les
-collègues absents** : ils seront sautés jusqu'à ce que vous les décochiez. L'ordre de passage se change
-dans `dispatch.toml` (section `[rotation]`).
-
-**Toutes les tâches** (chatbot, « Moving - CS ») sont classées en Résiliation. Les formulaires HubSpot
-« Moving Home » vont en Déménagement. Pour les autres mails, l'agent cherche des mots comme « résiliation »
-ou « déménagement ». S'il ne trouve rien, la catégorie reste vide et vous choisissez dans **Attribuer à…**.
-
-> Si l'agent affiche « Regarding … pointe vers « contract » » (une tâche rattachée à un contrat C-SFR) :
-> lancez `3-decouvrir.bat`, puis envoyez-moi la partie « Colonnes de « contract » qui pointent vers un compte ».
-> Je vous dirai quoi mettre dans `dispatch.toml`.
-
-## Étape 9 : les deux semaines de supervision (corriger l'agent)
-
-**À savoir :** l'agent n'apprend pas tout seul. Il suit des règles écrites, par exemple « le Case actif ou
-annulé passe avant le résolu ». C'est voulu : il ne peut pas changer de comportement sans qu'on le sache.
-Vos corrections servent à **réécrire ses règles**. Voici comment faire.
-
-**Chaque jour**, en mode **Supervisé**, pour chaque proposition :
-
-| L'agent propose… | Vous faites |
+| Colonne | Ce qu'elle dit |
 |---|---|
-| le bon collègue | **Valider** |
-| le mauvais collègue | choisissez le bon dans **Corriger : le bon collègue est…**, cliquez sur **Corriger**, puis écrivez en quelques mots **pourquoi** (ex. « le Case Mover résolu était le bon », « le client a rappelé Kader ») |
-| un collègue alors que l'élément ne revient à aucun des quatre | **Refuser** |
-| rien, ligne « Validation humaine » | choisissez dans **Attribuer à…** (étape 8) |
+| **Catégorie** | Résiliation ou Déménagement, avec « (rotation) » si la personne a été choisie par la rotation |
+| **Compte** | le client. **« à rattacher »** = le Regarding était vide et l'agent a retrouvé ce client (il indique comment) |
+| **Case / Owner** | le Case retenu et son Owner, quand c'est l'Owner qui décide |
+| **Worked By** | le collègue proposé |
+| **Statut** | **À valider**, **Validation humaine** (l'agent n'est pas sûr), **Affecté** (écrit et vérifié), **Erreur** |
+| **Motif** | pourquoi l'agent propose cela, ou pourquoi il préfère vous laisser décider |
 
-**Corriger** écrit tout de suite la bonne personne dans le CRM, comme une attribution à la main. Le
-« pourquoi » est le plus important : c'est lui qui permet de trouver la règle à changer. N'y mettez pas de
-données client (nom, téléphone…).
+Comment l'agent choisit le collègue :
 
-En bas du tableau de bord, le **Bilan de la supervision** affiche :
+1. **Il trouve le client** : par le Regarding, ou sinon par l'adresse de l'expéditeur, le « Numéro de
+   client » écrit dans le mail, le champ « Email » du formulaire HubSpot ou un téléphone. Il ne retient le
+   client que si **un seul compte** correspond.
+2. **Il regarde les Cases « Mover / MOVERS » du client.** Si l'un appartient à Kader, Estefania,
+   Marc-Antoine ou Chloé, c'est cette personne. Entre deux Cases de personnes différentes, l'**actif ou
+   annulé** passe avant le **résolu**.
+3. **Sinon, la rotation 1 pour 1** de la catégorie décide. Toutes les tâches (chatbot, « Moving - CS »)
+   sont des **Résiliations**. Les formulaires HubSpot « Moving Home » sont des **Déménagements**. Les
+   autres mails sont classés selon leurs mots (« résiliation », « désactivation », « décès »,
+   « déménagement »…).
 
-- combien de propositions vous avez **validées telles quelles**, **corrigées** ou **refusées**, et le
-  **taux d'accord** ;
+Les éléments **déjà correctement renseignés** ne sont pas affichés : ils sont seulement comptés dans la
+case « ignorés ».
+
+## Étape 9 : que faire sur chaque ligne
+
+| Situation | Ce que vous faites |
+|---|---|
+| **À valider**, la proposition est bonne | **Valider Kader** (ou **Valider client + Kader** si un client est à rattacher). L'agent écrit, puis relit pour vérifier |
+| **À valider**, mauvais collègue | choisissez le bon dans **Corriger : le bon collègue est…**, cliquez sur **Corriger**, puis écrivez en quelques mots **pourquoi** |
+| **À valider**, l'élément ne revient à aucun des quatre | **Refuser** |
+| **« à rattacher »**, mais ce n'est pas le bon client | tapez le bon **N° de compte** (Account Number) dans la petite case, puis **Corriger le client** |
+| **Validation humaine**, client introuvable | tapez le **N° de compte**, puis **Rattacher le client**. L'agent affiche le nom du compte : vérifiez avant OK |
+| **Validation humaine**, client connu mais personne désignée | dans **Attribuer à…**, choisissez un collègue, ou **Suivant en Résiliation / Suivant en Déménagement** pour respecter la rotation, puis **Attribuer** |
+| **Validation humaine**, Worked By déjà rempli par quelqu'un d'autre | rien : l'agent ne remplace jamais un Worked By ni un Regarding déjà rempli |
+
+Pour voir tout ce qui s'est passé sur un élément, cliquez sur **Historique**.
+
+## Étape 10 : les courriers scannés (« Voir document joint »)
+
+Ces mails viennent du scanner du courrier, avec une **lettre manuscrite** en pièce jointe. L'agent ne
+lit pas l'écriture à la main : un chiffre mal lu pourrait désigner un autre client.
+
+1. Sur la ligne, cliquez sur **Voir la pièce jointe** : le scan s'ouvre dans un nouvel onglet.
+2. Lisez le **n° client** écrit sur la lettre, tapez-le dans la case **N° de compte**, puis cliquez sur
+   **Rattacher le client**.
+3. L'agent affiche **le nom du compte** qui correspond à ce numéro. **Vérifiez que c'est bien le nom de la
+   lettre**, puis cliquez sur OK. Sinon, cliquez sur Annuler et relisez le numéro.
+4. Dans **Attribuer à…**, choisissez **Suivant en Résiliation** ou **Suivant en Déménagement** selon le
+   contenu de la lettre, puis **Attribuer**.
+
+---
+
+# C. Les deux semaines de supervision, puis le mode Automatique
+
+## Étape 11 : corriger l'agent pour le rendre fiable
+
+**À savoir :** l'agent n'apprend pas tout seul. Il suit des règles écrites. C'est voulu : il ne peut pas
+changer de comportement sans qu'on le sache. **Vos corrections servent à réécrire ses règles.**
+
+**Chaque jour**, travaillez en **Supervisé** (étape 9). Quand vous corrigez, le **« pourquoi »** est le
+plus important : par exemple « le Case Mover résolu était le bon », « même adresse que son conjoint ».
+N'y mettez pas de données client (nom, téléphone…).
+
+En bas du tableau de bord, le **Bilan de la supervision** indique :
+
+- combien de propositions sont **validées telles quelles**, **corrigées**, **refusées** ou **attribuées à la
+  main**, et le **taux d'accord** ;
 - la **série** : le nombre de propositions validées d'affilée sans correction (elle repart à 0 à chaque
   correction ou refus) ;
 - la liste des corrections, avec ce que l'agent avait vu.
 
-**Une fois par semaine** (ou dès qu'une même erreur revient) :
+**Une fois par semaine**, ou dès qu'une même erreur revient :
 
-1. Double-cliquez sur **`5-exporter-corrections.bat`** : il crée `corrections.csv` dans le dossier
-   `movers-dispatch` (s'ouvre avec Excel).
-2. Envoyez-moi ce fichier, ou recopiez-moi les lignes. Je transforme les corrections en nouvelles règles,
-   comme on l'a fait pour « actif ou annulé avant résolu ».
-3. Retéléchargez la nouvelle version et continuez la supervision. **Votre fichier `dispatch.toml` et votre
-   journal `movers_dispatch.db` sont à garder** : recopiez-les dans le nouveau dossier `movers-dispatch`.
+1. Double-cliquez sur **`5-exporter-corrections.bat`** : il crée `corrections.csv` (s'ouvre avec Excel)
+   dans le dossier `movers-dispatch`.
+2. Envoyez-moi ce fichier. Je transforme les erreurs qui reviennent en nouvelles règles.
+3. Installez la nouvelle version (étape 12).
 
 **Quand passer en Automatique ?** Quand le bilan affiche en vert **« 100 propositions validées d'affilée
-sans correction »**. Ce chiffre se change dans `dispatch.toml`, ligne `readiness_streak`, section
-`[agent]`. Il faut aussi l'accord de votre responsable. Il faut alors mettre `automatic_allowed = true`
-dans `dispatch.toml` et taper `AUTOMATIQUE` dans le tableau de bord à chaque lancement. Même en
-Automatique, l'agent ne traite **que** les cas sûrs : les autres restent en « Validation humaine » avec la
-liste **Attribuer à…**.
+sans correction »** et que votre responsable est d'accord. Il faut alors :
+
+- mettre `automatic_allowed = true` dans `dispatch.toml` (section `[agent]`) ;
+- cocher **Automatique** et taper `AUTOMATIQUE` à chaque lancement.
+
+Même en Automatique, l'agent ne traite **que** les cas sûrs. Les **rattachements de client** restent à
+valider par vous, sauf si vous mettez `automatique = true` dans la section `[client]`.
+
+---
+
+# D. Installer une nouvelle version
+
+## Étape 12 : mettre à jour sans rien perdre
+
+1. Fermez la fenêtre noire de l'agent.
+2. Copiez dans un endroit sûr, par exemple le Bureau, ces deux fichiers du dossier `movers-dispatch` :
+   - **`dispatch.toml`**, votre configuration ;
+   - **`movers_dispatch.db`**, votre journal, avec l'historique, la rotation, les absents et les corrections.
+3. Supprimez l'ancien dossier `SA-IA-main`.
+4. Retéléchargez et extrayez le ZIP comme à l'étape 2.
+5. Remettez vos deux fichiers dans le nouveau dossier `movers-dispatch`.
+6. Si je vous l'indique, ajoutez à votre `dispatch.toml` les nouvelles sections, en les copiant depuis
+   `config\dispatch.example.toml`.
+7. Double-cliquez sur **`1-installer.bat`**, puis sur **`4-lancer.bat`**.
+
+Votre journal est mis à jour automatiquement, sans rien perdre.
 
 ---
 
@@ -237,18 +270,20 @@ liste **Attribuer à…**.
 |---|---|
 | « Python est introuvable » | Refaire l'étape 1 en cochant bien **Add python.exe to PATH**, puis redémarrer le PC. |
 | « Lancez d'abord 1-installer.bat » | Faire l'étape 3. |
-| La fenêtre noire se ferme tout de suite | Clic droit sur le `.bat`, puis **Modifier**, pour vérifier qu'il est dans `movers-dispatch\windows`. Sinon, relancer `1-installer.bat`. |
-| « Session Dynamics 365 non ouverte » ou « Connexion au CRM non faite dans le délai » | Vous ne vous êtes pas connecté dans la fenêtre Edge à temps (5 minutes) : relancer et se connecter. La fenêtre Edge doit rester ouverte, sur le CRM, tant que l'agent tourne. |
-| « faute de frappe » dans `dispatch.toml` | Le message donne le numéro de ligne : chaque valeur doit être entre guillemets droits `"…"`, sans espace en début de ligne. |
+| La fenêtre noire se ferme tout de suite | Vérifier que le `.bat` est bien dans `movers-dispatch\windows`, puis relancer `1-installer.bat`. |
+| L'installation est très lente ou échoue | Le dossier est probablement dans OneDrive : refaire l'étape 2 hors OneDrive. |
+| « Session Dynamics 365 non ouverte » ou « Connexion au CRM non faite dans le délai » | Relancer et se connecter dans la fenêtre Edge dans les 5 minutes. La fenêtre Edge doit rester ouverte tant que l'agent tourne. |
+| « faute de frappe » dans `dispatch.toml` | Le message donne la ligne : chaque valeur doit être entre guillemets droits `"…"`, sans espace en début de ligne. |
 | `! Mettre connection.api_version = "v9.0"` (ou autre) | Recopier cette valeur dans `dispatch.toml` à la ligne `api_version = …`, puis relancer `3-decouvrir.bat`. |
-| `! Le champ Worked By … n'est pas modifiable` | Votre compte n'a pas le droit de modifier ce champ : en parler à l'administrateur du CRM. |
-| `! systemuserid non renseigné` | Un des quatre `systemuser_id` est vide ou incomplet dans `dispatch.toml` (étape 6). |
+| `! systemuserid non renseigné` | Un des quatre `systemuser_id` est vide ou incomplet (étape 6). |
 | « Prénom CRM … différent du prénom configuré » | Le `systemuser_id` recopié n'est pas celui de la bonne personne (étape 6). |
+| `! Le champ Worked By … n'est pas modifiable` | Votre compte n'a pas ce droit : en parler à l'administrateur du CRM. |
+| « Recherche du client désactivée : la colonne account.… n'existe pas » | Corriger `champs_telephone` ou `champs_email` dans `[client]` d'après `3-decouvrir.bat` (étape 6). Le reste de l'agent continue de fonctionner. |
+| « Regarding … pointe vers « contract » » | M'envoyer la partie « Colonnes de « contract » » de `decouverte.txt` (étape 6). |
+| « Le numéro … correspond à 0 compte(s) actif(s) » | Le n° tapé n'existe pas (souvent un chiffre mal lu sur une lettre) : relire la pièce jointe. |
+| « rotation.… : collaborateur(s) inconnu(s) » | Dans `[rotation]`, utiliser les clés `chloe`, `kader`, `estefania`, `marc-antoine`. |
 | Le port 8765 est déjà utilisé | Une autre fenêtre de l'agent est encore ouverte : la fermer. |
 
-Pour revoir ce que l'agent a fait, cliquez sur **Historique** dans le tableau de bord. Tout est aussi
-enregistré dans `movers_dispatch.db`, dans le dossier `movers-dispatch` (à ne pas supprimer).
-
-> **Bon à savoir** : l'agent utilise **votre** session du CRM, avec vos droits, et ne voit jamais votre
-> mot de passe. Avant de l'utiliser au quotidien, faites valider cet usage par votre responsable ou le
-> service informatique.
+> **Bon à savoir :** l'agent utilise **votre** session du CRM, avec vos droits, et ne voit jamais votre
+> mot de passe. Il ne garde pas le contenu des mails ni des pièces jointes. Avant de l'utiliser au
+> quotidien, faites valider cet usage par votre responsable ou le service informatique.
