@@ -15,6 +15,7 @@ from typing import Protocol
 
 from .config import Config
 from .models import Case, Email, Lookup, QueueItem, User
+from .reading import html_to_text
 
 ANNOTATIONS = 'odata.include-annotations="*"'
 LOOKUP_NAME = "@OData.Community.Display.V1.FormattedValue"
@@ -72,6 +73,10 @@ class Gateway(Protocol):
     def get_case(self, case_id: str, extra_fields: tuple[str, ...]) -> Case: ...
     def get_user(self, systemuser_id: str) -> User: ...
     def set_worked_by(self, item: QueueItem, systemuser_id: str) -> None: ...
+    def client_preflight(self) -> list[str]: ...
+    def find_accounts(self, fields: tuple[str, ...], values: list[str]) -> list[Lookup]: ...
+    def account_link(self, entity: str, record_id: str, attribute: str) -> Lookup | None: ...
+    def set_regarding(self, activity: Email, account_id: str) -> None: ...
 
 
 def guid(value: str) -> str:
@@ -223,10 +228,12 @@ class DataverseGateway:
     def get_activity(self, entity: str, activity_id: str) -> Email:
         if entity not in ACTIVITY_SETS:
             raise CrmError(f"Type d'activité non pris en charge : {entity}")
+        select = "activityid,subject,_regardingobjectid_value,description" + (",sender" if entity == "email" else "")
         row = self._get(f"{ACTIVITY_SETS[entity]}({guid(activity_id)})", "Lecture du mail" if entity == "email" else "Lecture de la tâche",
-                        {"$select": "activityid,subject,_regardingobjectid_value"})
+                        {"$select": select})
         return Email(id=row["activityid"].lower(), subject=row.get("subject") or "", regarding=_lookup(row, "regardingobjectid"),
-                     kind=entity)
+                     kind=entity, text=html_to_text(row.get("description") or ""), sender=(row.get("sender") or "").strip(),
+                     etag=row.get("@odata.etag", ""))
 
     def get_email(self, email_id: str) -> Email:
         return self.get_activity("email", email_id)
@@ -273,7 +280,81 @@ class DataverseGateway:
         if resp.status not in (200, 204):
             raise _error(resp, "Enregistrement de Worked By")
 
+    # --- finding the client when the Regarding is empty
+    def client_preflight(self) -> list[str]:
+        """Checks the columns and relations used to find the client and fill the Regarding."""
+        c = self.cfg.client
+        problems = []
+        for f in (*c.email_fields, *c.phone_fields, "accountnumber"):
+            if self.t.request("GET", f"EntityDefinitions(LogicalName='account')/Attributes(LogicalName='{_q(f)}')").status != 200:
+                problems.append(f"Recherche du client : la colonne account.{f} n'existe pas (corriger [client] dans dispatch.toml).")
+        for kind, nav in c.regarding_navigation.items():
+            rels = self._get(f"EntityDefinitions(LogicalName='{_q(kind)}')/ManyToOneRelationships", f"Relations de {kind}",
+                             {"$select": "ReferencingAttribute,ReferencedEntity,ReferencingEntityNavigationPropertyName"})
+            navs = {r.get("ReferencingEntityNavigationPropertyName") for r in rels.get("value", [])
+                    if r.get("ReferencingAttribute") == "regardingobjectid" and r.get("ReferencedEntity") == "account"}
+            if nav not in navs:
+                problems.append(f"Regarding de {kind} : propriété « {nav} » absente (trouvées : {sorted(n for n in navs if n)}).")
+        for entity, attr in c.account_links.items():
+            if self.t.request("GET", f"EntityDefinitions(LogicalName='{_q(entity)}')/Attributes(LogicalName='{_q(attr)}')").status != 200:
+                problems.append(f"liens_compte : la colonne {entity}.{attr} n'existe pas (voir `discover --table {entity}`).")
+        return problems
+
+    def find_accounts(self, fields: tuple[str, ...], values: list[str]) -> list[Lookup]:
+        """Active accounts whose one of ``fields`` equals one of ``values`` exactly (case-insensitive)."""
+        if not fields or not values:
+            return []
+        cond = " or ".join(f"{f} eq '{_q(v)}'" for f in fields for v in values)
+        rows = self._get("accounts", "Recherche du client", {
+            "$select": "accountid,name,accountnumber", "$filter": f"statecode eq 0 and ({cond})", "$top": "10"}).get("value", [])
+        return [Lookup(r["accountid"].lower(), "account", f"{r.get('name') or ''} ({r.get('accountnumber') or '?'})") for r in rows]
+
+    def _entity_set(self, entity: str) -> str:
+        cache = self.__dict__.setdefault("_sets", dict(ACTIVITY_SETS))
+        if entity not in cache:
+            cache[entity] = self._get(f"EntityDefinitions(LogicalName='{_q(entity)}')", f"Métadonnées de {entity}",
+                                      {"$select": "EntitySetName"})["EntitySetName"]
+        return cache[entity]
+
+    def account_link(self, entity: str, record_id: str, attribute: str) -> Lookup | None:
+        row = self._get(f"{self._entity_set(entity)}({guid(record_id)})", f"Lecture du compte lié ({entity})",
+                        {"$select": f"_{attribute}_value"})
+        link = _lookup(row, attribute)
+        return link if link and link.entity == "account" else None
+
+    def set_regarding(self, activity: Email, account_id: str) -> None:
+        if not activity.etag:
+            raise CrmError("Écriture refusée : version (ETag) de l'activité inconnue.")
+        nav = self.cfg.client.regarding_navigation.get(activity.kind)
+        if not nav:
+            raise CrmError(f"Pas de propriété Regarding configurée pour {activity.kind}.")
+        self.writes += 1
+        body = {f"{nav}@odata.bind": f"/accounts({guid(account_id)})"}
+        try:
+            resp = self.t.request("PATCH", f"{ACTIVITY_SETS[activity.kind]}({guid(activity.id)})", json=body,
+                                  headers={"If-Match": activity.etag})
+        except TimeoutError as e:
+            raise UncertainWrite("Enregistrement du Regarding sans réponse : résultat inconnu, vérification nécessaire.") from e
+        if resp.status not in (200, 204):
+            raise _error(resp, "Enregistrement du Regarding")
+
     # --- discovery helpers (read-only, used by the `discover` command)
+    def account_lookups(self, entity: str) -> list[str]:
+        rels = self._get(f"EntityDefinitions(LogicalName='{_q(entity)}')/ManyToOneRelationships", f"Relations de {entity}",
+                         {"$select": "ReferencingAttribute,ReferencedEntity"})
+        return sorted({r["ReferencingAttribute"] for r in rels.get("value", []) if r.get("ReferencedEntity") == "account"})
+
+    def phone_like_columns(self) -> list[tuple[str, str]]:
+        rows = self._get("EntityDefinitions(LogicalName='account')/Attributes", "Colonnes du compte",
+                         {"$select": "LogicalName,DisplayName,AttributeType"}).get("value", [])
+        out = []
+        for r in rows:
+            label = ((r.get("DisplayName") or {}).get("UserLocalizedLabel") or {}).get("Label", "") or ""
+            if r.get("AttributeType") == "String" and any(w in label.lower() for w in ("phone", "téléphone", "mobile", "tel")):
+                out.append((r["LogicalName"], label))
+        return sorted(out)
+
+
     def api_versions(self) -> list[str]:
         """Web API versions that answer for this session (on-premises 8.x or online 9.x)."""
         root = self.cfg.connection.environment_url.rstrip("/")

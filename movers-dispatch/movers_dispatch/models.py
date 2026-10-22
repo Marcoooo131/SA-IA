@@ -51,6 +51,9 @@ class Email:
     subject: str
     regarding: Lookup | None
     kind: str = "email"
+    text: str = ""       # description as plain text: read in memory to classify / find the client, never stored
+    sender: str = ""     # e-mail address of the sender (emails only)
+    etag: str = ""
 
 
 @dataclass(frozen=True)

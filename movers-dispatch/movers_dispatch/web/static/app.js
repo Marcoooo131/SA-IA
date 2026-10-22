@@ -6,6 +6,7 @@ const STATUS_LABELS = {
   affecte: "Affecté", refuse: "Refusé", erreur: "Erreur",
 };
 const $ = (id) => document.getElementById(id);
+const CATEGORY_LABELS = { resiliation: "Résiliation", demenagement: "Déménagement" };
 let last = null;
 let collaborators = [];
 
@@ -48,26 +49,31 @@ function renderRows(items) {
   const f = $("filter").value;
   const rows = items.filter((i) => !f || i.status === f);
   if (!rows.length) {
-    $("rows").innerHTML = `<tr><td colspan="9" class="muted">Aucun élément${f ? " pour ce statut" : ""}.</td></tr>`;
+    $("rows").innerHTML = `<tr><td colspan="10" class="muted">Aucun élément${f ? " pour ce statut" : ""}.</td></tr>`;
     return;
   }
   $("rows").innerHTML = rows.map((i) => `
     <tr>
       <td class="id" data-label="Élément" title="${esc(i.queueitem_id)}">${esc(i.queueitem_id.slice(0, 8))}…</td>
       <td data-label="Sujet">${esc(i.subject)}</td>
-      <td data-label="Compte">${esc(i.account_name)}</td>
+      <td data-label="Catégorie">${esc(CATEGORY_LABELS[i.category] || "")}${i.method === "rotation" ? ` <span class="muted">(rotation)</span>` : ""}</td>
+      <td data-label="Compte">${i.client_name ? `<span class="pill a_valider">à rattacher</span> ${esc(i.client_name)}
+        <div class="muted">${esc(i.client_via)}</div>` : esc(i.account_name)}${!i.client_name && i.client_via ? `<div class="muted">${esc(i.client_via)}</div>` : ""}</td>
       <td data-label="Case">${esc(i.case_number)}</td>
       <td data-label="Owner">${esc(i.owner_name)}</td>
       <td data-label="Worked By"><b>${esc(i.worked_by_name)}</b></td>
       <td data-label="Statut"><span class="pill ${esc(i.status)}">${esc(STATUS_LABELS[i.status] || i.status)}</span></td>
       <td data-label="Motif">${esc(i.reason)}</td>
       <td class="actions">${i.status === "a_valider" ? `
-        <button class="small primary" data-approve="${esc(i.queueitem_id)}">Valider ${esc(i.worked_by_name)}</button>
+        <button class="small primary" data-approve="${esc(i.queueitem_id)}">Valider ${i.client_name ? "client + " : ""}${esc(i.worked_by_name)}</button>
         ${pick(i.queueitem_id, "Corriger : le bon collègue est…")}
         <button class="small" data-correct="${esc(i.queueitem_id)}">Corriger</button>
         <button class="small" data-reject="${esc(i.queueitem_id)}">Refuser</button>` : ""}${i.status === "validation_humaine" ? `
         ${pick(i.queueitem_id, "Attribuer à…")}
-        <button class="small primary" data-assign="${esc(i.queueitem_id)}">Attribuer</button>` : ""}
+        <button class="small primary" data-assign="${esc(i.queueitem_id)}">Attribuer</button>` : ""}${i.client_to_link && ["a_valider", "validation_humaine"].includes(i.status) ? `
+        <span class="link-client"><input class="small" data-acct="${esc(i.queueitem_id)}" inputmode="numeric" size="11"
+          placeholder="N° de compte" aria-label="Numéro de compte du client">
+        <button class="small" data-link="${esc(i.queueitem_id)}">${i.client_name ? "Corriger le client" : "Rattacher le client"}</button></span>` : ""}
         <button class="small" data-history="${esc(i.queueitem_id)}">Historique</button></td>
     </tr>`).join("");
 }
@@ -96,6 +102,14 @@ function renderSupervision(s) {
     : `<tr><td colspan="6" class="muted">Aucune correction pour l'instant.</td></tr>`;
 }
 
+function renderRotation(r) {
+  $("rotation-next").innerHTML = r.active ? r.categories.map((c) => `<div><span class="muted">${esc(c.label)} — prochain :</span>
+    <b>${esc(c.prochain || "personne")}</b> <span class="muted">(ordre : ${esc(c.ordre.join(" → "))})</span></div>`).join("")
+    : `<div class="muted">Rotation désactivée dans dispatch.toml.</div>`;
+  $("absents").innerHTML = r.collaborateurs.map((c) => `<label><input type="checkbox" data-absent="${esc(c.key)}"
+    ${c.absent ? "checked" : ""}> ${esc(c.first_name)} absent(e)</label>`).join("");
+}
+
 function renderEvents(events) {
   $("events").innerHTML = events.map((e) => `<li><code>${esc(e.ts.replace("T", " ").slice(0, 19))}</code>
     ${e.queueitem_id ? `<code>${esc(e.queueitem_id.slice(0, 8))}</code>` : ""} <b>${esc(e.action)}</b>
@@ -120,7 +134,12 @@ async function refresh() {
       ? `Traitement en cours (${s.state.mode})${s.state.current ? " — " + s.state.current.slice(0, 8) + "…" : ""}`
       : s.state.message;
     renderBanner(s);
-    renderRows(s.items);
+    // do not redraw the list while someone is typing a number or choosing in it
+    if (!$("rows").contains(document.activeElement)) renderRows(s.items);
+    renderRotation(s.rotation);
+    if (s.state.warnings && s.state.warnings.length) {
+      $("banner").textContent += " " + s.state.warnings.join(" · ");
+    }
     for (const [id, v] of Object.entries(picked)) {
       const el = document.querySelector(`select[data-pick="${CSS.escape(id)}"]`);
       if (el) el.value = v;
@@ -172,6 +191,15 @@ $("rows").addEventListener("click", async (ev) => {
       if (note === null) return;
       t.disabled = true;
       await api(`/api/items/${t.dataset.correct}/correct`, { collaborator: sel.value, note });
+    } else if (t.dataset.link) {
+      const input = document.querySelector(`input[data-acct="${CSS.escape(t.dataset.link)}"]`);
+      if (!input || !input.value.trim()) { alert("Saisir le numéro de compte (Account Number) du client."); return; }
+      const note = prompt(`Rattacher cet élément au compte n° ${input.value.trim()} (écrit dans le Regarding du CRM).\n\n`
+        + "Comment l'avez-vous trouvé ? (facultatif, ex. « par le téléphone », sans donnée client)");
+      if (note === null) return;
+      t.disabled = true;
+      await api(`/api/items/${t.dataset.link}/link`, { account_number: input.value.trim(), note });
+      input.blur();
     } else if (t.dataset.reject) {
       const note = prompt("Motif du refus (facultatif, sans donnée client) :") ?? null;
       if (note === null) return;
@@ -190,3 +218,11 @@ $("rows").addEventListener("click", async (ev) => {
 
 refresh();
 setInterval(refresh, 2000);
+
+document.addEventListener("change", async (ev) => {
+  const box = ev.target.closest("input[data-absent]");
+  if (!box) return;
+  try {
+    renderRotation(await api("/api/rotation/absent", { key: box.dataset.absent, absent: box.checked }));
+  } catch (e) { alert(e.message); }
+});

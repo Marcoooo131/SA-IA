@@ -49,6 +49,9 @@ class FakeCrm:
     lost_answer: bool = False          # the write is applied but the answer never arrives
     concurrent_edit: set[str] = field(default_factory=set)
     preflight_problems: list[str] = field(default_factory=list)
+    client_problems: list[str] = field(default_factory=list)
+    accounts: dict[str, dict] = field(default_factory=dict)   # id → name, number, emails, phones, active
+    regarding_log: list[tuple[str, str]] = field(default_factory=list)
     _etags: itertools.count = field(default_factory=lambda: itertools.count(1))
 
     def _check(self):
@@ -56,12 +59,22 @@ class FakeCrm:
             raise SessionExpired("Session Dynamics 365 expirée ou non connectée.", 401)
 
     # --- building data
+    def add_account(self, label: str, name: str, number: str = "", emails=(), phones=(), active: bool = True) -> str:
+        aid = gid(f"acc/{label}")
+        self.accounts[aid] = {"name": name, "number": number or str(10000000 + int(uuid.UUID(aid)) % 9000000),
+                              "emails": [e.lower() for e in emails], "phones": list(phones), "active": active}
+        return aid
+
     def add(self, label: str, subject: str, account: str | None, cases: list[tuple],
-            worker: str | None = None, regarding_entity: str = "account", regarding_case: int = 0,
-            kind: str = "email") -> str:
+            worker: str | None = None, regarding_entity: str | None = "account", regarding_case: int = 0,
+            kind: str = "email", text: str = "", sender: str = "", account_number: str = "",
+            account_emails=(), account_phones=()) -> str:
         """cases: (ticket number, owner key in USERS or "team", statecode[, title — default "Mover"]).
-        regarding_entity "incident": the mail's Regarding is the case at index ``regarding_case``."""
+        regarding_entity "incident": the mail's Regarding is the case at index ``regarding_case``;
+        None: Regarding empty (the account still exists, to be found from ``text`` / ``sender``)."""
         qid, eid, aid = gid(f"qi/{label}"), gid(f"em/{label}"), gid(f"acc/{label}")
+        if account:
+            self.add_account(label, account, account_number, account_emails, account_phones)
         w = USERS[worker] if worker else None
         self.items[qid] = QueueItem(qid, subject, Lookup(eid, kind, subject),
                                     Lookup(w.id, "systemuser", w.full_name) if w else None, f'W/"{next(self._etags)}"')
@@ -77,10 +90,16 @@ class FakeCrm:
         if regarding_entity == "incident":
             c = rows[regarding_case]
             regarding = Lookup(c.id, "incident", c.title)
+        elif regarding_entity is None:
+            regarding = None
         else:
-            regarding = Lookup(aid, regarding_entity, account) if account else None
-        self.emails[eid] = Email(eid, subject, regarding, kind)
+            regarding = Lookup(aid, regarding_entity, self._account_label(aid) if account else "") if account else None
+        self.emails[eid] = Email(eid, subject, regarding, kind, text=text, sender=sender, etag=f'W/"{next(self._etags)}"')
         return qid
+
+    def _account_label(self, aid: str) -> str:
+        a = self.accounts[aid]
+        return f"{a['name']} ({a['number']})"
 
     # --- Gateway
     def preflight(self) -> list[str]:
@@ -100,6 +119,36 @@ class FakeCrm:
     def get_activity(self, entity: str, activity_id: str) -> Email:
         self._check()
         return self.emails[activity_id]
+
+    def client_preflight(self) -> list[str]:
+        self._check()
+        return list(self.client_problems)
+
+    def find_accounts(self, fields, values) -> list[Lookup]:
+        self._check()
+        values = {v.lower() for v in values}
+        key = "number" if "accountnumber" in fields else ("emails" if any(f.startswith("email") for f in fields) else "phones")
+        out = []
+        for aid, a in self.accounts.items():
+            have = {a["number"]} if key == "number" else set(a[key])
+            if a["active"] and have & values:
+                out.append(Lookup(aid, "account", self._account_label(aid)))
+        return out
+
+    def account_link(self, entity, record_id, attribute):
+        return None
+
+    def set_regarding(self, activity: Email, account_id: str) -> None:
+        self._check()
+        self.writes += 1
+        current = self.emails[activity.id]
+        if current.etag != activity.etag:
+            raise ConcurrentModification("Enregistrement du Regarding : modifié par un autre utilisateur.", 412)
+        if self.refuse_write:
+            raise CrmError("Enregistrement du Regarding : HTTP 403 — privilège insuffisant", 403)
+        self.emails[activity.id] = replace(current, regarding=Lookup(account_id, "account", self._account_label(account_id)),
+                                           etag=f'W/"{next(self._etags)}"')
+        self.regarding_log.append((activity.id, account_id))
 
     def list_cases(self, account_id: str, extra_fields) -> list[Case]:
         self._check()
@@ -151,4 +200,18 @@ def demo_crm() -> FakeCrm:
     crm.add("9", "Mail sans compte (démo 9)", None, [])
     crm.add("10", "Rappeler le client (tâche démo 10)", "Client Démo I", [("CAS-1012", "marc-antoine", 0, "MOVERS")],
             kind="task")
+    # recorded procedure n°2 (Regarding empty): the client is found like a person would do it
+    crm.add("11", "Résiliation Sector alarme (démo 11)", "Client Démo J", [], regarding_entity=None,
+            sender="client.demo.j@example.com", account_emails=["client.demo.j@example.com"],
+            text="Suite à votre mail, je souhaite résilier mon contrat.")
+    crm.add("12", "RE: Désactivation alarme (démo 12)", "Client Démo K", [], regarding_entity=None,
+            sender="gestion@agence-demo.example", account_number="10008799",
+            text="Voici les références : Numéro de client : 10008799. L'alarme sera désactivée demain.")
+    crm.add("13", 'You\'ve got a new submission on the HubSpot Form "[FR] - CS | Moving Home" (démo 13)', "Client Démo L",
+            [], regarding_entity=None, sender="noreply@notifications.hubspot.com", account_emails=["client.demo.l@example.com"],
+            text="Email\nclient.demo.l@example.com\nVotre nouvelle adresse\n7 rue de la Démo 25000\nDate de déménagement")
+    crm.add("14", "Chatbot customer request: Termination of contract due to moving (démo 14)", "Client Démo M", [],
+            kind="task", text="Termination of contract due to moving home. Customer Démo M, Phone: +33600000014.")
+    crm.add("15", "Déménagement sans indice (démo 15)", None, [], regarding_entity=None, sender="inconnu@example.com",
+            text="Bonjour, je déménage le mois prochain.")
     return crm

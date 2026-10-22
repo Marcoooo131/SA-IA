@@ -76,6 +76,51 @@ class Source:
         return bool(self.view_names or self.queue_name or self.saved_view_id or self.user_view_id)
 
 
+CATEGORY_LABELS = {"resiliation": "Résiliation", "demenagement": "Déménagement"}
+
+
+@dataclass(frozen=True)
+class Categories:
+    """Reading a request: Résiliation or Déménagement (decides the rotation used)."""
+
+    # every task (chatbot "Termination of contract", "Moving - CS"…) is a Résiliation for the team
+    tasks: str = "resiliation"
+    # words searched in the subject and the text, without case or accents; Résiliation is checked first
+    # ("Termination of contract due to moving" is a Résiliation)
+    resiliation: tuple[str, ...] = ("resili", "termination", "desactiv", "deces", "mettre fin", "arreter mon contrat",
+                                    "cancel")
+    demenagement: tuple[str, ...] = ("demenag", "moving home", "nouvelle adresse", "moving", "changement d'adresse")
+
+
+@dataclass(frozen=True)
+class Rotation:
+    """1:1 turn per category when no case designates one of the four collaborators."""
+
+    enabled: bool = True
+    # "sans_owner": only when no relevant case is owned by one of the four (the client keeps their
+    # contact); "toujours": every categorised element follows the rotation
+    applies: str = "sans_owner"
+    members: dict = field(default_factory=dict)   # category → tuple of collaborator keys, in turn order
+
+
+@dataclass(frozen=True)
+class ClientMatching:
+    """Regarding empty: find the account like the recorded procedure (e-mail address, customer number
+    written in the text, phone) and fill the Regarding with it — only on a single, consistent match."""
+
+    enabled: bool = True
+    automatic: bool = False            # write the Regarding without a human check (Automatic mode only)
+    email_fields: tuple[str, ...] = ("emailaddress1", "emailaddress2", "emailaddress3")
+    phone_fields: tuple[str, ...] = ("telephone1", "telephone2", "telephone3")
+    ignored_domains: tuple[str, ...] = ("sectoralarm.fr", "sectoralarm.com", "sectoralarm.net", "hubspot.com",
+                                        "hubspotemail.net", "outlook.com.safelinks")
+    regarding_navigation: dict = field(default_factory=lambda: {
+        "email": "regardingobjectid_account_email", "task": "regardingobjectid_account_task"})
+    # Regarding pointing to another table (e.g. a contract « C-SFR-… ») or the activity's own account
+    # field: table logical name → lookup column holding the account (relevé avec `discover --table`)
+    account_links: dict = field(default_factory=dict)
+
+
 @dataclass(frozen=True)
 class Connection:
     kind: str = "fake"                  # "fake" (demo data), "msal" or "browser"
@@ -101,9 +146,15 @@ class Config:
     worked_by_navigation: str = "workerid_systemuser"
     database: str = "movers_dispatch.db"
     max_items_per_run: int = 200
+    categories: Categories = field(default_factory=Categories)
+    rotation: Rotation = field(default_factory=Rotation)
+    client: ClientMatching = field(default_factory=ClientMatching)
     # supervised decisions in a row accepted without correction before Automatic mode is advisable
     readiness_streak: int = 100
     path: Path | None = None
+
+    def collaborator(self, key: str) -> Collaborator | None:
+        return next((c for c in self.collaborators if c.key == key), None)
 
     def collaborator_for(self, systemuser_id: str) -> Collaborator | None:
         sid = (systemuser_id or "").lower()
@@ -150,6 +201,33 @@ def parse(raw: dict, path: Path | None = None) -> Config:
     mode = Mode(agent.get("default_mode", Mode.SIMULATION.value))
     if mode is Mode.AUTOMATIC:
         raise ConfigError("Le mode automatique ne peut pas être le mode par défaut : il s'active explicitement à chaque lancement.")
+    cats = raw.get("categories", {})
+    categories = Categories(
+        tasks=cats.get("taches", "resiliation"),
+        resiliation=tuple(normalize_name(w) for w in cats.get("resiliation", Categories.resiliation)),
+        demenagement=tuple(normalize_name(w) for w in cats.get("demenagement", Categories.demenagement)))
+    if categories.tasks not in (*CATEGORY_LABELS, ""):
+        raise ConfigError("categories.taches : « resiliation », « demenagement » ou \"\".")
+    rot = raw.get("rotation", {})
+    keys = [c.key for c in collabs]
+    members = {}
+    for cat in CATEGORY_LABELS:
+        order = tuple(rot.get(cat, keys))
+        unknown = [k for k in order if k not in keys]
+        if unknown:
+            raise ConfigError(f"rotation.{cat} : collaborateur(s) inconnu(s) {unknown} (clés possibles : {keys}).")
+        members[cat] = order
+    rotation = Rotation(enabled=bool(rot.get("active", True)), applies=rot.get("applique", "sans_owner"), members=members)
+    if rotation.applies not in ("sans_owner", "toujours"):
+        raise ConfigError("rotation.applique : « sans_owner » ou « toujours ».")
+    cl = raw.get("client", {})
+    client = ClientMatching(
+        enabled=bool(cl.get("active", True)), automatic=bool(cl.get("automatique", False)),
+        email_fields=tuple(cl.get("champs_email", ClientMatching.email_fields)),
+        phone_fields=tuple(cl.get("champs_telephone", ClientMatching.phone_fields)),
+        ignored_domains=tuple(d.lower() for d in cl.get("domaines_ignores", ClientMatching.ignored_domains)),
+        regarding_navigation={**ClientMatching().regarding_navigation, **cl.get("navigation_regarding", {})},
+        account_links=dict(cl.get("liens_compte", {})))
     db = agent.get("database", "movers_dispatch.db")
     if path is not None and not Path(db).is_absolute():
         db = str(path.parent / db)
@@ -165,6 +243,7 @@ def parse(raw: dict, path: Path | None = None) -> Config:
         database=db,
         max_items_per_run=int(agent.get("max_items_per_run", 200)),
         readiness_streak=int(agent.get("readiness_streak", 100)),
+        categories=categories, rotation=rotation, client=client,
         path=path,
     )
 

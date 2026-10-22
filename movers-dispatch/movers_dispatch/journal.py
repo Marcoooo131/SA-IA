@@ -35,7 +35,12 @@ CREATE TABLE IF NOT EXISTS runs (
   started_at TEXT NOT NULL, ended_at TEXT, mode TEXT NOT NULL, outcome TEXT, actor TEXT
 );
 CREATE INDEX IF NOT EXISTS events_item ON events(queueitem_id);
+CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 """
+
+# columns added after the first release: added to an existing journal without losing anything
+ADDED_COLUMNS = {"category": "TEXT", "client_account_id": "TEXT", "client_name": "TEXT", "client_via": "TEXT",
+                 "client_to_link": "INTEGER", "method": "TEXT"}
 
 COUNTED = {
     "affectes": [Status.ASSIGNED],
@@ -56,6 +61,20 @@ class Journal:
         self.lock = threading.Lock()
         with self.lock:
             self.db.executescript(SCHEMA)
+            have = {r["name"] for r in self.db.execute("PRAGMA table_info(items)")}
+            for col, kind in ADDED_COLUMNS.items():
+                if col not in have:
+                    self.db.execute(f"ALTER TABLE items ADD COLUMN {col} {kind}")
+
+    def setting(self, key: str, default=None):
+        with self.lock:
+            row = self.db.execute("SELECT value FROM settings WHERE key=?", (key,)).fetchone()
+        return json.loads(row["value"]) if row else default
+
+    def set_setting(self, key: str, value) -> None:
+        with self.lock:
+            self.db.execute("INSERT INTO settings(key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                            (key, json.dumps(value, ensure_ascii=False)))
 
     def start_run(self, mode: str, actor: str) -> int:
         with self.lock:
@@ -117,13 +136,21 @@ class Journal:
             rows = self.db.execute(
                 "SELECT e.id, e.ts, e.queueitem_id, e.action, e.detail, e.actor, i.subject FROM events e "
                 "LEFT JOIN items i ON i.queueitem_id = e.queueitem_id "
-                "WHERE e.action IN ('validation_humaine', 'correction', 'attribution_manuelle') ORDER BY e.id").fetchall()
+                "WHERE e.action IN ('validation_humaine', 'correction', 'correction_client', 'attribution_manuelle', 'rattachement_manuel') ORDER BY e.id").fetchall()
         out = {"acceptees": 0, "corrigees": 0, "refusees": 0, "manuelles": 0, "serie": 0, "corrections": []}
         verdicts = []
         for r in rows:
             d = json.loads(r["detail"] or "{}")
-            if r["action"] == "attribution_manuelle":
+            if r["action"] in ("attribution_manuelle", "rattachement_manuel"):
                 out["manuelles"] += 1
+                continue
+            if r["action"] == "correction_client":
+                out["corrigees"] += 1
+                verdicts.append(False)
+                out["corrections"].append({"ts": r["ts"], "queueitem_id": r["queueitem_id"], "subject": r["subject"],
+                                           "propose": f"client {d.get('propose') or 'introuvable'}",
+                                           "retenu": f"client {d.get('retenu')}", "case_propose": d.get("via") or "",
+                                           "cases_vus": [], "note": d.get("note", ""), "actor": r["actor"]})
                 continue
             if r["action"] == "correction":
                 out["corrigees"] += 1

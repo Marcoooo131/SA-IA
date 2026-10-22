@@ -20,6 +20,8 @@ class Decision:
     case: Case | None = None
     user: User | None = None
     considered: tuple[str, ...] = field(default_factory=tuple)   # "CAS-001 (Kader)" — trace only
+    code: str = ""            # machine-readable outcome (e.g. "no_case": the rotation may take over)
+    method: str = "case"      # "case" (owner of the case), "rotation", "manual"
 
     @property
     def assignable(self) -> bool:
@@ -54,7 +56,7 @@ def decide(cfg: Config, item: QueueItem, email: Email | None, cases: list[Case] 
     if d.status is Status.REVIEW and d.user is None and item.worker is not None:
         # nothing to propose but someone already filled Worked By (by hand or with the drop-down): handled
         return Decision(Status.SKIPPED, f"Worked By déjà renseigné ({item.worker.name or item.worker.id}) : "
-                        "élément déjà traité.", d.case, None, d.considered)
+                        "élément déjà traité.", d.case, None, d.considered, code="already_filled")
     return d
 
 
@@ -67,7 +69,7 @@ def _decide(cfg: Config, item: QueueItem, email: Email | None, cases: list[Case]
     Regarding = an account: the account's cases filtered by the [cases] rules (1st mail).
     """
     if email is None or email.regarding is None:
-        return Decision(Status.REVIEW, "Élément sans champ Regarding : compte client inconnu.")
+        return Decision(Status.REVIEW, "Élément sans champ Regarding : compte client inconnu.", code="no_regarding")
     cases = cases or []
     considered = tuple(_label(c) for c in cases)
     if email.regarding.entity == "incident":
@@ -78,14 +80,16 @@ def _decide(cfg: Config, item: QueueItem, email: Email | None, cases: list[Case]
         pertinent = [c for c in cases if relevant(c, cfg.cases)]
         if not pertinent:
             return Decision(Status.REVIEW, "Aucun Case pertinent sur le compte client : aucune affectation.",
-                            considered=considered)
+                            considered=considered, code="no_case")
     else:
-        return Decision(Status.REVIEW, f"Regarding ne pointe ni vers un compte client ni vers un Case "
-                        f"({email.regarding.entity}).")
+        return Decision(Status.REVIEW, f"Regarding ne pointe ni vers un compte client ni vers un Case mais vers "
+                        f"« {email.regarding.entity} » : pour le prendre en charge, indiquer dans dispatch.toml "
+                        f"[client] liens_compte la colonne « compte » de cette table (voir 3-decouvrir.bat).",
+                        code="regarding_other")
     owned = [c for c in pertinent if c.owner and c.owner.entity == "systemuser" and cfg.collaborator_for(c.owner.id)]
     if not owned:
         return Decision(Status.REVIEW, "Owner non reconnu : aucun Case pertinent n'appartient à Kader, Estefania, "
-                        "Marc-Antoine ou Chloé.", considered=considered)
+                        "Marc-Antoine ou Chloé.", considered=considered, code="owner_unknown")
     owners = {c.owner.id.lower() for c in owned}
     if len(owners) > 1:
         # Rule from the business: between cases of different collaborators, the Active or Canceled one
@@ -95,10 +99,10 @@ def _decide(cfg: Config, item: QueueItem, email: Email | None, cases: list[Case]
             owned = preferred
         else:
             return Decision(Status.REVIEW, "Plusieurs Cases pertinents (actifs ou annulés) avec des Owners différents : "
-                            "choix impossible avec certitude.", considered=considered)
+                            "choix impossible avec certitude.", considered=considered, code="ambiguous")
     if len(owned) > 1 and cfg.cases.multiple_same_owner != "assign":
         return Decision(Status.REVIEW, "Plusieurs Cases pertinents (même Owner) : validation demandée par la "
-                        "configuration.", considered=considered)
+                        "configuration.", considered=considered, code="ambiguous")
     case = sorted(owned, key=lambda c: c.created_on, reverse=True)[0]
     collab = cfg.collaborator_for(case.owner.id)
     user = users.get(case.owner.id.lower())
@@ -115,3 +119,12 @@ def _decide(cfg: Config, item: QueueItem, email: Email | None, cases: list[Case]
         return Decision(Status.REVIEW, f"Worked By déjà renseigné ({item.worker.name or item.worker.id}) avec un autre "
                         "collaborateur : jamais écrasé automatiquement.", case, user, considered)
     return Decision(Status.ASSIGNED, f"Case {case.number} — Owner {user.full_name}.", case, user, considered)
+
+
+# outcomes where no case designates one of the four: the category rotation may decide instead
+ROTATION_CODES = ("no_case", "owner_unknown")
+
+
+def by_rotation(d: Decision, category_label: str, user: User) -> Decision:
+    return Decision(Status.ASSIGNED, f"Rotation {category_label} : au tour de {user.first_name}. ({d.reason})",
+                    None, user, d.considered, code="rotation", method="rotation")

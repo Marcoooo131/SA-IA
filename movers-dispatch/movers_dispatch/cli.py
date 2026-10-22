@@ -88,6 +88,20 @@ def cmd_discover(args) -> None:
                     print(f"  OK : « {v['name']} » trouvée")
             except CrmError as e:
                 print(f"  ! {e}")
+        print("\n== Recherche du client (Regarding vide)")
+        client_problems = gw.client_preflight() if cfg.client.enabled else []
+        print("  désactivée dans dispatch.toml" if not cfg.client.enabled else
+              ("  OK" if not client_problems else "\n".join(f"  ! {p}" for p in client_problems)))
+        print("  Colonnes « téléphone » du compte (à mettre dans [client] champs_telephone) :")
+        for name, label in gw.phone_like_columns():
+            print(f"    \"{name}\"   ({label})")
+        for table in args.table:
+            print(f"\n== Colonnes de « {table} » qui pointent vers un compte (pour [client] liens_compte)")
+            try:
+                for name in gw.account_lookups(table):
+                    print(f"  {table} = \"{name}\"")
+            except CrmError as e:
+                print(f"  ! table « {table} » introuvable ({e.status or e})")
         print("\n== Utilisateurs Dynamics 365 par prénom (à reporter dans [[collaborators]] après vérification)")
         for c in cfg.collaborators:
             rows = gw.find_users(c.first_name)
@@ -197,6 +211,8 @@ def main(argv: list[str] | None = None) -> None:
     sp = sub.add_parser("discover", help="lecture seule : métadonnées, files, vues, utilisateurs")
     common(sp, demo=False)
     sp.add_argument("--text", default="Movers", help="texte recherché dans les noms de files et de vues")
+    sp.add_argument("--table", action="append", default=[],
+                    help="table dont lister les colonnes « compte » (ex. contract, task) ; répétable")
     sp.set_defaults(func=cmd_discover)
 
     sp = sub.add_parser("login", help="ouvre la session Dynamics 365 de l'utilisateur")
