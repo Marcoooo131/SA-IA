@@ -9,6 +9,7 @@ the agent has exactly the rights of that user, nothing more.
 
 from __future__ import annotations
 
+import base64
 import re
 from dataclasses import dataclass
 from typing import Protocol
@@ -77,6 +78,8 @@ class Gateway(Protocol):
     def find_accounts(self, fields: tuple[str, ...], values: list[str]) -> list[Lookup]: ...
     def account_link(self, entity: str, record_id: str, attribute: str) -> Lookup | None: ...
     def set_regarding(self, activity: Email, account_id: str) -> None: ...
+    def list_attachments(self, email_id: str) -> list[dict]: ...
+    def get_attachment(self, attachment_id: str) -> dict: ...
 
 
 def guid(value: str) -> str:
@@ -337,6 +340,20 @@ class DataverseGateway:
             raise UncertainWrite("Enregistrement du Regarding sans réponse : résultat inconnu, vérification nécessaire.") from e
         if resp.status not in (200, 204):
             raise _error(resp, "Enregistrement du Regarding")
+
+    # --- attachments of a mail (scanned letters): shown to the person, never stored
+    def list_attachments(self, email_id: str) -> list[dict]:
+        rows = self._get("activitymimeattachments", "Pièces jointes du mail", {
+            "$select": "activitymimeattachmentid,filename,mimetype,filesize",
+            "$filter": f"_objectid_value eq {guid(email_id)}"}).get("value", [])
+        return [{"id": r["activitymimeattachmentid"].lower(), "filename": r.get("filename") or "piece-jointe",
+                 "mimetype": r.get("mimetype") or "", "size": r.get("filesize") or 0} for r in rows]
+
+    def get_attachment(self, attachment_id: str) -> dict:
+        r = self._get(f"activitymimeattachments({guid(attachment_id)})", "Lecture de la pièce jointe",
+                      {"$select": "filename,mimetype,body,_objectid_value"})
+        return {"filename": r.get("filename") or "piece-jointe", "mimetype": r.get("mimetype") or "",
+                "object_id": (r.get("_objectid_value") or "").lower(), "content": base64.b64decode(r.get("body") or "")}
 
     # --- discovery helpers (read-only, used by the `discover` command)
     def account_lookups(self, entity: str) -> list[str]:

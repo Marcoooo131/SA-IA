@@ -143,3 +143,20 @@ def test_configuration_saved_by_notepad_and_typos(tmp_path):
                                     "environment_url = https://crm/Org"), encoding="utf-8")
     with pytest.raises(config_mod.ConfigError, match="guillemets"):
         config_mod.load(typo)
+
+
+def test_attachment_and_account_check_endpoints():
+    c, agent, crm = client()
+    c.get("/?token=secret-token")
+    c.post("/api/run", json={"mode": "supervise"}, headers=H)
+    time.sleep(0.05)
+    wait(agent)
+    letter = next(i for i in c.get("/api/state").json()["items"] if i["attachments"])
+    files = c.get(f"/api/items/{letter['queueitem_id']}/attachments").json()
+    r = c.get(f"/api/items/{letter['queueitem_id']}/attachments/{files[0]['id']}")
+    assert r.status_code == 200 and r.headers["content-type"] == "application/pdf" and r.content.startswith(b"%PDF")
+    assert r.headers["content-disposition"].startswith("inline") and r.headers["x-content-type-options"] == "nosniff"
+    assert c.get("/api/accounts/check", params={"number": "10090016"}).json()["name"].startswith("Client Démo N")
+    assert c.get("/api/accounts/check", params={"number": "1"}).status_code == 409
+    other = next(i for i in c.get("/api/state").json()["items"] if not i["attachments"])
+    assert c.get(f"/api/items/{other['queueitem_id']}/attachments/{files[0]['id']}").status_code == 404

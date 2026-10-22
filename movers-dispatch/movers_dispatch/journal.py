@@ -40,7 +40,8 @@ CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 
 # columns added after the first release: added to an existing journal without losing anything
 ADDED_COLUMNS = {"category": "TEXT", "client_account_id": "TEXT", "client_name": "TEXT", "client_via": "TEXT",
-                 "client_to_link": "INTEGER", "method": "TEXT"}
+                 "client_to_link": "INTEGER", "method": "TEXT",
+                 "attachments": "INTEGER"}
 
 COUNTED = {
     "affectes": [Status.ASSIGNED],

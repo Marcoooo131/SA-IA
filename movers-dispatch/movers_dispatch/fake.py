@@ -52,6 +52,7 @@ class FakeCrm:
     client_problems: list[str] = field(default_factory=list)
     accounts: dict[str, dict] = field(default_factory=dict)   # id → name, number, emails, phones, active
     regarding_log: list[tuple[str, str]] = field(default_factory=list)
+    attachments: dict[str, list[dict]] = field(default_factory=dict)   # email id → files
     _etags: itertools.count = field(default_factory=lambda: itertools.count(1))
 
     def _check(self):
@@ -68,7 +69,7 @@ class FakeCrm:
     def add(self, label: str, subject: str, account: str | None, cases: list[tuple],
             worker: str | None = None, regarding_entity: str | None = "account", regarding_case: int = 0,
             kind: str = "email", text: str = "", sender: str = "", account_number: str = "",
-            account_emails=(), account_phones=()) -> str:
+            account_emails=(), account_phones=(), files=()) -> str:
         """cases: (ticket number, owner key in USERS or "team", statecode[, title — default "Mover"]).
         regarding_entity "incident": the mail's Regarding is the case at index ``regarding_case``;
         None: Regarding empty (the account still exists, to be found from ``text`` / ``sender``)."""
@@ -95,6 +96,8 @@ class FakeCrm:
         else:
             regarding = Lookup(aid, regarding_entity, self._account_label(aid) if account else "") if account else None
         self.emails[eid] = Email(eid, subject, regarding, kind, text=text, sender=sender, etag=f'W/"{next(self._etags)}"')
+        self.attachments[eid] = [{"id": gid(f"att/{label}/{n}"), "filename": name, "mimetype": mime, "size": len(data),
+                                  "content": data} for n, (name, mime, data) in enumerate(files)]
         return qid
 
     def _account_label(self, aid: str) -> str:
@@ -134,6 +137,18 @@ class FakeCrm:
             if a["active"] and have & values:
                 out.append(Lookup(aid, "account", self._account_label(aid)))
         return out
+
+    def list_attachments(self, email_id: str) -> list[dict]:
+        self._check()
+        return [{k: v for k, v in a.items() if k != "content"} for a in self.attachments.get(email_id, [])]
+
+    def get_attachment(self, attachment_id: str) -> dict:
+        self._check()
+        for eid, files in self.attachments.items():
+            for a in files:
+                if a["id"] == attachment_id:
+                    return {"filename": a["filename"], "mimetype": a["mimetype"], "object_id": eid, "content": a["content"]}
+        raise CrmError("Lecture de la pièce jointe : HTTP 404", 404)
 
     def account_link(self, entity, record_id, attribute):
         return None
@@ -181,6 +196,25 @@ class FakeCrm:
             raise UncertainWrite("Enregistrement sans réponse : résultat inconnu, vérification nécessaire.")
 
 
+def demo_pdf(lines: list[str]) -> bytes:
+    """A one-page PDF with the given lines (stands for a scanned letter in the demo)."""
+    text = "BT /F1 16 Tf 60 760 Td 22 TL " + " ".join(
+        "(" + ln.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)") + ") '" for ln in lines) + " ET"
+    stream = text.encode("latin-1", "replace")
+    objs = [b"<< /Type /Catalog /Pages 2 0 R >>", b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+            b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+            b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"\nendstream"]
+    out, offsets = bytearray(b"%PDF-1.4\n"), []
+    for n, body in enumerate(objs, 1):
+        offsets.append(len(out))
+        out += b"%d 0 obj\n" % n + body + b"\nendobj\n"
+    xref = len(out)
+    out += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objs) + 1) + b"".join(b"%010d 00000 n \n" % o for o in offsets)
+    out += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (len(objs) + 1, xref)
+    return bytes(out)
+
+
 def demo_crm() -> FakeCrm:
     """Fictitious queue covering the cases listed in the specification and the two recorded mails."""
     crm = FakeCrm()
@@ -214,4 +248,9 @@ def demo_crm() -> FakeCrm:
             kind="task", text="Termination of contract due to moving home. Customer Démo M, Phone: +33600000014.")
     crm.add("15", "Déménagement sans indice (démo 15)", None, [], regarding_entity=None, sender="inconnu@example.com",
             text="Bonjour, je déménage le mois prochain.")
+    # recorded procedure n°3: scanned letter, the customer number is handwritten in the PDF
+    crm.add("16", "Voir document joint (démo 16)", "Client Démo N", [], regarding_entity=None, account_number="10090016",
+            sender="noreply@sectoralarm.fr", text="%Sector Alarm RENNES CDE", files=[("lettre-scannee.pdf", "application/pdf",
+            demo_pdf(["LETTRE FICTIVE DE DEMONSTRATION", "", "Client Demo N", "n° client 10090016",
+                      "Par la presente, je demande la resiliation de mon contrat", "suite a mon demenagement."]))])
     return crm

@@ -160,6 +160,16 @@ le mail, champ « Email » du formulaire HubSpot, téléphone. La colonne **Comp
 
 Il ne remplace jamais un Regarding déjà rempli.
 
+**Les courriers scannés** (« Voir document joint », lettre manuscrite en pièce jointe) :
+
+1. cliquez sur **Voir la pièce jointe** : le scan s'ouvre dans un nouvel onglet ;
+2. lisez le n° client écrit sur la lettre, tapez-le dans la case **N° de compte**, puis cliquez sur
+   **Rattacher le client** ;
+3. l'agent affiche **le nom du compte** qui correspond à ce numéro : vérifiez que c'est bien le client de la
+   lettre avant de cliquer sur OK (un chiffre mal lu peut désigner un autre client) ;
+4. dans **Attribuer à…**, choisissez **Suivant en Résiliation** ou **Suivant en Déménagement** selon la
+   lettre : l'agent donne l'élément au prochain de la rotation.
+
 ### La rotation 1 pour 1
 
 En haut du tableau de bord, **Rotation 1 pour 1** indique qui est le prochain en Résiliation et en

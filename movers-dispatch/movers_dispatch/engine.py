@@ -67,6 +67,7 @@ class Evaluation:
     category_why: str = ""
     client_via: str = ""          # how the account was found (masked values), when the Regarding was empty
     client_to_link: bool = False  # the Regarding must be filled with this account before Worked By
+    attachments: int = 0          # files attached to a mail whose client was not found (scanned letters)
 
 
 @dataclass
@@ -123,7 +124,16 @@ class Agent:
             if account is None and self.cfg.client.enabled and self.client_ready:
                 account, why = self._find_client(gw, act)
                 if account is None:
-                    ev.decision = Decision(Status.REVIEW, f"Regarding vide et client non retrouvé : {why}", code="no_client")
+                    hint = ""
+                    if act.kind == "email":
+                        try:
+                            ev.attachments = len(gw.list_attachments(act.id))
+                        except CrmError:
+                            ev.attachments = 0
+                        if ev.attachments:
+                            hint = (" Pièce jointe à lire (courrier scanné : le n° client y est souvent écrit à la main) : "
+                                    "« Voir la pièce jointe », puis saisir le n° de compte.")
+                    ev.decision = Decision(Status.REVIEW, f"Regarding vide et client non retrouvé : {why}{hint}", code="no_client")
                     return self._maybe_skip(ev)
                 ev.client_via, ev.client_to_link = why, True
         if account is not None:
@@ -225,7 +235,8 @@ class Agent:
             status=status, reason=reason, considered=d.considered, mode=mode, run_id=run_id,
             category=ev.category, client_account_id=ev.account_id if ev.client_to_link else None,
             client_name=ev.account_name if ev.client_to_link else None, client_via=ev.client_via or None,
-            client_to_link=1 if ev.client_to_link else (1 if d.code == "no_client" else 0), method=d.method)
+            client_to_link=1 if ev.client_to_link else (1 if d.code == "no_client" else 0), method=d.method,
+            attachments=ev.attachments)
 
     # ------------------------------------------------------------------ writing
     def _link_client(self, run_id: int | None, ev: Evaluation, actor: str, mode: str) -> None:
@@ -441,8 +452,18 @@ class Agent:
         saved = self.journal.item(queueitem_id)
         if not saved or saved["status"] != Status.REVIEW.value:
             raise RunBlocked("Seuls les éléments en validation humaine s'attribuent à la main.")
+        category = None
+        if collaborator_key.startswith("rotation:"):
+            # « Suivant en Résiliation » : the person decides the category (e.g. a scanned letter), the turn decides who
+            category = collaborator_key.split(":", 1)[1]
+            if category not in CATEGORY_LABELS:
+                raise RunBlocked("Catégorie inconnue.")
+            collaborator_key = self.next_in_rotation(category)
+            if collaborator_key is None:
+                raise RunBlocked(f"Rotation {CATEGORY_LABELS[category]} : personne de disponible.")
         return self._human_assign(saved, collaborator_key, actor, "attribution_manuelle",
-                                  {"motif_initial": saved["reason"], "cases_vus": _json_list(saved["considered"])})
+                                  {"motif_initial": saved["reason"], "cases_vus": _json_list(saved["considered"]),
+                                   "rotation": category}, rotation_category=category)
 
     def correct(self, queueitem_id: str, collaborator_key: str, actor: str, note: str = "") -> dict:
         """Supervised mode: the proposal is wrong, the person gives the right collaborator. The correction
@@ -462,7 +483,8 @@ class Agent:
             self.journal.set_setting(f"rotation:{saved['category']}", collaborator_key)   # the turn goes on from them
         return out
 
-    def _human_assign(self, saved: dict, collaborator_key: str, actor: str, action: str, detail: dict) -> dict:
+    def _human_assign(self, saved: dict, collaborator_key: str, actor: str, action: str, detail: dict,
+                      rotation_category: str | None = None) -> dict:
         queueitem_id = saved["queueitem_id"]
         collab = next((c for c in self.cfg.collaborators if c.key == collaborator_key), None)
         if collab is None:
@@ -483,7 +505,10 @@ class Agent:
             if normalize_name(user.first_name) != normalize_name(collab.first_name):
                 raise RunBlocked(f"Prénom CRM « {user.first_name} » différent du prénom configuré « {collab.first_name} ».")
             self.journal.event(None, queueitem_id, action, {"worked_by": collab.first_name, **detail}, actor)
-            ev.decision = Decision(Status.ASSIGNED, "", None, user, ev.decision.considered)
+            ev.decision = Decision(Status.ASSIGNED, "", None, user, ev.decision.considered,
+                                   method="rotation" if rotation_category else "manual")
+            if rotation_category:
+                ev.category = rotation_category
             try:
                 self._write(None, ev, actor, "manuel")
             except Stopped:
@@ -537,6 +562,34 @@ class Agent:
             return self.journal.item(queueitem_id)
         finally:
             self.busy.release()
+
+    # ------------------------------------------------------------------ reading help for the person
+    def check_account(self, account_number: str) -> dict:
+        """Before linking a number read on a scanned letter: which active account it designates (a misread
+        digit may designate another real client — the person confirms the name first)."""
+        number = "".join(ch for ch in account_number if ch.isdigit())
+        if not number:
+            raise RunBlocked("Indiquer le numéro de compte du client (Account Number).")
+        hits = self.gw.find_accounts(("accountnumber",), [number])
+        if len(hits) != 1:
+            raise RunBlocked(f"Le numéro {number} correspond à {len(hits)} compte(s) actif(s) : vérifier la lecture.")
+        return {"number": number, "name": hits[0].name}
+
+    def attachments(self, queueitem_id: str) -> list[dict]:
+        saved = self.journal.item(queueitem_id)
+        if not saved or not saved.get("email_id"):
+            raise RunBlocked("Élément inconnu.")
+        return self.gw.list_attachments(saved["email_id"])
+
+    def attachment(self, queueitem_id: str, attachment_id: str) -> dict:
+        """Only a file attached to this element's mail can be opened (read on demand, never stored)."""
+        saved = self.journal.item(queueitem_id)
+        if not saved or not saved.get("email_id"):
+            raise RunBlocked("Élément inconnu.")
+        f = self.gw.get_attachment(attachment_id)
+        if f["object_id"] != saved["email_id"]:
+            raise RunBlocked("Cette pièce jointe n'appartient pas à cet élément.")
+        return f
 
     # ------------------------------------------------------------------ rotation settings
     def rotation_state(self) -> dict:
