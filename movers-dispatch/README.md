@@ -10,7 +10,7 @@ déroulante du tableau de bord permet de choisir à qui attribuer l'élément.
 >
 > | Élément | État |
 > |---|---|
-> | Règles de décision, modes Simulation / Supervisé / Automatique, arrêt immédiat, journal, tableau de bord | **Opérationnels**, testés sur des données **fictives** (100 tests), dont les deux mails de la vidéo reproduits |
+> | Règles de décision, modes Simulation / Supervisé / Automatique, arrêt immédiat, journal, tableau de bord | **Opérationnels**, testés sur des données **fictives** (104 tests), dont les deux mails de la vidéo reproduits |
 > | Connexion « navigateur » (session CRM de l'utilisateur) | Testée dans un vrai Chromium face à un **serveur imitant le Web API** d'un CRM sur site, jamais face au vrai CRM |
 > | Connexion « msal » | **Sans objet** pour le CRM Sector Alarm, qui est installé sur site (pas Dynamics 365 en ligne) |
 > | Vidéo de la procédure | **Analysée** (2 mails traités, § 1). Ce qu'elle montre a corrigé les règles (§ 2) |
@@ -139,6 +139,17 @@ relit, puis écrit Worked By. Même en mode Automatique, un humain valide ce rat
 `[client] automatique = false`. Dans le tableau de bord, la case **N° de compte**, avec **Rattacher le
 client** ou **Corriger le client**, fait ce que vous faites à la main. Le contenu des mails est lu en
 mémoire et jamais enregistré : le journal garde « via adresse de l'expéditeur cl•••@exemple.fr ».
+
+**Tâches (4e vidéo).** Sur une tâche (« Contact customer - PRIO », « Takeover - CS », « Moving - CS »),
+le Regarding est souvent un contrat « C-SFR-… ». Le client figure dans le champ **Account** de la tâche,
+et c'est par lui que l'équipe ouvre la fiche client et ses Cases. L'agent lit ce champ. Il trouve tout
+seul la colonne dans les métadonnées du CRM : c'est la seule colonne de la tâche qui pointe vers un
+compte, en dehors du Regarding. S'il y en a plusieurs, il ne devine pas et il faut la désigner dans
+`[client] liens_compte`. Le Regarding de la tâche n'est pas modifié.
+
+**Compteurs de la rotation.** Le bloc « Rotation 1 pour 1 » affiche, pour chaque catégorie, le nombre
+d'éléments donnés **par la rotation** aujourd'hui et depuis le début, avec la part de chaque
+collègue. Ce sont les éléments sans Case d'un des quatre, ce qui permet de vérifier le 1 pour 1.
 
 Quand le Regarding pointe vers une autre table (une tâche « Moving - CS » rattachée à un contrat
 « C-SFR-… »), l'agent passe par la colonne « compte » de cette table, indiquée dans `[client]

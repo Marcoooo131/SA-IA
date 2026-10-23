@@ -110,6 +110,10 @@ function renderRotation(r) {
   $("rotation-next").innerHTML = r.active ? r.categories.map((c) => `<div><span class="muted">${esc(c.label)} — prochain :</span>
     <b>${esc(c.prochain || "personne")}</b> <span class="muted">(ordre : ${esc(c.ordre.join(" → "))})</span></div>`).join("")
     : `<div class="muted">Rotation désactivée dans dispatch.toml.</div>`;
+  const share = (m) => Object.entries(m).map(([n, k]) => `${esc(n)} ${k}`).join(" · ") || "–";
+  $("rotation-counts").innerHTML = r.categories.map((c) => `<div class="rot-count">
+    <b>${c.aujourdhui}</b> <span>${esc(c.label)}${c.aujourdhui > 1 ? "s" : ""} aujourd'hui via la rotation (sans Case d'un des quatre)</span>
+    <div class="muted">${share(c.par_personne_aujourdhui)} — depuis le début : ${c.total} (${share(c.par_personne)})</div></div>`).join("");
   $("absents").innerHTML = r.collaborateurs.map((c) => `<label><input type="checkbox" data-absent="${esc(c.key)}"
     ${c.absent ? "checked" : ""}> ${esc(c.first_name)} absent(e)</label>`).join("");
 }

@@ -77,6 +77,7 @@ class Gateway(Protocol):
     def client_preflight(self) -> list[str]: ...
     def find_accounts(self, fields: tuple[str, ...], values: list[str]) -> list[Lookup]: ...
     def account_link(self, entity: str, record_id: str, attribute: str) -> Lookup | None: ...
+    def activity_account_field(self, kind: str) -> str | None: ...
     def set_regarding(self, activity: Email, account_id: str) -> None: ...
     def list_attachments(self, email_id: str) -> list[dict]: ...
     def get_attachment(self, attachment_id: str) -> dict: ...
@@ -318,6 +319,23 @@ class DataverseGateway:
             cache[entity] = self._get(f"EntityDefinitions(LogicalName='{_q(entity)}')", f"Métadonnées de {entity}",
                                       {"$select": "EntitySetName"})["EntitySetName"]
         return cache[entity]
+
+    def activity_account_field(self, kind: str) -> str | None:
+        """The activity's own « Account » column (the tasks show one, set by the chatbot or the advisor),
+        found in the CRM metadata: the only lookup to an account other than the Regarding."""
+        cache = self.__dict__.setdefault("_own_account", {})
+        if kind not in cache:
+            try:
+                rels = self._get(f"EntityDefinitions(LogicalName='{_q(kind)}')/ManyToOneRelationships", f"Relations de {kind}",
+                                 {"$select": "ReferencingAttribute,ReferencedEntity"}).get("value", [])
+                found = sorted({r["ReferencingAttribute"] for r in rels if r.get("ReferencedEntity") == "account"
+                                and r.get("ReferencingAttribute") not in ("regardingobjectid", "owningbusinessunit")})
+            except SessionExpired:
+                raise
+            except CrmError:
+                found = []
+            cache[kind] = found[0] if len(found) == 1 else None
+        return cache[kind]
 
     def account_link(self, entity: str, record_id: str, attribute: str) -> Lookup | None:
         row = self._get(f"{self._entity_set(entity)}({guid(record_id)})", f"Lecture du compte lié ({entity})",
