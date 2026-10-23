@@ -280,3 +280,43 @@ def test_next_in_rotation_chosen_by_the_person_for_a_letter():
     assert out["category"] == "resiliation" and agent.journal.setting("rotation:resiliation") == "kader"
     with pytest.raises(RunBlocked, match="Catégorie inconnue"):
         agent.assign_manually(other, "rotation:autre", "local")
+
+
+# ------------------------------------------------------------------ tasks: the « Account » field (4th recording)
+def test_tasks_use_their_own_account_field_like_the_recording():
+    agent, crm = make(automatic_allowed=True)
+    # « Contact customer - PRIO » : Regarding = contract, Account = client whose active MOVERS case is Chloé's
+    prio = crm.add("p", "Contact customer - PRIO", "Client P", [("CAS-1", "autre", 1, "Collection case ECHURN"),
+                                                              ("CAS-2", "chloe", 0, "MOVERS")],
+                   kind="task", regarding_entity="contract", own_account=True)
+    # « Takeover - CS » : the only Movers case is Marc-Antoine's (resolved)
+    takeover = crm.add("t", "Takeover - CS", "Client T", [("CAS-3", "marc-antoine", 1, "Movers"),
+                                                          ("CAS-4", "autre", 2, "Demande de résiliation")],
+                       kind="task", regarding_entity="contract", own_account=True)
+    # « Moving - CS » : no case on the account → rotation Résiliation (every task is a Résiliation)
+    moving = crm.add("m", "Moving - CS", "Client M", [], kind="task", regarding_entity="contract", own_account=True)
+    agent.run(Mode.AUTOMATIC, confirm_automatic=True)
+    assert row(agent, prio)["worked_by_name"] == "Chloé" and row(agent, prio)["client_via"] == "champ Account de la tâche"
+    assert row(agent, takeover)["worked_by_name"] == "Marc-Antoine"
+    assert row(agent, moving)["method"] == "rotation" and row(agent, moving)["status"] == Status.ASSIGNED.value
+    assert crm.regarding_log == []                                  # the contract Regarding is left as it is
+
+
+def test_task_without_account_field_still_goes_to_review_with_a_hint():
+    agent, crm = make()
+    qid = crm.add("x", "Moving - CS", "Client X", [], kind="task", regarding_entity="contract")
+    agent.run(Mode.SIMULATION)
+    assert row(agent, qid)["status"] == Status.REVIEW.value and "contract" in row(agent, qid)["reason"]
+
+
+def test_rotation_counters_per_category_and_person():
+    agent, crm = make(automatic_allowed=True)
+    for n in range(3):
+        crm.add(f"r{n}", "Chatbot customer request: Termination of contract", f"R{n}", [], kind="task")
+    crm.add("d0", "HubSpot Moving Home", "D0", [])
+    crm.add("own", "Résiliation", "O", [("CAS-1", "chloe", 0)])        # owner of a case: not counted
+    agent.run(Mode.AUTOMATIC, confirm_automatic=True)
+    counts = {c["key"]: c for c in agent.rotation_state()["categories"]}
+    assert counts["resiliation"]["aujourdhui"] == counts["resiliation"]["total"] == 3
+    assert counts["resiliation"]["par_personne"] == {"Kader": 1, "Estefania": 1, "Marc-Antoine": 1}
+    assert counts["demenagement"]["total"] == 1

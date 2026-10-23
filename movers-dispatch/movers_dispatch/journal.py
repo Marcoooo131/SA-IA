@@ -177,6 +177,28 @@ class Journal:
         out["corrections"].reverse()
         return out
 
+    def rotation_counts(self) -> dict:
+        """Elements given by the rotation (no case naming one of the four), per category: today (local
+        time of this PC) and in total, with the share of each collaborator — to check the 1:1 turn."""
+        with self.lock:
+            rows = self.db.execute(
+                "SELECT e.ts, e.detail, i.category FROM events e JOIN items i ON i.queueitem_id = e.queueitem_id "
+                "WHERE e.action = 'worked_by_verifie'").fetchall()
+        today = datetime.now().astimezone().date()
+        out: dict = {}
+        for r in rows:
+            d = json.loads(r["detail"] or "{}")
+            if d.get("methode") != "rotation" or not r["category"]:
+                continue
+            c = out.setdefault(r["category"], {"total": 0, "aujourdhui": 0, "par_personne": {}, "par_personne_aujourdhui": {}})
+            name = d.get("worked_by") or "?"
+            c["total"] += 1
+            c["par_personne"][name] = c["par_personne"].get(name, 0) + 1
+            if datetime.fromisoformat(r["ts"]).astimezone().date() == today:
+                c["aujourdhui"] += 1
+                c["par_personne_aujourdhui"][name] = c["par_personne_aujourdhui"].get(name, 0) + 1
+        return out
+
     def counters(self) -> dict:
         with self.lock:
             rows = self.db.execute("SELECT status, COUNT(*) n FROM items GROUP BY status").fetchall()

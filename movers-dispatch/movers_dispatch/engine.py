@@ -114,14 +114,18 @@ class Agent:
             cases = [case]
             if case.customer:
                 ev.account_id, ev.account_name = case.customer.id, case.customer.name
-        elif reg and reg.entity in links:
-            account = gw.account_link(reg.entity, reg.id, links[reg.entity])
-            ev.client_via = f"compte du {reg.entity} en Regarding"
-        elif reg is None:
-            if act.kind in links:
-                account = gw.account_link(act.kind, act.id, links[act.kind])
-                ev.client_via = "champ compte de l'activité" if account else ""
-            if account is None and self.cfg.client.enabled and self.client_ready:
+        else:
+            # Regarding empty or pointing to another table (contract « C-SFR-… »): like the recorded
+            # procedure on tasks, the activity's own « Account » field gives the client
+            own = links.get(act.kind) or gw.activity_account_field(act.kind)
+            if own:
+                account = gw.account_link(act.kind, act.id, own)
+                ev.client_via = "champ Account de la tâche" if account and act.kind == "task" else (
+                    "champ compte de l'activité" if account else "")
+            if account is None and reg is not None and reg.entity in links:
+                account = gw.account_link(reg.entity, reg.id, links[reg.entity])
+                ev.client_via = f"compte du {reg.entity} en Regarding" if account else ""
+            if account is None and reg is None and self.cfg.client.enabled and self.client_ready:
                 account, why = self._find_client(gw, act)
                 if account is None:
                     hint = ""
@@ -597,12 +601,17 @@ class Agent:
         out = {"active": self.cfg.rotation.enabled, "applique": self.cfg.rotation.applies,
                "collaborateurs": [{"key": c.key, "first_name": c.first_name, "absent": c.key in absent}
                                   for c in self.cfg.collaborators], "categories": []}
+        counts = self.journal.rotation_counts()
         for cat, label in CATEGORY_LABELS.items():
             members = self.cfg.rotation.members.get(cat) or tuple(c.key for c in self.cfg.collaborators)
             nxt = self.next_in_rotation(cat)
+            c = counts.get(cat, {})
             out["categories"].append({"key": cat, "label": label,
                                       "ordre": [self.cfg.collaborator(k).first_name for k in members],
-                                      "prochain": self.cfg.collaborator(nxt).first_name if nxt else None})
+                                      "prochain": self.cfg.collaborator(nxt).first_name if nxt else None,
+                                      "total": c.get("total", 0), "aujourdhui": c.get("aujourdhui", 0),
+                                      "par_personne": c.get("par_personne", {}),
+                                      "par_personne_aujourdhui": c.get("par_personne_aujourdhui", {})})
         return out
 
     def set_absent(self, key: str, absent: bool, actor: str) -> dict:

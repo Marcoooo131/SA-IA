@@ -53,6 +53,7 @@ class FakeCrm:
     accounts: dict[str, dict] = field(default_factory=dict)   # id → name, number, emails, phones, active
     regarding_log: list[tuple[str, str]] = field(default_factory=list)
     attachments: dict[str, list[dict]] = field(default_factory=dict)   # email id → files
+    own_accounts: dict[str, str] = field(default_factory=dict)        # task id → its « Account » field
     _etags: itertools.count = field(default_factory=lambda: itertools.count(1))
 
     def _check(self):
@@ -69,7 +70,7 @@ class FakeCrm:
     def add(self, label: str, subject: str, account: str | None, cases: list[tuple],
             worker: str | None = None, regarding_entity: str | None = "account", regarding_case: int = 0,
             kind: str = "email", text: str = "", sender: str = "", account_number: str = "",
-            account_emails=(), account_phones=(), files=()) -> str:
+            account_emails=(), account_phones=(), files=(), own_account: bool = False) -> str:
         """cases: (ticket number, owner key in USERS or "team", statecode[, title — default "Mover"]).
         regarding_entity "incident": the mail's Regarding is the case at index ``regarding_case``;
         None: Regarding empty (the account still exists, to be found from ``text`` / ``sender``)."""
@@ -93,9 +94,13 @@ class FakeCrm:
             regarding = Lookup(c.id, "incident", c.title)
         elif regarding_entity is None:
             regarding = None
+        elif regarding_entity == "contract":
+            regarding = Lookup(gid(f"contract/{label}"), "contract", "C-SFR-000000000")
         else:
             regarding = Lookup(aid, regarding_entity, self._account_label(aid) if account else "") if account else None
         self.emails[eid] = Email(eid, subject, regarding, kind, text=text, sender=sender, etag=f'W/"{next(self._etags)}"')
+        if own_account and account:
+            self.own_accounts[eid] = aid
         self.attachments[eid] = [{"id": gid(f"att/{label}/{n}"), "filename": name, "mimetype": mime, "size": len(data),
                                   "content": data} for n, (name, mime, data) in enumerate(files)]
         return qid
@@ -150,8 +155,13 @@ class FakeCrm:
                     return {"filename": a["filename"], "mimetype": a["mimetype"], "object_id": eid, "content": a["content"]}
         raise CrmError("Lecture de la pièce jointe : HTTP 404", 404)
 
+    def activity_account_field(self, kind: str):
+        return "sa_accountid" if kind == "task" else None
+
     def account_link(self, entity, record_id, attribute):
-        return None
+        self._check()
+        aid = self.own_accounts.get(record_id) if entity == "task" else None
+        return Lookup(aid, "account", self._account_label(aid)) if aid else None
 
     def set_regarding(self, activity: Email, account_id: str) -> None:
         self._check()
@@ -253,4 +263,8 @@ def demo_crm() -> FakeCrm:
             sender="noreply@sectoralarm.fr", text="%Sector Alarm RENNES CDE", files=[("lettre-scannee.pdf", "application/pdf",
             demo_pdf(["LETTRE FICTIVE DE DEMONSTRATION", "", "Client Demo N", "n° client 10090016",
                       "Par la presente, je demande la resiliation de mon contrat", "suite a mon demenagement."]))])
+    # recorded procedure n°4: task whose Regarding is a contract; the client is in its « Account » field
+    crm.add("17", "Contact customer - PRIO (démo 17)", "Client Démo O", [("CAS-1013", "autre", 1, "Collection case ECHURN"),
+            ("CAS-1014", "chloe", 0, "MOVERS")], kind="task", regarding_entity="contract", own_account=True)
+    crm.add("18", "Moving - CS (démo 18)", "Client Démo P", [], kind="task", regarding_entity="contract", own_account=True)
     return crm

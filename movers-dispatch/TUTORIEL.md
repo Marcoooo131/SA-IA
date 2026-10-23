@@ -125,9 +125,9 @@ Si plusieurs personnes ont le même prénom, prenez celle dont le **nom complet*
 téléphone. Recopiez leurs noms dans la section `[client]`, par exemple
 `champs_telephone = ["telephone1", "telephone2", "new_mobilephone"]`, ou envoyez-moi cette partie.
 
-**« Colonnes de « contract » qui pointent vers un compte »** : envoyez-moi cette partie. Elle sert
-aux tâches « Moving - CS » rattachées à un contrat C-SFR. En attendant, ces tâches partent en validation
-humaine.
+**« Colonnes de « contract » / « task » qui pointent vers un compte »** : rien à faire en général,
+l'agent lit tout seul le champ **Account** des tâches. Si une tâche part quand même en validation humaine
+avec « pointe vers « contract » », envoyez-moi cette partie.
 
 Enregistrez, puis **relancez `3-decouvrir.bat`**. Au premier passage, les lignes
 « ! … systemuserid non renseigné » sont normales. Quand tout est bon, *Contrôles préalables* affiche
@@ -143,7 +143,9 @@ Enregistrez, puis **relancez `3-decouvrir.bat`**. Au premier passage, les lignes
    Le tableau de bord s'ouvre tout seul. **Laissez la fenêtre Edge et la fenêtre noire ouvertes** tant
    que vous travaillez.
 2. En haut, dans **Rotation 1 pour 1**, **cochez les collègues absents** du jour : ils seront sautés.
-   Pensez à les décocher à leur retour.
+   Pensez à les décocher à leur retour. Les deux compteurs indiquent combien de **Résiliations** et de
+   **Déménagements** la rotation a donnés aujourd'hui (sans Case d'un des quatre) et à qui, pour vérifier
+   que chacun en reçoit autant.
 3. Choisissez le mode :
    - **Simulation** les premiers jours : rien n'est écrit, vous comparez avec ce que vous auriez fait ;
    - **Supervisé** ensuite : vous validez chaque affectation.
@@ -165,8 +167,9 @@ Le gros bouton rouge **Arrêt immédiat** stoppe tout : plus aucune écriture ap
 
 Comment l'agent choisit le collègue :
 
-1. **Il trouve le client** : par le Regarding, ou sinon par l'adresse de l'expéditeur, le « Numéro de
-   client » écrit dans le mail, le champ « Email » du formulaire HubSpot ou un téléphone. Il ne retient le
+1. **Il trouve le client** : par le Regarding ; pour une **tâche**, par son champ **Account** (comme vous
+   le faites) ; sinon par l'adresse de l'expéditeur, le « Numéro de client » écrit dans le mail, le champ
+   « Email » du formulaire HubSpot ou un téléphone. Il ne retient le
    client que si **un seul compte** correspond.
 2. **Il regarde les Cases « Mover / MOVERS » du client.** Si l'un appartient à Kader, Estefania,
    Marc-Antoine ou Chloé, c'est cette personne. Entre deux Cases de personnes différentes, l'**actif ou

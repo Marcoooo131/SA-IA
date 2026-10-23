@@ -249,3 +249,13 @@ def test_attachments_are_listed_for_the_mail_and_decoded():
     assert t.calls[0][2]["$filter"] == f"_objectid_value eq {EM}" and "body" not in t.calls[0][2]["$select"]
     f = g.get_attachment(att)
     assert f["content"] == b"%PDF-1.4" and f["object_id"] == EM
+
+
+def test_activity_account_field_found_in_metadata_only_when_unique():
+    rel = lambda attrs: Response(200, {"value": [{"ReferencingAttribute": a, "ReferencedEntity": "account"} for a in attrs]}, {})
+    g, t = gw([("GET", "EntityDefinitions(LogicalName='task')/ManyToOneRelationships", rel(["regardingobjectid", "sa_accountid"])),
+               ("GET", "EntityDefinitions(LogicalName='email')/ManyToOneRelationships", rel(["regardingobjectid", "a_id", "b_id"]))])
+    assert g.activity_account_field("task") == "sa_accountid"
+    assert g.activity_account_field("email") is None               # two candidates: never guessed
+    g.activity_account_field("task")
+    assert len(t.calls) == 2                                        # cached
