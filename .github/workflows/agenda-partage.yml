@@ -32,7 +32,8 @@ jobs:
         run: bash scripts/test-db.sh
 
   app:
-    runs-on: ubuntu-latest
+    # Playwright 1.56 ne sait pas installer Chromium sur ubuntu-latest (26.04) : version fixée
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: agenda-partage
