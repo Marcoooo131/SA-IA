@@ -9,6 +9,11 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > hypothèses de configuration** à valider par les responsables métier. Toutes les données préchargées
 > sont fictives. Aucune intégration à un système interne n'existe.
 
+> 📅 **Agenda partagé rouge & noir** (React + Supabase, distinct de l'application Movers) :
+> [`agenda-partage/`](agenda-partage/README.md) — agenda d'équipe en temps réel (vues jour / semaine / mois / liste),
+> rôles administrateur / collaborateur appliqués par la base, rendez-vous confidentiels, commentaires, historique,
+> pièces jointes ; publié sur GitHub Pages (`…/SA-IA/agenda/`) une fois Supabase configuré.
+
 > 💬 **Relances SMS Movers & Takeovers** (Python, distinct de l'application Movers) :
 > [`sms-reminders/`](sms-reminders/README.md) — import des rendez-vous, relances automatiques J-2 / J-1,
 > suivi des confirmations ; mode simulation tant que le fournisseur SMS n'est pas configuré.

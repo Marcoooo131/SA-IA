@@ -1,0 +1,143 @@
+@import 'tailwindcss';
+
+/* Identité visuelle rouge & noir */
+@theme {
+  --color-ink: #111111;
+  --color-ink-soft: #242424;
+  --color-brand: #e30613;
+  --color-brand-dark: #b8000a;
+  --color-brand-soft: #fde8e9;
+  --color-surface: #f4f4f5;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Champs : 16 px minimum sur mobile pour éviter le zoom automatique d'iOS */
+@utility field {
+  @apply block w-full rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-base text-ink shadow-sm transition outline-none placeholder:text-neutral-400 focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:bg-neutral-100 md:text-sm;
+}
+@utility field-error {
+  @apply border-brand ring-2 ring-brand/15;
+}
+@utility label {
+  @apply mb-1 block text-sm font-medium text-neutral-700;
+}
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition select-none active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50;
+}
+@utility btn-primary {
+  @apply btn bg-brand text-white shadow-sm shadow-brand/30 hover:bg-brand-dark focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:outline-none;
+}
+@utility btn-dark {
+  @apply btn bg-ink text-white hover:bg-ink-soft;
+}
+@utility btn-ghost {
+  @apply btn border border-neutral-300 bg-white text-neutral-800 hover:border-neutral-400 hover:bg-neutral-50;
+}
+@utility btn-icon {
+  @apply inline-flex h-10 w-10 items-center justify-center rounded-lg text-neutral-600 transition hover:bg-neutral-100 hover:text-ink;
+}
+@utility card {
+  @apply rounded-2xl border border-neutral-200 bg-white shadow-sm;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slide-left {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.animate-fade { animation: fade-in 0.18s ease-out; }
+.animate-sheet { animation: slide-up 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.animate-drawer { animation: slide-left 0.22s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.animate-toast { animation: slide-up 0.2s ease-out; }
+.animate-pulse-dot { animation: pulse-dot 1.6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade, .animate-sheet, .animate-drawer, .animate-toast, .animate-pulse-dot { animation: none; }
+}
+
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+
+/* ---------------------------------------------------------------- FullCalendar */
+.fc {
+  --fc-border-color: #e7e7e9;
+  --fc-today-bg-color: #fff5f5;
+  --fc-now-indicator-color: #e30613;
+  --fc-neutral-bg-color: #fafafa;
+  --fc-list-event-hover-bg-color: #fdf2f2;
+  --fc-page-bg-color: #ffffff;
+  --fc-highlight-color: rgba(227, 6, 19, 0.1);
+  font-size: 0.85rem;
+}
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number {
+  color: #242424;
+  text-decoration: none;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.fc .fc-col-header-cell { padding: 6px 0; background: #fafafa; }
+.fc .fc-day-today .fc-daygrid-day-number {
+  background: #e30613;
+  color: #fff;
+  border-radius: 9999px;
+  min-width: 1.75rem;
+  text-align: center;
+}
+.fc .fc-timegrid-slot { height: 2.6rem; }
+.fc .fc-timegrid-slot-label-cushion { font-size: 0.75rem; color: #6b7280; }
+.fc .fc-event { border: none; background: transparent; box-shadow: none; }
+.fc .fc-timegrid-event,
+.fc .fc-daygrid-event { border-radius: 8px; overflow: hidden; }
+.fc .fc-daygrid-event { margin-top: 2px; }
+.fc .fc-daygrid-more-link { color: #e30613; font-weight: 600; }
+.fc .fc-list-day-cushion { background: #f4f4f5; text-transform: capitalize; }
+.fc .fc-list-event td { border-color: #efefef; }
+.fc .fc-list-event:hover td { cursor: pointer; }
+.fc .fc-list-empty { background: #fff; }
+.fc .fc-scrollgrid { border-radius: 14px; overflow: hidden; }
+.fc-theme-standard .fc-scrollgrid { border: 1px solid var(--fc-border-color); }
+.fc .fc-timegrid-now-indicator-line { border-width: 2px 0 0; }
+
+.appt-chip {
+  height: 100%;
+  width: 100%;
+  border-left: 4px solid var(--appt-color, #e30613);
+  background: color-mix(in srgb, var(--appt-color, #e30613) 12%, white);
+  color: #111;
+  padding: 3px 6px;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  transition: filter 0.15s;
+}
+.appt-chip:hover { filter: brightness(0.96); }
+.appt-chip.is-masked {
+  --appt-color: #9ca3af;
+  background: repeating-linear-gradient(45deg, #f3f4f6, #f3f4f6 6px, #e9eaec 6px, #e9eaec 12px);
+  color: #4b5563;
+}
+.appt-chip.is-cancelled { opacity: 0.6; }
+.appt-chip.is-cancelled .appt-title { text-decoration: line-through; }
