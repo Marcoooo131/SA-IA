@@ -60,22 +60,26 @@ def html_to_text(value: str) -> str:
 
 
 # ------------------------------------------------------------------ category
-def categorize(cfg: Config, activity: Email) -> tuple[str | None, str]:
-    """Returns (category key or None, why)."""
+def categorize(cfg: Config, activity: Email) -> tuple[str | None, str, bool]:
+    """Returns (category key or None, why, sure): sure = found by the task name; otherwise read from the
+    words of the request, which some rotations want confirmed by a person (Résiliation or exception)."""
     # 1. the name of the task decides (« Movers - Résiliation exception » before « Movers - Résiliation »)
     subject = task_key(activity.subject)
     names = sorted(((n, c) for c in cfg.categories.items for n in c.task_names if n), key=lambda x: -len(x[0]))
     for name, cat in names:
         base = name[:-1] if name.endswith("s") else name                 # « Takeover » / « Takeovers »
         if re.search(rf"(?:^| ){re.escape(base)}s?(?: |$)", subject):
-            return cat.key, f"nom de tâche « {cat.label} »"
-    # 2. otherwise (mails, tasks with another name): words of the subject and the text
-    text = normalize_name(f"{activity.subject}\n{activity.text}")
+            return cat.key, f"nom de tâche « {cat.label} »", True
+    # 2. otherwise: words of the request — for a mail its subject and text; for a task with another name
+    # (« Moving - CS », chatbot…) its description only, the title being the channel, not the request
+    text = normalize_name(activity.text if activity.kind == "task" else f"{activity.subject}\n{activity.text}")
     for cat in cfg.categories.items:
         hit = next((w for w in cat.words if w and w in text), None)
         if hit:
-            return cat.key, f"mot « {hit} »"
-    return None, "nom de tâche inconnu et aucun mot reconnu"
+            return cat.key, f"mot « {hit} »", False
+    if activity.kind == "task" and cfg.categories.get(cfg.categories.task_fallback):
+        return cfg.categories.task_fallback, "tâche sans nom connu ni mot reconnu (règle d'avant : résiliation)", False
+    return None, "nom de tâche inconnu et aucun mot reconnu", False
 
 
 def category_label(cfg: Config, cat: str | None) -> str:

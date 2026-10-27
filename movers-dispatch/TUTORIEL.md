@@ -184,9 +184,12 @@ Comment l'agent choisit le collègue :
    annulé** passe avant le **résolu**.
 3. **Sinon, la rotation 1 pour 1 du nom de la tâche** décide : « Prio - Movers - Déménagement »,
    « Movers - Résiliation », « Movers - Résiliation exception » ou « Movers - Takeovers ». Chacune
-   tourne de son côté. Les **mails** (et les tâches qui portent un autre nom) sont rangés d'après leurs
-   mots : « résiliation », « désactivation », « décès » vont en Movers - Résiliation ; « déménagement »,
-   « Moving Home » (HubSpot) vont en Prio - Movers - Déménagement.
+   tourne de son côté. Les **mails** et les **anciennes tâches** (« Moving - CS », chatbot…) sont rangés
+   d'après les mots de la demande (pour une tâche, sa description) :
+   - « déménagement », HubSpot « Moving Home » → **Prio - Movers - Déménagement**, attribué tout seul ;
+   - « résiliation », « désactivation », « décès »… (ou une ancienne tâche sans mot reconnu) → l'agent
+     **vous demande de choisir** : la ligne passe en « Validation humaine » et vous prenez, dans
+     **Attribuer à…**, **Suivant en Movers - Résiliation** ou **Suivant en Movers - Résiliation exception**.
 
 Les éléments **déjà correctement renseignés** ne sont pas affichés : ils sont seulement comptés dans la
 case « ignorés ».

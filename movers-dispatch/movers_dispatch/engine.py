@@ -65,6 +65,7 @@ class Evaluation:
     activity: Email | None = None
     category: str | None = None
     category_why: str = ""
+    category_sure: bool = False   # found by the task name (not read from the words of the request)
     client_via: str = ""          # how the account was found (masked values), when the Regarding was empty
     client_to_link: bool = False  # the Regarding must be filled with this account before Worked By
     attachments: int = 0          # files attached to a mail whose client was not found (scanned letters)
@@ -102,7 +103,7 @@ class Agent:
             return Evaluation(item, Decision(Status.REVIEW, "Le Queue Item ne porte ni un mail ni une tâche."))
         act = gw.get_activity(item.object.entity, item.object.id)
         ev = Evaluation(item, Decision(Status.REVIEW, ""), email_id=act.id, subject=act.subject, activity=act)
-        ev.category, ev.category_why = categorize(self.cfg, act)
+        ev.category, ev.category_why, ev.category_sure = categorize(self.cfg, act)
         links = self.cfg.client.account_links
         reg = act.regarding
         account: Lookup | None = None
@@ -194,6 +195,14 @@ class Agent:
         if d.code not in codes or d.status is Status.ERROR:
             return
         if d.status is Status.ASSIGNED and rot.applies != "toujours":
+            return
+        cat = self.cfg.categories.get(ev.category)
+        if not pinned_user_id and not ev.category_sure and cat and cat.choose_among:
+            # e.g. a résiliation read in a mail: « Movers - Résiliation » or « … exception » is the team's call
+            options = " ou ".join(f"« Suivant en {self.cfg.categories.label(k)} »" for k in cat.choose_among)
+            ev.decision = Decision(Status.REVIEW, f"{cat.label} d'après la demande ({ev.category_why}) : à valider — "
+                                   f"choisir {options} dans « Attribuer à… ». ({d.reason})",
+                                   considered=d.considered, code="rotation_to_choose")
             return
         user = None
         if pinned_user_id:

@@ -140,7 +140,7 @@ def test_correcting_a_proposed_client_counts_as_a_correction():
 
 def test_regarding_never_overwritten_and_simulation_writes_nothing():
     agent, crm = make()
-    qid = crm.add("a", "Résiliation", "Client A", [], regarding_entity=None, sender="a@example.com",
+    qid = crm.add("a", "Résiliation", "Client A", [("CAS-1", "kader", 0)], regarding_entity=None, sender="a@example.com",
                   account_emails=["a@example.com"])
     agent.run(Mode.SUPERVISED)
     eid = crm.items[qid].object.id
@@ -174,8 +174,7 @@ def test_client_search_switched_off_when_its_columns_are_missing():
 # ------------------------------------------------------------------ rotation
 def test_rotation_turns_one_for_one_per_category_and_skips_absents():
     agent, crm = make(automatic_allowed=True)
-    res = [crm.add(f"r{n}", f"Chatbot customer request: Termination of contract ({n})", f"Client R{n}", [], kind="task")
-           for n in range(5)]
+    res = [crm.add(f"r{n}", f"Movers - Résiliation ({n})", f"Client R{n}", [], kind="task") for n in range(5)]
     dem = [crm.add(f"d{n}", "HubSpot Moving Home", f"Client D{n}", [("CAS-9", "autre", 0)]) for n in range(2)]
     agent.set_absent("estefania", True, "local")
     agent.run(Mode.AUTOMATIC, confirm_automatic=True)
@@ -191,7 +190,7 @@ def test_rotation_turns_one_for_one_per_category_and_skips_absents():
 def test_rotation_does_not_replace_the_case_owner_and_proposals_do_not_advance_it():
     agent, crm = make()
     owned = crm.add("a", "Résiliation", "Client A", [("CAS-1", "chloe", 0)])
-    free = [crm.add(f"f{n}", "Résiliation", f"Client F{n}", []) for n in range(2)]
+    free = [crm.add(f"f{n}", "Movers - Résiliation", f"Client F{n}", [], kind="task") for n in range(2)]
     agent.run(Mode.SIMULATION)
     assert row(agent, owned)["method"] == "case" and row(agent, owned)["worked_by_name"] == "Chloé"
     assert [row(agent, q)["worked_by_name"] for q in free] == ["Kader", "Estefania"]
@@ -202,8 +201,8 @@ def test_rotation_does_not_replace_the_case_owner_and_proposals_do_not_advance_i
 
 def test_supervised_rotation_keeps_the_proposed_person_and_correction_moves_the_turn():
     agent, crm = make()
-    a = crm.add("a", "Résiliation", "Client A", [])
-    b = crm.add("b", "Résiliation", "Client B", [])
+    a = crm.add("a", "Movers - Résiliation", "Client A", [], kind="task")
+    b = crm.add("b", "Movers - Résiliation", "Client B", [], kind="task")
     agent.run(Mode.SUPERVISED)
     assert (row(agent, a)["worked_by_name"], row(agent, b)["worked_by_name"]) == ("Kader", "Estefania")
     assert agent.approve(b, "local")["worked_by_name"] == "Estefania"          # out of order: still Estefania
@@ -221,7 +220,7 @@ def test_rotation_toujours_and_configuration_checks():
     with pytest.raises(ConfigError, match="inconnu"):
         parse({**raw, "rotation": {"resiliation": ["paul"]}})
     agent, crm = make(rotation=replace(demo_config().rotation, applies="toujours"))
-    q = crm.add("a", "Résiliation", "Client A", [("CAS-1", "chloe", 0)])
+    q = crm.add("a", "Movers - Résiliation", "Client A", [("CAS-1", "chloe", 0)], kind="task")
     agent.run(Mode.SIMULATION)
     assert row(agent, q)["method"] == "rotation" and row(agent, q)["worked_by_name"] == "Kader"
 
@@ -299,12 +298,12 @@ def test_tasks_use_their_own_account_field_like_the_recording():
     takeover = crm.add("t", "Takeover - CS", "Client T", [("CAS-3", "marc-antoine", 1, "Movers"),
                                                           ("CAS-4", "autre", 2, "Demande de résiliation")],
                        kind="task", regarding_entity="contract", own_account=True)
-    # « Moving - CS » : no case on the account → rotation Résiliation (every task is a Résiliation)
+    # « Moving - CS » : no case on the account → Résiliation (former rule), Résiliation or exception to choose
     moving = crm.add("m", "Moving - CS", "Client M", [], kind="task", regarding_entity="contract", own_account=True)
     agent.run(Mode.AUTOMATIC, confirm_automatic=True)
     assert row(agent, prio)["worked_by_name"] == "Chloé" and row(agent, prio)["client_via"] == "champ Account de la tâche"
     assert row(agent, takeover)["worked_by_name"] == "Marc-Antoine"
-    assert row(agent, moving)["method"] == "rotation" and row(agent, moving)["status"] == Status.ASSIGNED.value
+    assert row(agent, moving)["status"] == Status.REVIEW.value and "Résiliation exception" in row(agent, moving)["reason"]
     assert crm.regarding_log == []                                  # the contract Regarding is left as it is
 
 
@@ -318,7 +317,7 @@ def test_task_without_account_field_still_goes_to_review_with_a_hint():
 def test_rotation_counters_per_category_and_person():
     agent, crm = make(automatic_allowed=True)
     for n in range(3):
-        crm.add(f"r{n}", "Chatbot customer request: Termination of contract", f"R{n}", [], kind="task")
+        crm.add(f"r{n}", "Movers - Résiliation", f"R{n}", [], kind="task")
     crm.add("d0", "HubSpot Moving Home", "D0", [])
     crm.add("own", "Résiliation", "O", [("CAS-1", "chloe", 0)])        # owner of a case: not counted
     agent.run(Mode.AUTOMATIC, confirm_automatic=True)
@@ -366,3 +365,32 @@ def test_custom_rotations_and_former_words_section():
     assert categorize(ex, Email("x", "movers takeovers", None, "task"))[0] == "takeover"
     old = parse({**raw, "rotations": None, "categories": {"demenagement": ["démén"]}})
     assert old.categories.get("prio_demenagement").words == ("demen",)
+
+
+
+# ------------------------------------------------------------------ résiliation read in the request: a person picks (27/10)
+def test_resiliation_read_in_a_mail_waits_for_the_choice_resiliation_or_exception():
+    agent, crm = make(automatic_allowed=True)
+    mail = crm.add("m", "Demande de résiliation", "Client M", [])
+    old_task = crm.add("t", "Moving - CS", "Client T", [], kind="task",
+                       text="Description: suite déménagement monsieur veut résilier le contrat")   # résili first
+    no_word = crm.add("n", "Moving - CS", "Client N", [], kind="task")                       # former rule: résiliation
+    hubspot = crm.add("h", 'You\'ve got a new submission on the HubSpot Form "[FR] - CS | Moving Home"', "Client H", [])
+    takeover = crm.add("k", "Takeover - CS", "Client K", [], kind="task", text="Takeover vendu par chat")
+    agent.run(Mode.AUTOMATIC, confirm_automatic=True)
+    for q in (mail, old_task, no_word):
+        r = row(agent, q)
+        assert r["status"] == Status.REVIEW.value and r["category"] == "resiliation", r["reason"]
+        assert "Suivant en Movers - Résiliation exception" in r["reason"]
+    assert row(agent, hubspot)["status"] == Status.ASSIGNED.value and row(agent, hubspot)["category"] == "prio_demenagement"
+    assert row(agent, takeover)["status"] == Status.ASSIGNED.value and row(agent, takeover)["category"] == "takeover"
+    out = agent.assign_manually(mail, "rotation:resiliation_exception", "local")
+    assert out["status"] == Status.ASSIGNED.value and out["category"] == "resiliation_exception"
+    assert agent.journal.setting("rotation:resiliation_exception") == "kader"
+
+
+def test_case_owner_still_wins_over_the_choice():
+    agent, crm = make(automatic_allowed=True)
+    q = crm.add("o", "Demande de résiliation", "Client O", [("CAS-1", "chloe", 0)])
+    agent.run(Mode.AUTOMATIC, confirm_automatic=True)
+    assert row(agent, q)["worked_by_name"] == "Chloé" and row(agent, q)["method"] == "case"

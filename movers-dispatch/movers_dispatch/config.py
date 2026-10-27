@@ -95,13 +95,16 @@ class Category:
     label: str
     task_names: tuple[str, ...] = ()   # compared with task_key()
     words: tuple[str, ...] = ()        # compared with normalize_name()
+    # when reached by words (not by the task name), a person picks the rotation among these keys
+    choose_among: tuple[str, ...] = ()
 
 
 # The team's organisation (27/10): one rotation per task name. Word order matters for mails:
 # Résiliation is checked before Déménagement (« Termination of contract due to moving » is a Résiliation).
 DEFAULT_CATEGORIES = (
     Category("resiliation_exception", "Movers - Résiliation exception", ("movers resiliation exception",)),
-    Category("resiliation", "Movers - Résiliation", ("movers resiliation",), RESILIATION_WORDS),
+    Category("resiliation", "Movers - Résiliation", ("movers resiliation",), RESILIATION_WORDS,
+             choose_among=("resiliation", "resiliation_exception")),   # a person tells which one (27/10)
     Category("prio_demenagement", "Prio - Movers - Déménagement", ("prio movers demenagement",), DEMENAGEMENT_WORDS),
     Category("takeover", "Movers - Takeovers", ("movers takeover",), ("takeover",)),
 )
@@ -110,6 +113,8 @@ DEFAULT_CATEGORIES = (
 @dataclass(frozen=True)
 class Categories:
     items: tuple[Category, ...] = DEFAULT_CATEGORIES
+    # tasks with another name and no recognised word: the former rule (every task was a Résiliation)
+    task_fallback: str | None = "resiliation"
 
     def get(self, key: str | None) -> Category | None:
         return next((c for c in self.items if c.key == key), None)
@@ -222,10 +227,18 @@ def _categories(raw: dict) -> Categories:
             if not r.get("key") or not r.get("label"):
                 raise ConfigError(f"[[rotations]] : « key » et « label » obligatoires ({r}).")
             names = tuple(task_key(n) for n in r.get("taches", [r["label"]]))
-            items.append(Category(r["key"], r["label"], names, tuple(normalize_name(w) for w in r.get("mots", []))))
-        if len({c.key for c in items}) != len(items):
+            items.append(Category(r["key"], r["label"], names, tuple(normalize_name(w) for w in r.get("mots", [])),
+                                  tuple(r.get("choix", []))))
+        keys = {c.key for c in items}
+        if len(keys) != len(items):
             raise ConfigError("[[rotations]] : deux rotations ont la même « key ».")
-        return Categories(tuple(items))
+        for c in items:
+            if set(c.choose_among) - keys:
+                raise ConfigError(f"[[rotations]] {c.key} : « choix » cite une rotation inconnue {sorted(set(c.choose_among) - keys)}.")
+        fallback = raw.get("rotation", {}).get("tache_inconnue", "resiliation") or None
+        if fallback is not None and fallback not in keys:
+            fallback = None
+        return Categories(tuple(items), fallback)
     old = raw.get("categories", {})
     words = {"resiliation": old.get("resiliation"), "prio_demenagement": old.get("demenagement")}
     return Categories(tuple(replace(c, words=tuple(normalize_name(w) for w in words[c.key])) if words.get(c.key) else c

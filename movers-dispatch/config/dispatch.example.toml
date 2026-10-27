@@ -54,8 +54,10 @@ rules = [ { field = "title", contains = "mover" } ]
 # Une rotation par nom de tâche (organisation du 27/10). Une tâche va dans la rotation dont elle porte le
 # nom (sans tenir compte des majuscules, accents, tirets ; « Takeover » = « Takeovers »). Le nom le plus
 # long l'emporte : « Movers - Résiliation exception » avant « Movers - Résiliation ».
-# « mots » : pour les MAILS (et les tâches dont le nom n'est dans aucune liste), mots cherchés dans le
-# sujet et le texte, dans l'ordre des rotations ci-dessous.
+# « mots » : pour les MAILS (sujet et texte) et les tâches dont le nom n'est dans aucune liste
+# (description seulement), mots cherchés dans l'ordre des rotations ci-dessous.
+# « choix » : quand la rotation est trouvée par les mots (pas par le nom de tâche), la personne choisit
+# parmi ces rotations dans le tableau de bord (ex. résiliation : « Movers - Résiliation » ou « exception »).
 [[rotations]]
 key = "resiliation_exception"
 label = "Movers - Résiliation exception"
@@ -67,6 +69,7 @@ key = "resiliation"
 label = "Movers - Résiliation"
 taches = ["Movers - Résiliation"]
 mots = ["résili", "termination", "désactiv", "décès", "mettre fin", "arrêter mon contrat", "cancel"]
+choix = ["resiliation", "resiliation_exception"]
 
 [[rotations]]
 key = "prio_demenagement"
@@ -86,6 +89,9 @@ active = true
 # "sans_owner" : seulement s'il n'y a pas de Case d'un des quatre (le client garde son interlocuteur)
 # "toujours"   : chaque élément classé suit la rotation, même s'il existe un Case
 applique = "sans_owner"
+# Tâche dont le nom n'est dans aucune rotation et dont la description n'a aucun mot reconnu (anciennes
+# tâches « Moving - CS », chatbot…) : règle d'avant, résiliation (puis choix résiliation / exception).
+tache_inconnue = "resiliation"
 # Ordre de passage de chaque rotation (clés des [[collaborators]] ci-dessous). Les absents se cochent
 # dans le tableau de bord. Une rotation absente ici suit l'ordre des [[collaborators]].
 resiliation_exception = ["chloe", "kader", "estefania", "marc-antoine"]
