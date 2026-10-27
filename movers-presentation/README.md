@@ -32,7 +32,7 @@ En ligne : publiée avec le reste du dépôt sur GitHub Pages, à l'adresse `htt
 
 - La toile est en 16:9 et s'adapte à l'écran (vidéoprojecteur) ; en plein écran, la barre d'outils s'efface
   quand la souris ne bouge plus.
-- Chaque diapositive a son lien (`#/5`), pratique pour reprendre là où l'on s'est arrêté.
+- Chaque diapositive a son lien (`#5`), pratique pour reprendre là où l'on s'est arrêté.
 - Diapositive 4 : un clic sur un template ouvre sa fiche détaillée. Diapositive 9 : « Étape suivante » déroule
   le cycle de rotation. Diapositive 13 : les boutons ramènent sur n'importe quel sujet pour répondre aux questions.
 - Sur téléphone, la présentation passe en mise en page verticale défilable.

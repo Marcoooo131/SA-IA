@@ -11,6 +11,8 @@ const TOOLBAR_H = 64;
 const FLOW_BREAKPOINT = 820;
 
 const PPTX_FILE = 'Nouvelle-organisation-Movers.pptx';
+// Hébergements où un lien de téléchargement ne fonctionne pas : build avec VITE_HIDE_PPTX=1
+const SHOW_PPTX = import.meta.env.VITE_HIDE_PPTX !== '1';
 
 function indexFromHash(): number {
   const match = /^#\/?(\d+)$/.exec(window.location.hash);
@@ -58,9 +60,9 @@ export default function App() {
     else void document.documentElement.requestFullscreen?.().catch(() => undefined);
   }, []);
 
-  // Lien direct vers une diapositive (#/5) et retour arrière du navigateur
+  // Lien direct vers une diapositive (#5) et retour arrière du navigateur
   useEffect(() => {
-    const target = `#/${index + 1}`;
+    const target = `#${index + 1}`;
     if (window.location.hash !== target) window.history.replaceState(null, '', target);
     document.title = `${index + 1}/${slides.length} · ${deckTitle}`;
   }, [index]);
@@ -235,9 +237,11 @@ export default function App() {
         <button type="button" onClick={() => setNotes((v) => !v)} aria-pressed={notes} aria-label="Notes de l'orateur" title="Notes de l'orateur (N)">
           <StickyNote size={20} />
         </button>
-        <a className="toolbar__link" href={`./${PPTX_FILE}`} download aria-label="Télécharger le PowerPoint" title="Télécharger le PowerPoint modifiable">
-          <Download size={20} />
-        </a>
+        {SHOW_PPTX && (
+          <a className="toolbar__link" href={`./${PPTX_FILE}`} download aria-label="Télécharger le PowerPoint" title="Télécharger le PowerPoint modifiable">
+            <Download size={20} />
+          </a>
+        )}
         <button type="button" onClick={() => setHelp((v) => !v)} aria-pressed={help} aria-label="Raccourcis clavier" title="Raccourcis clavier (?)">
           <Keyboard size={20} />
         </button>
