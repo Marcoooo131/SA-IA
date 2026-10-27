@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass, field
 from html.parser import HTMLParser
 
-from .config import CATEGORY_LABELS, Config, normalize_name
+from .config import Config, normalize_name, task_key
 from .models import Email
 
 EMAIL_RE = re.compile(r"[A-Za-z0-9._%+'-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}")
@@ -60,21 +60,30 @@ def html_to_text(value: str) -> str:
 
 
 # ------------------------------------------------------------------ category
-def categorize(cfg: Config, activity: Email) -> tuple[str | None, str]:
-    """Returns (category key or None, why)."""
-    if activity.kind == "task" and cfg.categories.tasks:
-        return cfg.categories.tasks, "tâche"
-    text = normalize_name(f"{activity.subject}\n{activity.text}")
-    for cat in ("resiliation", "demenagement"):
-        words = getattr(cfg.categories, cat)
-        hit = next((w for w in words if w and w in text), None)
+def categorize(cfg: Config, activity: Email) -> tuple[str | None, str, bool]:
+    """Returns (category key or None, why, sure): sure = found by the task name; otherwise read from the
+    words of the request, which some rotations want confirmed by a person (Résiliation or exception)."""
+    # 1. the name of the task decides (« Movers - Résiliation exception » before « Movers - Résiliation »)
+    subject = task_key(activity.subject)
+    names = sorted(((n, c) for c in cfg.categories.items for n in c.task_names if n), key=lambda x: -len(x[0]))
+    for name, cat in names:
+        base = name[:-1] if name.endswith("s") else name                 # « Takeover » / « Takeovers »
+        if re.search(rf"(?:^| ){re.escape(base)}s?(?: |$)", subject):
+            return cat.key, f"nom de tâche « {cat.label} »", True
+    # 2. otherwise: words of the request — for a mail its subject and text; for a task with another name
+    # (« Moving - CS », chatbot…) its description only, the title being the channel, not the request
+    text = normalize_name(activity.text if activity.kind == "task" else f"{activity.subject}\n{activity.text}")
+    for cat in cfg.categories.items:
+        hit = next((w for w in cat.words if w and w in text), None)
         if hit:
-            return cat, f"mot « {hit} »"
-    return None, "aucun mot de Résiliation ou de Déménagement"
+            return cat.key, f"mot « {hit} »", False
+    if activity.kind == "task" and cfg.categories.get(cfg.categories.task_fallback):
+        return cfg.categories.task_fallback, "tâche sans nom connu ni mot reconnu (règle d'avant : résiliation)", False
+    return None, "nom de tâche inconnu et aucun mot reconnu", False
 
 
-def category_label(cat: str | None) -> str:
-    return CATEGORY_LABELS.get(cat or "", "")
+def category_label(cfg: Config, cat: str | None) -> str:
+    return cfg.categories.label(cat)
 
 
 # ------------------------------------------------------------------ identifiers
