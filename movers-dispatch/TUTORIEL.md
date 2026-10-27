@@ -83,13 +83,21 @@ et recopiez-le ainsi :
 environment_url = "https://serveur.exemple.net/SectorAlarmFR"
 ```
 
-**b) L'ordre de la rotation.** Vérifiez la section `[rotation]`. Mettez les collègues dans l'ordre de
-passage voulu, avec leur clé en minuscules : `chloe`, `kader`, `estefania`, `marc-antoine`.
+**b) Les rotations.** Il y a **une rotation par nom de tâche** : « Prio - Movers - Déménagement »,
+« Movers - Résiliation », « Movers - Résiliation exception » et « Movers - Takeovers ». Elles sont déjà
+définies (sections `[[rotations]]`). Dans la section `[rotation]`, mettez les collègues dans l'ordre de
+passage voulu pour chacune, avec leur clé en minuscules : `chloe`, `kader`, `estefania`, `marc-antoine`.
 
 ```toml
+resiliation_exception = ["chloe", "kader", "estefania", "marc-antoine"]
 resiliation = ["chloe", "kader", "estefania", "marc-antoine"]
-demenagement = ["chloe", "kader", "estefania", "marc-antoine"]
+prio_demenagement = ["chloe", "kader", "estefania", "marc-antoine"]
+takeover = ["chloe", "kader", "estefania", "marc-antoine"]
 ```
+
+> Si votre `dispatch.toml` vient d'une ancienne version, copiez ces sections (`[[rotations]]` et
+> `[rotation]`) depuis `config\dispatch.example.toml`, à la place des anciennes `[categories]` et `[rotation]`.
+> Sans elles, les 4 rotations existent quand même et suivent l'ordre de vos `[[collaborators]]`.
 
 Enregistrez (**Ctrl + S**). Règle d'or : **chaque valeur entre guillemets droits** `"…"`.
 
@@ -143,9 +151,9 @@ Enregistrez, puis **relancez `3-decouvrir.bat`**. Au premier passage, les lignes
    Le tableau de bord s'ouvre tout seul. **Laissez la fenêtre Edge et la fenêtre noire ouvertes** tant
    que vous travaillez.
 2. En haut, dans **Rotation 1 pour 1**, **cochez les collègues absents** du jour : ils seront sautés.
-   Pensez à les décocher à leur retour. Les deux compteurs indiquent combien de **Résiliations** et de
-   **Déménagements** la rotation a donnés aujourd'hui (sans Case d'un des quatre) et à qui, pour vérifier
-   que chacun en reçoit autant.
+   Pensez à les décocher à leur retour. Les compteurs indiquent, pour chacune des 4 rotations, combien
+   d'éléments elle a donnés aujourd'hui (sans Case d'un des quatre) et à qui, pour vérifier que chacun
+   en reçoit autant.
 3. Choisissez le mode :
    - **Simulation** les premiers jours : rien n'est écrit, vous comparez avec ce que vous auriez fait ;
    - **Supervisé** ensuite : vous validez chaque affectation.
@@ -158,7 +166,7 @@ Le gros bouton rouge **Arrêt immédiat** stoppe tout : plus aucune écriture ap
 
 | Colonne | Ce qu'elle dit |
 |---|---|
-| **Catégorie** | Résiliation ou Déménagement, avec « (rotation) » si la personne a été choisie par la rotation |
+| **Catégorie** | la rotation de l'élément (son nom de tâche, ex. « Movers - Takeovers »), avec « (rotation) » si la personne a été choisie par la rotation |
 | **Compte** | le client. **« à rattacher »** = le Regarding était vide et l'agent a retrouvé ce client (il indique comment) |
 | **Case / Owner** | le Case retenu et son Owner, quand c'est l'Owner qui décide |
 | **Worked By** | le collègue proposé |
@@ -174,10 +182,14 @@ Comment l'agent choisit le collègue :
 2. **Il regarde les Cases « Mover / MOVERS » du client.** Si l'un appartient à Kader, Estefania,
    Marc-Antoine ou Chloé, c'est cette personne. Entre deux Cases de personnes différentes, l'**actif ou
    annulé** passe avant le **résolu**.
-3. **Sinon, la rotation 1 pour 1** de la catégorie décide. Toutes les tâches (chatbot, « Moving - CS »)
-   sont des **Résiliations**. Les formulaires HubSpot « Moving Home » sont des **Déménagements**. Les
-   autres mails sont classés selon leurs mots (« résiliation », « désactivation », « décès »,
-   « déménagement »…).
+3. **Sinon, la rotation 1 pour 1 du nom de la tâche** décide : « Prio - Movers - Déménagement »,
+   « Movers - Résiliation », « Movers - Résiliation exception » ou « Movers - Takeovers ». Chacune
+   tourne de son côté. Les **mails** et les **anciennes tâches** (« Moving - CS », chatbot…) sont rangés
+   d'après les mots de la demande (pour une tâche, sa description) :
+   - « déménagement », HubSpot « Moving Home » → **Prio - Movers - Déménagement**, attribué tout seul ;
+   - « résiliation », « désactivation », « décès »… (ou une ancienne tâche sans mot reconnu) → l'agent
+     **vous demande de choisir** : la ligne passe en « Validation humaine » et vous prenez, dans
+     **Attribuer à…**, **Suivant en Movers - Résiliation** ou **Suivant en Movers - Résiliation exception**.
 
 Les éléments **déjà correctement renseignés** ne sont pas affichés : ils sont seulement comptés dans la
 case « ignorés ».
@@ -191,7 +203,7 @@ case « ignorés ».
 | **À valider**, l'élément ne revient à aucun des quatre | **Refuser** |
 | **« à rattacher »**, mais ce n'est pas le bon client | tapez le bon **N° de compte** (Account Number) dans la petite case, puis **Corriger le client** |
 | **Validation humaine**, client introuvable | tapez le **N° de compte**, puis **Rattacher le client**. L'agent affiche le nom du compte : vérifiez avant OK |
-| **Validation humaine**, client connu mais personne désignée | dans **Attribuer à…**, choisissez un collègue, ou **Suivant en Résiliation / Suivant en Déménagement** pour respecter la rotation, puis **Attribuer** |
+| **Validation humaine**, client connu mais personne désignée | dans **Attribuer à…**, choisissez un collègue, ou **Suivant en …** (l'une des 4 rotations) pour la respecter, puis **Attribuer** |
 | **Validation humaine**, Worked By déjà rempli par quelqu'un d'autre | rien : l'agent ne remplace jamais un Worked By ni un Regarding déjà rempli |
 
 Pour voir tout ce qui s'est passé sur un élément, cliquez sur **Historique**.
@@ -206,8 +218,8 @@ lit pas l'écriture à la main : un chiffre mal lu pourrait désigner un autre c
    **Rattacher le client**.
 3. L'agent affiche **le nom du compte** qui correspond à ce numéro. **Vérifiez que c'est bien le nom de la
    lettre**, puis cliquez sur OK. Sinon, cliquez sur Annuler et relisez le numéro.
-4. Dans **Attribuer à…**, choisissez **Suivant en Résiliation** ou **Suivant en Déménagement** selon le
-   contenu de la lettre, puis **Attribuer**.
+4. Dans **Attribuer à…**, choisissez **Suivant en …** avec la rotation qui correspond à la lettre (par
+   exemple **Suivant en Movers - Résiliation**), puis **Attribuer**.
 
 ---
 
