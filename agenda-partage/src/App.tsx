@@ -11,7 +11,7 @@ import { LoginPage, MessagePage, SetPasswordPage, SetupPage } from './pages/Auth
 import { DashboardPage } from './pages/DashboardPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { useRoute } from './lib/router';
-import { isConfigured } from './lib/supabase';
+import { configError, isConfigured } from './lib/supabase';
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null };
@@ -98,7 +98,7 @@ function Shell() {
 }
 
 export function App() {
-  if (!isConfigured) return <SetupPage />;
+  if (!isConfigured) return <SetupPage problem={configError} />;
   return (
     <ErrorBoundary>
       <ToastProvider>

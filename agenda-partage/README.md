@@ -137,11 +137,10 @@ npm run dev                     # http://localhost:5173
 
 #### En ligne avec GitHub Pages (déjà prévu dans ce dépôt)
 
-1. GitHub > dépôt > **Settings** > **Secrets and variables** > **Actions** > onglet **Variables** > *New repository variable* :
-   - `AGENDA_SUPABASE_URL` = Project URL
-   - `AGENDA_SUPABASE_ANON_KEY` = clé anon / publishable
+1. Renseignez l'URL et la clé publique dans [`.env.production`](.env.production) (déjà fait pour le projet
+   « agenda-equipe »). Ce fichier est publié avec le code : il ne doit contenir **que** la clé publique.
 2. **Settings** > **Pages** > *Source* : **GitHub Actions** (déjà le cas si le site du dépôt est publié).
-3. Fusionnez sur `main` : le workflow « Déploiement GitHub Pages » publie l'agenda sur
+3. À chaque mise à jour de `main`, le workflow « Déploiement GitHub Pages » publie l'agenda sur
    `https://<compte>.github.io/SA-IA/agenda/`.
 4. Reportez cette adresse dans *Site URL* / *Redirect URLs* (étape 3).
 
@@ -225,7 +224,6 @@ Database > Backups sur une offre payante), et l'export CSV pour un usage bureaut
 1. Créer le projet Supabase et exécuter la migration (étapes 1–2).
 2. Désactiver l'inscription libre, renseigner *Site URL* / *Redirect URLs*, créer le premier compte (étape 3).
 3. Déployer la fonction `admin-users` (étape 4, recommandé).
-4. Renseigner `AGENDA_SUPABASE_URL` et `AGENDA_SUPABASE_ANON_KEY` dans les variables GitHub (étape 5) et vérifier que
-   GitHub Pages utilise *GitHub Actions*.
+4. Vérifier l'URL et la clé publique dans `.env.production` (étape 5) et que GitHub Pages utilise *GitHub Actions*.
 5. Facultatif : SMTP pour les e-mails d'invitation, nom de l'équipe et fuseau horaire dans Administration > Paramètres,
    catégories à votre image.

@@ -164,18 +164,28 @@ export function MessagePage({ title, children, action }: { title: string; childr
   );
 }
 
-/** Affiché tant que les variables VITE_SUPABASE_* ne sont pas renseignées */
-export function SetupPage() {
+/** Affiché tant que la connexion à Supabase n'est pas correctement configurée */
+export function SetupPage({ problem }: { problem: string | null }) {
   return (
     <MessagePage title="Configuration requise">
-      <p>L'application n'est pas encore reliée à sa base de données Supabase.</p>
+      <p>L'agenda n'est pas encore relié à sa base de données Supabase.</p>
+      {problem && (
+        <p className="rounded-lg border border-brand/30 bg-brand-soft px-3 py-2 text-brand-dark" role="alert">
+          {problem}
+        </p>
+      )}
       <ol className="list-decimal space-y-1 pl-5">
-        <li>Créez un projet gratuit sur supabase.com et exécutez la migration SQL fournie.</li>
         <li>
-          Copiez <code className="rounded bg-neutral-100 px-1">.env.example</code> en <code className="rounded bg-neutral-100 px-1">.env.local</code> et renseignez
-          l'URL et la clé publique (anon) du projet.
+          Dans le dépôt, fichier <code className="rounded bg-neutral-100 px-1">agenda-partage/.env.production</code>.
         </li>
-        <li>Relancez la compilation.</li>
+        <li>
+          <code className="rounded bg-neutral-100 px-1">VITE_SUPABASE_URL</code> : l'URL du projet, ex.{' '}
+          <code className="rounded bg-neutral-100 px-1">https://abcdefghijklmnop.supabase.co</code>
+        </li>
+        <li>
+          <code className="rounded bg-neutral-100 px-1">VITE_SUPABASE_ANON_KEY</code> : la clé « anon public » ou « publishable » (jamais la clé secrète).
+        </li>
+        <li>Enregistrez sur la branche main : la publication se relance seule.</li>
       </ol>
       <p className="flex items-center gap-2 rounded-lg bg-neutral-100 p-3 font-mono text-xs">
         <Terminal className="h-4 w-4 shrink-0" /> Détails : agenda-partage/README.md
