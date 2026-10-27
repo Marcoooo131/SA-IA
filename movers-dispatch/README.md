@@ -10,7 +10,7 @@ déroulante du tableau de bord permet de choisir à qui attribuer l'élément.
 >
 > | Élément | État |
 > |---|---|
-> | Règles de décision, modes Simulation / Supervisé / Automatique, arrêt immédiat, journal, tableau de bord | **Opérationnels**, testés sur des données **fictives** (104 tests), dont les deux mails de la vidéo reproduits |
+> | Règles de décision, modes Simulation / Supervisé / Automatique, arrêt immédiat, journal, tableau de bord | **Opérationnels**, testés sur des données **fictives** (113 tests), dont les deux mails de la vidéo reproduits |
 > | Connexion « navigateur » (session CRM de l'utilisateur) | Testée dans un vrai Chromium face à un **serveur imitant le Web API** d'un CRM sur site, jamais face au vrai CRM |
 > | Connexion « msal » | **Sans objet** pour le CRM Sector Alarm, qui est installé sur site (pas Dynamics 365 en ligne) |
 > | Vidéo de la procédure | **Analysée** (2 mails traités, § 1). Ce qu'elle montre a corrigé les règles (§ 2) |
@@ -156,11 +156,17 @@ Quand le Regarding pointe vers une autre table (une tâche « Moving - CS » rat
 liens_compte` et relevée avec `discover --table contract`. Sans ce réglage, l'élément part en validation
 humaine avec la marche à suivre.
 
-**Catégories.** Toute tâche est une **Résiliation** : chatbot « Termination of contract… », « Moving -
-CS ». Pour un mail, l'agent cherche des mots dans le sujet et le texte, sans tenir compte des majuscules
-ni des accents. Les mots de Résiliation sont testés en premier (résili, termination, désactiv, décès…),
-puis ceux de Déménagement (déménag, moving home, nouvelle adresse…). Le formulaire HubSpot « Moving
-Home » est donc un Déménagement. Tous ces mots se règlent dans `[categories]`.
+**Rotations par nom de tâche (organisation du 27/10).** Il y a quatre rotations indépendantes :
+« Prio - Movers - Déménagement », « Movers - Résiliation », « Movers - Résiliation exception » et
+« Movers - Takeovers ».
+- Une **tâche** va dans la rotation dont elle porte le nom. La comparaison ignore les majuscules, les
+  accents et les tirets, et « Takeover » vaut « Takeovers ». Le nom le plus long l'emporte : « …
+  Résiliation exception » passe avant « … Résiliation ».
+- Les **mails**, et les tâches qui portent un autre nom, sont rangés par mots. Les mots de résiliation
+  (résili, termination, désactiv, décès…) mènent à « Movers - Résiliation ». Ceux de déménagement
+  (déménag, moving home, nouvelle adresse…) mènent à « Prio - Movers - Déménagement ».
+- Tout se règle dans `[[rotations]]` (key, label, taches, mots) et l'ordre de passage dans `[rotation]`.
+  Une ancienne section `[categories]` ne sert plus qu'à fournir ses listes de mots.
 
 **Rotation 1 pour 1.** Une rotation par catégorie, dans l'ordre de `[rotation]`. Elle s'applique quand
 aucun Case pertinent n'appartient à l'un des quatre (`applique = "sans_owner"`). Si un tel Case existe,

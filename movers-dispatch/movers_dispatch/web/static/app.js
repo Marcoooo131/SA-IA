@@ -6,7 +6,6 @@ const STATUS_LABELS = {
   affecte: "Affecté", refuse: "Refusé", erreur: "Erreur",
 };
 const $ = (id) => document.getElementById(id);
-const CATEGORY_LABELS = { resiliation: "Résiliation", demenagement: "Déménagement" };
 let last = null;
 let collaborators = [];
 
@@ -56,7 +55,7 @@ function renderRows(items) {
     <tr>
       <td class="id" data-label="Élément" title="${esc(i.queueitem_id)}">${esc(i.queueitem_id.slice(0, 8))}…</td>
       <td data-label="Sujet">${esc(i.subject)}</td>
-      <td data-label="Catégorie">${esc(CATEGORY_LABELS[i.category] || "")}${i.method === "rotation" ? ` <span class="muted">(rotation)</span>` : ""}</td>
+      <td data-label="Catégorie">${esc(categoryLabel(i.category))}${i.method === "rotation" ? ` <span class="muted">(rotation)</span>` : ""}</td>
       <td data-label="Compte">${i.client_name ? `<span class="pill a_valider">à rattacher</span> ${esc(i.client_name)}
         <div class="muted">${esc(i.client_via)}</div>` : esc(i.account_name)}${!i.client_name && i.client_via ? `<div class="muted">${esc(i.client_via)}</div>` : ""}</td>
       <td data-label="Case">${esc(i.case_number)}</td>
@@ -77,6 +76,11 @@ function renderRows(items) {
         ${i.attachments ? `<button class="small" data-attach="${esc(i.queueitem_id)}">Voir la pièce jointe</button>` : ""}
         <button class="small" data-history="${esc(i.queueitem_id)}">Historique</button></td>
     </tr>`).join("");
+}
+
+function categoryLabel(key) {
+  const c = last && last.rotation.categories.find((x) => x.key === key);
+  return c ? c.label : "";
 }
 
 function pick(id, label, withRotation = false) {
@@ -112,7 +116,7 @@ function renderRotation(r) {
     : `<div class="muted">Rotation désactivée dans dispatch.toml.</div>`;
   const share = (m) => Object.entries(m).map(([n, k]) => `${esc(n)} ${k}`).join(" · ") || "–";
   $("rotation-counts").innerHTML = r.categories.map((c) => `<div class="rot-count">
-    <b>${c.aujourdhui}</b> <span>${esc(c.label)}${c.aujourdhui > 1 ? "s" : ""} aujourd'hui via la rotation (sans Case d'un des quatre)</span>
+    <b>${c.aujourdhui}</b> <span>« ${esc(c.label)} » aujourd'hui via la rotation</span>
     <div class="muted">${share(c.par_personne_aujourdhui)} — depuis le début : ${c.total} (${share(c.par_personne)})</div></div>`).join("");
   $("absents").innerHTML = r.collaborateurs.map((c) => `<label><input type="checkbox" data-absent="${esc(c.key)}"
     ${c.absent ? "checked" : ""}> ${esc(c.first_name)} absent(e)</label>`).join("");

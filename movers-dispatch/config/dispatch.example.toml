@@ -50,24 +50,48 @@ multiple_same_owner = "review"
 # métier et vérifiées par `discover` (ex. type de Case « Takeover », catégorie « Moving Customer »).
 rules = [ { field = "title", contains = "mover" } ]
 
-[categories]
-# Lecture des demandes : Résiliation ou Déménagement (décide de la rotation utilisée).
-# Toutes les tâches (chatbot « Termination of contract », « Moving - CS »…) sont des Résiliations :
-taches = "resiliation"
-# Mots cherchés dans le sujet et le texte, sans tenir compte des majuscules ni des accents.
-# Résiliation est testée en premier (« Termination of contract due to moving » = Résiliation).
-resiliation = ["résili", "termination", "désactiv", "décès", "mettre fin", "arrêter mon contrat", "cancel"]
-demenagement = ["déménag", "moving home", "nouvelle adresse", "moving", "changement d'adresse"]
+# ---------------------------------------------------------------- Rotations 1 pour 1
+# Une rotation par nom de tâche (organisation du 27/10). Une tâche va dans la rotation dont elle porte le
+# nom (sans tenir compte des majuscules, accents, tirets ; « Takeover » = « Takeovers »). Le nom le plus
+# long l'emporte : « Movers - Résiliation exception » avant « Movers - Résiliation ».
+# « mots » : pour les MAILS (et les tâches dont le nom n'est dans aucune liste), mots cherchés dans le
+# sujet et le texte, dans l'ordre des rotations ci-dessous.
+[[rotations]]
+key = "resiliation_exception"
+label = "Movers - Résiliation exception"
+taches = ["Movers - Résiliation exception"]
+mots = []
+
+[[rotations]]
+key = "resiliation"
+label = "Movers - Résiliation"
+taches = ["Movers - Résiliation"]
+mots = ["résili", "termination", "désactiv", "décès", "mettre fin", "arrêter mon contrat", "cancel"]
+
+[[rotations]]
+key = "prio_demenagement"
+label = "Prio - Movers - Déménagement"
+taches = ["Prio - Movers - Déménagement"]
+mots = ["déménag", "moving home", "nouvelle adresse", "moving", "changement d'adresse"]
+
+[[rotations]]
+key = "takeover"
+label = "Movers - Takeovers"
+taches = ["Movers - Takeovers"]
+mots = ["takeover"]
 
 [rotation]
-# 1 pour 1 par catégorie : quand aucun Case ne désigne l'un des quatre, l'élément va au suivant.
+# Quand aucun Case ne désigne l'un des quatre, l'élément va au suivant de la rotation de son nom de tâche.
 active = true
 # "sans_owner" : seulement s'il n'y a pas de Case d'un des quatre (le client garde son interlocuteur)
 # "toujours"   : chaque élément classé suit la rotation, même s'il existe un Case
 applique = "sans_owner"
-# Ordre de passage (clés des [[collaborators]] ci-dessous). Les absents se cochent dans le tableau de bord.
+# Ordre de passage de chaque rotation (clés des [[collaborators]] ci-dessous). Les absents se cochent
+# dans le tableau de bord. Une rotation absente ici suit l'ordre des [[collaborators]].
+resiliation_exception = ["chloe", "kader", "estefania", "marc-antoine"]
 resiliation = ["chloe", "kader", "estefania", "marc-antoine"]
-demenagement = ["chloe", "kader", "estefania", "marc-antoine"]
+prio_demenagement = ["chloe", "kader", "estefania", "marc-antoine"]
+takeover = ["chloe", "kader", "estefania", "marc-antoine"]
 
 [client]
 # Regarding vide : l'agent cherche le compte comme dans la vidéo (n° client écrit dans le texte, adresse de
