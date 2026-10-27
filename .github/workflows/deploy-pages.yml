@@ -39,6 +39,18 @@ jobs:
           echo "70dba93432f3653155998cc9001f9c200182343c2f95165a2f9e9e4673fa35e8  /tmp/pyodide.tar.bz2" | sha256sum -c -
           mkdir -p /tmp/pyodide-core && tar -xjf /tmp/pyodide.tar.bz2 -C /tmp/pyodide-core
           python phonecall-desktop/scripts/build_web_ameliorateur.py dist/ameliorateur --pyodide /tmp/pyodide-core/pyodide
+      # Agenda partagé (…/agenda/) : URL et clé PUBLIQUE (anon) du projet Supabase, à définir dans
+      # Settings > Secrets and variables > Actions > Variables. Sans elles, la page affiche les étapes de configuration.
+      - name: Build de l'agenda partagé
+        working-directory: agenda-partage
+        env:
+          VITE_SUPABASE_URL: ${{ vars.AGENDA_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.AGENDA_SUPABASE_ANON_KEY }}
+        run: |
+          npm ci
+          npm test
+          npm run build
+          mkdir -p ../dist/agenda && cp -r dist/. ../dist/agenda/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

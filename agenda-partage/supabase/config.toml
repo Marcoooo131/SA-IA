@@ -1,0 +1,14 @@
+# Configuration minimale pour la CLI Supabase (supabase link / db push / functions deploy).
+project_id = "agenda-partage"
+
+[api]
+schemas = ["public"]
+
+[auth]
+# Les comptes sont créés par un administrateur (invitation) : pas d'inscription libre.
+enable_signup = false
+minimum_password_length = 8
+
+[functions.admin-users]
+# Le jeton de l'appelant est vérifié par la fonction elle-même (auth.getUser + rôle admin)
+verify_jwt = true
