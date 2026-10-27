@@ -1,9 +1,11 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { configProblem, normalizeKey, normalizeSupabaseUrl } from './config';
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+const url = normalizeSupabaseUrl(import.meta.env.VITE_SUPABASE_URL);
+const anonKey = normalizeKey(import.meta.env.VITE_SUPABASE_ANON_KEY);
 
-export const isConfigured = !!url && !!anonKey && /^https?:\/\//.test(url);
+/** Problème de configuration à afficher à la place de l'application (null si tout va bien) */
+export let configError: string | null = configProblem(url, anonKey);
 
 /**
  * Type de lien d'authentification reçu (invitation, réinitialisation…). Lu AVANT que Supabase
@@ -21,15 +23,28 @@ export const authLinkError: string | null = (() => {
 
 // Seule la clé publique « anon / publishable » est utilisée dans le navigateur.
 // Les droits réels sont imposés par la base (Row Level Security).
-export const supabase: SupabaseClient = createClient(url ?? 'http://localhost', anonKey ?? 'missing', {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
-    flowType: 'implicit',
-  },
-  realtime: { params: { eventsPerSecond: 10 } },
-});
+function makeClient(clientUrl: string, key: string): SupabaseClient {
+  return createClient(clientUrl, key, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      flowType: 'implicit',
+    },
+    realtime: { params: { eventsPerSecond: 10 } },
+  });
+}
+
+let client: SupabaseClient;
+try {
+  client = makeClient(configError ? 'http://localhost' : url, configError ? 'missing' : anonKey);
+} catch (e) {
+  // Une valeur refusée par supabase-js ne doit jamais laisser une page vide
+  configError = `Connexion à Supabase impossible avec la configuration actuelle : ${(e as Error).message}`;
+  client = makeClient('http://localhost', 'missing');
+}
+export const supabase = client;
+export const isConfigured = !configError;
 
 /** URL de retour pour les e-mails d'authentification (page courante, sans fragment) */
 export function appBaseUrl(): string {

@@ -219,3 +219,19 @@ describe('navigation', () => {
     expect(buildHash({ page: 'profile', appointmentId: null })).toBe('#/profil');
   });
 });
+
+describe('configuration Supabase', () => {
+  it('nettoie les valeurs mal collées', async () => {
+    const { normalizeSupabaseUrl, normalizeKey, configProblem } = await import('./config');
+    expect(normalizeSupabaseUrl(' "https://abcdefghijklmnop.supabase.co/" ')).toBe('https://abcdefghijklmnop.supabase.co');
+    expect(normalizeSupabaseUrl('abcdefghijklmnopqrst')).toBe('https://abcdefghijklmnopqrst.supabase.co');
+    expect(normalizeSupabaseUrl('abcdefghijklmnop.supabase.co')).toBe('https://abcdefghijklmnop.supabase.co');
+    expect(normalizeSupabaseUrl('https://abcdefghijklmnop.supabase.co/rest/v1/')).toBe('https://abcdefghijklmnop.supabase.co');
+    expect(normalizeSupabaseUrl('https://supabase.com/dashboard/project/abcdefghijklmnopqrst/settings/api')).toBe('https://abcdefghijklmnopqrst.supabase.co');
+    expect(normalizeKey(' "sb_publishable_abc"\n')).toBe('sb_publishable_abc');
+    expect(configProblem('https://x.supabase.co', 'cle')).toBeNull();
+    expect(configProblem('', 'cle')).toMatch(/AGENDA_SUPABASE_URL/);
+    expect(configProblem('https://x y.supabase.co', 'cle')).toMatch(/pas une URL valide/);
+    expect(configProblem('https://x.supabase.co', 'sb_secret_abc')).toMatch(/SECRÈTE/);
+  });
+});

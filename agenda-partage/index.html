@@ -9,9 +9,46 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./favicon.svg" />
     <title>Agenda d'équipe</title>
+    <style>
+      #boot { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 24px;
+        background: #111111; color: #fff; font: 15px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+      #boot .box { max-width: 460px; text-align: center; }
+      #boot .dot { width: 14px; height: 14px; margin: 0 auto 16px; border-radius: 50%; background: #e30613; animation: boot 1s infinite alternate; }
+      #boot pre { white-space: pre-wrap; text-align: left; background: #242424; padding: 10px; border-radius: 8px; font-size: 12px; color: #ffb4b8; }
+      #boot button { margin-top: 12px; padding: 10px 18px; border: 0; border-radius: 8px; background: #e30613; color: #fff; font-weight: 600; font-size: 15px; }
+      @keyframes boot { to { opacity: 0.3; } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="boot"><div class="box"><div class="dot"></div>Chargement de l'agenda…</div></div></div>
+    <script>
+      // Filet de sécurité : si l'application ne démarre pas (fichier introuvable, ancienne version en cache,
+      // navigateur trop ancien…), on affiche l'erreur au lieu d'une page vide.
+      (function () {
+        var errors = [];
+        window.addEventListener('error', function (e) {
+          var t = e.target;
+          if (t && (t.src || t.href)) errors.push('Fichier introuvable : ' + (t.src || t.href));
+          else if (e.message) errors.push(e.message);
+        }, true);
+        window.addEventListener('unhandledrejection', function (e) {
+          errors.push(String((e.reason && e.reason.message) || e.reason));
+        });
+        setTimeout(function () {
+          if (window.__agendaStarted) return;
+          var boot = document.getElementById('boot');
+          if (!boot) return;
+          boot.innerHTML = '<div class="box"><div class="dot"></div><p><strong>L\'agenda n\'a pas pu démarrer.</strong></p>' +
+            '<p>Rechargez la page. Si le problème persiste, essayez une fenêtre de navigation privée ou un autre navigateur à jour.</p>' +
+            (errors.length ? '<pre></pre>' : '') +
+            '<button type="button">Recharger</button></div>';
+          if (errors.length) boot.querySelector('pre').textContent = errors.join('\n');
+          boot.querySelector('button').onclick = function () {
+            location.replace(location.pathname + '?v=' + Date.now() + location.hash);
+          };
+        }, 8000);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
