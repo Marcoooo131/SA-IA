@@ -8,7 +8,7 @@ import { adminUsers, deleteCategory, updateProfile, updateSettings, upsertCatego
 import { listTimeZones } from '../lib/datetime';
 import { isAdmin } from '../lib/permissions';
 import { appBaseUrl } from '../lib/supabase';
-import type { AppSettings, Category, Profile, Role } from '../lib/types';
+import type { AppSettings, Category, Profile } from '../lib/types';
 
 type Tab = 'users' | 'categories' | 'settings';
 
@@ -109,7 +109,9 @@ function UsersTab() {
       <div className="flex flex-wrap items-center gap-3 border-b border-neutral-100 p-4">
         <div className="flex-1">
           <h2 className="font-bold">Équipe ({profiles.length})</h2>
-          <p className="text-xs text-neutral-500">Les droits sont appliqués par la base de données, pas seulement par l'interface.</p>
+          <p className="text-xs text-neutral-500">
+            Vous êtes le seul administrateur. Un compte créé hors de l'application reste « en attente » tant que vous ne l'activez pas.
+          </p>
         </div>
         <button className="btn-primary" onClick={() => setInviteOpen(true)}>
           <UserPlus className="h-4 w-4" /> Ajouter un collaborateur
@@ -117,7 +119,7 @@ function UsersTab() {
       </div>
       <ul className="divide-y divide-neutral-100">
         {profiles.map((p) => {
-          const self = p.id === me?.id;
+          const self = p.id === me?.id || p.role === 'admin';
           return (
             <li key={p.id} className={`flex flex-col gap-3 p-4 lg:flex-row lg:items-center ${p.is_active ? '' : 'bg-neutral-50 opacity-70'}`}>
               <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -125,29 +127,24 @@ function UsersTab() {
                 <div className="min-w-0">
                   <p className="truncate font-semibold">
                     {displayName(p)} {self && <span className="text-xs font-normal text-neutral-500">(vous)</span>}
-                    {!p.is_active && <span className="ml-2 rounded bg-neutral-200 px-1.5 text-xs font-medium">désactivé</span>}
+                    {!p.is_active && <span className="ml-2 rounded bg-amber-100 px-1.5 text-xs font-medium text-amber-800">en attente / désactivé</span>}
                   </p>
                   <p className="truncate text-sm text-neutral-500">{p.email}</p>
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-                <select
-                  className="field w-40 py-2"
-                  value={p.role}
-                  disabled={self || busyId === p.id}
-                  onChange={(e) => patch(p, { role: e.target.value as Role })}
-                  aria-label={`Rôle de ${displayName(p)}`}
+                <span
+                  className={`inline-flex w-32 justify-center rounded-full px-2.5 py-1 text-xs font-semibold ${p.role === 'admin' ? 'bg-ink text-white' : 'bg-neutral-100 text-neutral-700'}`}
                 >
-                  <option value="collaborator">Collaborateur</option>
-                  <option value="admin">Administrateur</option>
-                </select>
+                  {p.role === 'admin' ? 'Administrateur' : 'Collaborateur'}
+                </span>
                 <Toggle
                   checked={p.role === 'admin' || p.can_edit_all}
                   disabled={p.role === 'admin' || busyId === p.id}
                   onChange={(v) => patch(p, { can_edit_all: v })}
                   label="Modifie tous les RDV"
                 />
-                <Toggle checked={p.is_active} disabled={self || busyId === p.id} onChange={(v) => patch(p, { is_active: v })} label="Actif" />
+                <Toggle checked={p.is_active} disabled={self || busyId === p.id} onChange={(v) => patch(p, { is_active: v })} label={p.is_active ? 'Actif' : 'Activer'} />
                 <button className="btn-icon hover:text-brand" disabled={self} onClick={() => setToDelete(p)} aria-label={`Supprimer ${displayName(p)}`} title="Supprimer le compte">
                   {busyId === p.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                 </button>
@@ -159,7 +156,8 @@ function UsersTab() {
       <div className="border-t border-neutral-100 bg-neutral-50 p-4 text-xs text-neutral-600">
         <p>
           <strong>Collaborateur :</strong> consulte l'agenda, crée des rendez-vous, modifie ceux qu'il a créés ou dont il est responsable (ou tous, si
-          « Modifie tous les RDV » est activé), commente. <strong>Administrateur :</strong> tous les droits, y compris la suppression et la configuration.
+          « Modifie tous les RDV » est activé), commente. <strong>Administrateur (unique) :</strong> tous les droits, y compris la suppression et la
+          configuration. La base refuse la création d'un second administrateur.
         </p>
       </div>
       <InviteModal open={inviteOpen} onClose={() => setInviteOpen(false)} onDone={reloadTeam} />
@@ -184,10 +182,9 @@ function UsersTab() {
 
 function InviteModal({ open, onClose, onDone }: { open: boolean; onClose: () => void; onDone: () => Promise<void> }) {
   const toast = useToast();
-  const [mode, setMode] = useState<'invite' | 'password'>('invite');
+  const [mode, setMode] = useState<'invite' | 'password'>('password');
   const [email, setEmail] = useState('');
   const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState<Role>('collaborator');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -195,7 +192,6 @@ function InviteModal({ open, onClose, onDone }: { open: boolean; onClose: () => 
     if (open) {
       setEmail('');
       setFullName('');
-      setRole('collaborator');
       setPassword('');
     }
   }, [open]);
@@ -209,7 +205,7 @@ function InviteModal({ open, onClose, onDone }: { open: boolean; onClose: () => 
         action: 'invite',
         email: email.trim(),
         full_name: fullName.trim(),
-        role,
+        role: 'collaborator',
         password: mode === 'password' ? password : undefined,
         redirect_to: appBaseUrl(),
       });
@@ -243,11 +239,11 @@ function InviteModal({ open, onClose, onDone }: { open: boolean; onClose: () => 
     >
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-2 rounded-lg bg-neutral-100 p-1">
-          <button className={`rounded-md px-3 py-2 text-sm font-semibold ${mode === 'invite' ? 'bg-white shadow' : 'text-neutral-600'}`} onClick={() => setMode('invite')}>
-            <Mail className="mr-1 inline h-4 w-4" /> Invitation par e-mail
-          </button>
           <button className={`rounded-md px-3 py-2 text-sm font-semibold ${mode === 'password' ? 'bg-white shadow' : 'text-neutral-600'}`} onClick={() => setMode('password')}>
             <KeyRound className="mr-1 inline h-4 w-4" /> Mot de passe provisoire
+          </button>
+          <button className={`rounded-md px-3 py-2 text-sm font-semibold ${mode === 'invite' ? 'bg-white shadow' : 'text-neutral-600'}`} onClick={() => setMode('invite')}>
+            <Mail className="mr-1 inline h-4 w-4" /> Invitation par e-mail
           </button>
         </div>
         <div>
@@ -269,13 +265,6 @@ function InviteModal({ open, onClose, onDone }: { open: boolean; onClose: () => 
             <p className="mt-1 text-xs text-neutral-500">Communiquez-le de vive voix ; le collaborateur pourra le changer dans « Mon profil ».</p>
           </div>
         )}
-        <div>
-          <label className="label">Rôle</label>
-          <select className="field" value={role} onChange={(e) => setRole(e.target.value as Role)}>
-            <option value="collaborator">Collaborateur</option>
-            <option value="admin">Administrateur</option>
-          </select>
-        </div>
         {mode === 'invite' && (
           <p className="rounded-lg bg-neutral-50 p-3 text-xs text-neutral-600">
             La personne reçoit un e-mail avec un lien pour choisir son mot de passe. Le service d'e-mail intégré de Supabase est limité à quelques envois par

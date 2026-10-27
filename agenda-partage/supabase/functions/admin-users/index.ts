@@ -64,7 +64,8 @@ Deno.serve(async (req) => {
   if (action === 'invite') {
     const email = String(body.email ?? '').trim().toLowerCase();
     const fullName = String(body.full_name ?? '').trim().slice(0, 120);
-    const role = body.role === 'admin' ? 'admin' : 'collaborator';
+    // Un seul administrateur : les comptes créés ici sont toujours des collaborateurs
+    const role = 'collaborator';
     const password = typeof body.password === 'string' ? body.password : '';
     const redirectTo = typeof body.redirect_to === 'string' && /^https?:\/\//.test(body.redirect_to) ? body.redirect_to : undefined;
 
@@ -92,7 +93,7 @@ Deno.serve(async (req) => {
     // Le profil est créé par le déclencheur de la base ; on y applique le rôle choisi par l'admin
     const { error: profileError } = await admin
       .from('profiles')
-      .update({ role, full_name: fullName || email.split('@')[0] })
+      .update({ role, is_active: true, full_name: fullName || email.split('@')[0] })
       .eq('id', userId);
     if (profileError) return json({ error: profileError.message }, 500);
     return json({ ok: true, user_id: userId });

@@ -62,6 +62,15 @@ select tests.ok((select role from public.profiles where id = tests.uid('admin'))
   'le premier compte créé devient administrateur');
 select tests.ok((select role from public.profiles where id = tests.uid('alice')) = 'collaborator',
   'le rôle fourni dans les métadonnées d''inscription est ignoré');
+select tests.ok((select is_active from public.profiles where id = tests.uid('admin'))
+                and not (select is_active from public.profiles where id = tests.uid('alice')),
+  'les comptes suivants sont en attente de validation par l''administrateur');
+
+select tests.as_user('alice');
+set role authenticated;
+select tests.ok((select count(*) from public.profiles) = 1, 'compte en attente : ne voit que son propre profil');
+select tests.throws($$select * from public.agenda_between(now(), now() + interval '1 day')$$, 'compte en attente : agenda refusé');
+reset role;
 
 -- ---------------------------------------------------------------- accès anonyme
 set role anon;
@@ -73,6 +82,10 @@ reset role;
 -- ---------------------------------------------------------------- administration
 select tests.as_user('admin');
 set role authenticated;
+select tests.ok(tests.affected($$update public.profiles set is_active = true where id in (tests.uid('alice'), tests.uid('bob'), tests.uid('carol'))$$) = 3,
+  'admin : valide les comptes en attente');
+select tests.throws($$update public.profiles set role = 'admin' where id = tests.uid('alice')$$,
+  'un seul administrateur : impossible d''en nommer un second');
 select tests.ok(tests.affected($$update public.profiles set can_edit_all = true where id = tests.uid('carol')$$) = 1,
   'admin : accorde le droit de modifier tous les rendez-vous');
 select tests.ok(tests.affected($$update public.profiles set is_active = false where id = tests.uid('dave')$$) = 1,
@@ -268,8 +281,10 @@ reset role;
 -- ---------------------------------------------------------------- compte de service (fonction admin-users)
 set role service_role;
 do $$ begin perform set_config('request.jwt.claims', '{"role":"service_role"}', false); end $$;
-select tests.ok(tests.affected($$update public.profiles set role = 'admin' where id = tests.uid('alice')$$) = 1,
-  'compte de service : peut attribuer un rôle (fonction d''administration)');
+select tests.ok(tests.affected($$update public.profiles set is_active = true where id = tests.uid('dave')$$) = 1,
+  'compte de service : active un compte (fonction d''administration)');
+select tests.throws($$update public.profiles set role = 'admin' where id = tests.uid('dave')$$,
+  'compte de service : ne peut pas créer un second administrateur non plus');
 reset role;
 
 \echo 'Tous les tests de sécurité de la base sont passés.'

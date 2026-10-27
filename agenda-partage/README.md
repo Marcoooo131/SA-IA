@@ -12,6 +12,19 @@ téléphone.
 
 Aucune donnée fictive : l'application démarre vide et chaque rendez-vous est enregistré dans votre base Supabase.
 
+### En bref : une version GitHub à partager, avec vous comme seul administrateur
+
+- **Le lien à partager** est une page GitHub Pages de ce dépôt : `https://marcoooo131.github.io/SA-IA/agenda/`.
+  Pas de nom de domaine à acheter ni de site à héberger ailleurs.
+- **Les agents ne s'inscrivent nulle part.** C'est vous qui créez leur compte (Administration > *Ajouter un
+  collaborateur*, avec un mot de passe provisoire), puis vous leur envoyez le lien, leur e-mail et ce mot de passe.
+- **Un seul administrateur, vous.** Le premier compte créé devient administrateur ; la base de données refuse d'en
+  créer un second. Tout autre compte apparu sans passer par vous reste « en attente » et ne voit rien tant que vous ne
+  l'avez pas activé.
+- **Une seule inscription, la vôtre, sur Supabase (gratuit).** GitHub Pages ne sait afficher que des pages fixes : il
+  ne peut ni enregistrer les rendez-vous, ni vérifier des mots de passe, ni prévenir les autres en temps réel. Supabase
+  joue ce rôle de base de données. Vous y créez un compte une seule fois ; les agents n'en ont jamais besoin.
+
 ---
 
 ## 1. Fonctionnalités
@@ -41,7 +54,7 @@ Aucune donnée fictive : l'application démarre vide et chaque rendez-vous est e
 | Modifier un RDV | ✅ tous | ✅ ceux qu'il a créés ou dont il est responsable ; tous les RDV non confidentiels si l'admin lui accorde « Modifie tous les RDV » |
 | Supprimer un RDV | ✅ | ❌ par défaut (il peut passer le RDV en « Annulé ») ; ✅ ses propres RDV si l'admin l'active |
 | Commenter, ajouter un compte rendu ou un fichier | ✅ | ✅ sur les RDV qu'il peut voir |
-| Gérer utilisateurs, catégories, paramètres | ✅ | ❌ |
+| Gérer utilisateurs, catégories, paramètres | ✅ (administrateur unique) | ❌ |
 | Visiteur non connecté | ❌ rien | ❌ rien |
 
 Garde-fous supplémentaires : le créateur, les dates de création/modification et l'historique sont imposés par le
@@ -91,7 +104,8 @@ Dans Supabase > **Authentication** :
    - *Site URL* : l'adresse publique de l'agenda (ex. `https://<compte>.github.io/SA-IA/agenda/`) ;
    - *Redirect URLs* : ajoutez la même adresse, plus `http://localhost:5173/` pour le développement.
 3. **Users** > **Add user** > *Create new user* : votre e-mail + un mot de passe, cochez *Auto Confirm User*.
-   **Le premier compte créé devient automatiquement administrateur.**
+   **Le premier compte créé devient automatiquement l'unique administrateur.** Les comptes ajoutés ensuite depuis ce
+   tableau de bord Supabase restent « en attente » jusqu'à ce que vous les activiez dans l'agenda.
 
 ### Étape 4 — Fonction d'administration des comptes (recommandé)
 
@@ -139,8 +153,11 @@ npm run dev                     # http://localhost:5173
 ### Étape 6 — Inviter l'équipe
 
 Connectez-vous avec le compte administrateur > **Administration** > **Ajouter un collaborateur** :
-- *Invitation par e-mail* : la personne reçoit un lien pour choisir son mot de passe ;
-- *Mot de passe provisoire* : compte créé immédiatement, à transmettre de vive voix (modifiable dans « Mon profil »).
+- *Mot de passe provisoire* (par défaut) : compte créé et activé immédiatement ; envoyez à l'agent le lien de l'agenda,
+  son e-mail et ce mot de passe (il pourra le changer dans « Mon profil ») ;
+- *Invitation par e-mail* : la personne reçoit un lien pour choisir elle-même son mot de passe.
+
+Les comptes créés ici sont toujours des collaborateurs. Pour couper l'accès d'un agent : décochez « Actif ».
 
 > Le service d'e-mail intégré de Supabase est limité (quelques e-mails par heure, à usage de test). Pour des
 > invitations et réinitialisations fiables, configurez un SMTP dans Authentication > **Emails** > *SMTP Settings*

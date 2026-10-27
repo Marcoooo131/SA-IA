@@ -71,14 +71,14 @@ function Shell() {
   if (!profile.is_active) {
     return (
       <MessagePage
-        title="Compte désactivé"
+        title="Accès en attente"
         action={
           <button className="btn-primary w-full" onClick={() => void signOut()}>
             Se déconnecter
           </button>
         }
       >
-        <p>Votre accès à l'agenda a été suspendu. Contactez un administrateur de l'équipe.</p>
+        <p>Votre compte n'est pas (ou plus) activé. L'administrateur de l'agenda doit le valider avant que vous puissiez y accéder.</p>
       </MessagePage>
     );
   }

@@ -17,6 +17,7 @@ export function friendlyError(err: unknown): string {
     if (/administrateur|e-mail|modifiable/i.test(msg)) return msg;
     return "Vous n'avez pas l'autorisation d'effectuer cette action.";
   }
+  if (/profiles_single_admin/.test(msg)) return "L'agenda n'a qu'un seul administrateur.";
   if (e.code === '23505') return 'Cet élément existe déjà.';
   if (e.code === '23514') return 'Certaines valeurs sont invalides (vérifiez les dates, la longueur des textes et les liens).';
   if (e.code === '23503') return 'Élément lié introuvable (il a peut-être été supprimé).';
