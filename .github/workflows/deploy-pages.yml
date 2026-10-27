@@ -47,13 +47,10 @@ jobs:
           npm run build
           mkdir -p ../dist/presentation-movers
           cp -r dist/. ../dist/presentation-movers/
-      # Agenda partagé (…/agenda/) : URL et clé PUBLIQUE (anon) du projet Supabase, à définir dans
-      # Settings > Secrets and variables > Actions > Variables. Sans elles, la page affiche les étapes de configuration.
+      # Agenda partagé (…/agenda/) : l'adresse et la clé PUBLIQUE du projet Supabase sont dans
+      # agenda-partage/.env.production (aucun secret dans ce fichier).
       - name: Build de l'agenda partagé
         working-directory: agenda-partage
-        env:
-          VITE_SUPABASE_URL: ${{ vars.AGENDA_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ vars.AGENDA_SUPABASE_ANON_KEY }}
         run: |
           npm ci
           npm test

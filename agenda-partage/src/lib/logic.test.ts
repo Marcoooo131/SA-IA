@@ -230,7 +230,7 @@ describe('configuration Supabase', () => {
     expect(normalizeSupabaseUrl('https://supabase.com/dashboard/project/abcdefghijklmnopqrst/settings/api')).toBe('https://abcdefghijklmnopqrst.supabase.co');
     expect(normalizeKey(' "sb_publishable_abc"\n')).toBe('sb_publishable_abc');
     expect(configProblem('https://x.supabase.co', 'cle')).toBeNull();
-    expect(configProblem('', 'cle')).toMatch(/AGENDA_SUPABASE_URL/);
+    expect(configProblem('', 'cle')).toMatch(/VITE_SUPABASE_URL/);
     expect(configProblem('https://x y.supabase.co', 'cle')).toMatch(/pas une URL valide/);
     expect(configProblem('https://x.supabase.co', 'sb_secret_abc')).toMatch(/SECRÈTE/);
   });

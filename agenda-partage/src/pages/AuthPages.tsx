@@ -176,16 +176,16 @@ export function SetupPage({ problem }: { problem: string | null }) {
       )}
       <ol className="list-decimal space-y-1 pl-5">
         <li>
-          GitHub › <strong>Settings</strong> › <strong>Secrets and variables</strong> › <strong>Actions</strong> › onglet <strong>Variables</strong>.
+          Dans le dépôt, fichier <code className="rounded bg-neutral-100 px-1">agenda-partage/.env.production</code>.
         </li>
         <li>
-          <code className="rounded bg-neutral-100 px-1">AGENDA_SUPABASE_URL</code> : l'URL du projet, ex.{' '}
+          <code className="rounded bg-neutral-100 px-1">VITE_SUPABASE_URL</code> : l'URL du projet, ex.{' '}
           <code className="rounded bg-neutral-100 px-1">https://abcdefghijklmnop.supabase.co</code>
         </li>
         <li>
-          <code className="rounded bg-neutral-100 px-1">AGENDA_SUPABASE_ANON_KEY</code> : la clé « anon public » ou « publishable » (jamais la clé secrète).
+          <code className="rounded bg-neutral-100 px-1">VITE_SUPABASE_ANON_KEY</code> : la clé « anon public » ou « publishable » (jamais la clé secrète).
         </li>
-        <li>Relancez la publication (Actions › Déploiement GitHub Pages › Run workflow).</li>
+        <li>Enregistrez sur la branche main : la publication se relance seule.</li>
       </ol>
       <p className="flex items-center gap-2 rounded-lg bg-neutral-100 p-3 font-mono text-xs">
         <Terminal className="h-4 w-4 shrink-0" /> Détails : agenda-partage/README.md

@@ -20,9 +20,9 @@ export function normalizeKey(raw: string | undefined): string {
 
 /** Message d'erreur lisible si la configuration est inutilisable, sinon null */
 export function configProblem(url: string, key: string): string | null {
-  if (!url && !key) return 'Les variables AGENDA_SUPABASE_URL et AGENDA_SUPABASE_ANON_KEY ne sont pas renseignées.';
-  if (!url) return 'La variable AGENDA_SUPABASE_URL est vide.';
-  if (!key) return 'La variable AGENDA_SUPABASE_ANON_KEY est vide.';
+  if (!url && !key) return 'VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY ne sont pas renseignées.';
+  if (!url) return 'VITE_SUPABASE_URL est vide.';
+  if (!key) return 'VITE_SUPABASE_ANON_KEY est vide.';
   try {
     const u = new URL(url);
     if (!/^https?:$/.test(u.protocol) || !u.hostname.includes('.')) throw new Error();
