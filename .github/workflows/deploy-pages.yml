@@ -39,6 +39,14 @@ jobs:
           echo "70dba93432f3653155998cc9001f9c200182343c2f95165a2f9e9e4673fa35e8  /tmp/pyodide.tar.bz2" | sha256sum -c -
           mkdir -p /tmp/pyodide-core && tar -xjf /tmp/pyodide.tar.bz2 -C /tmp/pyodide-core
           python phonecall-desktop/scripts/build_web_ameliorateur.py dist/ameliorateur --pyodide /tmp/pyodide-core/pyodide
+      # Présentation équipe « Nouvelle organisation Movers » (…/presentation-movers/)
+      - name: Build the Movers team presentation
+        working-directory: movers-presentation
+        run: |
+          npm ci
+          npm run build
+          mkdir -p ../dist/presentation-movers
+          cp -r dist/. ../dist/presentation-movers/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
