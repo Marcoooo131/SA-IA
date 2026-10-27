@@ -1,0 +1,35 @@
+# Présentation équipe « Nouvelle organisation Movers » : vérification TypeScript, build et PowerPoint.
+name: Présentation Movers — build
+
+on:
+  push:
+    paths: ["movers-presentation/**", ".github/workflows/movers-presentation.yml"]
+  pull_request:
+    paths: ["movers-presentation/**", ".github/workflows/movers-presentation.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: movers-presentation
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: movers-presentation/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      # Le PowerPoint doit se régénérer sans erreur à partir de src/content.ts
+      - run: npm run pptx
+      - uses: actions/upload-artifact@v4
+        with:
+          name: movers-presentation
+          path: |
+            movers-presentation/dist
+            movers-presentation/public/Nouvelle-organisation-Movers.pptx

@@ -25,6 +25,11 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > Movers Emails à partir de l'Owner du Case du compte client ; Simulation par défaut, Supervisé, Automatique.
 > Ancienne version conservée à part (sans le bouton « Corriger ») : [`movers-dispatch-ancienne-version/`](movers-dispatch-ancienne-version/README.md).
 
+> 📽️ **Présentation équipe : nouvelle organisation Movers** (React + TypeScript, distincte de l'application Movers) :
+> [`movers-presentation/`](movers-presentation/README.md) — 13 diapositives interactives (planning, rôles, cinq templates,
+> rotation, gestion de la charge), plein écran, sommaire, notes de l'orateur et PowerPoint modifiable ;
+> en ligne sur GitHub Pages : `…/SA-IA/presentation-movers/`.
+
 > 🎬 **Alcoolique Quest : La Sobriété Perdue** (Three.js, distinct de l'application Movers) :
 > [`alcoolique-quest/`](alcoolique-quest/README.md) — cinématique d'introduction en temps réel d'un RPG dark fantasy
 > humoristique (scènes 3D procédurales, musique et bruitages synthétisés, logo, écran d'accueil provisoire).

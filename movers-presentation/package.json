@@ -1,0 +1,27 @@
+{
+  "name": "movers-presentation-equipe",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Présentation interactive à l'équipe Movers : nouvelle organisation du service (React + TypeScript), avec export PowerPoint modifiable.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "pptx": "node scripts/build-pptx.mjs"
+  },
+  "dependencies": {
+    "lucide-react": "^1.55.0",
+    "react": "~19.2.0",
+    "react-dom": "~19.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "pptxgenjs": "^4.0.1",
+    "typescript": "~5.9.0",
+    "vite": "^7.3.0"
+  }
+}
