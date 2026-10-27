@@ -264,7 +264,11 @@ def demo_crm() -> FakeCrm:
             demo_pdf(["LETTRE FICTIVE DE DEMONSTRATION", "", "Client Demo N", "n° client 10090016",
                       "Par la presente, je demande la resiliation de mon contrat", "suite a mon demenagement."]))])
     # recorded procedure n°4: task whose Regarding is a contract; the client is in its « Account » field
-    crm.add("17", "Contact customer - PRIO (démo 17)", "Client Démo O", [("CAS-1013", "autre", 1, "Collection case ECHURN"),
+    crm.add("17", "Movers - Résiliation (démo 17)", "Client Démo O", [("CAS-1013", "autre", 1, "Collection case ECHURN"),
             ("CAS-1014", "chloe", 0, "MOVERS")], kind="task", regarding_entity="contract", own_account=True)
-    crm.add("18", "Moving - CS (démo 18)", "Client Démo P", [], kind="task", regarding_entity="contract", own_account=True)
+    # organisation of 27/10: one rotation per task name
+    crm.add("18", "Movers - Takeovers (démo 18)", "Client Démo P", [], kind="task", regarding_entity="contract", own_account=True)
+    crm.add("19", "Prio - Movers - Déménagement (démo 19)", "Client Démo Q", [], kind="task", own_account=True)
+    crm.add("20", "Movers - Résiliation exception (démo 20)", "Client Démo R", [], kind="task", own_account=True)
+    crm.add("21", "Movers - Résiliation (démo 21)", "Client Démo S", [], kind="task", own_account=True)
     return crm

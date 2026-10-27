@@ -13,7 +13,7 @@ import logging
 import threading
 from dataclasses import dataclass, field, replace
 
-from .config import CATEGORY_LABELS, Config, normalize_name
+from .config import Config, normalize_name
 from .dataverse import ConcurrentModification, CrmError, Gateway, SessionExpired, UncertainWrite
 from .journal import Journal
 from .models import Email, Lookup, Mode, QueueItem, Status, User
@@ -65,6 +65,7 @@ class Evaluation:
     activity: Email | None = None
     category: str | None = None
     category_why: str = ""
+    category_sure: bool = False   # found by the task name (not read from the words of the request)
     client_via: str = ""          # how the account was found (masked values), when the Regarding was empty
     client_to_link: bool = False  # the Regarding must be filled with this account before Worked By
     attachments: int = 0          # files attached to a mail whose client was not found (scanned letters)
@@ -102,7 +103,7 @@ class Agent:
             return Evaluation(item, Decision(Status.REVIEW, "Le Queue Item ne porte ni un mail ni une tâche."))
         act = gw.get_activity(item.object.entity, item.object.id)
         ev = Evaluation(item, Decision(Status.REVIEW, ""), email_id=act.id, subject=act.subject, activity=act)
-        ev.category, ev.category_why = categorize(self.cfg, act)
+        ev.category, ev.category_why, ev.category_sure = categorize(self.cfg, act)
         links = self.cfg.client.account_links
         reg = act.regarding
         account: Lookup | None = None
@@ -195,13 +196,21 @@ class Agent:
             return
         if d.status is Status.ASSIGNED and rot.applies != "toujours":
             return
+        cat = self.cfg.categories.get(ev.category)
+        if not pinned_user_id and not ev.category_sure and cat and cat.choose_among:
+            # e.g. a résiliation read in a mail: « Movers - Résiliation » or « … exception » is the team's call
+            options = " ou ".join(f"« Suivant en {self.cfg.categories.label(k)} »" for k in cat.choose_among)
+            ev.decision = Decision(Status.REVIEW, f"{cat.label} d'après la demande ({ev.category_why}) : à valider — "
+                                   f"choisir {options} dans « Attribuer à… ». ({d.reason})",
+                                   considered=d.considered, code="rotation_to_choose")
+            return
         user = None
         if pinned_user_id:
             user = users.get(pinned_user_id) or gw.get_user(pinned_user_id)
         else:
             key = self.next_in_rotation(ev.category, cursor)
             if key is None:
-                ev.decision = Decision(Status.REVIEW, f"Rotation {category_label(ev.category)} : personne de disponible "
+                ev.decision = Decision(Status.REVIEW, f"Rotation {category_label(self.cfg, ev.category)} : personne de disponible "
                                        "(tous absents ou non configurés).", considered=d.considered, code="rotation_empty")
                 return
             collab = self.cfg.collaborator(key)
@@ -213,7 +222,7 @@ class Agent:
                 return
             if cursor is not None:
                 cursor[ev.category] = key
-        ev.decision = by_rotation(d, category_label(ev.category), user)
+        ev.decision = by_rotation(d, category_label(self.cfg, ev.category), user)
 
     def next_in_rotation(self, category: str, cursor: dict | None = None) -> str | None:
         members = self.cfg.rotation.members.get(category) or tuple(c.key for c in self.cfg.collaborators)
@@ -300,7 +309,7 @@ class Agent:
         if ev.decision.method == "rotation" and ev.category:
             collab = self.cfg.collaborator_for(user.id)
             self.journal.set_setting(f"rotation:{ev.category}", collab.key)
-            origin = f"rotation {category_label(ev.category)}"
+            origin = f"rotation {category_label(self.cfg, ev.category)}"
         else:
             origin = f"Case {case_no}" if case_no else f"choix manuel de {actor}"
         self._record(run_id, ev, Status.ASSIGNED, f"Worked By = {user.first_name} ({origin}), vérifié.", mode)
@@ -460,11 +469,11 @@ class Agent:
         if collaborator_key.startswith("rotation:"):
             # « Suivant en Résiliation » : the person decides the category (e.g. a scanned letter), the turn decides who
             category = collaborator_key.split(":", 1)[1]
-            if category not in CATEGORY_LABELS:
+            if self.cfg.categories.get(category) is None:
                 raise RunBlocked("Catégorie inconnue.")
             collaborator_key = self.next_in_rotation(category)
             if collaborator_key is None:
-                raise RunBlocked(f"Rotation {CATEGORY_LABELS[category]} : personne de disponible.")
+                raise RunBlocked(f"Rotation {self.cfg.categories.label(category)} : personne de disponible.")
         return self._human_assign(saved, collaborator_key, actor, "attribution_manuelle",
                                   {"motif_initial": saved["reason"], "cases_vus": _json_list(saved["considered"]),
                                    "rotation": category}, rotation_category=category)
@@ -481,7 +490,7 @@ class Agent:
             raise RunBlocked("C'est déjà la proposition de l'agent : utiliser « Valider ».")
         out = self._human_assign(saved, collaborator_key, actor, "correction", {
             "propose": saved["worked_by_name"], "case_propose": saved["case_number"] or (
-                f"rotation {category_label(saved.get('category'))}" if saved.get("method") == "rotation" else None),
+                f"rotation {category_label(self.cfg, saved.get('category'))}" if saved.get("method") == "rotation" else None),
             "motif_agent": saved["reason"], "cases_vus": _json_list(saved["considered"]), "note": note[:300]})
         if saved.get("method") == "rotation" and saved.get("category") and out["status"] == Status.ASSIGNED.value:
             self.journal.set_setting(f"rotation:{saved['category']}", collaborator_key)   # the turn goes on from them
@@ -602,7 +611,7 @@ class Agent:
                "collaborateurs": [{"key": c.key, "first_name": c.first_name, "absent": c.key in absent}
                                   for c in self.cfg.collaborators], "categories": []}
         counts = self.journal.rotation_counts()
-        for cat, label in CATEGORY_LABELS.items():
+        for cat, label in ((c.key, c.label) for c in self.cfg.categories.items):
             members = self.cfg.rotation.members.get(cat) or tuple(c.key for c in self.cfg.collaborators)
             nxt = self.next_in_rotation(cat)
             c = counts.get(cat, {})
