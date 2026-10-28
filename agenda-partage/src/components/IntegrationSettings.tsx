@@ -182,7 +182,7 @@ export function DispatchConnection() {
         <Workflow className="h-4 w-4 text-brand" /> Agent Dispatch Movers
       </p>
       <p className="text-sm text-neutral-600">
-        Quand l'agent attribue une tâche CRM (Worked By), il réserve son échéance dans l'agenda du collaborateur. À recopier dans la section{' '}
+        Quand l'agent attribue une tâche CRM (Worked By), il réserve dans l'agenda du collaborateur l'horaire de rappel écrit dans la tâche. À recopier dans la section{' '}
         <code className="rounded bg-neutral-100 px-1">[agenda]</code> de <code className="rounded bg-neutral-100 px-1">dispatch.toml</code>.
       </p>
       <label className="label">Adresse (endpoint)</label>

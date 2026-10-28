@@ -113,16 +113,25 @@ domaines_ignores = ["sectoralarm.fr", "sectoralarm.com", "sectoralarm.net", "hub
 liens_compte = {}
 
 [agenda]
-# Réservation dans l'agenda partagé : quand l'agent attribue une TÂCHE (Worked By écrit et vérifié), son
-# échéance est réservée dans l'agenda du collaborateur (créneau de 15 min), qui reçoit la notification puis
+# Réservation dans l'agenda partagé : quand l'agent attribue une TÂCHE (Worked By écrit et vérifié), l'horaire
+# de rappel écrit dans la tâche est réservé dans l'agenda du collaborateur, qui reçoit la notification puis
 # le rappel avant l'heure. Une même tâche met toujours à jour le même créneau. Un échec n'arrête jamais
 # le dispatch (il est noté dans le journal). Les mails ne sont pas concernés.
 active = false
 # Agenda > Administration > Paramètres > « Agent Dispatch Movers » : adresse et jeton à recopier ici.
 adresse = "https://zpoubfotwszesqxyfhev.supabase.co/functions/v1/dispatch-booking"
 jeton = ""
-champ_echeance = "scheduledend"     # colonne « Due » / « Échéance » de la tâche (horaire du rappel)
-duree_minutes = 15
+# Où se trouve l'horaire : "description" = écrit à la main dans le texte de la tâche (modèle), sur une ligne
+# qui commence par un des « libelles » ci-dessous, par exemple :
+#     Horaire de rappel : 29/10/2026 à 14h30        Rappel : demain entre 9h et 10h
+#     Créneau : jeudi 29 octobre 14h - 15h          Rappel : 29/10 14:30
+# Seules ces lignes sont lues (une date de déménagement ailleurs dans le texte n'est jamais prise).
+# "champ" = une colonne date de la tâche (champ_echeance, ex. « scheduledend » = Due).
+source_horaire = "description"
+libelles = ["horaire", "rappel", "rappeler", "creneau", "rdv", "rendez-vous"]
+fuseau = "Europe/Paris"
+champ_echeance = "scheduledend"
+duree_minutes = 15                  # durée du créneau quand le modèle ne donne qu'une heure
 categorie = "Appel"
 
 # Les quatre collaborateurs. systemuser_id = identifiant de la fiche utilisateur Dynamics 365,

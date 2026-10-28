@@ -215,7 +215,7 @@ Database > Backups sur une offre payante), et l'export CSV pour un usage bureaut
   [`calendar-feed`](supabase/functions/calendar-feed/index.ts)) à coller dans Outlook › Ajouter un calendrier ›
   S'abonner à partir du web. Les rendez-vous dont vous êtes responsable y apparaissent avec un rappel Outlook
   15 min avant. Lecture seule ; Outlook se met à jour à son rythme (de 30 min à quelques heures).
-- **Agent Dispatch Movers** : quand il attribue une tâche CRM, il réserve son échéance dans l'agenda du
+- **Agent Dispatch Movers** : quand il attribue une tâche CRM, il réserve l'horaire de rappel écrit dans sa description dans l'agenda du
   collaborateur (fonction [`dispatch-booking`](supabase/functions/dispatch-booking/index.ts), jeton généré dans
   Administration › Paramètres, réglages dans la section `[agenda]` de `dispatch.toml`).
 
