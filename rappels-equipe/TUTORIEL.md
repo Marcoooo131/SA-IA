@@ -22,10 +22,10 @@ votre OneDrive, partagé à l'équipe. Chaque agent ouvre ce fichier avec la pag
    dossier `SA-IA-main`, puis extrayez le ZIP au même endroit.
 4. Remettez vos deux fichiers dans le nouveau dossier `movers-dispatch`.
 
-## Étape 2 : double-cliquer sur `6-rappels.bat`
+## Étape 2 : lancer l'agent (`4-lancer.bat`)
 
-Dans `movers-dispatch\windows`, double-cliquez sur **`6-rappels.bat`** et répondez **o**. **Rien à écrire
-à la main** : l'outil
+Rien à écrire à la main : **`4-lancer.bat`** le fait à chaque lancement. Pour vérifier tout de suite avec un
+rappel d'essai, double-cliquez sur **`6-rappels.bat`** (dans `movers-dispatch\windows`) et répondez **o**. L'outil
 - active les rappels dans `dispatch.toml` ;
 - trouve votre **OneDrive** et y crée le dossier **`Rappels`** s'il n'existe pas (s'il existe déjà, il
   l'utilise) ;

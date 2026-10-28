@@ -266,16 +266,14 @@ valider par vous, sauf si vous mettez `automatique = true` dans la section `[cli
 ## Étape 12 : mettre à jour sans rien perdre
 
 1. Fermez la fenêtre noire de l'agent.
-2. Copiez dans un endroit sûr, par exemple le Bureau, ces deux fichiers du dossier `movers-dispatch` :
-   - **`dispatch.toml`**, votre configuration ;
-   - **`movers_dispatch.db`**, votre journal, avec l'historique, la rotation, les absents et les corrections.
-3. Supprimez l'ancien dossier `SA-IA-main`.
-4. Retéléchargez et extrayez le ZIP comme à l'étape 2.
-5. Remettez vos deux fichiers dans le nouveau dossier `movers-dispatch`.
-6. Si je vous l'indique, ajoutez à votre `dispatch.toml` les nouvelles sections, en les copiant depuis
-   `config\dispatch.example.toml`.
-7. Double-cliquez sur **`1-installer.bat`**, puis sur **`4-lancer.bat`**.
+2. Supprimez l'ancien dossier `SA-IA-main`.
+3. Retéléchargez et extrayez le ZIP comme à l'étape 2.
+4. Double-cliquez sur **`4-lancer.bat`**. C'est tout.
 
+À chaque lancement, `4-lancer.bat` **sauvegarde** `dispatch.toml` (votre configuration) et
+`movers_dispatch.db` (votre journal) dans `%USERPROFILE%\Movers-Dispatch-sauvegarde`, hors du dossier de l'agent.
+Dans un dossier tout neuf, il les **remet tout seul**, installe les composants et active les rappels de
+l'équipe.
 Votre journal est mis à jour automatiquement, sans rien perdre.
 
 ---
@@ -286,7 +284,7 @@ L'agent peut ajouter l'horaire écrit dans chaque tâche qu'il attribue (« Hora
 à un fichier de rappels trié, rangé dans le dossier « Rappels » de OneDrive, partagé à l'équipe. Chaque agent ouvre ce fichier avec la
 page **https://marcoooo131.github.io/SA-IA/rappels/**, coche son prénom et reçoit une notification
 15 minutes avant chaque rappel. Marche à suivre : [tutoriel des rappels](../rappels-equipe/TUTORIEL.md)
-(il suffit de double-cliquer sur `6-rappels.bat`).
+(automatique : `4-lancer.bat` active les rappels et crée le dossier `Rappels` dans OneDrive).
 
 ---
 
