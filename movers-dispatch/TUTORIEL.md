@@ -38,7 +38,7 @@ le Bloc-notes.
    - créez-y un dossier **`SA-IA`** ;
    - faites un clic droit sur `SA-IA-main.zip` (dans *Téléchargements*), choisissez **Extraire tout…** et
      indiquez ce dossier.
-3. Ouvrez `SA-IA-main\movers-dispatch\windows`. Vous y trouvez cinq fichiers :
+3. Ouvrez `SA-IA-main\movers-dispatch\windows`. Vous y trouvez six fichiers :
 
 | Fichier | À quoi il sert |
 |---|---|
@@ -47,6 +47,7 @@ le Bloc-notes.
 | `3-decouvrir.bat` | lit le CRM (sans rien modifier) pour trouver les informations à recopier dans la configuration |
 | `4-lancer.bat` | lance l'agent sur le vrai CRM : **c'est celui de tous les jours** |
 | `5-exporter-corrections.bat` | exporte vos corrections dans un fichier Excel (étape 11) |
+| `6-rappels.bat` | écrit tout de suite le fichier des rappels de l'équipe dans Teams, ou dit ce qui bloque (étape 13) |
 
 > Le dossier `movers-dispatch-ancienne-version` est une copie de secours de l'ancienne version (sans le
 > bouton Corriger). Vous n'en avez normalement pas besoin.

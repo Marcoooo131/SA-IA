@@ -119,8 +119,8 @@ liens_compte = {}
 # https://marcoooo131.github.io/SA-IA/rappels/, choisit ce fichier une fois, coche son prénom et reçoit
 # une notification avant chaque rappel. Le fichier reste dans Teams / OneDrive (rien sur Internet).
 active = false
-# Chemin du dossier Teams synchronisé, tel qu'affiché dans l'Explorateur, par exemple :
-# dossier = "%USERPROFILE%\\Sector Alarm\\Movers - Documents\\Rappels"
+# Chemin du dossier Teams synchronisé, copié depuis la barre d'adresse de l'Explorateur, ENTRE APOSTROPHES :
+# dossier = 'C:\Users\vous\Sector Alarm\Movers - Documents\Rappels'      (vérification : windows\6-rappels.bat)
 dossier = ""
 libelles = ["horaire", "rappel", "rappeler", "creneau", "rdv", "rendez-vous"]
 fuseau = "Europe/Paris"

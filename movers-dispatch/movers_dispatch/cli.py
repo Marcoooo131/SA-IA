@@ -223,6 +223,41 @@ def cmd_journal(args) -> None:
             print(f"{len(rows)} ligne(s) exportée(s) dans {args.output}")
 
 
+def cmd_rappels(args) -> None:
+    """Writes the team reminders file now (and optionally a test reminder), or says what blocks it."""
+    from datetime import datetime, timedelta, timezone
+
+    from . import team_reminders
+
+    cfg = _load(args)
+    rc = cfg.reminders
+    print(f"Configuration : {cfg.path or '(démo)'}")
+    if not rc.enabled:
+        print("\nLes rappels sont désactivés : dans dispatch.toml, ajoutez la section [rappels] avec active = true")
+        print("(modèle : config\\dispatch.example.toml, ou le tutoriel rappels-equipe\\TUTORIEL.md).")
+        return
+    problems = rc.problems()
+    if problems:
+        print("\nImpossible d'écrire le fichier :")
+        for pb in problems:
+            print("  - " + pb)
+        print("\nAstuce : copiez le chemin depuis la barre d'adresse de l'Explorateur et mettez-le entre apostrophes,")
+        print("  dossier = 'C:\\Users\\vous\\Entreprise\\Movers - Documents\\Rappels'")
+        return
+    j = Journal(cfg.database)
+    if args.essai:
+        collab = cfg.collaborator(args.essai) if args.essai != "tous" else None
+        targets = [collab] if collab else list(cfg.collaborators)
+        start = (datetime.now(timezone.utc) + timedelta(minutes=20)).replace(second=0, microsecond=0)
+        for c in targets:
+            j.upsert_reminder(f"essai-{c.key}", starts_at=start.isoformat().replace("+00:00", "Z"), collaborator_key=c.key,
+                              collaborator_name=c.first_name, subject="ESSAI - rappel de test", client_name="(aucun client)")
+        print(f"Rappel d'essai ajouté dans 20 minutes pour : {', '.join(c.first_name for c in targets)}")
+    path = team_reminders.export(cfg, j)
+    n = len(team_reminders.payload(cfg, j)["reminders"])
+    print(f"\nFichier écrit : {path}\n{n} rappel(s) dedans. Il apparaît dans Teams dès que OneDrive l'a synchronisé.")
+
+
 def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     p = argparse.ArgumentParser(prog="movers-dispatch", description=__doc__)
@@ -264,6 +299,11 @@ def main(argv: list[str] | None = None) -> None:
     sp.add_argument("--corrections", action="store_true", help="corrections faites en mode Supervisé (à analyser)")
     sp.add_argument("--output", "-o", help="fichier CSV à écrire (sinon : affichage)")
     sp.set_defaults(func=cmd_journal)
+
+    sp = sub.add_parser("rappels", help="écrit le fichier des rappels de l'équipe maintenant (ou dit ce qui bloque)")
+    common(sp)
+    sp.add_argument("--essai", help="ajoute un rappel d'essai dans 20 min pour ce collaborateur (clé) ou « tous »")
+    sp.set_defaults(func=cmd_rappels)
 
     args = p.parse_args(argv)
     args.func(args)

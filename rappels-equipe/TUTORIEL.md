@@ -27,19 +27,36 @@ l'équipe. Chaque agent ouvre ce fichier avec la page des rappels, coche son pr�
 
 Si votre agent date d'avant ce tutoriel, mettez-le d'abord à jour (tutoriel de l'agent, étape 12).
 Ouvrez `dispatch.toml` avec le Bloc-notes et ajoutez cette section, par exemple juste avant les
-`[[collaborators]]`. Collez votre chemin en **doublant chaque `\`** :
+`[[collaborators]]`. Collez votre chemin **entre apostrophes** `'…'` (avec des apostrophes, pas besoin de
+doubler les `\`) :
 
 ```toml
 [rappels]
 active = true
-dossier = "C:\\Users\\vous\\Sector Alarm\\Movers - Documents\\Rappels"
+dossier = 'C:\Users\vous\Sector Alarm\Movers - Documents\Rappels'
 libelles = ["horaire", "rappel", "rappeler", "creneau", "rdv", "rendez-vous"]
 fuseau = "Europe/Paris"
 garder_jours = 2
 ```
 
-Enregistrez, puis relancez **`4-lancer.bat`**. Si le chemin est faux, le bandeau du tableau de bord de
-l'agent affiche « Rappels de l'équipe : dossier introuvable… ».
+Enregistrez.
+
+## Étape 3 : vérifier tout de suite (`6-rappels.bat`)
+
+Dans `movers-dispatch\windows`, double-cliquez sur **`6-rappels.bat`** et répondez **o** pour ajouter
+un **rappel d'essai** dans 20 minutes pour tout le monde. La fenêtre indique :
+- **« Fichier écrit : …\Rappels\rappels-movers.json »** : c'est bon. Le fichier apparaît dans Teams
+  (onglet **Fichiers › Rappels**) dès que OneDrive l'a synchronisé, en général en moins d'une minute ;
+- **« Les rappels sont désactivés »** : la section `[rappels]` manque, ou `active = false` ;
+- **« dossier introuvable »** : le chemin ne correspond pas au dossier synchronisé. Recopiez-le depuis la
+  barre d'adresse de l'Explorateur ;
+- **« faute de frappe »** : un guillemet ou un `\` pose problème. Mettez le chemin entre apostrophes `'…'`.
+
+Le rappel d'essai permet de tester la page et les notifications avec les agents (étape B). Il disparaît
+seul après 2 jours.
+
+Ensuite, relancez **`4-lancer.bat`** comme d'habitude : le fichier est mis à jour à chaque attribution de
+tâche et à la fin de chaque passage de l'agent.
 
 Après le premier passage, le dossier contient deux fichiers, mis à jour à chaque passage de l'agent :
 - **`rappels-movers.json`** : le fichier lu par la page ;
@@ -82,6 +99,7 @@ Après le premier passage, le dossier contient deux fichiers, mis à jour à cha
 |---|---|
 | Pas de notification | page fermée ? notifications autorisées (bouton **Tester**) ? prénom coché ? |
 | « Notifications bloquées » | cadenas à gauche de l'adresse › **Notifications** › **Autoriser**, puis recharger la page |
+| Le fichier n'est pas dans Teams | lancer `6-rappels.bat` (étape 3) : il écrit le fichier ou dit ce qui bloque |
 | Un nouveau rappel n'apparaît pas | OneDrive synchronisé (icône nuage en bas à droite) ? l'agent Dispatch a-t-il tourné ? |
 | Le bouton ne relit pas le fichier tout seul | navigateur autre qu'Edge / Chrome : rouvrir le fichier, ou utiliser Edge |
 | Le rappel n'est pas dans la liste | la tâche a-t-elle bien une ligne « Horaire de Rappel : 14h30 - 28/10 » ? |
