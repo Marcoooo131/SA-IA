@@ -195,6 +195,21 @@ export async function markNotificationsRead(ids: number[]): Promise<void> {
   check(await supabase.from('notifications').update({ read_at: new Date().toISOString() }).in('id', ids));
 }
 
+// ------------------------------------------------------------------ intégrations
+/** Jeton du lien d'abonnement Outlook de l'utilisateur connecté (rotate : en générer un nouveau) */
+export async function calendarFeedToken(rotate = false): Promise<string> {
+  return check(await supabase.rpc('calendar_feed_token', { p_rotate: rotate })) as string;
+}
+
+/** Nouveau jeton de l'agent Dispatch (affiché une seule fois ; l'ancien cesse de fonctionner) */
+export async function rotateDispatchToken(): Promise<string> {
+  return check(await supabase.rpc('rotate_integration_token', { p_name: 'dispatch' })) as string;
+}
+
+export async function dispatchTokenDate(): Promise<string | null> {
+  return check(await supabase.rpc('integration_token_info', { p_name: 'dispatch' })) as string | null;
+}
+
 // ------------------------------------------------------------------ administration des comptes
 export interface InviteRequest {
   email: string;

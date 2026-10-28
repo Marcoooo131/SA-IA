@@ -18,6 +18,17 @@ déroulante du tableau de bord permet de choisir à qui attribuer l'élément.
 > | Règle « Case pertinent pour Movers » quand le Regarding est le compte | Observée dans la vidéo : titre « Mover » / « MOVERS », **quel que soit le statut**. **À confirmer par le métier** |
 > | Mode Automatique | **Désactivé** par la configuration (`automatic_allowed = false`) |
 
+## Réservation dans l'agenda partagé (facultatif)
+
+Quand l'agent attribue une **tâche** (Worked By écrit et relu), il réserve son **échéance** (« Due », colonne
+`scheduledend`) dans l'[agenda partagé](../agenda-partage/README.md) du collaborateur : créneau de 15 min,
+notification sur son ordinateur, rappel 15 min avant, et visible dans Outlook s'il s'est abonné. Une même tâche
+met toujours à jour le même créneau ; un échec (agenda injoignable, collaborateur sans compte) est noté dans le
+journal et n'arrête jamais le dispatch. Rien n'est envoyé en mode Simulation.
+
+Activation dans `dispatch.toml` : section `[agenda]` (`active = true`, `jeton` généré dans l'agenda, menu
+Administration › Paramètres › « Agent Dispatch Movers ») et `email_agenda` de chaque collaborateur.
+
 ## 1. Processus observé dans la vidéo
 
 CRM Dynamics 365 **sur site** (interface web classique, `…/<Organisation>/main.aspx`), tableau de bord

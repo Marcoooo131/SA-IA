@@ -287,4 +287,40 @@ select tests.throws($$update public.profiles set role = 'admin' where id = tests
   'compte de service : ne peut pas créer un second administrateur non plus');
 reset role;
 
+
+-- ---------------------------------------------------------------- intégrations (Outlook, Dispatch)
+select tests.as_user('bob');
+set role authenticated;
+create temp table if not exists t_tok (who text, token text);
+grant all on t_tok to authenticated;
+insert into t_tok select 'bob1', public.calendar_feed_token();
+insert into t_tok select 'bob2', public.calendar_feed_token();
+insert into t_tok select 'bob3', public.calendar_feed_token(true);
+select tests.ok((select token from t_tok where who = 'bob1') = (select token from t_tok where who = 'bob2')
+                and length((select token from t_tok where who = 'bob1')) = 64,
+  'Outlook : lien d''abonnement stable (64 caractères aléatoires)');
+select tests.ok((select token from t_tok where who = 'bob3') <> (select token from t_tok where who = 'bob1'),
+  'Outlook : le lien peut être régénéré (l''ancien cesse de fonctionner)');
+select tests.throws($$select public.rotate_integration_token('dispatch')$$,
+  'Dispatch : un collaborateur ne peut pas générer le jeton de l''agent');
+reset role;
+
+select tests.as_user('carol');
+set role authenticated;
+select public.calendar_feed_token();
+select tests.ok((select count(*) from public.calendar_feeds) = 1,
+  'Outlook : chacun ne voit que son propre lien');
+reset role;
+
+select tests.as_user('admin');
+set role authenticated;
+select tests.ok(length(public.rotate_integration_token('dispatch')) = 64, 'Dispatch : l''administrateur génère le jeton');
+select tests.ok(public.integration_token_info('dispatch') is not null, 'Dispatch : date du jeton visible par l''admin');
+select tests.throws($$select * from public.integration_tokens$$, 'Dispatch : l''empreinte du jeton est illisible depuis le navigateur');
+insert into public.appointments (title, starts_at, ends_at, external_ref)
+values ('Tâche CRM', '2030-03-01 09:00+00', '2030-03-01 09:15+00', 'crm-task:abc');
+select tests.throws($$insert into public.appointments (title, starts_at, ends_at, external_ref) values ('Doublon', '2030-03-01 09:00+00', '2030-03-01 09:15+00', 'crm-task:abc')$$,
+  'Dispatch : une même tâche CRM ne crée jamais deux rendez-vous');
+reset role;
+
 \echo 'Tous les tests de sécurité de la base sont passés.'

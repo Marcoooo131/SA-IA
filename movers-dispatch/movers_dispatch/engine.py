@@ -15,6 +15,7 @@ from dataclasses import dataclass, field, replace
 
 from .config import Config, normalize_name
 from .dataverse import ConcurrentModification, CrmError, Gateway, SessionExpired, UncertainWrite
+from .agenda import book_task
 from .journal import Journal
 from .models import Email, Lookup, Mode, QueueItem, Status, User
 from .reading import SIGNAL_LABELS, categorize, category_label, extract, mask, phone_variants
@@ -84,6 +85,7 @@ class State:
 
 class Agent:
     def __init__(self, cfg: Config, gateway: Gateway, journal: Journal):
+        self.agenda_http = None     # httpx client for the agenda booking (tests); None = a fresh client
         self.cfg = cfg
         self.gw = gateway
         self.journal = journal
@@ -314,6 +316,21 @@ class Agent:
             origin = f"Case {case_no}" if case_no else f"choix manuel de {actor}"
         self._record(run_id, ev, Status.ASSIGNED, f"Worked By = {user.first_name} ({origin}), vérifié.", mode)
         self.journal.event(run_id, ev.item.id, "worked_by_verifie", detail, actor)
+        self._book_agenda(run_id, ev, user.id, actor)
+
+    def _book_agenda(self, run_id: int | None, ev: Evaluation, systemuser_id: str, actor: str) -> None:
+        """Task assigned: its due date is booked in the collaborator's agenda. Never stops the run."""
+        collab = self.cfg.collaborator_for(systemuser_id)
+        if ev.activity is None or collab is None:
+            return
+        try:
+            booking = book_task(self.cfg, ev.activity, collab, ev.account_name, self.agenda_http)
+        except Exception as e:  # noqa: BLE001 — the dispatch itself is already done and verified
+            booking = None
+            self.journal.event(run_id, ev.item.id, "agenda_echec", {"erreur": str(e)}, actor)
+        if booking is not None:
+            action = "agenda_echec" if booking.status == "echec" else "agenda_" + booking.status
+            self.journal.event(run_id, ev.item.id, action, {"collaborateur": collab.first_name, "detail": booking.detail}, actor)
 
     def _writes_blocked(self) -> list[str]:
         out = list(self.cfg.problems())

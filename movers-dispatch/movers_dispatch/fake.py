@@ -70,7 +70,7 @@ class FakeCrm:
     def add(self, label: str, subject: str, account: str | None, cases: list[tuple],
             worker: str | None = None, regarding_entity: str | None = "account", regarding_case: int = 0,
             kind: str = "email", text: str = "", sender: str = "", account_number: str = "",
-            account_emails=(), account_phones=(), files=(), own_account: bool = False) -> str:
+            account_emails=(), account_phones=(), files=(), own_account: bool = False, due: str = "") -> str:
         """cases: (ticket number, owner key in USERS or "team", statecode[, title — default "Mover"]).
         regarding_entity "incident": the mail's Regarding is the case at index ``regarding_case``;
         None: Regarding empty (the account still exists, to be found from ``text`` / ``sender``)."""
@@ -98,7 +98,7 @@ class FakeCrm:
             regarding = Lookup(gid(f"contract/{label}"), "contract", "C-SFR-000000000")
         else:
             regarding = Lookup(aid, regarding_entity, self._account_label(aid) if account else "") if account else None
-        self.emails[eid] = Email(eid, subject, regarding, kind, text=text, sender=sender, etag=f'W/"{next(self._etags)}"')
+        self.emails[eid] = Email(eid, subject, regarding, kind, text=text, sender=sender, etag=f'W/"{next(self._etags)}"', due=due)
         if own_account and account:
             self.own_accounts[eid] = aid
         self.attachments[eid] = [{"id": gid(f"att/{label}/{n}"), "filename": name, "mimetype": mime, "size": len(data),

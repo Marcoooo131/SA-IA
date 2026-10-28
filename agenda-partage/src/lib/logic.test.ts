@@ -235,3 +235,23 @@ describe('configuration Supabase', () => {
     expect(configProblem('https://x.supabase.co', 'sb_secret_abc')).toMatch(/SECRÈTE/);
   });
 });
+
+describe('rappels avant rendez-vous', () => {
+  it('sonne une seule fois, dans la fenêtre du rappel, pour mes rendez-vous actifs', async () => {
+    const { dueReminders } = await import('./alerts');
+    const now = Date.parse('2030-01-10T08:50:00Z');
+    const base = { all_day: false, status: 'confirme', masked: false, responsible_id: 'me' };
+    const list = [
+      { ...base, id: 'dans10', starts_at: '2030-01-10T09:00:00Z' },
+      { ...base, id: 'dans20', starts_at: '2030-01-10T09:10:00Z' },
+      { ...base, id: 'autre', starts_at: '2030-01-10T09:00:00Z', responsible_id: 'bob' },
+      { ...base, id: 'annule', starts_at: '2030-01-10T09:00:00Z', status: 'annule' },
+      { ...base, id: 'journee', starts_at: '2030-01-10T09:00:00Z', all_day: true },
+      { ...base, id: 'passe', starts_at: '2030-01-10T08:45:00Z' },
+    ];
+    expect(dueReminders(list, 'me', 15, now, new Set()).map((a) => a.id)).toEqual(['dans10']);
+    expect(dueReminders(list, 'me', 15, now, new Set(['dans10|2030-01-10T09:00:00Z']))).toEqual([]);
+    // rendez-vous déplacé : nouvel horaire → nouveau rappel
+    expect(dueReminders(list, 'me', 30, now, new Set(['dans10|2030-01-10T09:00:00Z'])).map((a) => a.id)).toEqual(['dans20']);
+  });
+});

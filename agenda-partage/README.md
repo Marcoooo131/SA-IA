@@ -205,14 +205,31 @@ Database > Backups sur une offre payante), et l'export CSV pour un usage bureaut
 
 ---
 
+## Notifications, Outlook et agent Dispatch
+
+- **Notifications sur l'ordinateur** (Mon profil › « Autoriser les notifications ») : une alerte quand un collègue ou
+  l'agent Dispatch vous confie / modifie un rendez-vous, puis un **rappel 15 min avant** (5 à 60 min au choix) pour
+  vos rendez-vous. L'agenda doit rester ouvert (un onglet réduit suffit ; menu du navigateur › « Installer
+  l'application » pour l'avoir dans sa propre fenêtre).
+- **Outlook** (Mon profil › « Mes rendez-vous dans Outlook ») : lien d'abonnement personnel (fonction
+  [`calendar-feed`](supabase/functions/calendar-feed/index.ts)) à coller dans Outlook › Ajouter un calendrier ›
+  S'abonner à partir du web. Les rendez-vous dont vous êtes responsable y apparaissent avec un rappel Outlook
+  15 min avant. Lecture seule ; Outlook se met à jour à son rythme (de 30 min à quelques heures).
+- **Agent Dispatch Movers** : quand il attribue une tâche CRM, il réserve son échéance dans l'agenda du
+  collaborateur (fonction [`dispatch-booking`](supabase/functions/dispatch-booking/index.ts), jeton généré dans
+  Administration › Paramètres, réglages dans la section `[agenda]` de `dispatch.toml`).
+
+Déploiement des fonctions : `verify_jwt = false` pour `calendar-feed` et `dispatch-booking` (elles vérifient
+elles-mêmes leur jeton).
+
 ## 4. Évolutions préparées (non activées)
 
 | Évolution | Ce qui existe déjà | Ce qu'il faudrait ajouter |
 |---|---|---|
-| Rappels avant RDV | Table `notifications`, statuts, responsable, fuseau | Tâche planifiée (`pg_cron` + Edge Function) qui crée les rappels J-1 / H-1 |
+| Rappels avant RDV | ✅ notification sur l'ordinateur (agenda ouvert) + rappel Outlook via l'abonnement | Notifications « push » agenda fermé (service worker + `pg_cron`) |
 | Notifications e-mail | Table `notifications` alimentée par la base | Edge Function déclenchée par *Database Webhook* sur `notifications`, + SMTP / Resend |
 | SMS automatiques | idem ; le dépôt contient déjà `sms-reminders/` | Fournisseur SMS (Twilio, OVH…) — **payant, à valider** |
-| Google Calendar / Outlook | Dates en UTC, liens partageables | Export iCal (abonnement) ou synchronisation OAuth via Edge Function |
+| Google Calendar / Outlook | ✅ abonnement iCalendar (lecture seule) | Synchronisation dans les deux sens (Microsoft Graph, accord de l'IT) |
 | Export Excel | Export CSV opérationnel | Génération .xlsx (bibliothèque `exceljs`, déjà utilisée dans le dépôt) |
 | Pièces jointes | ✅ opérationnelles (stockage privé, 10 Mo) | Aperçu des images, limite configurable |
 | Commentaires et notifications internes | ✅ opérationnels | Mentions « @collègue », préférences de notification |

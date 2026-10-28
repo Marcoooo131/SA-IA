@@ -233,11 +233,14 @@ class DataverseGateway:
         if entity not in ACTIVITY_SETS:
             raise CrmError(f"Type d'activité non pris en charge : {entity}")
         select = "activityid,subject,_regardingobjectid_value,description" + (",sender" if entity == "email" else "")
+        due_field = self.cfg.agenda.due_field if entity == "task" and self.cfg.agenda.enabled and not self.cfg.agenda.problems() else ""
+        if due_field:
+            select += f",{due_field}"
         row = self._get(f"{ACTIVITY_SETS[entity]}({guid(activity_id)})", "Lecture du mail" if entity == "email" else "Lecture de la tâche",
                         {"$select": select})
         return Email(id=row["activityid"].lower(), subject=row.get("subject") or "", regarding=_lookup(row, "regardingobjectid"),
                      kind=entity, text=html_to_text(row.get("description") or ""), sender=(row.get("sender") or "").strip(),
-                     etag=row.get("@odata.etag", ""))
+                     etag=row.get("@odata.etag", ""), due=(row.get(due_field) or "") if due_field else "")
 
     def get_email(self, email_id: str) -> Email:
         return self.get_activity("email", email_id)

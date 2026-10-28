@@ -1,5 +1,6 @@
 import { KeyRound, Loader2, LogOut, Save } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { NotificationSettings, OutlookSubscription } from '../components/IntegrationSettings';
 import { Avatar } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useTeam } from '../context/TeamContext';
@@ -119,6 +120,9 @@ export function ProfilePage() {
           </button>
         </div>
       </div>
+
+      <NotificationSettings />
+      <OutlookSubscription />
 
       <div className="card space-y-4 p-5">
         <h2 className="flex items-center gap-2 font-bold">
