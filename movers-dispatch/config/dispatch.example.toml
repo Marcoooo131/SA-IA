@@ -115,12 +115,13 @@ liens_compte = {}
 [rappels]
 # Rappels de l'équipe : quand l'agent attribue une TÂCHE, la ligne « Horaire de Rappel : 14h30 - 28/10 »
 # de sa description est ajoutée au fichier « rappels-movers.json » (+ « rappels-movers.csv » pour Excel),
-# trié par heure, dans le dossier du canal Teams synchronisé sur ce PC. Chaque agent ouvre la page
+# trié par heure, dans le dossier « Rappels » de OneDrive. Chaque agent ouvre la page
 # https://marcoooo131.github.io/SA-IA/rappels/, choisit ce fichier une fois, coche son prénom et reçoit
-# une notification avant chaque rappel. Le fichier reste dans Teams / OneDrive (rien sur Internet).
+# une notification avant chaque rappel. Le fichier reste dans OneDrive (rien sur Internet).
+# Le plus simple : double-cliquer sur windows\6-rappels.bat, qui active cette section tout seul.
 active = false
-# Chemin du dossier Teams synchronisé, copié depuis la barre d'adresse de l'Explorateur, ENTRE APOSTROPHES :
-# dossier = 'C:\Users\vous\Sector Alarm\Movers - Documents\Rappels'      (vérification : windows\6-rappels.bat)
+# Vide : dossier « Rappels » de votre OneDrive, créé tout seul. Sinon, un autre chemin ENTRE APOSTROPHES :
+# dossier = 'C:\Users\vous\Sector Alarm\Movers - Documents\Rappels'
 dossier = ""
 libelles = ["horaire", "rappel", "rappeler", "creneau", "rdv", "rendez-vous"]
 fuseau = "Europe/Paris"

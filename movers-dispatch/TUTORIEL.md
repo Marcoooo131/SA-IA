@@ -47,7 +47,7 @@ le Bloc-notes.
 | `3-decouvrir.bat` | lit le CRM (sans rien modifier) pour trouver les informations à recopier dans la configuration |
 | `4-lancer.bat` | lance l'agent sur le vrai CRM : **c'est celui de tous les jours** |
 | `5-exporter-corrections.bat` | exporte vos corrections dans un fichier Excel (étape 11) |
-| `6-rappels.bat` | écrit tout de suite le fichier des rappels de l'équipe dans Teams, ou dit ce qui bloque (étape 13) |
+| `6-rappels.bat` | active les rappels, crée le dossier « Rappels » dans OneDrive et y écrit le fichier, ou dit ce qui bloque (étape 13) |
 
 > Le dossier `movers-dispatch-ancienne-version` est une copie de secours de l'ancienne version (sans le
 > bouton Corriger). Vous n'en avez normalement pas besoin.
@@ -283,10 +283,10 @@ Votre journal est mis à jour automatiquement, sans rien perdre.
 ## Étape 13 : partager les rappels avec l'équipe (facultatif)
 
 L'agent peut ajouter l'horaire écrit dans chaque tâche qu'il attribue (« Horaire de Rappel : 14h30 - 28/10 »)
-à un fichier de rappels trié, rangé dans le dossier Teams de l'équipe. Chaque agent ouvre ce fichier avec la
+à un fichier de rappels trié, rangé dans le dossier « Rappels » de OneDrive, partagé à l'équipe. Chaque agent ouvre ce fichier avec la
 page **https://marcoooo131.github.io/SA-IA/rappels/**, coche son prénom et reçoit une notification
 15 minutes avant chaque rappel. Marche à suivre : [tutoriel des rappels](../rappels-equipe/TUTORIEL.md)
-(section `[rappels]` à ajouter dans `dispatch.toml`).
+(il suffit de double-cliquer sur `6-rappels.bat`).
 
 ---
 

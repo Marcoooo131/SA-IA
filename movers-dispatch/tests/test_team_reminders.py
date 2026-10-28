@@ -104,3 +104,34 @@ def test_configuration_section(tmp_path):
     cfg = parse(raw)
     assert cfg.reminders.enabled and cfg.reminders.keep_days == 3 and cfg.reminders.problems() == []
     assert parse({"collaborators": raw["collaborators"]}).reminders.enabled is False
+
+
+def test_without_folder_the_onedrive_rappels_folder_is_used_and_created(tmp_path, monkeypatch):
+    business = tmp_path / "OneDrive - Entreprise"
+    business.mkdir()
+    monkeypatch.setenv("OneDriveCommercial", str(business))
+    monkeypatch.setenv("OneDrive", str(tmp_path))
+    cfg = replace(demo_config(automatic_allowed=True), reminders=TeamReminders(enabled=True))
+    assert cfg.reminders.problems() == [] and cfg.reminders.resolved_folder() == business / "Rappels"
+    assert team_reminders.export(cfg, Journal(":memory:")) == business / "Rappels" / team_reminders.JSON_NAME
+    monkeypatch.delenv("OneDriveCommercial")
+    monkeypatch.delenv("OneDrive")
+    assert TeamReminders(enabled=True, folder="auto").problems()
+
+
+def test_rappels_command_switches_the_reminders_on_and_writes_the_file(tmp_path, monkeypatch, capsys):
+    from movers_dispatch import cli
+    from movers_dispatch.config import enable_reminders, load
+    monkeypatch.setenv("OneDriveCommercial", str(tmp_path))
+    toml = tmp_path / "dispatch.toml"
+    toml.write_text('[[collaborators]]\nkey = "kader"\nfirst_name = "Kader"\nsystemuser_id = ""\n', encoding="utf-8")
+    cli.main(["rappels", "-c", str(toml), "--essai", "tous"])
+    assert "Fichier écrit" in capsys.readouterr().out
+    assert read(tmp_path / "Rappels")["reminders"][0]["collaborator"] == "Kader"
+    assert load(toml).collaborators[0].first_name == "Kader"
+    # existing section switched off: only its « active » line changes
+    toml.write_text('[rappels]\nactive = false   # off\ndossier = ""\n\n[[collaborators]]\nkey = "kader"\n'
+                    'first_name = "Kader"\nsystemuser_id = ""\n', encoding="utf-8")
+    enable_reminders(toml)
+    cfg = load(toml)
+    assert cfg.reminders.enabled and cfg.collaborators[0].key == "kader"
