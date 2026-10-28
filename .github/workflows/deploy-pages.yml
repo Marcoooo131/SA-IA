@@ -56,6 +56,10 @@ jobs:
           npm test
           npm run build
           mkdir -p ../dist/agenda && cp -r dist/. ../dist/agenda/
+      # Rappels de l'équipe Movers (…/rappels/) : page statique, sans aucune donnée (elle lit sur le PC de
+      # l'agent le fichier écrit par l'agent Dispatch dans le dossier Teams)
+      - name: Page des rappels de l'équipe
+        run: mkdir -p dist/rappels && cp rappels-equipe/index.html dist/rappels/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

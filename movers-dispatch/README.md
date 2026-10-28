@@ -18,6 +18,14 @@ déroulante du tableau de bord permet de choisir à qui attribuer l'élément.
 > | Règle « Case pertinent pour Movers » quand le Regarding est le compte | Observée dans la vidéo : titre « Mover » / « MOVERS », **quel que soit le statut**. **À confirmer par le métier** |
 > | Mode Automatique | **Désactivé** par la configuration (`automatic_allowed = false`) |
 
+## Rappels de l'équipe (facultatif)
+
+Après chaque attribution de **tâche**, l'horaire écrit dans sa description (« Horaire de Rappel : 14h30 - 28/10 »)
+est ajouté au fichier `rappels-movers.json` (+ `.csv`), trié, dans le dossier Teams synchronisé indiqué dans la
+section `[rappels]` de `dispatch.toml`. Les agents l'ouvrent avec la page
+[Rappels Movers](https://marcoooo131.github.io/SA-IA/rappels/) (aucune donnée sur la page, lecture sur leur PC)
+et reçoivent une notification avant chaque rappel. Voir le [tutoriel](../rappels-equipe/TUTORIEL.md).
+
 ## Réservation dans l'agenda partagé (facultatif)
 
 Quand l'agent attribue une **tâche** (Worked By écrit et relu), il lit l'**horaire de rappel écrit dans la

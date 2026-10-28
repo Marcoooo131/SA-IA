@@ -59,7 +59,8 @@ def create_app(agent: Agent, token: str, actor: str = "local") -> FastAPI:
         return {
             "state": {"running": s.running, "mode": s.mode, "run_id": s.run_id, "current": s.current,
                       "message": s.message, "problems": s.problems,
-                      "warnings": s.warnings + ["Réservation dans l'agenda : " + p for p in agent.cfg.agenda.problems()]},
+                      "warnings": s.warnings + ["Réservation dans l'agenda : " + p for p in agent.cfg.agenda.problems()]
+                      + ["Rappels de l'équipe : " + p for p in agent.cfg.reminders.problems()]},
             "config": {"default_mode": agent.cfg.default_mode.value, "automatic_allowed": agent.cfg.automatic_allowed,
                        "connection": agent.cfg.connection.kind, "problems": agent.cfg.problems(),
                        "collaborators": [{"key": c.key, "first_name": c.first_name} for c in agent.cfg.collaborators]},

@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111111">
+<title>Rappels Movers</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23111'/%3E%3Cpath d='M32 14a12 12 0 0 0-12 12v9l-5 7h34l-5-7v-9a12 12 0 0 0-12-12z' fill='%23E30613'/%3E%3Ccircle cx='32' cy='48' r='5' fill='%23fff'/%3E%3C/svg%3E">
+<!--
+  Rappels de l'équipe Movers.
+  Cette page ne contient AUCUNE donnée : elle lit sur le PC de l'agent le fichier « rappels-movers.json »
+  écrit par l'agent Dispatch dans le dossier Teams de l'équipe. Le fichier n'est jamais envoyé sur Internet.
+-->
+<style>
+  :root { --ink:#111; --ink2:#242424; --red:#e30613; --red2:#b8000a; --bg:#f4f4f5; --card:#fff; --line:#e5e5e5; --muted:#6b7280; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  header { background:var(--ink); color:#fff; padding:14px 20px; display:flex; align-items:center; gap:12px; position:sticky; top:0; z-index:5; }
+  header .logo { width:36px; height:36px; border-radius:10px; background:var(--red); display:grid; place-items:center; font-size:20px; }
+  header h1 { margin:0; font-size:18px; }
+  header .sub { color:#a3a3a3; font-size:12px; }
+  header .status { margin-left:auto; font-size:12px; color:#d4d4d4; text-align:right; }
+  main { max-width:960px; margin:0 auto; padding:16px; display:grid; gap:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  h2 { font-size:15px; margin:0 0 10px; }
+  .row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  button, select { font:inherit; border-radius:10px; padding:9px 14px; border:1px solid #d4d4d4; background:#fff; cursor:pointer; }
+  button.primary { background:var(--red); border-color:var(--red); color:#fff; font-weight:600; }
+  button.primary:hover { background:var(--red2); }
+  button.dark { background:var(--ink); border-color:var(--ink); color:#fff; font-weight:600; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { display:flex; align-items:center; gap:8px; border:1px solid #d4d4d4; border-radius:999px; padding:7px 14px; cursor:pointer; user-select:none; background:#fff; font-weight:500; }
+  .chip input { accent-color: var(--red); width:16px; height:16px; }
+  .chip.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .muted { color:var(--muted); font-size:13px; }
+  .warn { background:#fff7ed; border:1px solid #fdba74; color:#9a3412; border-radius:12px; padding:10px 12px; font-size:14px; }
+  .ok { background:#f0fdf4; border:1px solid #86efac; color:#166534; border-radius:12px; padding:10px 12px; font-size:14px; }
+  .group h3 { margin:16px 0 8px; font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); }
+  .item { display:flex; gap:14px; align-items:center; border:1px solid var(--line); border-left:5px solid var(--red); border-radius:12px; padding:10px 14px; margin-bottom:8px; background:#fff; }
+  .item.past { opacity:.55; border-left-color:#a3a3a3; }
+  .item.soon { border-left-color:#f59e0b; background:#fffbeb; }
+  .item .time { font-size:22px; font-weight:800; min-width:70px; font-variant-numeric:tabular-nums; }
+  .item .main { flex:1; min-width:0; }
+  .item .title { font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .item .who { font-size:12px; font-weight:700; background:var(--ink); color:#fff; border-radius:999px; padding:3px 10px; white-space:nowrap; }
+  .item a { color:var(--red); font-weight:600; text-decoration:none; font-size:13px; white-space:nowrap; }
+  .empty { text-align:center; color:var(--muted); padding:28px 10px; }
+  #drop.drag { outline:3px dashed var(--red); outline-offset:4px; }
+  @media (max-width:600px) { .item { flex-wrap:wrap; } .item .time { min-width:auto; } header .status { display:none; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🔔</div>
+  <div><h1>Rappels Movers</h1><div class="sub">Horaires de rappel des tâches attribuées par l'agent Dispatch</div></div>
+  <div class="status" id="status">Aucun fichier ouvert</div>
+</header>
+<main>
+  <section class="card" id="drop">
+    <h2>1. Le fichier des rappels</h2>
+    <p class="muted" style="margin-top:0">Ouvrez <strong>rappels-movers.json</strong> dans le dossier Teams de l'équipe synchronisé sur votre PC
+      (Explorateur de fichiers › dossier OneDrive de votre entreprise › dossier du canal Teams). Une seule fois : la page le relit ensuite toute seule.
+      Le fichier reste sur votre PC, rien n'est envoyé sur Internet.</p>
+    <div class="row">
+      <button class="primary" id="pick">📂 Ouvrir le fichier des rappels</button>
+      <button class="dark" id="resume" hidden>↻ Reprendre le fichier « <span id="resumeName"></span> »</button>
+      <input type="file" id="fileInput" accept=".json,application/json" hidden>
+      <span class="muted">ou glissez le fichier ici</span>
+    </div>
+    <p id="fileMsg" class="muted"></p>
+  </section>
+
+  <section class="card">
+    <h2>2. Je suis…</h2>
+    <div class="chips" id="people"><span class="muted">Ouvrez d'abord le fichier.</span></div>
+  </section>
+
+  <section class="card">
+    <h2>3. Notifications</h2>
+    <div class="row">
+      <button class="primary" id="notifBtn">🔔 Activer les notifications</button>
+      <label class="muted">Me prévenir
+        <select id="lead"><option value="5">5 min</option><option value="10">10 min</option><option value="15" selected>15 min</option><option value="30">30 min</option></select>
+        avant</label>
+      <button id="testBtn">Tester</button>
+    </div>
+    <p id="notifMsg" class="muted"></p>
+    <p class="muted" style="margin-bottom:0">Laissez cette page ouverte (onglet réduit suffit). Astuce : Edge › menu … › Applications ›
+      « Installer ce site en tant qu'application » pour l'avoir dans sa propre fenêtre.</p>
+  </section>
+
+  <section class="card">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">Mes rappels</h2>
+      <label class="muted"><input type="checkbox" id="showPast"> afficher les rappels passés</label>
+    </div>
+    <div id="list"><div class="empty">Aucun rappel à afficher.</div></div>
+  </section>
+</main>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem('rappels.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem('rappels.' + k, JSON.stringify(v)); } catch { /* stockage indisponible */ } },
+  };
+  let data = null;            // contenu du fichier
+  let handle = null;          // accès au fichier (Edge / Chrome) : relu automatiquement
+  let lastModified = 0;
+  let selected = new Set(store.get('selected', []));
+  const notified = new Set(store.get('notified', []));
+  $('lead').value = String(store.get('lead', 15));
+
+  // ---------------------------------------------------------------- mémoire du fichier (IndexedDB)
+  const idb = (mode, fn) => new Promise((resolve) => {
+    try {
+      const req = indexedDB.open('rappels-movers', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('h');
+      req.onsuccess = () => { const tx = req.result.transaction('h', mode); const r = fn(tx.objectStore('h')); tx.oncomplete = () => resolve(r && r.result); tx.onerror = () => resolve(null); };
+      req.onerror = () => resolve(null);
+    } catch { resolve(null); }
+  });
+  const saveHandle = (h) => idb('readwrite', (s) => s.put(h, 'file'));
+  const loadHandle = () => idb('readonly', (s) => s.get('file'));
+
+  // ---------------------------------------------------------------- lecture
+  function accept(text, name, modified) {
+    let parsed;
+    try { parsed = JSON.parse(text); } catch { return fail(`« ${name} » n'est pas le fichier des rappels (JSON illisible).`); }
+    if (!parsed || !Array.isArray(parsed.reminders)) return fail(`« ${name} » n'est pas le fichier des rappels.`);
+    data = parsed; lastModified = modified || 0;
+    $('fileMsg').className = 'ok';
+    $('fileMsg').textContent = `Fichier « ${name} » chargé : ${parsed.reminders.length} rappel(s), mis à jour par l'agent ${ago(parsed.generated_at)}.`;
+    $('status').textContent = `Fichier mis à jour ${ago(parsed.generated_at)}`;
+    renderPeople(); render(); check();
+  }
+  function fail(msg) { $('fileMsg').className = 'warn'; $('fileMsg').textContent = msg; }
+
+  async function readHandle(force) {
+    if (!handle) return;
+    try {
+      const file = await handle.getFile();
+      if (force || file.lastModified !== lastModified) accept(await file.text(), file.name, file.lastModified);
+    } catch (e) {
+      fail('Impossible de relire le fichier (déplacé, renommé ou OneDrive en cours de synchronisation). Rouvrez-le si besoin.');
+    }
+  }
+
+  $('pick').onclick = async () => {
+    if (window.showOpenFilePicker) {
+      try {
+        const [h] = await window.showOpenFilePicker({ types: [{ description: 'Rappels', accept: { 'application/json': ['.json'] } }] });
+        handle = h; await saveHandle(h); $('resume').hidden = true; await readHandle(true);
+      } catch { /* annulé */ }
+    } else {
+      $('fileInput').click();
+    }
+  };
+  $('fileInput').onchange = async (e) => {
+    const f = e.target.files[0];
+    if (f) { accept(await f.text(), f.name, f.lastModified); $('fileMsg').textContent += ' Ce navigateur ne relit pas le fichier tout seul : rouvrez-le pour voir les nouveaux rappels.'; }
+    e.target.value = '';
+  };
+  $('resume').onclick = async () => {
+    if (handle && (await handle.requestPermission({ mode: 'read' })) === 'granted') { $('resume').hidden = true; await readHandle(true); }
+  };
+  const drop = $('drop');
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('drag'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+  drop.addEventListener('drop', async (e) => {
+    e.preventDefault(); drop.classList.remove('drag');
+    const item = e.dataTransfer.items && e.dataTransfer.items[0];
+    if (item && item.getAsFileSystemHandle) {
+      const h = await item.getAsFileSystemHandle();
+      if (h && h.kind === 'file') { handle = h; await saveHandle(h); await readHandle(true); return; }
+    }
+    const f = e.dataTransfer.files[0];
+    if (f) accept(await f.text(), f.name, f.lastModified);
+  });
+
+  // ---------------------------------------------------------------- affichage
+  const fmtTime = (iso) => new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  const dayKey = (d) => d.toLocaleDateString('fr-CA');
+  function dayLabel(d) {
+    const today = new Date(); const tomorrow = new Date(); tomorrow.setDate(today.getDate() + 1);
+    if (dayKey(d) === dayKey(today)) return "Aujourd'hui";
+    if (dayKey(d) === dayKey(tomorrow)) return 'Demain';
+    const s = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+  function ago(iso) {
+    if (!iso) return '';
+    const m = Math.round((Date.now() - Date.parse(iso)) / 60000);
+    if (m < 1) return "à l'instant";
+    if (m < 60) return `il y a ${m} min`;
+    const h = Math.round(m / 60);
+    return h < 24 ? `il y a ${h} h` : `le ${new Date(iso).toLocaleDateString('fr-FR')}`;
+  }
+  const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  function renderPeople() {
+    const people = (data.collaborators && data.collaborators.length)
+      ? data.collaborators
+      : [...new Map(data.reminders.map((r) => [r.collaborator_key, { key: r.collaborator_key, name: r.collaborator }])).values()];
+    $('people').innerHTML = people.map((p) => `
+      <label class="chip ${selected.has(p.key) ? 'on' : ''}"><input type="checkbox" value="${esc(p.key)}" ${selected.has(p.key) ? 'checked' : ''}>${esc(p.name)}</label>`).join('');
+    $('people').querySelectorAll('input').forEach((box) => box.onchange = () => {
+      box.checked ? selected.add(box.value) : selected.delete(box.value);
+      box.parentElement.classList.toggle('on', box.checked);
+      store.set('selected', [...selected]); render(); check();
+    });
+  }
+
+  function mine() {
+    if (!data) return [];
+    return data.reminders.filter((r) => selected.has(r.collaborator_key)).sort((a, b) => a.start.localeCompare(b.start));
+  }
+
+  function render() {
+    const lead = Number($('lead').value);
+    const now = Date.now();
+    const showPast = $('showPast').checked;
+    const list = mine().filter((r) => showPast || Date.parse(r.end || r.start) + 30 * 60000 > now);
+    if (!data) return;
+    if (!selected.size) { $('list').innerHTML = '<div class="empty">Cochez votre prénom ci-dessus.</div>'; return; }
+    if (!list.length) { $('list').innerHTML = '<div class="empty">Aucun rappel à venir 🎉</div>'; return; }
+    let html = '', current = '';
+    for (const r of list) {
+      const d = new Date(r.start);
+      const label = dayLabel(d);
+      if (label !== current) { html += `${current ? '</div>' : ''}<div class="group"><h3>${esc(label)}</h3>`; current = label; }
+      const start = Date.parse(r.start);
+      const cls = start < now - 5 * 60000 ? 'past' : start - now <= lead * 60000 ? 'soon' : '';
+      html += `<div class="item ${cls}">
+        <div class="time">${fmtTime(r.start)}</div>
+        <div class="main"><div class="title">${esc(r.subject)}</div>
+          <div class="muted">${esc(r.client || '')}${r.end ? ' · jusqu’à ' + fmtTime(r.end) : ''}</div></div>
+        <span class="who">${esc(r.collaborator)}</span>
+        ${r.link ? `<a href="${esc(r.link)}" target="_blank" rel="noopener">Ouvrir la tâche ›</a>` : ''}
+      </div>`;
+    }
+    $('list').innerHTML = html + '</div>';
+  }
+  $('showPast').onchange = render;
+  $('lead').onchange = () => { store.set('lead', Number($('lead').value)); render(); check(); };
+
+  // ---------------------------------------------------------------- notifications
+  function notifState() {
+    if (!('Notification' in window)) { $('notifMsg').textContent = 'Ce navigateur ne gère pas les notifications.'; $('notifBtn').hidden = true; return; }
+    if (Notification.permission === 'granted') { $('notifBtn').hidden = true; $('notifMsg').className = 'ok'; $('notifMsg').textContent = 'Notifications activées sur ce navigateur.'; }
+    else if (Notification.permission === 'denied') { $('notifMsg').className = 'warn'; $('notifMsg').textContent = 'Notifications bloquées : cadenas à gauche de l’adresse › Notifications › Autoriser, puis rechargez la page.'; }
+  }
+  $('notifBtn').onclick = async () => { await Notification.requestPermission(); notifState(); };
+  function show(title, body, tag, link) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      const n = new Notification(title, { body, tag, requireInteraction: true });
+      n.onclick = () => { window.focus(); if (link) window.open(link, '_blank', 'noopener'); n.close(); };
+    } else {
+      alert(`${title}\n${body}`);
+    }
+  }
+  $('testBtn').onclick = () => show('Rappel de test', 'Les notifications fonctionnent sur ce PC.', 'test', '');
+
+  function check() {
+    const lead = Number($('lead').value);
+    const now = Date.now();
+    for (const r of mine()) {
+      const start = Date.parse(r.start);
+      const key = `${r.id}|${r.start}`;
+      if (now >= start - lead * 60000 && now < start + 5 * 60000 && !notified.has(key)) {
+        notified.add(key);
+        const minutes = Math.max(0, Math.round((start - now) / 60000));
+        show(`${minutes ? `Dans ${minutes} min` : 'Maintenant'} : ${r.subject}`, `${fmtTime(r.start)} · ${r.collaborator}${r.client ? ' · ' + r.client : ''}`, 'rappel-' + r.id, r.link);
+      }
+    }
+    store.set('notified', [...notified].slice(-300));
+  }
+
+  // ---------------------------------------------------------------- démarrage
+  notifState();
+  loadHandle().then(async (h) => {
+    if (!h) return;
+    handle = h;
+    const perm = await h.queryPermission({ mode: 'read' });
+    if (perm === 'granted') await readHandle(true);
+    else { $('resumeName').textContent = h.name; $('resume').hidden = false; $('fileMsg').textContent = 'Cliquez sur « Reprendre le fichier » pour relire vos rappels.'; }
+  });
+  setInterval(() => { void readHandle(false); if (data) { render(); check(); } }, 30000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') void readHandle(false); });
+})();
+</script>
+</body>
+</html>

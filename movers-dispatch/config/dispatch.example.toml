@@ -112,6 +112,20 @@ domaines_ignores = ["sectoralarm.fr", "sectoralarm.com", "sectoralarm.net", "hub
 # de cette table, relevée avec `3-decouvrir.bat`. Exemple : liens_compte = { contract = "customerid" }
 liens_compte = {}
 
+[rappels]
+# Rappels de l'équipe : quand l'agent attribue une TÂCHE, la ligne « Horaire de Rappel : 14h30 - 28/10 »
+# de sa description est ajoutée au fichier « rappels-movers.json » (+ « rappels-movers.csv » pour Excel),
+# trié par heure, dans le dossier du canal Teams synchronisé sur ce PC. Chaque agent ouvre la page
+# https://marcoooo131.github.io/SA-IA/rappels/, choisit ce fichier une fois, coche son prénom et reçoit
+# une notification avant chaque rappel. Le fichier reste dans Teams / OneDrive (rien sur Internet).
+active = false
+# Chemin du dossier Teams synchronisé, tel qu'affiché dans l'Explorateur, par exemple :
+# dossier = "%USERPROFILE%\\Sector Alarm\\Movers - Documents\\Rappels"
+dossier = ""
+libelles = ["horaire", "rappel", "rappeler", "creneau", "rdv", "rendez-vous"]
+fuseau = "Europe/Paris"
+garder_jours = 2                     # rappels passés encore listés
+
 [agenda]
 # Réservation dans l'agenda partagé : quand l'agent attribue une TÂCHE (Worked By écrit et vérifié), l'horaire
 # de rappel écrit dans la tâche est réservé dans l'agenda du collaborateur, qui reçoit la notification puis

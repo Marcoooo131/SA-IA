@@ -15,6 +15,7 @@ from dataclasses import dataclass, field, replace
 
 from .config import Config, normalize_name
 from .dataverse import ConcurrentModification, CrmError, Gateway, SessionExpired, UncertainWrite
+from . import team_reminders
 from .agenda import book_task
 from .journal import Journal
 from .models import Email, Lookup, Mode, QueueItem, Status, User
@@ -317,6 +318,19 @@ class Agent:
         self._record(run_id, ev, Status.ASSIGNED, f"Worked By = {user.first_name} ({origin}), vérifié.", mode)
         self.journal.event(run_id, ev.item.id, "worked_by_verifie", detail, actor)
         self._book_agenda(run_id, ev, user.id, actor)
+        self._share_reminder(run_id, ev, user.id, actor)
+
+    def _share_reminder(self, run_id: int | None, ev: Evaluation, systemuser_id: str, actor: str) -> None:
+        """Task assigned: its « Horaire de Rappel » goes to the team file. Never stops the run."""
+        rc = self.cfg.reminders
+        collab = self.cfg.collaborator_for(systemuser_id)
+        if not rc.enabled or rc.problems() or ev.activity is None or ev.activity.kind != "task" or collab is None:
+            return
+        try:
+            action = team_reminders.record(self.cfg, self.journal, ev.item.id, ev.activity, collab, ev.account_name)
+            self.journal.event(run_id, ev.item.id, action, {"collaborateur": collab.first_name}, actor)
+        except Exception as e:  # noqa: BLE001 — the dispatch itself is already done and verified
+            self.journal.event(run_id, ev.item.id, "rappel_echec", {"erreur": str(e)}, actor)
 
     def _book_agenda(self, run_id: int | None, ev: Evaluation, systemuser_id: str, actor: str) -> None:
         """Task assigned: its due date is booked in the collaborator's agenda. Never stops the run."""
@@ -383,6 +397,11 @@ class Agent:
         finally:
             self.journal.end_run(run_id, outcome)
             self.journal.event(run_id, None, "fin_traitement", {"resultat": outcome}, actor)
+            if self.cfg.reminders.enabled and not self.cfg.reminders.problems():
+                try:   # the file exists from the first run and old reminders leave it
+                    team_reminders.export(self.cfg, self.journal)
+                except Exception as e:  # noqa: BLE001
+                    self.journal.event(run_id, None, "rappel_echec", {"erreur": str(e)}, actor)
             self.state.running = False
             self.state.current = ""
             self.state.message = outcome

@@ -279,13 +279,13 @@ Votre journal est mis à jour automatiquement, sans rien perdre.
 
 ---
 
-## Étape 13 : relier l'agent à l'agenda d'équipe (facultatif)
+## Étape 13 : partager les rappels avec l'équipe (facultatif)
 
-L'agent peut réserver automatiquement dans l'[agenda d'équipe](../agenda-partage/TUTORIEL.md) l'horaire
-écrit dans chaque tâche qu'il attribue (« Horaire de Rappel : 14h30 - 28/10 »). Le collaborateur reçoit
-alors une notification, puis un rappel 15 minutes avant. Marche à suivre complète : partie D du
-[tutoriel de l'agenda](../agenda-partage/TUTORIEL.md#d-relier-lagent-dispatch-movers-à-lagenda)
-(jeton à générer dans l'agenda, section `[agenda]` et `email_agenda` à ajouter dans `dispatch.toml`).
+L'agent peut ajouter l'horaire écrit dans chaque tâche qu'il attribue (« Horaire de Rappel : 14h30 - 28/10 »)
+à un fichier de rappels trié, rangé dans le dossier Teams de l'équipe. Chaque agent ouvre ce fichier avec la
+page **https://marcoooo131.github.io/SA-IA/rappels/**, coche son prénom et reçoit une notification
+15 minutes avant chaque rappel. Marche à suivre : [tutoriel des rappels](../rappels-equipe/TUTORIEL.md)
+(section `[rappels]` à ajouter dans `dispatch.toml`).
 
 ---
 

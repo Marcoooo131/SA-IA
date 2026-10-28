@@ -14,6 +14,10 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > rôles administrateur / collaborateur appliqués par la base, rendez-vous confidentiels, commentaires, historique,
 > pièces jointes ; publié sur GitHub Pages (`…/SA-IA/agenda/`) une fois Supabase configuré.
 
+> 🔔 **Rappels Movers** (page `…/SA-IA/rappels/`) : liste triée et notifications des « Horaire de Rappel »
+> des tâches attribuées par l'agent Dispatch, lues depuis le dossier Teams de l'équipe —
+> [tutoriel](rappels-equipe/TUTORIEL.md).
+
 > 💬 **Relances SMS Movers & Takeovers** (Python, distinct de l'application Movers) :
 > [`sms-reminders/`](sms-reminders/README.md) — import des rendez-vous, relances automatiques J-2 / J-1,
 > suivi des confirmations ; mode simulation tant que le fournisseur SMS n'est pas configuré.
