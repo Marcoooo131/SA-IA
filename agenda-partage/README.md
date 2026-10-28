@@ -10,6 +10,8 @@ téléphone.
   pas seulement dans l'interface. Aucune clé secrète dans le navigateur.
 - **Hébergement** : site statique (GitHub Pages déjà configuré dans ce dépôt, ou Netlify / Vercel / Cloudflare Pages).
 
+> 📘 **Tutoriel de lancement pas à pas** (administrateur, agents, Outlook, agent Dispatch) : [TUTORIEL.md](TUTORIEL.md)
+
 Aucune donnée fictive : l'application démarre vide et chaque rendez-vous est enregistré dans votre base Supabase.
 
 ### En bref : une version GitHub à partager, avec vous comme seul administrateur
