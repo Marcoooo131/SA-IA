@@ -151,16 +151,40 @@ def cmd_run(args) -> None:
             t.close()
 
 
+def reserve_port(first: int, tries: int = 10):
+    """Takes the first free local port from `first` on, before the CRM login (so a port already used by
+    another agent window does not make the user log in for nothing). Returns the bound socket."""
+    import socket
+
+    for port in range(first, first + tries):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):          # Windows: never share a port with another program
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        try:
+            sock.bind(("127.0.0.1", port))
+        except OSError:
+            sock.close()
+            continue
+        if port != first:
+            print(f"Le port {first} est déjà pris (une autre fenêtre de l'agent est sans doute encore ouverte) : "
+                  f"le tableau de bord utilise le port {port}.")
+        return sock
+    raise SystemExit(f"Les ports {first} à {first + tries - 1} sont tous déjà utilisés. Fermer les autres fenêtres "
+                     "noires de l'agent (ou terminer « Python » dans le Gestionnaire des tâches), puis relancer.")
+
+
 def cmd_serve(args) -> None:
     import uvicorn
 
     from .web.app import create_app
 
+    sock = reserve_port(args.port)
+    port = sock.getsockname()[1]
     cfg = _load(args)
     gw, t = connect(cfg)
     agent = Agent(cfg, gw, Journal(cfg.database))
     token = secrets.token_urlsafe(24)
-    url = f"http://127.0.0.1:{args.port}/?token={token}"
+    url = f"http://127.0.0.1:{port}/?token={token}"
     print(f"\nTableau de bord : {url}\n(lien valable pour cette session uniquement ; fermer cette fenêtre arrête l'agent)\n")
     if args.open:
         import threading
@@ -168,8 +192,11 @@ def cmd_serve(args) -> None:
 
         threading.Timer(1.5, webbrowser.open, [url]).start()
     try:
-        uvicorn.run(create_app(agent, token, actor=args.actor), host="127.0.0.1", port=args.port, log_level="warning")
+        sock.listen(128)
+        server = uvicorn.Server(uvicorn.Config(create_app(agent, token, actor=args.actor), log_level="warning"))
+        server.run(sockets=[sock])
     finally:
+        sock.close()
         if t:
             t.close()
 
