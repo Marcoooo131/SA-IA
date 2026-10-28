@@ -1,4 +1,4 @@
-# Tuto : l'agent Dispatch Movers, pas à pas (Windows)
+# Tuto complet : l'agent Dispatch Movers, version Azure, pas à pas (Windows)
 
 Pas besoin de savoir programmer. On **double-clique** des fichiers et on modifie **un** fichier texte avec
 le Bloc-notes.
@@ -6,9 +6,15 @@ le Bloc-notes.
 > **Rassurant :** tant que vous ne validez rien vous-même, l'agent **ne modifie rien** dans le CRM.
 > Son mode de départ est la **Simulation** : il lit et il propose, c'est tout.
 
+Ce tuto concerne le dossier **`movers-dispatch-azure`** : le même agent que `movers-dispatch`, plus la
+lecture des lettres scannées par Azure AI (étape 6 bis, à n'activer qu'avec l'accord de l'entreprise).
+
+> **Une seule version à la fois :** utilisez soit `movers-dispatch`, soit `movers-dispatch-azure`, jamais
+> les deux le même jour. Chaque dossier a son propre journal et sa propre position de rotation.
+
 **Sommaire**
 
-- **A. Installation (une seule fois, environ 30 minutes)** : étapes 1 à 6
+- **A. Installation (une seule fois, environ 30 minutes)** : étapes 1 à 6 bis
 - **B. Chaque jour** : étapes 7 à 10
 - **C. Les deux semaines de supervision, puis le mode Automatique** : étape 11
 - **D. Installer une nouvelle version** : étape 12
@@ -38,7 +44,7 @@ le Bloc-notes.
    - créez-y un dossier **`SA-IA`** ;
    - faites un clic droit sur `SA-IA-main.zip` (dans *Téléchargements*), choisissez **Extraire tout…** et
      indiquez ce dossier.
-3. Ouvrez `SA-IA-main\movers-dispatch\windows`. Vous y trouvez cinq fichiers :
+3. Ouvrez `SA-IA-main\movers-dispatch-azure\windows`. Vous y trouvez cinq fichiers :
 
 | Fichier | À quoi il sert |
 |---|---|
@@ -48,8 +54,17 @@ le Bloc-notes.
 | `4-lancer.bat` | lance l'agent sur le vrai CRM : **c'est celui de tous les jours** |
 | `5-exporter-corrections.bat` | exporte vos corrections dans un fichier Excel (étape 11) |
 
-> Le dossier `movers-dispatch-ancienne-version` est une copie de secours de l'ancienne version (sans le
-> bouton Corriger). Vous n'en avez normalement pas besoin.
+> Les dossiers `movers-dispatch` (sans Azure) et `movers-dispatch-ancienne-version` sont les autres
+> versions. Pour ce tuto, vous n'en avez pas besoin.
+
+> **Vous utilisiez déjà `movers-dispatch` ?** Faites l'étape 3, puis fermez toutes les fenêtres noires de
+> l'agent et copiez depuis l'ancien dossier `movers-dispatch` vers `movers-dispatch-azure` (Copier, Coller,
+> **Remplacer**) :
+> - **`dispatch.toml`** : votre configuration (adresse du CRM, collègues, rotations) ;
+> - **`movers_dispatch.db`** : le journal, la position des rotations, les absents et vos corrections ;
+> - le dossier **`.browser-profile`** (facultatif) : votre connexion Edge déjà faite.
+>
+> Vous pouvez alors sauter les étapes 5 et 6 et passer à l'étape 6 bis.
 
 ## Étape 3 : installer l'agent
 
@@ -66,13 +81,15 @@ tâches, des formulaires HubSpot et une lettre scannée, **tous inventés**.
 
 1. Laissez **Simulation** coché et cliquez sur **Lancer le traitement** : chaque ligne indique ce que
    l'agent ferait.
-2. Cochez **Supervisé** et relancez : les boutons **Valider**, **Corriger**, **Attribuer à…**, **Voir la
+2. Sur la ligne **« Voir document joint (démo 16) »**, cliquez sur **Lire la lettre (Azure)** : l'agent
+   affiche ce qu'il lit sur la lettre fictive et préremplit le n°. En démo, rien n'est envoyé à Azure.
+3. Cochez **Supervisé** et relancez : les boutons **Valider**, **Corriger**, **Attribuer à…**, **Voir la
    pièce jointe** et **N° de compte** apparaissent. Essayez-les librement, rien ne part dans le CRM.
-3. Pour arrêter, fermez la fenêtre noire.
+4. Pour arrêter, fermez la fenêtre noire.
 
 ## Étape 5 : remplir la configuration (`dispatch.toml`)
 
-Dans le dossier `movers-dispatch`, ouvrez **`dispatch.toml`** avec le **Bloc-notes** : clic droit, puis
+Dans le dossier `movers-dispatch-azure`, ouvrez **`dispatch.toml`** avec le **Bloc-notes** : clic droit, puis
 **Ouvrir avec**, puis **Bloc-notes**. Ce fichier a été créé à l'étape 3.
 
 **a) L'adresse du CRM.** Ouvrez le CRM dans Edge et regardez la barre d'adresse, par exemple
@@ -108,7 +125,7 @@ Double-cliquez sur **`3-decouvrir.bat`**.
 1. Une fenêtre **Edge** s'ouvre sur le CRM. Connectez-vous comme d'habitude. L'agent **attend** que vous
    soyez connecté (5 minutes maximum) et ne lit rien avant.
 2. Revenez à la fenêtre noire. Le résultat s'affiche et est aussi enregistré dans **`decouverte.txt`**,
-   dans le dossier `movers-dispatch`.
+   dans le dossier `movers-dispatch-azure`.
 
 Voici ce qu'il faut en faire, rubrique par rubrique (les exemples sont inventés) :
 
@@ -140,6 +157,49 @@ avec « pointe vers « contract » », envoyez-moi cette partie.
 Enregistrez, puis **relancez `3-decouvrir.bat`**. Au premier passage, les lignes
 « ! … systemuserid non renseigné » sont normales. Quand tout est bon, *Contrôles préalables* affiche
 **OK**. Toute autre ligne qui commence par **`!`** est à régler : voir **En cas de souci**.
+
+## Étape 6 bis : activer la lecture des lettres par Azure AI (après accord de l'entreprise)
+
+Sans cette étape, l'agent fonctionne exactement comme `movers-dispatch` : vous lisez les lettres
+vous-même (étape 10). Vous pouvez la faire plus tard.
+
+**a) L'accord (obligatoire).** Les lettres des clients seront envoyées à Azure. Demandez par écrit à
+**l'informatique** et au **DPO** :
+1. leur **accord** pour envoyer les courriers scannés du service Movers à *Azure AI Document Intelligence* ;
+2. la création d'une ressource *Azure AI Document Intelligence* sur le compte Azure **de l'entreprise**, en
+   **région Europe** ;
+3. les deux informations de cette ressource (page « Clés et point de terminaison ») : **l'adresse
+   (endpoint)**, du type `https://xxxx.cognitiveservices.azure.com/`, et **une clé**.
+
+N'utilisez jamais un compte Azure ni une carte bancaire personnels.
+
+**b) La clé, dans Windows (une seule fois).** Elle ne va **jamais** dans `dispatch.toml`.
+1. Menu **Démarrer** → tapez **variables d'environnement** → **Modifier les variables d'environnement pour
+   votre compte**.
+2. Dans la partie du haut, cliquez sur **Nouvelle…**
+   - **Nom de la variable** : `MD_AZURE_DI_KEY`
+   - **Valeur de la variable** : la clé (collée sans espace avant ni après)
+3. **OK**, puis **OK**. Fermez **toutes** les fenêtres noires de l'agent : seules les fenêtres ouvertes
+   après voient la clé.
+
+Ne donnez la clé à personne, ni par mail ni dans une discussion.
+
+**c) L'adresse, dans `dispatch.toml`.** Ouvrez-le avec le Bloc-notes et ajoutez tout en bas (ou modifiez
+la section `[lecture]` si elle existe déjà) :
+
+```toml
+[lecture]
+active = true
+endpoint = "https://NOM-DONNÉ-PAR-L-INFORMATIQUE.cognitiveservices.azure.com"
+```
+
+Enregistrez (**Ctrl + S**).
+
+**d) Vérifier.** Lancez **`4-lancer.bat`** (étape 7). Si **aucun bandeau** ne parle de la lecture des
+lettres, c'est prêt. Sinon, voir **En cas de souci**.
+
+**e) Désactiver** à tout moment : remplacez `active = true` par `active = false` dans `[lecture]`, puis
+relancez l'agent.
 
 ---
 
@@ -210,8 +270,11 @@ Pour voir tout ce qui s'est passé sur un élément, cliquez sur **Historique**.
 
 ## Étape 10 : les courriers scannés (« Voir document joint »)
 
-Ces mails viennent du scanner du courrier, avec une **lettre manuscrite** en pièce jointe. L'agent ne
-lit pas l'écriture à la main : un chiffre mal lu pourrait désigner un autre client.
+Ces mails viennent du scanner du courrier, avec une **lettre manuscrite** en pièce jointe.
+
+### Sans la lecture Azure
+
+L'agent ne lit pas l'écriture à la main : c'est vous qui lisez le n° client.
 
 1. Sur la ligne, cliquez sur **Voir la pièce jointe** : le scan s'ouvre dans un nouvel onglet.
 2. Lisez le **n° client** écrit sur la lettre, tapez-le dans la case **N° de compte**, puis cliquez sur
@@ -221,43 +284,21 @@ lit pas l'écriture à la main : un chiffre mal lu pourrait désigner un autre c
 4. Dans **Attribuer à…**, choisissez **Suivant en …** avec la rotation qui correspond à la lettre (par
    exemple **Suivant en Movers - Résiliation**), puis **Attribuer**.
 
-### Option : faire lire les lettres par Azure AI (après accord de l'entreprise)
-
-Avec cette option, l'agent lit lui-même la lettre (même manuscrite), cherche le client avec le n° ou le
-téléphone lu, et vous propose le compte. **Vous validez toujours.**
-
-**Avant tout :** demandez à l'informatique et au DPO leur **accord écrit** pour envoyer les courriers
-scannés à Azure AI Document Intelligence. Demandez-leur aussi de créer la ressource (région Europe) et de
-vous donner deux choses : **l'adresse (endpoint)** et **une clé**. N'utilisez pas de compte Azure personnel.
-
-1. **La clé** (à faire une seule fois) : menu Démarrer → tapez **variables d'environnement** → **Modifier
-   les variables d'environnement pour votre compte** → **Nouvelle…**
-   - Nom de la variable : `MD_AZURE_DI_KEY`
-   - Valeur : la clé donnée par l'informatique
-
-   Cliquez sur OK, puis fermez **toutes** les fenêtres noires de l'agent. La clé ne va jamais dans
-   `dispatch.toml` et ne doit être envoyée à personne.
-2. **La configuration** : dans `dispatch.toml`, ajoutez (ou complétez) la section :
-
-   ```toml
-   [lecture]
-   active = true
-   endpoint = "https://NOM-DONNÉ-PAR-L-INFORMATIQUE.cognitiveservices.azure.com"
-   ```
-3. Relancez `4-lancer.bat`. Si la clé manque, un bandeau l'indique (« Lecture des lettres désactivée… »),
-   et le reste de l'agent fonctionne normalement.
-
-**Au quotidien :**
+### Si la lecture Azure est activée (étape 6 bis)
 
 - Pendant le traitement, l'agent lit tout seul les lettres des mails dont il ne trouve pas le client. La
-  colonne Compte affiche par exemple « à rattacher Client X — via n° client lu dans la pièce jointe
-  (j'ai lu : n° 10075432) ». Ouvrez **Voir la pièce jointe**, vérifiez que le nom et le n° correspondent
-  à la lettre, puis cliquez sur **Valider**. Si c'est faux, tapez le bon n° et cliquez sur **Corriger le client**.
+  colonne Compte affiche par exemple « à rattacher Client X (10075432) — via n° client lu dans la pièce
+  jointe (j'ai lu : n° 10075432) ».
+  1. Ouvrez **Voir la pièce jointe** et vérifiez que **le n° et le nom** de la lettre correspondent.
+  2. C'est bon : ligne **À valider** → **Valider** ; ligne **Validation humaine** → **Attribuer à…** →
+     **Suivant en …** → **Attribuer** (l'agent remplit le Regarding avec ce client, puis le Worked By).
+  3. C'est faux : tapez le bon n° dans la case, puis **Corriger le client**, et vérifiez le nom affiché.
 - S'il n'a rien trouvé, le motif dit ce qu'il a lu (« J'ai lu dans la pièce jointe : n° 10086599 — aucun
-  compte… ») : corrigez le n° vous-même comme à l'étape 2 ci-dessus.
-- Le bouton **Lire la lettre (Azure)** relit la pièce jointe à la demande. Il affiche ce qu'il a lu et le
-  compte trouvé, puis préremplit le n°. Rien n'est écrit dans le CRM tant que vous n'avez pas cliqué sur
-  **Rattacher le client**.
+  compte… ») : faites comme aux points 1 à 4 ci-dessus.
+- Le bouton **Lire la lettre (Azure)** relit la lettre à la demande : il affiche ce qu'il a lu et le
+  compte trouvé, et préremplit le n°. Rien n'est écrit dans le CRM tant que vous n'avez pas cliqué sur
+  **Rattacher le client**, **Valider** ou **Attribuer**.
+- Même en mode Automatique, un client trouvé dans une lettre attend **toujours** votre validation.
 
 ---
 
@@ -283,7 +324,7 @@ En bas du tableau de bord, le **Bilan de la supervision** indique :
 **Une fois par semaine**, ou dès qu'une même erreur revient :
 
 1. Double-cliquez sur **`5-exporter-corrections.bat`** : il crée `corrections.csv` (s'ouvre avec Excel)
-   dans le dossier `movers-dispatch`.
+   dans le dossier `movers-dispatch-azure`.
 2. Envoyez-moi ce fichier. Je transforme les erreurs qui reviennent en nouvelles règles.
 3. Installez la nouvelle version (étape 12).
 
@@ -303,12 +344,13 @@ valider par vous, sauf si vous mettez `automatique = true` dans la section `[cli
 ## Étape 12 : mettre à jour sans rien perdre
 
 1. Fermez la fenêtre noire de l'agent.
-2. Copiez dans un endroit sûr, par exemple le Bureau, ces deux fichiers du dossier `movers-dispatch` :
+2. Copiez dans un endroit sûr, par exemple le Bureau, ces deux fichiers du dossier `movers-dispatch-azure` :
    - **`dispatch.toml`**, votre configuration ;
    - **`movers_dispatch.db`**, votre journal, avec l'historique, la rotation, les absents et les corrections.
 3. Supprimez l'ancien dossier `SA-IA-main`.
 4. Retéléchargez et extrayez le ZIP comme à l'étape 2.
-5. Remettez vos deux fichiers dans le nouveau dossier `movers-dispatch`.
+5. Remettez vos deux fichiers dans le nouveau dossier `movers-dispatch-azure`. La clé Azure, elle, reste
+   dans Windows : rien à refaire.
 6. Si je vous l'indique, ajoutez à votre `dispatch.toml` les nouvelles sections, en les copiant depuis
    `config\dispatch.example.toml`.
 7. Double-cliquez sur **`1-installer.bat`**, puis sur **`4-lancer.bat`**.
@@ -323,7 +365,7 @@ Votre journal est mis à jour automatiquement, sans rien perdre.
 |---|---|
 | « Python est introuvable » | Refaire l'étape 1 en cochant bien **Add python.exe to PATH**, puis redémarrer le PC. |
 | « Lancez d'abord 1-installer.bat » | Faire l'étape 3. |
-| La fenêtre noire se ferme tout de suite | Vérifier que le `.bat` est bien dans `movers-dispatch\windows`, puis relancer `1-installer.bat`. |
+| La fenêtre noire se ferme tout de suite | Vérifier que le `.bat` est bien dans `movers-dispatch-azure\windows`, puis relancer `1-installer.bat`. |
 | L'installation est très lente ou échoue | Le dossier est probablement dans OneDrive : refaire l'étape 2 hors OneDrive. |
 | « Session Dynamics 365 non ouverte » ou « Connexion au CRM non faite dans le délai » | Relancer et se connecter dans la fenêtre Edge dans les 5 minutes. La fenêtre Edge doit rester ouverte tant que l'agent tourne. |
 | « faute de frappe » dans `dispatch.toml` | Le message donne la ligne : chaque valeur doit être entre guillemets droits `"…"`, sans espace en début de ligne. |
@@ -335,10 +377,17 @@ Votre journal est mis à jour automatiquement, sans rien perdre.
 | « Regarding … pointe vers « contract » » | M'envoyer la partie « Colonnes de « contract » » de `decouverte.txt` (étape 6). |
 | « Le numéro … correspond à 0 compte(s) actif(s) » | Le n° tapé n'existe pas (souvent un chiffre mal lu sur une lettre) : relire la pièce jointe. |
 | « rotation.… : collaborateur(s) inconnu(s) » | Dans `[rotation]`, utiliser les clés `chloe`, `kader`, `estefania`, `marc-antoine`. |
-| « Lecture des lettres désactivée : la variable Windows MD_AZURE_DI_KEY (clé Azure) est vide » | Créer la variable (étape 10, option Azure), puis fermer et relancer l'agent. |
-| « Azure a répondu HTTP 401 » ou « Azure injoignable » | Clé ou adresse incorrecte, ou réseau de l'entreprise qui bloque Azure : contacter l'informatique. |
+| « Lecture des lettres désactivée : la variable Windows MD_AZURE_DI_KEY (clé Azure) est vide » | Refaire l'étape 6 bis b), fermer **toutes** les fenêtres noires, puis relancer `4-lancer.bat`. |
+| « [lecture] endpoint : adresse https… » | L'adresse de l'étape 6 bis c) est vide ou ne commence pas par `https://`. |
+| « Azure a répondu HTTP 401 (clé refusée…) » | Clé fausse ou renouvelée : la redemander à l'informatique, puis refaire l'étape 6 bis b). |
+| « Azure a répondu HTTP 404 » | L'adresse (endpoint) est fausse : la vérifier avec l'informatique. |
+| « Azure injoignable » | Le réseau de l'entreprise bloque Azure, ou l'adresse est fausse : contacter l'informatique. |
+| « Lecture Azure trop longue » | Azure est lent : relancer plus tard, ou cliquer sur **Lire la lettre (Azure)**. |
+| « Pièce jointe dans un format non lu » | Ce n'est ni un PDF ni une image : l'ouvrir dans le CRM et taper le n° vous-même. |
+| Pas de bouton « Lire la lettre (Azure) » | La lecture n'est pas activée (étape 6 bis) ou le mail n'a pas de pièce jointe. |
 | « Le port 8765 est déjà pris » ou erreur 10048 | Une autre fenêtre de l'agent est encore ouverte. L'agent prend alors tout seul le port suivant (8766…) et ouvre le bon lien ; pour éviter deux agents en même temps, fermer l'ancienne fenêtre noire (ou terminer « Python » dans le Gestionnaire des tâches). |
 
 > **Bon à savoir :** l'agent utilise **votre** session du CRM, avec vos droits, et ne voit jamais votre
-> mot de passe. Il ne garde pas le contenu des mails ni des pièces jointes. Avant de l'utiliser au
+> mot de passe. Il ne garde pas le contenu des mails ni des pièces jointes : avec Azure, seuls le n° client, le
+> téléphone et l'adresse e-mail lus servent, le temps de la session. Avant de l'utiliser au
 > quotidien, faites valider cet usage par votre responsable ou le service informatique.
