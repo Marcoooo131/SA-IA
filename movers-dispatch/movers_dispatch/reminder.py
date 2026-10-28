@@ -120,8 +120,10 @@ def parse_reminder(text: str, labels: tuple[str, ...], zone: str = "Europe/Paris
     except Exception:  # noqa: BLE001
         today = (now_utc + timedelta(hours=1)).date()
     for segment in _segments(text, labels):
-        day, rest, impossible = _date(segment, today)
-        hours = _times(rest)
+        # Hours first (« 14h30 », « 14:30 » never look like a date), then the date in what is left:
+        # « 14h30-28/10 » written without spaces must not be read as the date « 30-28 »
+        hours = _times(segment)
+        day, _, impossible = _date(TIME.sub(" ", segment), today)
         if impossible or not hours:
             continue
         day = day or today

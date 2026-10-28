@@ -156,3 +156,16 @@ def test_assigned_task_is_booked_from_its_description():
     q2 = crm.add("d2", "Movers - Résiliation", "Client 2", [("CAS-2", "chloe", 0)], kind="task", text="Sans horaire")
     agent.run(Mode.AUTOMATIC, confirm_automatic=True)
     assert len(sent) == 1 and actions(agent, q2) == ["agenda_sans_echeance"]
+
+
+def test_real_task_template_of_the_movers_team():
+    """Modèle réel des tâches Movers (données fictives) : « Horaire de Rappel : 14h30 - 28/10 »."""
+    template = ("Nom interlocuteur : Client Fictif\nNuméro de téléphone : 0600000000\n\n"
+                "Propriétaire / locataire : Propriétaire\n\nNouvelle adresse : 1 rue de l'Exemple 33000 Bordeaux\n"
+                "Date de Déménagement : 14/09\n\nHoraire de Rappel : {}\n\nInformations Complémentaires :")
+    expected = "2026-10-28T13:30:00+00:00"
+    for written in ("14h30 - 28/10", "14h30-28/10", "14H30 – 28/10/2026", "28/10 - 14h30", "14:30 - 28.10", "14 h 30 - 28/10/26"):
+        assert at(template.format(written)) == (expected, None), written
+    assert at(template.format("15h - 29/10")) == ("2026-10-29T14:00:00+00:00", None)
+    assert at(template.format("")) is None            # horaire non rempli : rien n'est réservé
+    assert at(template.format("à voir")) is None      # la date de déménagement (14/09) n'est jamais prise
