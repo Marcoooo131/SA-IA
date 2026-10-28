@@ -22,6 +22,7 @@ import { formatRange, relativeTime } from '../lib/datetime';
 import { isAdmin } from '../lib/permissions';
 import { navigate, type Page } from '../lib/router';
 import type { AppointmentRow } from '../lib/types';
+import { DesktopAlerts } from './DesktopAlerts';
 import { Avatar, StatusBadge, displayName } from './ui';
 
 const NAV: { page: Page; label: string; icon: typeof LayoutDashboard; admin?: boolean }[] = [
@@ -41,6 +42,7 @@ export function Layout({ page, children }: { page: Page; children: ReactNode }) 
 
   return (
     <div className="flex h-dvh overflow-hidden">
+      <DesktopAlerts />
       {/* Barre latérale (ordinateur / tablette) */}
       <aside className="hidden w-64 shrink-0 flex-col bg-ink text-white md:flex">
         <div className="flex items-center gap-3 px-5 py-5">

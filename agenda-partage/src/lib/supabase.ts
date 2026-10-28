@@ -44,6 +44,8 @@ try {
   client = makeClient('http://localhost', 'missing');
 }
 export const supabase = client;
+/** Adresse des fonctions serveur du projet (flux Outlook, réservation Dispatch) */
+export const functionsUrl = `${url}/functions/v1`;
 export const isConfigured = !configError;
 
 /** URL de retour pour les e-mails d'authentification (page courante, sans fragment) */

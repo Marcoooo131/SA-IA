@@ -41,6 +41,7 @@ export function createMockDb() {
     ],
     appointments: [
       { id: 'a0000000-0000-4000-8000-000000000001', title: 'Visite technique Dupont', starts_at: iso(1, 10), ends_at: iso(1, 11, 30), all_day: false, client_name: 'M. Dupont', responsible_id: ME, category_id: 'c1', location: '12 rue de la Paix, Paris', description: 'Contrôle de l’installation.', notes: 'Digicode 4521', status: 'confirme', is_private: false, links: [{ label: 'Dossier', url: 'https://exemple.fr/dossier' }], created_by: ME, updated_by: ME, created_at: now, updated_at: now },
+      { id: 'a0000000-0000-4000-8000-000000000005', title: 'Rappel client Leroy', starts_at: new Date(Date.now() + 10 * 60_000).toISOString(), ends_at: new Date(Date.now() + 25 * 60_000).toISOString(), all_day: false, client_name: 'M. Leroy', responsible_id: ME, category_id: 'c1', location: null, description: null, notes: null, status: 'confirme', is_private: false, links: [], created_by: BOB, updated_by: BOB, created_at: now, updated_at: now, external_ref: 'crm-task:demo' },
       { id: 'a0000000-0000-4000-8000-000000000002', title: 'Réunion d’équipe', starts_at: iso(1, 8), ends_at: iso(1, 9), all_day: false, client_name: null, responsible_id: BOB, category_id: 'c2', location: 'Salle 2', description: null, notes: null, status: 'a_confirmer', is_private: false, links: [], created_by: BOB, updated_by: BOB, created_at: now, updated_at: now },
       { id: 'a0000000-0000-4000-8000-000000000003', title: 'Entretien confidentiel', starts_at: iso(1, 14), ends_at: iso(1, 15), all_day: false, client_name: 'Secret', responsible_id: BOB, category_id: 'c1', location: null, description: null, notes: null, status: 'confirme', is_private: true, links: [], created_by: BOB, updated_by: BOB, created_at: now, updated_at: now },
       { id: 'a0000000-0000-4000-8000-000000000004', title: 'Installation Martin', starts_at: iso(-3, 9), ends_at: iso(-3, 10), all_day: false, client_name: 'Mme Martin', responsible_id: BOB, category_id: 'c3', location: 'Lyon', description: null, notes: null, status: 'reporte', is_private: false, links: [], created_by: BOB, updated_by: BOB, created_at: now, updated_at: now },
@@ -51,7 +52,7 @@ export function createMockDb() {
       { id: 1, appointment_id: 'a0000000-0000-4000-8000-000000000002', appointment_title: 'Réunion d’équipe', action: 'created', changes: {}, actor_id: BOB, responsible_id: BOB, created_at: now },
     ],
     notifications: [
-      { id: 1, user_id: ME, appointment_id: 'a0000000-0000-4000-8000-000000000002', kind: 'assigned', title: 'Bob Martin vous a confié un rendez-vous', body: 'Réunion d’équipe', actor_id: BOB, read_at: null, created_at: now },
+      { id: 1, user_id: ME, appointment_id: 'a0000000-0000-4000-8000-000000000002', kind: 'assigned', title: 'Bob Martin vous a confié un rendez-vous', body: 'Réunion d’équipe', actor_id: BOB, read_at: null, created_at: new Date(Date.now() - 10 * 60_000).toISOString() },
     ],
   };
   return db;
@@ -139,6 +140,9 @@ export async function installMockSupabase(page: Page, opts: { viewerIsAdmin?: bo
           .map((a) => ({ id: a.id, title: visible(a, viewerIsAdmin) ? a.title : 'Créneau occupé', starts_at: a.starts_at, ends_at: a.ends_at, masked: !visible(a, viewerIsAdmin) }));
         return json(route, rows);
       }
+      if (fn === 'calendar_feed_token') return json(route, 'a'.repeat(64));
+      if (fn === 'integration_token_info') return json(route, null);
+      if (fn === 'rotate_integration_token') return json(route, 'b'.repeat(64));
       if (fn === 'search_appointments') {
         const q = String(args.p_query).toLowerCase();
         return json(route, db.appointments!.filter((a) => visible(a, viewerIsAdmin) && [a.title, a.client_name, a.location].some((s) => s?.toLowerCase().includes(q))));

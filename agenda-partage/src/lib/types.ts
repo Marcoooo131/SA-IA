@@ -59,6 +59,8 @@ export interface Appointment {
   updated_by: string | null;
   created_at: string | null;
   updated_at: string | null;
+  /** Rendez-vous créé par une autre application (ex. « crm-task:… » pour l'agent Dispatch) */
+  external_ref?: string | null;
   /** Rendez-vous privé d'un autre : seul le créneau est connu */
   masked: boolean;
   can_edit: boolean;

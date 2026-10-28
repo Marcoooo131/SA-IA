@@ -134,3 +134,37 @@ test('administration : utilisateurs, catégories, paramètres', async ({ page })
   await page.getByRole('tab', { name: 'Paramètres' }).click();
   await expect(page.getByText("Fuseau horaire de l'équipe")).toBeVisible();
 });
+
+test('rappel sur l’ordinateur avant un rendez-vous, lien Outlook et connexion Dispatch', async ({ page }) => {
+  await page.addInitScript(() => {
+    const sent: string[] = [];
+    (window as unknown as { __notifs: string[] }).__notifs = sent;
+    class FakeNotification {
+      static permission = 'granted';
+      static requestPermission = async () => 'granted';
+      onclick: (() => void) | null = null;
+      constructor(title: string, opts?: { body?: string }) {
+        sent.push(`${title} | ${opts?.body ?? ''}`);
+      }
+      close() {}
+    }
+    (window as unknown as { Notification: unknown }).Notification = FakeNotification;
+  });
+  await installMockSupabase(page, { viewerIsAdmin: true });
+  await login(page);
+  await expect(page.getByRole('heading', { name: /Bonjour|Bonsoir/ })).toBeVisible();
+  await expect
+    .poll(async () => (await page.evaluate(() => (window as unknown as { __notifs: string[] }).__notifs)).join('\n'), { timeout: 10_000 })
+    .toMatch(/Dans (9|10) min : Rappel client Leroy \| \d\d:\d\d · M\. Leroy/);
+
+  await page.goto('./#/profil');
+  await expect(page.getByLabel("Lien d'abonnement")).toHaveValue(`http://mock-supabase.test/functions/v1/calendar-feed?t=${'a'.repeat(64)}`);
+  await expect(page.getByText('Notifications autorisées sur ce navigateur.')).toBeVisible();
+  if (shots) await page.screenshot({ path: `${shots}/${test.info().project.name}-profil.png`, fullPage: true });
+
+  await page.goto('./#/admin');
+  await page.getByRole('tab', { name: 'Paramètres' }).click();
+  await page.getByRole('button', { name: 'Générer le jeton' }).click();
+  await expect(page.getByText('Jeton (affiché une seule fois) :')).toBeVisible();
+  await expect(page.locator(`input[value="${'b'.repeat(64)}"]`)).toBeVisible();
+});

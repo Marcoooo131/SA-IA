@@ -112,24 +112,42 @@ domaines_ignores = ["sectoralarm.fr", "sectoralarm.com", "sectoralarm.net", "hub
 # de cette table, relevée avec `3-decouvrir.bat`. Exemple : liens_compte = { contract = "customerid" }
 liens_compte = {}
 
+[agenda]
+# Réservation dans l'agenda partagé : quand l'agent attribue une TÂCHE (Worked By écrit et vérifié), son
+# échéance est réservée dans l'agenda du collaborateur (créneau de 15 min), qui reçoit la notification puis
+# le rappel avant l'heure. Une même tâche met toujours à jour le même créneau. Un échec n'arrête jamais
+# le dispatch (il est noté dans le journal). Les mails ne sont pas concernés.
+active = false
+# Agenda > Administration > Paramètres > « Agent Dispatch Movers » : adresse et jeton à recopier ici.
+adresse = "https://zpoubfotwszesqxyfhev.supabase.co/functions/v1/dispatch-booking"
+jeton = ""
+champ_echeance = "scheduledend"     # colonne « Due » / « Échéance » de la tâche (horaire du rappel)
+duree_minutes = 15
+categorie = "Appel"
+
 # Les quatre collaborateurs. systemuser_id = identifiant de la fiche utilisateur Dynamics 365,
 # relevé avec `discover` (jamais déduit d'un nom). first_name = prénom attendu dans Worked By (contrôle).
+# email_agenda = adresse de connexion du collaborateur dans l'agenda partagé (réservation des tâches).
 [[collaborators]]
 key = "kader"
 first_name = "Kader"
 systemuser_id = ""
+email_agenda = ""
 
 [[collaborators]]
 key = "estefania"
 first_name = "Estefania"
 systemuser_id = ""
+email_agenda = ""
 
 [[collaborators]]
 key = "marc-antoine"
 first_name = "Marc-Antoine"
 systemuser_id = ""
+email_agenda = ""
 
 [[collaborators]]
 key = "chloe"
 first_name = "Chloé"
 systemuser_id = ""
+email_agenda = ""

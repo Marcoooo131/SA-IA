@@ -259,3 +259,16 @@ def test_activity_account_field_found_in_metadata_only_when_unique():
     assert g.activity_account_field("email") is None               # two candidates: never guessed
     g.activity_account_field("task")
     assert len(t.calls) == 2                                        # cached
+
+
+def test_task_due_date_is_read_only_when_the_agenda_booking_is_on():
+    from dataclasses import replace
+
+    from movers_dispatch.config import AgendaLink
+    row = {"activityid": gid("tk"), "subject": "Rappel", "scheduledend": "2030-02-01T13:00:00Z"}
+    g, t = gw([("GET", "tasks(", Response(200, row, {}))])
+    assert g.get_activity("task", gid("tk")).due == "" and "scheduledend" not in t.calls[0][2]["$select"]
+    cfg = replace(demo_config(), agenda=AgendaLink(enabled=True, endpoint="https://p.supabase.co/functions/v1/dispatch-booking", token="f" * 64))
+    t2 = Scripted([("GET", "tasks(", Response(200, row, {}))])
+    act = DataverseGateway(cfg, t2).get_activity("task", gid("tk"))
+    assert act.due == "2030-02-01T13:00:00Z" and t2.calls[0][2]["$select"].endswith(",scheduledend")

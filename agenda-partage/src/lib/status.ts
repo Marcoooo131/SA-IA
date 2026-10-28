@@ -28,4 +28,5 @@ export const FIELD_LABELS: Record<string, string> = {
   status: 'Statut',
   is_private: 'Confidentiel',
   links: 'Liens',
+  external_ref: 'Référence CRM',
 };

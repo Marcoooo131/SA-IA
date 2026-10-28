@@ -1,5 +1,6 @@
 import { Ban, Check, KeyRound, Loader2, Mail, Plus, Save, Settings2, Shield, Tags, Trash2, UserPlus, Users } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { DispatchConnection } from '../components/IntegrationSettings';
 import { Avatar, ConfirmDialog, EmptyState, Modal, Toggle, displayName } from '../components/ui';
 import { useAuth } from '../context/AuthContext';
 import { useTeam } from '../context/TeamContext';
@@ -465,6 +466,7 @@ function SettingsTab() {
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Enregistrer
         </button>
       </div>
+      <DispatchConnection />
       <div className="rounded-xl border border-dashed border-neutral-300 p-4 text-sm text-neutral-600">
         <p className="flex items-center gap-2 font-semibold text-ink">
           <Ban className="h-4 w-4 text-brand" /> Services payants non activés

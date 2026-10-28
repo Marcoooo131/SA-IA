@@ -54,6 +54,7 @@ class Email:
     text: str = ""       # description as plain text: read in memory to classify / find the client, never stored
     sender: str = ""     # e-mail address of the sender (emails only)
     etag: str = ""
+    due: str = ""        # tasks: due date (ISO, UTC) read when the agenda booking is enabled
 
 
 @dataclass(frozen=True)
