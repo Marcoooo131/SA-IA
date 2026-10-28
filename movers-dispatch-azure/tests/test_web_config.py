@@ -1,0 +1,195 @@
+"""Dashboard access rules and configuration loading."""
+
+from __future__ import annotations
+
+import time
+
+import pytest
+from fastapi.testclient import TestClient
+
+from movers_dispatch import config as config_mod
+from movers_dispatch.engine import Agent
+from movers_dispatch.fake import demo_config, demo_crm
+from movers_dispatch.journal import Journal
+from movers_dispatch.web.app import create_app
+
+H = {"X-Requested-With": "movers-dispatch"}
+
+
+def client(**cfg):
+    crm = demo_crm()
+    agent = Agent(demo_config(**cfg), crm, Journal(":memory:"))
+    c = TestClient(create_app(agent, "secret-token"))
+    return c, agent, crm
+
+
+def wait(agent):
+    for _ in range(200):
+        if not agent.state.running and not agent.busy.locked():
+            return
+        time.sleep(0.01)
+
+
+def test_requires_the_launch_link():
+    c, _, _ = client()
+    assert c.get("/api/state").status_code == 401
+    assert c.get("/?token=wrong", follow_redirects=False).status_code == 403
+    assert c.get("/?token=secret-token", follow_redirects=False).status_code == 303
+    assert c.get("/api/state").status_code == 200
+    assert c.get("/").status_code == 200 and c.get("/static/app.js").status_code == 200
+
+
+def test_post_needs_custom_header():
+    c, _, _ = client()
+    c.get("/?token=secret-token")
+    assert c.post("/api/run", json={"mode": "simulation"}).status_code == 403
+
+
+def test_simulation_run_from_dashboard_and_counters():
+    c, agent, crm = client()
+    c.get("/?token=secret-token")
+    assert c.post("/api/run", json={"mode": "simulation"}, headers=H).status_code == 200
+    time.sleep(0.05)
+    wait(agent)
+    s = c.get("/api/state").json()
+    assert s["counters"]["detectes"] == len(crm.items) and crm.writes == 0
+    assert {"queueitem_id", "subject", "case_number", "owner_name", "worked_by_name", "status", "reason"} <= s["items"][0].keys()
+
+
+def test_automatic_needs_typed_confirmation_and_permission():
+    c, _, crm = client()
+    c.get("/?token=secret-token")
+    assert c.post("/api/run", json={"mode": "automatique", "confirmation": "AUTOMATIQUE"}, headers=H).status_code == 409
+    c, agent, crm = client(automatic_allowed=True)
+    c.get("/?token=secret-token")
+    assert c.post("/api/run", json={"mode": "automatique", "confirmation": "oui"}, headers=H).status_code == 409
+    assert c.post("/api/run", json={"mode": "automatique", "confirmation": "AUTOMATIQUE"}, headers=H).status_code == 200
+    time.sleep(0.05)
+    wait(agent)
+    assert crm.writes >= 1
+
+
+def test_supervised_approval_endpoint():
+    c, agent, crm = client()
+    c.get("/?token=secret-token")
+    c.post("/api/run", json={"mode": "supervise"}, headers=H)
+    time.sleep(0.05)
+    wait(agent)
+    pending = [i for i in c.get("/api/state").json()["items"] if i["status"] == "a_valider"]
+    assert pending and crm.writes == 0
+    r = c.post(f"/api/items/{pending[0]['queueitem_id']}/approve", headers=H)
+    assert r.status_code == 200 and r.json()["status"] == "affecte" and crm.writes == 1
+
+
+def test_dropdown_assignment_and_ignored_items_hidden():
+    c, agent, crm = client()
+    c.get("/?token=secret-token")
+    c.post("/api/run", json={"mode": "simulation"}, headers=H)
+    time.sleep(0.05)
+    wait(agent)
+    s = c.get("/api/state").json()
+    assert all(i["status"] != "ignore" for i in s["items"]) and s["counters"]["ignores"] == 1
+    assert {"key": "chloe", "first_name": "Chloé"} in s["config"]["collaborators"]
+    review = [i for i in s["items"] if "Aucun Case pertinent" in (i["reason"] or "") and not i["category"]]
+    r = c.post(f"/api/items/{review[0]['queueitem_id']}/assign", json={"collaborator": "chloe"}, headers=H)
+    assert r.status_code == 200 and r.json()["status"] == "affecte" and r.json()["worked_by_name"] == "Chloé"
+    proposed = [i for i in s["items"] if i["status"] == "propose"][0]
+    assert c.post(f"/api/items/{proposed['queueitem_id']}/assign", json={"collaborator": "chloe"}, headers=H).status_code == 409
+
+
+def test_example_configuration_loads_and_blocks_writes(tmp_path):
+    from pathlib import Path
+
+    cfg = config_mod.load(Path(__file__).parent.parent / "config" / "dispatch.example.toml")
+    assert cfg.default_mode.value == "simulation" and not cfg.automatic_allowed
+    assert len(cfg.problems()) == 5        # four user ids + the CRM address
+    assert cfg.source.view_names == ("Queue Item - Movers - Emails", "Queue Item - Movers tasks")
+    assert not cfg.cases.active_only
+
+
+def test_automatic_cannot_be_the_default(tmp_path):
+    p = tmp_path / "c.toml"
+    p.write_text('[agent]\ndefault_mode = "automatique"\n[[collaborators]]\nfirst_name = "Kader"\n')
+    with pytest.raises(config_mod.ConfigError):
+        config_mod.load(p)
+
+
+def test_supervision_endpoints():
+    c, agent, crm = client()
+    c.get("/?token=secret-token")
+    c.post("/api/run", json={"mode": "supervise"}, headers=H)
+    time.sleep(0.05)
+    wait(agent)
+    pending = [i for i in c.get("/api/state").json()["items"] if i["status"] == "a_valider"]
+    target = next(k for k in ("kader", "chloe") if k != pending[0]["worked_by_name"].lower().replace("é", "e"))
+    r = c.post(f"/api/items/{pending[0]['queueitem_id']}/correct", json={"collaborator": target, "note": "test"}, headers=H)
+    assert r.status_code == 200 and r.json()["status"] == "affecte"
+    s = c.get("/api/supervision").json()
+    assert s["corrigees"] == 1 and s["corrections"][0]["note"] == "test" and s["objectif"] == 100
+
+
+def test_configuration_saved_by_notepad_and_typos(tmp_path):
+    from pathlib import Path
+
+    example = (Path(__file__).parent.parent / "config" / "dispatch.example.toml").read_text(encoding="utf-8")
+    bom = tmp_path / "bom.toml"
+    bom.write_bytes(b"\xef\xbb\xbf" + example.encode("utf-8"))          # Notepad « UTF-8 avec BOM »
+    ansi = tmp_path / "ansi.toml"
+    ansi.write_bytes(example.encode("cp1252", errors="replace"))         # Notepad « ANSI »
+    assert config_mod.load(bom).collaborators[3].first_name == "Chloé"
+    assert config_mod.load(ansi).collaborators[3].first_name == "Chloé"
+    typo = tmp_path / "typo.toml"
+    typo.write_text(example.replace('environment_url = "https://SERVEUR-CRM/ORGANISATION"',
+                                    "environment_url = https://crm/Org"), encoding="utf-8")
+    with pytest.raises(config_mod.ConfigError, match="guillemets"):
+        config_mod.load(typo)
+
+
+def test_attachment_and_account_check_endpoints():
+    c, agent, crm = client()
+    c.get("/?token=secret-token")
+    c.post("/api/run", json={"mode": "supervise"}, headers=H)
+    time.sleep(0.05)
+    wait(agent)
+    letter = next(i for i in c.get("/api/state").json()["items"] if i["attachments"])
+    files = c.get(f"/api/items/{letter['queueitem_id']}/attachments").json()
+    r = c.get(f"/api/items/{letter['queueitem_id']}/attachments/{files[0]['id']}")
+    assert r.status_code == 200 and r.headers["content-type"] == "application/pdf" and r.content.startswith(b"%PDF")
+    assert r.headers["content-disposition"].startswith("inline") and r.headers["x-content-type-options"] == "nosniff"
+    assert c.get("/api/accounts/check", params={"number": "10090016"}).json()["name"].startswith("Client Démo N")
+    assert c.get("/api/accounts/check", params={"number": "1"}).status_code == 409
+    other = next(i for i in c.get("/api/state").json()["items"] if not i["attachments"])
+    assert c.get(f"/api/items/{other['queueitem_id']}/attachments/{files[0]['id']}").status_code == 404
+
+
+def test_reserve_port_skips_a_port_already_used():
+    import socket
+
+    from movers_dispatch.cli import reserve_port
+
+    busy = socket.socket()
+    busy.bind(("127.0.0.1", 0))
+    busy.listen(1)
+    first = busy.getsockname()[1]
+    try:
+        sock = reserve_port(first)
+        try:
+            assert sock.getsockname()[1] != first
+        finally:
+            sock.close()
+    finally:
+        busy.close()
+
+
+def test_read_letter_endpoint():
+    from movers_dispatch.config import LetterReading
+
+    c, agent, crm = client(reading=LetterReading(enabled=True, kind="fake"))
+    c.get("/?token=secret-token")
+    assert c.get("/api/state").json()["config"]["reading"] is True
+    c.post("/api/run", json={"mode": "simulation"}, headers=H)
+    wait(agent)
+    qid = next(i["queueitem_id"] for i in agent.journal.items() if i["attachments"])
+    assert c.post(f"/api/items/{qid}/read", headers={"X-Requested-With": "x"}).status_code in (401, 403)
+    r = c.post(f"/api/items/{qid}/read", headers=H).json()
+    assert r["proposal"] == "10090016" and crm.writes == 0

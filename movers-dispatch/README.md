@@ -191,19 +191,9 @@ et seuls les PDF et les images sont affichés. Vous tapez le n° lu. Avant d'éc
 liste **Attribuer à…** propose aussi « Suivant en Résiliation » et « Suivant en Déménagement », pour
 que la rotation 1 pour 1 s'applique.
 
-**Lecture des lettres par Azure AI Document Intelligence (section `[lecture]`, désactivée par défaut).**
-Une fois l'accord de l'informatique et du DPO obtenu, l'agent envoie les PDF et images des mails dont le
-client n'est pas retrouvé à la ressource Azure **de l'entreprise** (modèle « prebuilt-read », qui lit
-l'écriture manuscrite). Il ne garde pas le texte : seulement les n° client (ceux écrits « n° client » d'abord,
-sinon les nombres de 6 à 10 chiffres), les téléphones et les adresses e-mail. Il cherche ensuite le compte
-comme pour un mail, avec un compte unique et cohérent. Le motif dit ce qu'il a lu (« j'ai lu : n° 10075432 »).
-Le client proposé est **toujours validé par un humain**, même en mode Automatique : un chiffre mal lu peut
-désigner un autre client réel. Le bouton **Lire la lettre (Azure)** fait la même lecture à la demande et
-préremplit le n° ; rien n'est écrit sans « Rattacher le client ». La clé est lue dans la variable Windows
-`MD_AZURE_DI_KEY`, jamais dans `dispatch.toml`. Les identifiants lus restent en mémoire le temps de la
-session, pour ne pas renvoyer la même lettre à Azure à chaque passage.
-
-**Pas encore fait :** retrouver le client par **nom + adresse**.
+**Pas encore fait :** retrouver le client par **nom + adresse**. Une lecture automatique des lettres
+scannées par une IA serait possible, mais elle enverrait les courriers des clients à un service externe.
+Elle demande donc l'accord de l'entreprise, et le n° proposé resterait à confirmer par vous.
 
 ### Modes
 

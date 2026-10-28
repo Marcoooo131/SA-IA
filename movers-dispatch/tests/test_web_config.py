@@ -179,17 +179,3 @@ def test_reserve_port_skips_a_port_already_used():
             sock.close()
     finally:
         busy.close()
-
-
-def test_read_letter_endpoint():
-    from movers_dispatch.config import LetterReading
-
-    c, agent, crm = client(reading=LetterReading(enabled=True, kind="fake"))
-    c.get("/?token=secret-token")
-    assert c.get("/api/state").json()["config"]["reading"] is True
-    c.post("/api/run", json={"mode": "simulation"}, headers=H)
-    wait(agent)
-    qid = next(i["queueitem_id"] for i in agent.journal.items() if i["attachments"])
-    assert c.post(f"/api/items/{qid}/read", headers={"X-Requested-With": "x"}).status_code in (401, 403)
-    r = c.post(f"/api/items/{qid}/read", headers=H).json()
-    assert r["proposal"] == "10090016" and crm.writes == 0

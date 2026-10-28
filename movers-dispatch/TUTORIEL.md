@@ -221,44 +221,6 @@ lit pas l'écriture à la main : un chiffre mal lu pourrait désigner un autre c
 4. Dans **Attribuer à…**, choisissez **Suivant en …** avec la rotation qui correspond à la lettre (par
    exemple **Suivant en Movers - Résiliation**), puis **Attribuer**.
 
-### Option : faire lire les lettres par Azure AI (après accord de l'entreprise)
-
-Avec cette option, l'agent lit lui-même la lettre (même manuscrite), cherche le client avec le n° ou le
-téléphone lu, et vous propose le compte. **Vous validez toujours.**
-
-**Avant tout :** demandez à l'informatique et au DPO leur **accord écrit** pour envoyer les courriers
-scannés à Azure AI Document Intelligence. Demandez-leur aussi de créer la ressource (région Europe) et de
-vous donner deux choses : **l'adresse (endpoint)** et **une clé**. N'utilisez pas de compte Azure personnel.
-
-1. **La clé** (à faire une seule fois) : menu Démarrer → tapez **variables d'environnement** → **Modifier
-   les variables d'environnement pour votre compte** → **Nouvelle…**
-   - Nom de la variable : `MD_AZURE_DI_KEY`
-   - Valeur : la clé donnée par l'informatique
-
-   Cliquez sur OK, puis fermez **toutes** les fenêtres noires de l'agent. La clé ne va jamais dans
-   `dispatch.toml` et ne doit être envoyée à personne.
-2. **La configuration** : dans `dispatch.toml`, ajoutez (ou complétez) la section :
-
-   ```toml
-   [lecture]
-   active = true
-   endpoint = "https://NOM-DONNÉ-PAR-L-INFORMATIQUE.cognitiveservices.azure.com"
-   ```
-3. Relancez `4-lancer.bat`. Si la clé manque, un bandeau l'indique (« Lecture des lettres désactivée… »),
-   et le reste de l'agent fonctionne normalement.
-
-**Au quotidien :**
-
-- Pendant le traitement, l'agent lit tout seul les lettres des mails dont il ne trouve pas le client. La
-  colonne Compte affiche par exemple « à rattacher Client X — via n° client lu dans la pièce jointe
-  (j'ai lu : n° 10075432) ». Ouvrez **Voir la pièce jointe**, vérifiez que le nom et le n° correspondent
-  à la lettre, puis cliquez sur **Valider**. Si c'est faux, tapez le bon n° et cliquez sur **Corriger le client**.
-- S'il n'a rien trouvé, le motif dit ce qu'il a lu (« J'ai lu dans la pièce jointe : n° 10086599 — aucun
-  compte… ») : corrigez le n° vous-même comme à l'étape 2 ci-dessus.
-- Le bouton **Lire la lettre (Azure)** relit la pièce jointe à la demande. Il affiche ce qu'il a lu et le
-  compte trouvé, puis préremplit le n°. Rien n'est écrit dans le CRM tant que vous n'avez pas cliqué sur
-  **Rattacher le client**.
-
 ---
 
 # C. Les deux semaines de supervision, puis le mode Automatique
@@ -335,8 +297,6 @@ Votre journal est mis à jour automatiquement, sans rien perdre.
 | « Regarding … pointe vers « contract » » | M'envoyer la partie « Colonnes de « contract » » de `decouverte.txt` (étape 6). |
 | « Le numéro … correspond à 0 compte(s) actif(s) » | Le n° tapé n'existe pas (souvent un chiffre mal lu sur une lettre) : relire la pièce jointe. |
 | « rotation.… : collaborateur(s) inconnu(s) » | Dans `[rotation]`, utiliser les clés `chloe`, `kader`, `estefania`, `marc-antoine`. |
-| « Lecture des lettres désactivée : la variable Windows MD_AZURE_DI_KEY (clé Azure) est vide » | Créer la variable (étape 10, option Azure), puis fermer et relancer l'agent. |
-| « Azure a répondu HTTP 401 » ou « Azure injoignable » | Clé ou adresse incorrecte, ou réseau de l'entreprise qui bloque Azure : contacter l'informatique. |
 | « Le port 8765 est déjà pris » ou erreur 10048 | Une autre fenêtre de l'agent est encore ouverte. L'agent prend alors tout seul le port suivant (8766…) et ouvre le bon lien ; pour éviter deux agents en même temps, fermer l'ancienne fenêtre noire (ou terminer « Python » dans le Gestionnaire des tâches). |
 
 > **Bon à savoir :** l'agent utilise **votre** session du CRM, avec vos droits, et ne voit jamais votre

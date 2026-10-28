@@ -11,7 +11,6 @@ from fastapi import Body, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
-from ..dataverse import CrmError
 from ..engine import Agent, RunBlocked
 from ..models import Mode, Status
 
@@ -62,7 +61,6 @@ def create_app(agent: Agent, token: str, actor: str = "local") -> FastAPI:
                       "message": s.message, "problems": s.problems, "warnings": s.warnings},
             "config": {"default_mode": agent.cfg.default_mode.value, "automatic_allowed": agent.cfg.automatic_allowed,
                        "connection": agent.cfg.connection.kind, "problems": agent.cfg.problems(),
-                       "reading": agent.reader is not None,
                        "collaborators": [{"key": c.key, "first_name": c.first_name} for c in agent.cfg.collaborators]},
             "counters": agent.journal.counters(),
             "rotation": agent.rotation_state(),
@@ -150,16 +148,6 @@ def create_app(agent: Agent, token: str, actor: str = "local") -> FastAPI:
             return agent.attachments(queueitem_id)
         except RunBlocked as e:
             raise HTTPException(404, str(e))
-
-    @app.post("/api/items/{queueitem_id}/read")
-    def read_letter(queueitem_id: str):
-        """Reads the letters attached (Azure AI Document Intelligence): nothing is written in the CRM."""
-        try:
-            return agent.read_letter(queueitem_id, actor)
-        except RunBlocked as e:
-            raise HTTPException(409, str(e))
-        except CrmError as e:
-            raise HTTPException(502, str(e))
 
     @app.get("/api/items/{queueitem_id}/attachments/{attachment_id}")
     def attachment(queueitem_id: str, attachment_id: str):

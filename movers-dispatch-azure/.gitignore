@@ -1,0 +1,6 @@
+dispatch.toml
+*.db
+.token-cache.json
+.browser-profile/
+__pycache__/
+*.egg-info/

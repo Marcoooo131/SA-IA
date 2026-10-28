@@ -112,19 +112,6 @@ domaines_ignores = ["sectoralarm.fr", "sectoralarm.com", "sectoralarm.net", "hub
 # de cette table, relevée avec `3-decouvrir.bat`. Exemple : liens_compte = { contract = "customerid" }
 liens_compte = {}
 
-[lecture]
-# Lecture des courriers scannés par Azure AI Document Intelligence (modèle « Read », écriture manuscrite).
-# À n'activer qu'APRÈS l'accord écrit de l'informatique et du DPO : les lettres partent vers la ressource
-# Azure de l'entreprise. Le texte lu n'est jamais enregistré, seuls les n° client / téléphones trouvés
-# servent à chercher le compte, et un humain valide toujours le client proposé.
-active = false
-# Adresse de la ressource Azure, donnée par l'informatique (page « Clés et point de terminaison »)
-endpoint = ""
-# La clé n'est JAMAIS écrite ici : elle est dans une variable Windows de ce nom (voir le tutoriel)
-variable_cle = "MD_AZURE_DI_KEY"
-pendant_le_traitement = true         # lire les lettres des mails dont le client n'est pas retrouvé
-max_fichiers = 3                     # pièces jointes lues par mail
-
 # Les quatre collaborateurs. systemuser_id = identifiant de la fiche utilisateur Dynamics 365,
 # relevé avec `discover` (jamais déduit d'un nom). first_name = prénom attendu dans Worked By (contrôle).
 [[collaborators]]

@@ -139,5 +139,3 @@ def mask(kind: str, value: str) -> str:
 
 SIGNAL_LABELS = {"number": "n° client écrit dans le texte", "sender": "adresse de l'expéditeur",
                  "email": "adresse e-mail écrite dans le texte", "phone": "téléphone écrit dans le texte"}
-LETTER_LABELS = {"number": "n° client lu dans la pièce jointe", "sender": "adresse de l'expéditeur",
-                 "email": "adresse e-mail lue dans la pièce jointe", "phone": "téléphone lu dans la pièce jointe"}

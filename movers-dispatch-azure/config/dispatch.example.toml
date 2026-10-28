@@ -1,0 +1,148 @@
+# Configuration de l'agent de dispatch Movers Emails — copier en `dispatch.toml` (non versionné).
+# Toutes les valeurs propres à l'environnement Sector Alarm se lisent dans le CRM avec :
+#   movers-dispatch discover -c dispatch.toml
+# Rien n'est deviné : tant qu'une valeur manque, aucune écriture n'est possible.
+
+[connection]
+# "browser" : fenêtre Edge où vous vous connectez vous-même au CRM (aucun mot de passe transmis à
+#             l'agent). C'est la connexion adaptée au CRM Sector Alarm, installé sur site.
+# "msal"    : Dynamics 365 en ligne uniquement (Microsoft Entra ID) — ne s'applique pas à un CRM sur site.
+# "fake"    : données fictives de démonstration.
+kind = "browser"
+# Adresse du CRM jusqu'au nom de l'organisation, telle qu'affichée dans la barre du navigateur avant
+# « /main.aspx » (forme : https://<serveur>/<Organisation>).
+environment_url = "https://SERVEUR-CRM/ORGANISATION"
+api_version = "v8.2"                 # CRM sur site 8.x ; `discover` indique la version qui répond
+browser_channel = "msedge"          # Edge installé sur le poste ; vide = Chromium de Playwright
+browser_profile_dir = ".browser-profile"
+# msal uniquement :
+tenant_id = ""
+client_id = ""
+
+[source]
+# Les éléments traités sont ceux des deux sous-tableaux Movers du tableau de bord
+# « Churn - Defence Main activites », désignés par le nom exact de leur vue (`discover` les liste).
+# Un élément présent dans les deux vues n'est traité qu'une fois. Mails et tâches sont pris en charge.
+view_names = ["Queue Item - Movers - Emails", "Queue Item - Movers tasks"]
+# Autres possibilités (laisser vides si view_names est renseigné) : toute la file, ou une vue par identifiant.
+queue_name = ""
+saved_view_id = ""
+user_view_id = ""
+
+[agent]
+default_mode = "simulation"          # "simulation" ou "supervise" ; "automatique" n'est jamais un défaut
+automatic_allowed = false            # à passer à true seulement après validation des règles par le métier
+readiness_streak = 100               # propositions validées d'affilée sans correction avant l'Automatique
+worked_by_navigation = "workerid_systemuser"   # vérifié par `discover` dans les métadonnées
+database = "movers_dispatch.db"
+max_items_per_run = 200
+
+[cases]
+# Ces règles ne servent que lorsque le Regarding du mail est le COMPTE client. Lorsque le Regarding est
+# un Case (2e mail de la vidéo), c'est ce Case qui est retenu, quels que soient son titre et son statut.
+#
+# Statut : dans la vidéo, les deux Cases retenus étaient « Canceled » → le statut n'est pas un critère.
+active_only = false
+# Plusieurs Cases pertinents avec le même Owner : "review" (validation humaine) ou "assign".
+multiple_same_owner = "review"
+# Case pertinent pour Movers : observé dans la vidéo, titre « Mover » ou « MOVERS » (comparaison sans
+# casse ni accents). Toutes les règles doivent être vraies. Autres colonnes possibles, à valider avec le
+# métier et vérifiées par `discover` (ex. type de Case « Takeover », catégorie « Moving Customer »).
+rules = [ { field = "title", contains = "mover" } ]
+
+# ---------------------------------------------------------------- Rotations 1 pour 1
+# Une rotation par nom de tâche (organisation du 27/10). Une tâche va dans la rotation dont elle porte le
+# nom (sans tenir compte des majuscules, accents, tirets ; « Takeover » = « Takeovers »). Le nom le plus
+# long l'emporte : « Movers - Résiliation exception » avant « Movers - Résiliation ».
+# « mots » : pour les MAILS (sujet et texte) et les tâches dont le nom n'est dans aucune liste
+# (description seulement), mots cherchés dans l'ordre des rotations ci-dessous.
+# « choix » : quand la rotation est trouvée par les mots (pas par le nom de tâche), la personne choisit
+# parmi ces rotations dans le tableau de bord (ex. résiliation : « Movers - Résiliation » ou « exception »).
+[[rotations]]
+key = "resiliation_exception"
+label = "Movers - Résiliation exception"
+taches = ["Movers - Résiliation exception"]
+mots = []
+
+[[rotations]]
+key = "resiliation"
+label = "Movers - Résiliation"
+taches = ["Movers - Résiliation"]
+mots = ["résili", "termination", "désactiv", "décès", "mettre fin", "arrêter mon contrat", "cancel"]
+choix = ["resiliation", "resiliation_exception"]
+
+[[rotations]]
+key = "prio_demenagement"
+label = "Prio - Movers - Déménagement"
+taches = ["Prio - Movers - Déménagement"]
+mots = ["déménag", "moving home", "nouvelle adresse", "moving", "changement d'adresse"]
+
+[[rotations]]
+key = "takeover"
+label = "Movers - Takeovers"
+taches = ["Movers - Takeovers"]
+mots = ["takeover"]
+
+[rotation]
+# Quand aucun Case ne désigne l'un des quatre, l'élément va au suivant de la rotation de son nom de tâche.
+active = true
+# "sans_owner" : seulement s'il n'y a pas de Case d'un des quatre (le client garde son interlocuteur)
+# "toujours"   : chaque élément classé suit la rotation, même s'il existe un Case
+applique = "sans_owner"
+# Tâche dont le nom n'est dans aucune rotation et dont la description n'a aucun mot reconnu (anciennes
+# tâches « Moving - CS », chatbot…) : règle d'avant, résiliation (puis choix résiliation / exception).
+tache_inconnue = "resiliation"
+# Ordre de passage de chaque rotation (clés des [[collaborators]] ci-dessous). Les absents se cochent
+# dans le tableau de bord. Une rotation absente ici suit l'ordre des [[collaborators]].
+resiliation_exception = ["chloe", "kader", "estefania", "marc-antoine"]
+resiliation = ["chloe", "kader", "estefania", "marc-antoine"]
+prio_demenagement = ["chloe", "kader", "estefania", "marc-antoine"]
+takeover = ["chloe", "kader", "estefania", "marc-antoine"]
+
+[client]
+# Regarding vide : l'agent cherche le compte comme dans la vidéo (n° client écrit dans le texte, adresse de
+# l'expéditeur, champ « Email » du formulaire HubSpot, téléphone) et ne retient qu'un compte unique.
+active = true
+automatique = false                  # même en mode Automatique, un humain valide le rattachement
+champs_email = ["emailaddress1", "emailaddress2", "emailaddress3"]
+# Colonnes téléphone du compte : `3-decouvrir.bat` liste celles qui existent (Home Phone, Mobile Phone…)
+champs_telephone = ["telephone1", "telephone2", "telephone3"]
+domaines_ignores = ["sectoralarm.fr", "sectoralarm.com", "sectoralarm.net", "hubspot.com", "hubspotemail.net"]
+# Regarding qui pointe vers une autre table (ex. un contrat « C-SFR-… ») : table = colonne « compte »
+# de cette table, relevée avec `3-decouvrir.bat`. Exemple : liens_compte = { contract = "customerid" }
+liens_compte = {}
+
+[lecture]
+# Lecture des courriers scannés par Azure AI Document Intelligence (modèle « Read », écriture manuscrite).
+# À n'activer qu'APRÈS l'accord écrit de l'informatique et du DPO : les lettres partent vers la ressource
+# Azure de l'entreprise. Le texte lu n'est jamais enregistré, seuls les n° client / téléphones trouvés
+# servent à chercher le compte, et un humain valide toujours le client proposé.
+active = false
+# Adresse de la ressource Azure, donnée par l'informatique (page « Clés et point de terminaison »)
+endpoint = ""
+# La clé n'est JAMAIS écrite ici : elle est dans une variable Windows de ce nom (voir le tutoriel)
+variable_cle = "MD_AZURE_DI_KEY"
+pendant_le_traitement = true         # lire les lettres des mails dont le client n'est pas retrouvé
+max_fichiers = 3                     # pièces jointes lues par mail
+
+# Les quatre collaborateurs. systemuser_id = identifiant de la fiche utilisateur Dynamics 365,
+# relevé avec `discover` (jamais déduit d'un nom). first_name = prénom attendu dans Worked By (contrôle).
+[[collaborators]]
+key = "kader"
+first_name = "Kader"
+systemuser_id = ""
+
+[[collaborators]]
+key = "estefania"
+first_name = "Estefania"
+systemuser_id = ""
+
+[[collaborators]]
+key = "marc-antoine"
+first_name = "Marc-Antoine"
+systemuser_id = ""
+
+[[collaborators]]
+key = "chloe"
+first_name = "Chloé"
+systemuser_id = ""

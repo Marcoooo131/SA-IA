@@ -52,7 +52,7 @@ def _load(args) -> config_mod.Config:
         from .fake import demo_config
 
         db = str(Path(args.database or "movers_dispatch_demo.db"))
-        return demo_config(database=db, automatic_allowed=True, reading=config_mod.LetterReading(enabled=True, kind="fake"))
+        return demo_config(database=db, automatic_allowed=True)
     try:
         return config_mod.load(args.config)
     except (OSError, config_mod.ConfigError) as e:
