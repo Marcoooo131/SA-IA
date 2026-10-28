@@ -20,8 +20,9 @@ déroulante du tableau de bord permet de choisir à qui attribuer l'élément.
 
 ## Réservation dans l'agenda partagé (facultatif)
 
-Quand l'agent attribue une **tâche** (Worked By écrit et relu), il réserve son **échéance** (« Due », colonne
-`scheduledend`) dans l'[agenda partagé](../agenda-partage/README.md) du collaborateur : créneau de 15 min,
+Quand l'agent attribue une **tâche** (Worked By écrit et relu), il lit l'**horaire de rappel écrit dans la
+description** de la tâche (ligne du modèle « Horaire : 29/10 à 14h30 », « Rappel : demain entre 9h et 10h »…,
+libellés réglables) et le réserve dans l'[agenda partagé](../agenda-partage/README.md) du collaborateur : créneau de 15 min (ou la plage écrite),
 notification sur son ordinateur, rappel 15 min avant, et visible dans Outlook s'il s'est abonné. Une même tâche
 met toujours à jour le même créneau ; un échec (agenda injoignable, collaborateur sans compte) est noté dans le
 journal et n'arrête jamais le dispatch. Rien n'est envoyé en mode Simulation.
