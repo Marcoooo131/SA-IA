@@ -1,7 +1,7 @@
 # Dispatch Movers Emails — agent Dynamics 365 (version Azure : lecture des lettres)
 
 > Même agent que `movers-dispatch`, plus la lecture des courriers scannés par Azure AI Document
-> Intelligence (section `[lecture]`, désactivée par défaut). Pas à pas : **[TUTO-AZURE.md](TUTO-AZURE.md)**.
+> Intelligence (section `[lecture]`, désactivée par défaut). Tuto complet (installation, Azure, quotidien) : **[TUTORIEL.md](TUTORIEL.md)** ; résumé Azure seul : [TUTO-AZURE.md](TUTO-AZURE.md).
 
 Agent qui parcourt les mails et tâches Movers du CRM (sous-tableaux *Queue Item - Movers - Emails* et
 *Queue Item - Movers tasks*), retrouve le **Case** Movers indiqué par le champ **Regarding**, lit l'**Owner**
