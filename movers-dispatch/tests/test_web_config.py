@@ -160,3 +160,22 @@ def test_attachment_and_account_check_endpoints():
     assert c.get("/api/accounts/check", params={"number": "1"}).status_code == 409
     other = next(i for i in c.get("/api/state").json()["items"] if not i["attachments"])
     assert c.get(f"/api/items/{other['queueitem_id']}/attachments/{files[0]['id']}").status_code == 404
+
+
+def test_reserve_port_skips_a_port_already_used():
+    import socket
+
+    from movers_dispatch.cli import reserve_port
+
+    busy = socket.socket()
+    busy.bind(("127.0.0.1", 0))
+    busy.listen(1)
+    first = busy.getsockname()[1]
+    try:
+        sock = reserve_port(first)
+        try:
+            assert sock.getsockname()[1] != first
+        finally:
+            sock.close()
+    finally:
+        busy.close()

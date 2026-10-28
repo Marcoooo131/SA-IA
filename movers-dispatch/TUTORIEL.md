@@ -297,7 +297,7 @@ Votre journal est mis à jour automatiquement, sans rien perdre.
 | « Regarding … pointe vers « contract » » | M'envoyer la partie « Colonnes de « contract » » de `decouverte.txt` (étape 6). |
 | « Le numéro … correspond à 0 compte(s) actif(s) » | Le n° tapé n'existe pas (souvent un chiffre mal lu sur une lettre) : relire la pièce jointe. |
 | « rotation.… : collaborateur(s) inconnu(s) » | Dans `[rotation]`, utiliser les clés `chloe`, `kader`, `estefania`, `marc-antoine`. |
-| Le port 8765 est déjà utilisé | Une autre fenêtre de l'agent est encore ouverte : la fermer. |
+| « Le port 8765 est déjà pris » ou erreur 10048 | Une autre fenêtre de l'agent est encore ouverte. L'agent prend alors tout seul le port suivant (8766…) et ouvre le bon lien ; pour éviter deux agents en même temps, fermer l'ancienne fenêtre noire (ou terminer « Python » dans le Gestionnaire des tâches). |
 
 > **Bon à savoir :** l'agent utilise **votre** session du CRM, avec vos droits, et ne voit jamais votre
 > mot de passe. Il ne garde pas le contenu des mails ni des pièces jointes. Avant de l'utiliser au
