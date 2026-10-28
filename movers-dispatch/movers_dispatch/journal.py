@@ -36,6 +36,11 @@ CREATE TABLE IF NOT EXISTS runs (
 );
 CREATE INDEX IF NOT EXISTS events_item ON events(queueitem_id);
 CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS reminders (
+  task_id TEXT PRIMARY KEY, queueitem_id TEXT, starts_at TEXT NOT NULL, ends_at TEXT,
+  collaborator_key TEXT NOT NULL, collaborator_name TEXT NOT NULL,
+  subject TEXT, client_name TEXT, link TEXT, updated_at TEXT NOT NULL
+);
 """
 
 # columns added after the first release: added to an existing journal without losing anything
@@ -66,6 +71,21 @@ class Journal:
             for col, kind in ADDED_COLUMNS.items():
                 if col not in have:
                     self.db.execute(f"ALTER TABLE items ADD COLUMN {col} {kind}")
+
+    def upsert_reminder(self, task_id: str, **fields) -> None:
+        """Reminder written in an assigned task (one per task: a new time replaces the old one)."""
+        cols = ["task_id", *fields, "updated_at"]
+        values = [task_id, *fields.values(), now()]
+        updates = ", ".join(f"{c}=excluded.{c}" for c in cols[1:])
+        with self.lock:
+            self.db.execute(f"INSERT INTO reminders({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))}) "
+                            f"ON CONFLICT(task_id) DO UPDATE SET {updates}", values)
+
+    def reminders(self, since_iso: str) -> list[dict]:
+        with self.lock:
+            rows = self.db.execute("SELECT * FROM reminders WHERE starts_at >= ? ORDER BY starts_at, collaborator_name",
+                                   (since_iso,)).fetchall()
+        return [dict(r) for r in rows]
 
     def setting(self, key: str, default=None):
         with self.lock:

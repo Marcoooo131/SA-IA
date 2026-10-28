@@ -202,6 +202,26 @@ class AgendaLink:
 
 
 @dataclass(frozen=True)
+class TeamReminders:
+    """Shared file of the reminders written in assigned tasks (Teams folder + page « rappels »)."""
+    enabled: bool = False
+    folder: str = ""                    # Teams / OneDrive folder synchronised on this PC
+    labels: tuple[str, ...] = ("horaire", "rappel", "rappeler", "creneau", "rdv", "rendez-vous")
+    zone: str = "Europe/Paris"
+    keep_days: int = 2                  # past reminders still listed in the file
+
+    def problems(self) -> list[str]:
+        if not self.enabled:
+            return []
+        from os.path import expanduser, expandvars, isdir
+        if not self.folder.strip():
+            return ["rappels.dossier : chemin du dossier Teams synchronisé sur ce PC (voir le tutoriel)."]
+        if not isdir(expandvars(expanduser(self.folder))):
+            return [f"rappels.dossier introuvable sur ce PC : {self.folder}"]
+        return []
+
+
+@dataclass(frozen=True)
 class Config:
     connection: Connection
     source: Source
@@ -218,6 +238,7 @@ class Config:
     # supervised decisions in a row accepted without correction before Automatic mode is advisable
     readiness_streak: int = 100
     agenda: AgendaLink = field(default_factory=AgendaLink)
+    reminders: TeamReminders = field(default_factory=TeamReminders)
     path: Path | None = None
 
     def collaborator(self, key: str) -> Collaborator | None:
@@ -327,6 +348,11 @@ def parse(raw: dict, path: Path | None = None) -> Config:
         zone=str(ag.get("fuseau", "Europe/Paris")).strip(),
         duration_minutes=int(ag.get("duree_minutes", 15)), category=str(ag.get("categorie", "Appel")),
         timeout_seconds=float(ag.get("delai_secondes", 15)))
+    rp = raw.get("rappels", {})
+    reminders = TeamReminders(
+        enabled=bool(rp.get("active", False)), folder=str(rp.get("dossier", "")).strip(),
+        labels=tuple(str(x) for x in rp.get("libelles", TeamReminders.labels)),
+        zone=str(rp.get("fuseau", "Europe/Paris")).strip(), keep_days=int(rp.get("garder_jours", 2)))
     db = agent.get("database", "movers_dispatch.db")
     if path is not None and not Path(db).is_absolute():
         db = str(path.parent / db)
@@ -342,7 +368,7 @@ def parse(raw: dict, path: Path | None = None) -> Config:
         database=db,
         max_items_per_run=int(agent.get("max_items_per_run", 200)),
         readiness_streak=int(agent.get("readiness_streak", 100)),
-        categories=categories, rotation=rotation, client=client, agenda=agenda,
+        categories=categories, rotation=rotation, client=client, agenda=agenda, reminders=reminders,
         path=path,
     )
 
