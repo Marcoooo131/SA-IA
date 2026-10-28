@@ -74,7 +74,11 @@ def _write_atomic(path: Path, text: str, encoding: str) -> None:
 
 
 def export(cfg: Config, journal: Journal, now: datetime | None = None) -> Path:
-    folder = Path(os.path.expandvars(os.path.expanduser(cfg.reminders.folder)))
+    folder = cfg.reminders.resolved_folder()
+    if folder is None:
+        raise FileNotFoundError("OneDrive introuvable sur ce PC")
+    if cfg.reminders.automatic:
+        folder.mkdir(exist_ok=True)
     if not folder.is_dir():
         raise FileNotFoundError(f"dossier des rappels introuvable : {folder}")
     data = payload(cfg, journal, now)

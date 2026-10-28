@@ -205,19 +205,37 @@ class AgendaLink:
 class TeamReminders:
     """Shared file of the reminders written in assigned tasks (Teams folder + page « rappels »)."""
     enabled: bool = False
-    folder: str = ""                    # Teams / OneDrive folder synchronised on this PC
+    folder: str = ""                    # empty: « Rappels » in this PC's OneDrive (created if missing)
     labels: tuple[str, ...] = ("horaire", "rappel", "rappeler", "creneau", "rdv", "rendez-vous")
     zone: str = "Europe/Paris"
     keep_days: int = 2                  # past reminders still listed in the file
 
+    @property
+    def automatic(self) -> bool:
+        return self.folder.strip().lower() in ("", "auto")
+
+    def resolved_folder(self) -> Path | None:
+        """Folder written to: the configured path, or « Rappels » in this PC's OneDrive (business first)."""
+        from os import environ
+        from os.path import expanduser, expandvars
+        if not self.automatic:
+            return Path(expandvars(expanduser(self.folder.strip())))
+        for var in ("OneDriveCommercial", "OneDrive"):
+            base = environ.get(var, "").strip()
+            if base and Path(base).is_dir():
+                return Path(base) / "Rappels"
+        return None
+
     def problems(self) -> list[str]:
         if not self.enabled:
             return []
-        from os.path import expanduser, expandvars, isdir
-        if not self.folder.strip():
-            return ["rappels.dossier : chemin du dossier Teams synchronisé sur ce PC (voir le tutoriel)."]
-        if not isdir(expandvars(expanduser(self.folder))):
-            return [f"rappels.dossier introuvable sur ce PC : {self.folder}"]
+        folder = self.resolved_folder()
+        if folder is None:
+            return ["OneDrive introuvable sur ce PC : ouvrez OneDrive et connectez-vous, ou indiquez "
+                    "rappels.dossier (voir le tutoriel)."]
+        if not self.automatic and not folder.is_dir():
+            return [f"rappels.dossier introuvable sur ce PC : {self.folder} — supprimez la ligne « dossier » "
+                    "pour utiliser le dossier « Rappels » de OneDrive automatiquement."]
         return []
 
 
@@ -388,3 +406,22 @@ def load(path: str | Path) -> Config:
                           'par exemple environment_url = "https://serveur/Organisation" (sans espace avant le nom).') from e
     except (TypeError, ValueError) as e:  # unknown key in a section, bad enum value
         raise ConfigError(f"{p.name} : {e}") from e
+
+
+def enable_reminders(path: str | Path) -> None:
+    """Turns the team reminders on in the configuration file: ``active = true`` in ``[rappels]``, or the
+    section added at the end. Comments and every other line are kept."""
+    path = Path(path)
+    text = path.read_text(encoding="utf-8")
+    head = re.search(r"(?m)^\[rappels\][ \t]*$", text)
+    if head is None:
+        path.write_text(text.rstrip("\n") + "\n\n[rappels]\nactive = true\n", encoding="utf-8")
+        return
+    nxt = re.search(r"(?m)^\[", text[head.end():])
+    end = head.end() + nxt.start() if nxt else len(text)
+    section = text[head.end():end]
+    if re.search(r"(?m)^active\s*=", section):
+        section = re.sub(r"(?m)^active\s*=.*$", "active = true", section, count=1)
+    else:
+        section = "\nactive = true" + section
+    path.write_text(text[:head.end()] + section + text[end:], encoding="utf-8")

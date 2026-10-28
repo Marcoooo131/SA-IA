@@ -232,17 +232,20 @@ def cmd_rappels(args) -> None:
     cfg = _load(args)
     rc = cfg.reminders
     print(f"Configuration : {cfg.path or '(démo)'}")
+    if not rc.enabled and cfg.path is not None:
+        config_mod.enable_reminders(cfg.path)
+        cfg = config_mod.load(cfg.path)
+        rc = cfg.reminders
+        print("Rappels activés dans dispatch.toml (section [rappels], active = true).")
     if not rc.enabled:
         print("\nLes rappels sont désactivés : dans dispatch.toml, ajoutez la section [rappels] avec active = true")
-        print("(modèle : config\\dispatch.example.toml, ou le tutoriel rappels-equipe\\TUTORIEL.md).")
         return
+    print(f"Dossier des rappels : {rc.resolved_folder() or '(introuvable)'}")
     problems = rc.problems()
     if problems:
         print("\nImpossible d'écrire le fichier :")
         for pb in problems:
             print("  - " + pb)
-        print("\nAstuce : copiez le chemin depuis la barre d'adresse de l'Explorateur et mettez-le entre apostrophes,")
-        print("  dossier = 'C:\\Users\\vous\\Entreprise\\Movers - Documents\\Rappels'")
         return
     j = Journal(cfg.database)
     if args.essai:
@@ -255,7 +258,7 @@ def cmd_rappels(args) -> None:
         print(f"Rappel d'essai ajouté dans 20 minutes pour : {', '.join(c.first_name for c in targets)}")
     path = team_reminders.export(cfg, j)
     n = len(team_reminders.payload(cfg, j)["reminders"])
-    print(f"\nFichier écrit : {path}\n{n} rappel(s) dedans. Il apparaît dans Teams dès que OneDrive l'a synchronisé.")
+    print(f"\nFichier écrit : {path}\n{n} rappel(s) dedans. Partagez ce dossier « Rappels » aux agents (clic droit › Partager).")
 
 
 def main(argv: list[str] | None = None) -> None:
