@@ -8,6 +8,7 @@ const STATUS_LABELS = {
 const $ = (id) => document.getElementById(id);
 let last = null;
 let collaborators = [];
+let readingOn = false;
 
 function esc(v) {
   return String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -74,6 +75,7 @@ function renderRows(items) {
           placeholder="N° de compte" aria-label="Numéro de compte du client">
         <button class="small" data-link="${esc(i.queueitem_id)}">${i.client_name ? "Corriger le client" : "Rattacher le client"}</button></span>` : ""}
         ${i.attachments ? `<button class="small" data-attach="${esc(i.queueitem_id)}">Voir la pièce jointe</button>` : ""}
+        ${i.attachments && readingOn ? `<button class="small" data-read="${esc(i.queueitem_id)}">Lire la lettre (Azure)</button>` : ""}
         <button class="small" data-history="${esc(i.queueitem_id)}">Historique</button></td>
     </tr>`).join("");
 }
@@ -133,8 +135,10 @@ async function refresh() {
     const s = await api("/api/state");
     last = s;
     collaborators = s.config.collaborators;
+    readingOn = s.config.reading;
     // keep a drop-down choice while the list refreshes every 2 seconds
     const picked = Object.fromEntries([...document.querySelectorAll("select[data-pick]")].map((el) => [el.dataset.pick, el.value]));
+    const typed = Object.fromEntries([...document.querySelectorAll("input[data-acct]")].map((el) => [el.dataset.acct, el.value]));
     for (const [k, v] of Object.entries(s.counters)) { const el = $("c-" + k); if (el) el.textContent = v; }
     const auto = document.querySelector("input[value=automatique]");
     auto.disabled = !s.config.automatic_allowed;
@@ -155,6 +159,10 @@ async function refresh() {
     for (const [id, v] of Object.entries(picked)) {
       const el = document.querySelector(`select[data-pick="${CSS.escape(id)}"]`);
       if (el) el.value = v;
+    }
+    for (const [id, v] of Object.entries(typed)) {
+      const el = document.querySelector(`input[data-acct="${CSS.escape(id)}"]`);
+      if (el && v) el.value = v;
     }
     renderSupervision(await api("/api/supervision"));
     if (!$("events").dataset.item) renderEvents(await api("/api/events"));
@@ -219,6 +227,22 @@ $("rows").addEventListener("click", async (ev) => {
       const files = await api(`/api/items/${t.dataset.attach}/attachments`);
       if (!files.length) { alert("Aucune pièce jointe."); return; }
       for (const f of files) window.open(`/api/items/${t.dataset.attach}/attachments/${f.id}`, "_blank", "noopener");
+      return;
+    } else if (t.dataset.read) {
+      t.disabled = true;
+      t.textContent = "Lecture en cours…";
+      let r;
+      try { r = await api(`/api/items/${t.dataset.read}/read`, {}); } finally { t.disabled = false; t.textContent = "Lire la lettre (Azure)"; }
+      const lines = r.numbers.map((n) => `  • n° ${n.number} → ${n.name ? n.name : (n.accounts ? n.accounts + " comptes" : "aucun compte actif")}`);
+      if (r.phones.length) lines.push(`  • tél. ${r.phones.join(", ")}`);
+      const msg = `J'ai lu : ${r.read}\n\n${lines.join("\n")}${r.problems.length ? "\n\nProblème : " + r.problems.join(" ; ") : ""}`;
+      const input = document.querySelector(`input[data-acct="${CSS.escape(t.dataset.read)}"]`);
+      if (r.proposal && input) {
+        input.value = r.proposal;
+        alert(`${msg}\n\nClient proposé : ${r.proposal_name}\nLe n° est prérempli : comparer avec la lettre (« Voir la pièce jointe »), le corriger si besoin, puis « Rattacher le client ».`);
+      } else {
+        alert(`${msg}\n\nAucun client sûr : ${r.why}. Vérifier la lettre et saisir le n° de compte.`);
+      }
       return;
     } else if (t.dataset.reject) {
       const note = prompt("Motif du refus (facultatif, sans donnée client) :") ?? null;

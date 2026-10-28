@@ -154,6 +154,26 @@ class ClientMatching:
 
 
 @dataclass(frozen=True)
+class LetterReading:
+    """Reading of scanned letters by Azure AI Document Intelligence (« Read » model), only once the company
+    (IT + DPO) has approved it: the file is sent to the company's own Azure resource, the text is read in
+    memory, only the customer numbers / phones found are kept, and a person always validates the client."""
+
+    enabled: bool = False
+    kind: str = "azure"                 # "azure", or "fake" (demo)
+    endpoint: str = ""                  # https://<ressource>.cognitiveservices.azure.com (given by IT)
+    key_env: str = "MD_AZURE_DI_KEY"    # name of the Windows environment variable holding the key (never in the file)
+    api_version: str = "2024-11-30"
+    model: str = "prebuilt-read"
+    during_run: bool = True             # read the letters of mails whose client is not found, during the runs
+    max_files: int = 3                  # files read per mail
+    max_mb: int = 20
+    timeout: int = 90
+    mimetypes: tuple[str, ...] = ("application/pdf", "image/jpeg", "image/jpg", "image/png", "image/tiff", "image/bmp",
+                                  "image/heif")
+
+
+@dataclass(frozen=True)
 class Connection:
     kind: str = "fake"                  # "fake" (demo data), "msal" or "browser"
     environment_url: str = ""           # e.g. https://<org>.crm4.dynamics.com
@@ -181,6 +201,7 @@ class Config:
     categories: Categories = field(default_factory=Categories)
     rotation: Rotation = field(default_factory=Rotation)
     client: ClientMatching = field(default_factory=ClientMatching)
+    reading: LetterReading = field(default_factory=LetterReading)
     # supervised decisions in a row accepted without correction before Automatic mode is advisable
     readiness_streak: int = 100
     path: Path | None = None
@@ -282,6 +303,17 @@ def parse(raw: dict, path: Path | None = None) -> Config:
         ignored_domains=tuple(d.lower() for d in cl.get("domaines_ignores", ClientMatching.ignored_domains)),
         regarding_navigation={**ClientMatching().regarding_navigation, **cl.get("navigation_regarding", {})},
         account_links=dict(cl.get("liens_compte", {})))
+    le = raw.get("lecture", {})
+    reading = LetterReading(
+        enabled=bool(le.get("active", False)), kind=le.get("type", "azure"), endpoint=le.get("endpoint", "").strip().rstrip("/"),
+        key_env=le.get("variable_cle", LetterReading.key_env), api_version=le.get("api_version", LetterReading.api_version),
+        model=le.get("modele", LetterReading.model), during_run=bool(le.get("pendant_le_traitement", True)),
+        max_files=int(le.get("max_fichiers", 3)), max_mb=int(le.get("max_mo", 20)), timeout=int(le.get("delai", 90)))
+    if reading.enabled and reading.kind == "azure" and not reading.endpoint.startswith("https://"):
+        raise ConfigError("[lecture] endpoint : adresse https de la ressource Azure AI Document Intelligence "
+                          "(fournie par l'informatique), par exemple https://<nom>.cognitiveservices.azure.com")
+    if reading.kind not in ("azure", "fake"):
+        raise ConfigError("[lecture] type : « azure ».")
     db = agent.get("database", "movers_dispatch.db")
     if path is not None and not Path(db).is_absolute():
         db = str(path.parent / db)
@@ -297,7 +329,7 @@ def parse(raw: dict, path: Path | None = None) -> Config:
         database=db,
         max_items_per_run=int(agent.get("max_items_per_run", 200)),
         readiness_streak=int(agent.get("readiness_streak", 100)),
-        categories=categories, rotation=rotation, client=client,
+        categories=categories, rotation=rotation, client=client, reading=reading,
         path=path,
     )
 

@@ -17,7 +17,8 @@ from .config import Config, normalize_name
 from .dataverse import ConcurrentModification, CrmError, Gateway, SessionExpired, UncertainWrite
 from .journal import Journal
 from .models import Email, Lookup, Mode, QueueItem, Status, User
-from .reading import SIGNAL_LABELS, categorize, category_label, extract, mask, phone_variants
+from .letters import ReadingError, letter_signals, make_reader, readable
+from .reading import LETTER_LABELS, SIGNAL_LABELS, Signals, categorize, category_label, extract, mask, phone_variants
 from .rules import ROTATION_CODES, Decision, by_rotation, decide
 
 log = logging.getLogger("movers_dispatch")
@@ -69,6 +70,7 @@ class Evaluation:
     client_via: str = ""          # how the account was found (masked values), when the Regarding was empty
     client_to_link: bool = False  # the Regarding must be filled with this account before Worked By
     attachments: int = 0          # files attached to a mail whose client was not found (scanned letters)
+    from_letter: bool = False     # client found from the text read in an attachment: always validated by a person
 
 
 @dataclass
@@ -91,6 +93,12 @@ class Agent:
         self.busy = threading.Lock()
         self.state = State(mode=cfg.default_mode.value)
         self.client_ready = True    # set at each run from the client preflight
+        self.reading_problem = ""
+        try:
+            self.reader = make_reader(cfg)
+        except ReadingError as e:
+            self.reader, self.reading_problem = None, str(e)
+        self._letters: dict[str, Signals] = {}   # attachment id → identifiers read (this session only, never the text)
 
     # ------------------------------------------------------------------ reading
     def evaluate(self, gw: Gateway, queueitem_id: str, users: dict[str, User], cursor: dict | None = None,
@@ -132,14 +140,22 @@ class Agent:
                     hint = ""
                     if act.kind == "email":
                         try:
-                            ev.attachments = len(gw.list_attachments(act.id))
+                            files = gw.list_attachments(act.id)
                         except CrmError:
-                            ev.attachments = 0
-                        if ev.attachments:
+                            files = []
+                        ev.attachments = len(files)
+                        if files and self.reader is not None and self.cfg.reading.during_run:
+                            account, read_why = self.read_letters(gw, act.id, files)
+                            if account is not None:
+                                why, ev.from_letter = read_why, True
+                            else:
+                                hint = f" {read_why} Vérifier la pièce jointe et saisir le n° de compte."
+                        elif files:
                             hint = (" Pièce jointe à lire (courrier scanné : le n° client y est souvent écrit à la main) : "
                                     "« Voir la pièce jointe », puis saisir le n° de compte.")
-                    ev.decision = Decision(Status.REVIEW, f"Regarding vide et client non retrouvé : {why}{hint}", code="no_client")
-                    return self._maybe_skip(ev)
+                    if account is None:
+                        ev.decision = Decision(Status.REVIEW, f"Regarding vide et client non retrouvé : {why}{hint}", code="no_client")
+                        return self._maybe_skip(ev)
                 ev.client_via, ev.client_to_link = why, True
         if account is not None:
             ev.account_id, ev.account_name = account.id, account.name
@@ -159,11 +175,12 @@ class Agent:
                                    "élément déjà traité.", code="already_filled")
         return ev
 
-    def _find_client(self, gw: Gateway, act) -> tuple[Lookup | None, str]:
+    def _find_client(self, gw: Gateway, act, sig: Signals | None = None,
+                     labels: dict = SIGNAL_LABELS) -> tuple[Lookup | None, str]:
         """Like the recorded procedure: search the account with what the mail gives (customer number,
         sender address, address written in the form, phone). Only a single, consistent account is kept."""
         c = self.cfg.client
-        sig = extract(self.cfg, act)
+        sig = sig or extract(self.cfg, act)
         if sig.empty():
             return None, "aucune adresse e-mail, aucun n° client et aucun téléphone dans l'élément."
         found: dict[str, Lookup] = {}
@@ -177,15 +194,82 @@ class Agent:
                 hits = gw.find_accounts(fields, values)
                 shown = mask("email" if kind in ("sender", "email") else kind, values[0])
                 if len(hits) > 1:
-                    return None, f"{SIGNAL_LABELS[kind]} {shown} correspond à {len(hits)} comptes."
+                    return None, f"{labels[kind]} {shown} correspond à {len(hits)} comptes."
                 if hits:
                     found[hits[0].id] = hits[0]
-                    via.append(f"{SIGNAL_LABELS[kind]} {shown}")
+                    via.append(f"{labels[kind]} {shown}")
         if not found:
             return None, "aucun compte actif ne correspond aux indices trouvés."
         if len(found) > 1:
             return None, "indices contradictoires : " + " ; ".join(via) + f" → {len(found)} comptes différents."
         return next(iter(found.values())), "via " + " + ".join(via)
+
+    def _read_files(self, gw: Gateway, files: list[dict]) -> tuple[Signals, list[str]]:
+        """Reads the attachments (Azure), keeps only the identifiers found. Returns (identifiers, problems)."""
+        sig, problems = Signals(), []
+        for f in [f for f in files if readable(self.cfg.reading, f)][:self.cfg.reading.max_files]:
+            if f["id"] not in self._letters:
+                try:
+                    text = self.reader.read(gw.get_attachment(f["id"])["content"], f.get("mimetype", ""))
+                except (ReadingError, CrmError) as e:
+                    problems.append(f"{f['filename']} : {e}")
+                    continue
+                self._letters[f["id"]] = letter_signals(self.cfg, text)
+                del text
+            got = self._letters[f["id"]]
+            for name in ("emails", "numbers", "phones"):
+                getattr(sig, name).extend(v for v in getattr(got, name) if v not in getattr(sig, name))
+        return sig, problems
+
+    @staticmethod
+    def _what_was_read(sig: Signals) -> str:
+        parts = [f"n° {n}" for n in sig.numbers] + [f"tél. {mask('phone', p)}" for p in sig.phones] \
+            + [mask("email", e) for e in sig.emails]
+        return ", ".join(parts) if parts else "aucun n° client ni téléphone"
+
+    def read_letters(self, gw: Gateway, email_id: str, files: list[dict]) -> tuple[Lookup | None, str]:
+        """Client from the letters attached to a mail: (account or None, what was read / why)."""
+        sig, problems = self._read_files(gw, files)
+        if sig.empty():
+            if problems:
+                return None, "Lecture de la pièce jointe impossible (" + " ; ".join(problems) + ")."
+            if not any(readable(self.cfg.reading, f) for f in files):
+                return None, "Pièce jointe dans un format non lu (PDF ou image attendus)."
+            return None, "J'ai lu la pièce jointe : aucun n° client ni téléphone trouvé."
+        account, why = self._find_client(gw, None, sig, LETTER_LABELS)
+        if account is None:
+            return None, f"J'ai lu dans la pièce jointe : {self._what_was_read(sig)} — {why}"
+        return account, f"{why} (j'ai lu : {self._what_was_read(sig)})"
+
+    def read_letter(self, queueitem_id: str, actor: str) -> dict:
+        """« Lire la lettre » in the dashboard: what the agent reads in the attachments and the account
+        that the numbers designate — nothing is written, the person then links the client if correct."""
+        if self.reader is None:
+            raise RunBlocked(self.reading_problem or "Lecture des lettres non activée ([lecture] dans dispatch.toml).")
+        saved = self.journal.item(queueitem_id)
+        if not saved or not saved.get("email_id"):
+            raise RunBlocked("Élément inconnu.")
+        files = self.gw.list_attachments(saved["email_id"])
+        if not files:
+            raise RunBlocked("Ce mail n'a pas de pièce jointe.")
+        sig, problems = self._read_files(self.gw, files)
+        numbers = []
+        for n in sig.numbers:
+            hits = self.gw.find_accounts(("accountnumber",), [n])
+            numbers.append({"number": n, "name": hits[0].name if len(hits) == 1 else None, "accounts": len(hits)})
+        account = None
+        if not sig.empty():
+            account, why = self._find_client(self.gw, None, sig, LETTER_LABELS)
+        else:
+            why = "aucun n° client ni téléphone trouvé"
+        proposal = None
+        if account is not None:
+            proposal = next((x["number"] for x in numbers if x["name"] == account.name), None) or \
+                (account.name.rsplit("(", 1)[-1].rstrip(")") if account.name.endswith(")") else None)
+        self.journal.event(None, queueitem_id, "lecture_lettre", {"lu": self._what_was_read(sig), "compte": account.name if account else None,
+                                                                  "problemes": problems}, actor)
+        return {"read": self._what_was_read(sig), "numbers": numbers, "phones": [mask("phone", p) for p in sig.phones],
+                "problems": problems, "proposal": proposal, "proposal_name": account.name if account else None, "why": why}
 
     def _rotation(self, gw: Gateway, ev: Evaluation, users: dict, cursor: dict | None, pinned_user_id: str | None) -> None:
         rot, d = self.cfg.rotation, ev.decision
@@ -376,6 +460,8 @@ class Agent:
         """Finding the client is optional: if its columns are missing, it is switched off (with a warning)
         and the rest of the agent keeps working."""
         self.client_ready, self.state.warnings = True, []
+        if self.reading_problem:
+            self.state.warnings.append("Lecture des lettres désactivée : " + self.reading_problem)
         if not self.cfg.client.enabled:
             return
         try:
@@ -386,7 +472,7 @@ class Agent:
             warnings = [f"Recherche du client indisponible : {e}"]
         if warnings:
             self.client_ready = False
-            self.state.warnings = ["Recherche du client désactivée : " + w for w in warnings]
+            self.state.warnings += ["Recherche du client désactivée : " + w for w in warnings]
             for w in warnings:
                 self.journal.event(run_id, None, "controle_client", {"probleme": w}, actor)
 
@@ -418,7 +504,7 @@ class Agent:
                                                 else "") + d.reason, mode.value)
         elif mode is Mode.SIMULATION:
             self._record(run_id, ev, Status.PROPOSED, f"Simulation — proposerait : {link}Worked By = {d.user.first_name}. {d.reason}", mode.value)
-        elif mode is Mode.SUPERVISED or (ev.client_to_link and not self.cfg.client.automatic):
+        elif mode is Mode.SUPERVISED or (ev.client_to_link and (ev.from_letter or not self.cfg.client.automatic)):
             self._record(run_id, ev, Status.AWAITING_APPROVAL, f"À valider : {link}Worked By = {d.user.first_name}. {d.reason}", mode.value)
         else:
             self._write(run_id, ev, actor, mode.value)
