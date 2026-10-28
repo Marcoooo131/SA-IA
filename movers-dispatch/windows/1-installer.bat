@@ -1,5 +1,6 @@
 @echo off
 rem Installation de l'agent (une seule fois). Double-cliquer ce fichier.
+rem Appele par 4-lancer.bat avec auto : sans pause a la fin.
 cd /d "%~dp0.."
 where python >nul 2>nul
 if errorlevel 1 (
@@ -28,6 +29,7 @@ if not exist dispatch.toml (
   copy config\dispatch.example.toml dispatch.toml >nul
   echo Fichier de configuration cree : dispatch.toml
 )
+if /i "%~1"=="auto" exit /b 0
 echo.
 echo Installation terminee. Etape suivante : double-cliquer sur 2-demo.bat
 pause
