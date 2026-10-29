@@ -60,6 +60,9 @@ jobs:
       # l'agent le fichier écrit par l'agent Dispatch dans le dossier Teams)
       - name: Page des rappels de l'équipe
         run: mkdir -p dist/rappels && cp rappels-equipe/index.html dist/rappels/index.html
+      # Calculette NID / LID (…/nid/) : page statique, calcul 100 % local
+      - name: Calculette NID / LID
+        run: mkdir -p dist/nid && cp calculette-nid/index.html dist/nid/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

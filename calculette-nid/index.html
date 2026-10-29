@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111111">
+<title>Calculette NID / LID</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23111'/%3E%3Crect x='16' y='18' width='32' height='30' rx='4' fill='%23E30613'/%3E%3Crect x='16' y='18' width='32' height='8' fill='%23fff'/%3E%3C/svg%3E">
+<!--
+  Calculette de pose de LID (Last Invoice Date) à partir de la NID (Next Invoice Date).
+  Règles :
+  - La LID se pose toujours la veille de la NID (NID le 25 → LID le 24).
+  - Installation : 1re LID qui tombe après la date d'installation (1re facture au prorata, 1 mois maximum).
+    Ex. install 04/11, NID le 10 → LID 09/11 ; install 10/11, NID le 4 → LID 03/12.
+  - Résiliation : 3 factures complètes à partir de la date de résiliation, on n'écrase jamais un mois.
+    La période en cours (partielle) ne compte pas : on part de la 1re NID à partir de la date de résiliation.
+    Ex. résiliation 04/11, NID le 10 → factures 10/11, 10/12, 10/01 → LID 09/02.
+  Page 100 % locale : aucune donnée n'est envoyée.
+-->
+<style>
+  :root { --ink:#111; --red:#e30613; --bg:#f4f4f5; --card:#fff; --line:#e5e5e5; --muted:#6b7280; --ok:#0f7b3f; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  header { background:var(--ink); color:#fff; padding:14px 20px; display:flex; align-items:center; gap:12px; }
+  header .logo { width:36px; height:36px; border-radius:10px; background:var(--red); display:grid; place-items:center; font-size:20px; }
+  header h1 { margin:0; font-size:18px; }
+  header .sub { color:#a3a3a3; font-size:12px; }
+  main { max-width:720px; margin:0 auto; padding:20px 16px 40px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:16px; }
+  .tabs { display:flex; gap:8px; margin-bottom:16px; }
+  .tabs button { flex:1; padding:12px; border:2px solid var(--ink); background:#fff; color:var(--ink); border-radius:10px; font:600 15px system-ui,sans-serif; cursor:pointer; }
+  .tabs button.on { background:var(--ink); color:#fff; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:520px) { .row { grid-template-columns:1fr; } }
+  label { display:block; font-weight:600; font-size:13px; margin-bottom:6px; }
+  input { width:100%; padding:10px 12px; border:1px solid #cfcfcf; border-radius:8px; font:inherit; background:#fff; color:inherit; }
+  input:focus { outline:2px solid var(--red); outline-offset:1px; }
+  .hint { color:var(--muted); font-size:12px; margin-top:4px; }
+  .result { text-align:center; padding:22px 18px; }
+  .result .k { color:var(--muted); font-size:13px; text-transform:uppercase; letter-spacing:.06em; }
+  .result .v { font-size:40px; font-weight:800; color:var(--red); margin:4px 0; }
+  .result .d { color:var(--muted); font-size:14px; }
+  .result button { margin-top:10px; padding:8px 14px; border:1px solid var(--line); background:#fff; border-radius:8px; cursor:pointer; font:inherit; }
+  .err { color:var(--red); font-weight:600; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:8px 6px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; }
+  .tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:99px; background:#eee; }
+  .tag.full { background:#e6f4ec; color:var(--ok); }
+  .rules { font-size:13px; color:#374151; }
+  .rules li { margin-bottom:4px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">📅</div>
+  <div><h1>Calculette NID / LID</h1><div class="sub">Pose de la Last Invoice Date à partir de la Next Invoice Date</div></div>
+</header>
+<main>
+  <div class="tabs">
+    <button id="t-install" class="on" type="button">Installation</button>
+    <button id="t-resil" type="button">Résiliation</button>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <label for="date" id="date-label">Date d'installation</label>
+        <input id="date" type="date">
+      </div>
+      <div>
+        <label for="nid">Jour de la NID</label>
+        <input id="nid" type="number" min="1" max="31" placeholder="ex. 10" inputmode="numeric">
+        <div class="hint">Le jour du mois (1 à 31), ou une date complète ci-dessous</div>
+        <input id="nid-date" type="date" style="margin-top:6px" aria-label="Date de la NID">
+      </div>
+    </div>
+  </div>
+
+  <div class="card result" id="result" aria-live="polite">
+    <div class="d">Renseigne la date et le jour de NID.</div>
+  </div>
+
+  <div class="card" id="detail" hidden></div>
+
+  <div class="card rules">
+    <strong>Règles appliquées</strong>
+    <ul>
+      <li>La LID se pose toujours <b>la veille de la NID</b> (NID le 25 → LID le 24).</li>
+      <li><b>Installation</b> : 1 mois maximum — on prend la 1re LID après l'installation.
+        Install 04/11 + NID le 10 → LID <b>09/11</b> ; install 10/11 + NID le 4 → LID <b>03/12</b>.</li>
+      <li><b>Résiliation</b> : <b>3 factures complètes</b>, on n'écrase jamais un mois : la période en cours ne compte pas.
+        Résiliation 04/11 + NID le 10 → factures du 10/11, 10/12, 10/01 → LID <b>09/02</b>.</li>
+      <li>NID le 29, 30 ou 31 : sur un mois plus court, la NID passe au dernier jour du mois.</li>
+    </ul>
+  </div>
+</main>
+<script>
+  const FULL_INVOICES = 3;
+  const $ = (id) => document.getElementById(id);
+  let mode = 'install';
+
+  const daysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
+  // NID du mois (y, m) : le jour demandé, ramené au dernier jour si le mois est plus court
+  const nidIn = (y, m, day) => new Date(y, m, Math.min(day, daysInMonth(y, m)));
+  const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+  const fmt = (d) => d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const fmtLong = (d) => d.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+  // 1re NID >= from
+  function firstNidFrom(from, day) {
+    let y = from.getFullYear(), m = from.getMonth();
+    let n = nidIn(y, m, day);
+    if (n < from) { m++; n = nidIn(y, m, day); }
+    return n;
+  }
+  // NID k mois après la NID de référence (même jour de NID)
+  const nidPlus = (nid, k, day) => nidIn(nid.getFullYear(), nid.getMonth() + k, day);
+
+  function compute(date, day) {
+    if (mode === 'install') {
+      // 1re LID strictement après l'installation, soit 1re NID >= install + 2 jours
+      const nid = firstNidFrom(addDays(date, 2), day);
+      return { lid: addDays(nid, -1), periods: [{ from: date, to: addDays(nid, -1), full: false }] };
+    }
+    // Résiliation : la période en cours est ignorée, on compte 3 factures complètes
+    const start = firstNidFrom(date, day);
+    const periods = [];
+    if (start > date) periods.push({ from: date, to: addDays(start, -1), full: false, ignored: true });
+    for (let k = 0; k < FULL_INVOICES; k++) {
+      const a = nidPlus(start, k, day);
+      periods.push({ from: a, to: addDays(nidPlus(start, k + 1, day), -1), full: true, n: k + 1 });
+    }
+    return { lid: periods[periods.length - 1].to, periods };
+  }
+
+  function readDay() {
+    const v = parseInt($('nid').value, 10);
+    return v >= 1 && v <= 31 ? v : null;
+  }
+  function readDate() {
+    const v = $('date').value;
+    if (!v) return null;
+    const [y, m, d] = v.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  function render() {
+    const date = readDate(), day = readDay();
+    const res = $('result'), det = $('detail');
+    if (!date || !day) {
+      res.innerHTML = $('nid').value && !day
+        ? '<div class="err">Le jour de NID doit être entre 1 et 31.</div>'
+        : '<div class="d">Renseigne la date et le jour de NID.</div>';
+      det.hidden = true;
+      return;
+    }
+    const { lid, periods } = compute(date, day);
+    res.innerHTML = `
+      <div class="k">LID à poser</div>
+      <div class="v">${fmt(lid)}</div>
+      <div class="d">${fmtLong(lid)} · NID le ${day}, LID la veille</div>
+      <button type="button" id="copy">Copier la date</button>`;
+    $('copy').onclick = () => {
+      navigator.clipboard?.writeText(fmt(lid)).then(() => { $('copy').textContent = 'Copié ✓'; });
+    };
+    const rows = periods.map((p) => `<tr>
+        <td>${p.full ? 'Facture ' + p.n : (p.ignored ? 'Période en cours' : '1re facture')}</td>
+        <td>${fmt(p.from)}</td><td>${fmt(p.to)}</td>
+        <td>${p.full ? '<span class="tag full">complète</span>'
+              : p.ignored ? '<span class="tag">ne compte pas</span>' : '<span class="tag">prorata</span>'}</td>
+      </tr>`).join('');
+    det.innerHTML = `<strong>Détail des périodes</strong>
+      <table><thead><tr><th></th><th>Du</th><th>Au</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+    det.hidden = false;
+  }
+
+  function setMode(m) {
+    mode = m;
+    $('t-install').classList.toggle('on', m === 'install');
+    $('t-resil').classList.toggle('on', m === 'resil');
+    $('date-label').textContent = m === 'install' ? "Date d'installation" : 'Date de résiliation';
+    render();
+  }
+
+  $('t-install').onclick = () => setMode('install');
+  $('t-resil').onclick = () => setMode('resil');
+  $('date').oninput = render;
+  $('nid').oninput = () => { $('nid-date').value = ''; render(); };
+  $('nid-date').oninput = () => {
+    const v = $('nid-date').value;
+    if (v) $('nid').value = Number(v.split('-')[2]);
+    render();
+  };
+  render();
+</script>
+</body>
+</html>
