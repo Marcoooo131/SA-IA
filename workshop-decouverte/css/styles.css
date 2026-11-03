@@ -665,3 +665,18 @@ kbd { font: 600 .75em var(--font); border: 1px solid var(--line); border-bottom-
   .tools { gap: 4px; }
   .tool, .tool--icon { width: 34px; height: 34px; border-radius: 10px; }
 }
+
+/* Voix du client : bouton de relecture et animation pendant la lecture */
+.bubble--client { padding-right: 52px; }
+.bubble__play {
+  position: absolute; top: 10px; right: 10px;
+  width: 32px; height: 32px; border-radius: 10px; border: 1px solid var(--line);
+  background: #fff; color: var(--red); display: grid; place-items: center; cursor: pointer;
+  transition: background .2s, color .2s, border-color .2s;
+}
+.bubble__play:hover { background: var(--red-soft); border-color: var(--red-line); }
+.bubble__play .icon { width: 16px; height: 16px; }
+.bubble.is-speaking { border-color: var(--red); box-shadow: 0 0 0 4px rgba(227, 6, 19, .12); }
+.bubble.is-speaking .bubble__play { background: var(--red); border-color: var(--red); color: #fff; animation: pulse 1s ease-in-out infinite; }
+.tool#toggleSound[aria-pressed="true"] { background: #fff; border-color: var(--line); color: var(--text); }
+.tool#toggleSound[aria-pressed="false"] { color: var(--muted); }
