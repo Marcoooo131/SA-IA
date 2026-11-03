@@ -158,7 +158,9 @@ async function push(userId: string) {
     if (!e) continue;
     const table = TABLES[name];
     for (let i = 0; i < e.upserts.length; i += 400) {
-      const { error } = await sb.from(table).upsert(e.upserts.slice(i, i + 400), { onConflict: 'id' });
+      // Exercices et aliments personnels : identifiants textuels, uniques par utilisateur
+      const onConflict = name === 'exercises' || name === 'foods' ? 'user_id,id' : 'id';
+      const { error } = await sb.from(table).upsert(e.upserts.slice(i, i + 400), { onConflict });
       if (error) throw new Error(`${table} : ${error.message}`);
     }
     const now = new Date().toISOString();

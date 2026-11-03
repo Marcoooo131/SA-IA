@@ -34,20 +34,6 @@ create table if not exists public.profiles (
   server_updated_at timestamptz not null default now()
   , unique (user_id)
 );
-create index if not exists profiles_sync_idx on public.profiles (user_id, server_updated_at);
-drop trigger if exists profiles_touch on public.profiles;
-create trigger profiles_touch before insert or update on public.profiles for each row execute function public.bt_touch();
-alter table public.profiles enable row level security;
-drop policy if exists "profiles_select_own" on public.profiles;
-drop policy if exists "profiles_insert_own" on public.profiles;
-drop policy if exists "profiles_update_own" on public.profiles;
-drop policy if exists "profiles_delete_own" on public.profiles;
-create policy "profiles_select_own" on public.profiles for select to authenticated using (user_id = (select auth.uid()));
-create policy "profiles_insert_own" on public.profiles for insert to authenticated with check (user_id = (select auth.uid()));
-create policy "profiles_update_own" on public.profiles for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
-create policy "profiles_delete_own" on public.profiles for delete to authenticated using (user_id = (select auth.uid()));
-revoke all on public.profiles from anon;
-grant select, insert, update, delete on public.profiles to authenticated;
 create table if not exists public.nutrition_goals (
   id uuid primary key,
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
@@ -66,22 +52,8 @@ create table if not exists public.nutrition_goals (
   deleted_at timestamptz,
   server_updated_at timestamptz not null default now()
 );
-create index if not exists nutrition_goals_sync_idx on public.nutrition_goals (user_id, server_updated_at);
-drop trigger if exists nutrition_goals_touch on public.nutrition_goals;
-create trigger nutrition_goals_touch before insert or update on public.nutrition_goals for each row execute function public.bt_touch();
-alter table public.nutrition_goals enable row level security;
-drop policy if exists "nutrition_goals_select_own" on public.nutrition_goals;
-drop policy if exists "nutrition_goals_insert_own" on public.nutrition_goals;
-drop policy if exists "nutrition_goals_update_own" on public.nutrition_goals;
-drop policy if exists "nutrition_goals_delete_own" on public.nutrition_goals;
-create policy "nutrition_goals_select_own" on public.nutrition_goals for select to authenticated using (user_id = (select auth.uid()));
-create policy "nutrition_goals_insert_own" on public.nutrition_goals for insert to authenticated with check (user_id = (select auth.uid()));
-create policy "nutrition_goals_update_own" on public.nutrition_goals for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
-create policy "nutrition_goals_delete_own" on public.nutrition_goals for delete to authenticated using (user_id = (select auth.uid()));
-revoke all on public.nutrition_goals from anon;
-grant select, insert, update, delete on public.nutrition_goals to authenticated;
 create table if not exists public.exercise_library (
-  id uuid primary key,
+  id text not null check (length(id) between 1 and 200),
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   name text not null,
   primary_muscle text not null,
@@ -95,22 +67,9 @@ create table if not exists public.exercise_library (
   is_custom boolean not null default true,
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  server_updated_at timestamptz not null default now()
+  server_updated_at timestamptz not null default now(),
+  primary key (user_id, id)
 );
-create index if not exists exercise_library_sync_idx on public.exercise_library (user_id, server_updated_at);
-drop trigger if exists exercise_library_touch on public.exercise_library;
-create trigger exercise_library_touch before insert or update on public.exercise_library for each row execute function public.bt_touch();
-alter table public.exercise_library enable row level security;
-drop policy if exists "exercise_library_select_own" on public.exercise_library;
-drop policy if exists "exercise_library_insert_own" on public.exercise_library;
-drop policy if exists "exercise_library_update_own" on public.exercise_library;
-drop policy if exists "exercise_library_delete_own" on public.exercise_library;
-create policy "exercise_library_select_own" on public.exercise_library for select to authenticated using (user_id = (select auth.uid()));
-create policy "exercise_library_insert_own" on public.exercise_library for insert to authenticated with check (user_id = (select auth.uid()));
-create policy "exercise_library_update_own" on public.exercise_library for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
-create policy "exercise_library_delete_own" on public.exercise_library for delete to authenticated using (user_id = (select auth.uid()));
-revoke all on public.exercise_library from anon;
-grant select, insert, update, delete on public.exercise_library to authenticated;
 create table if not exists public.workout_programs (
   id uuid primary key,
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
@@ -123,20 +82,6 @@ create table if not exists public.workout_programs (
   deleted_at timestamptz,
   server_updated_at timestamptz not null default now()
 );
-create index if not exists workout_programs_sync_idx on public.workout_programs (user_id, server_updated_at);
-drop trigger if exists workout_programs_touch on public.workout_programs;
-create trigger workout_programs_touch before insert or update on public.workout_programs for each row execute function public.bt_touch();
-alter table public.workout_programs enable row level security;
-drop policy if exists "workout_programs_select_own" on public.workout_programs;
-drop policy if exists "workout_programs_insert_own" on public.workout_programs;
-drop policy if exists "workout_programs_update_own" on public.workout_programs;
-drop policy if exists "workout_programs_delete_own" on public.workout_programs;
-create policy "workout_programs_select_own" on public.workout_programs for select to authenticated using (user_id = (select auth.uid()));
-create policy "workout_programs_insert_own" on public.workout_programs for insert to authenticated with check (user_id = (select auth.uid()));
-create policy "workout_programs_update_own" on public.workout_programs for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
-create policy "workout_programs_delete_own" on public.workout_programs for delete to authenticated using (user_id = (select auth.uid()));
-revoke all on public.workout_programs from anon;
-grant select, insert, update, delete on public.workout_programs to authenticated;
 create table if not exists public.workout_sessions (
   id uuid primary key,
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
@@ -151,20 +96,6 @@ create table if not exists public.workout_sessions (
   deleted_at timestamptz,
   server_updated_at timestamptz not null default now()
 );
-create index if not exists workout_sessions_sync_idx on public.workout_sessions (user_id, server_updated_at);
-drop trigger if exists workout_sessions_touch on public.workout_sessions;
-create trigger workout_sessions_touch before insert or update on public.workout_sessions for each row execute function public.bt_touch();
-alter table public.workout_sessions enable row level security;
-drop policy if exists "workout_sessions_select_own" on public.workout_sessions;
-drop policy if exists "workout_sessions_insert_own" on public.workout_sessions;
-drop policy if exists "workout_sessions_update_own" on public.workout_sessions;
-drop policy if exists "workout_sessions_delete_own" on public.workout_sessions;
-create policy "workout_sessions_select_own" on public.workout_sessions for select to authenticated using (user_id = (select auth.uid()));
-create policy "workout_sessions_insert_own" on public.workout_sessions for insert to authenticated with check (user_id = (select auth.uid()));
-create policy "workout_sessions_update_own" on public.workout_sessions for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
-create policy "workout_sessions_delete_own" on public.workout_sessions for delete to authenticated using (user_id = (select auth.uid()));
-revoke all on public.workout_sessions from anon;
-grant select, insert, update, delete on public.workout_sessions to authenticated;
 create table if not exists public.workout_exercises (
   id uuid primary key,
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
@@ -180,20 +111,6 @@ create table if not exists public.workout_exercises (
   deleted_at timestamptz,
   server_updated_at timestamptz not null default now()
 );
-create index if not exists workout_exercises_sync_idx on public.workout_exercises (user_id, server_updated_at);
-drop trigger if exists workout_exercises_touch on public.workout_exercises;
-create trigger workout_exercises_touch before insert or update on public.workout_exercises for each row execute function public.bt_touch();
-alter table public.workout_exercises enable row level security;
-drop policy if exists "workout_exercises_select_own" on public.workout_exercises;
-drop policy if exists "workout_exercises_insert_own" on public.workout_exercises;
-drop policy if exists "workout_exercises_update_own" on public.workout_exercises;
-drop policy if exists "workout_exercises_delete_own" on public.workout_exercises;
-create policy "workout_exercises_select_own" on public.workout_exercises for select to authenticated using (user_id = (select auth.uid()));
-create policy "workout_exercises_insert_own" on public.workout_exercises for insert to authenticated with check (user_id = (select auth.uid()));
-create policy "workout_exercises_update_own" on public.workout_exercises for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
-create policy "workout_exercises_delete_own" on public.workout_exercises for delete to authenticated using (user_id = (select auth.uid()));
-revoke all on public.workout_exercises from anon;
-grant select, insert, update, delete on public.workout_exercises to authenticated;
 create table if not exists public.workout_sets (
   id uuid primary key,
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
@@ -210,22 +127,8 @@ create table if not exists public.workout_sets (
   deleted_at timestamptz,
   server_updated_at timestamptz not null default now()
 );
-create index if not exists workout_sets_sync_idx on public.workout_sets (user_id, server_updated_at);
-drop trigger if exists workout_sets_touch on public.workout_sets;
-create trigger workout_sets_touch before insert or update on public.workout_sets for each row execute function public.bt_touch();
-alter table public.workout_sets enable row level security;
-drop policy if exists "workout_sets_select_own" on public.workout_sets;
-drop policy if exists "workout_sets_insert_own" on public.workout_sets;
-drop policy if exists "workout_sets_update_own" on public.workout_sets;
-drop policy if exists "workout_sets_delete_own" on public.workout_sets;
-create policy "workout_sets_select_own" on public.workout_sets for select to authenticated using (user_id = (select auth.uid()));
-create policy "workout_sets_insert_own" on public.workout_sets for insert to authenticated with check (user_id = (select auth.uid()));
-create policy "workout_sets_update_own" on public.workout_sets for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
-create policy "workout_sets_delete_own" on public.workout_sets for delete to authenticated using (user_id = (select auth.uid()));
-revoke all on public.workout_sets from anon;
-grant select, insert, update, delete on public.workout_sets to authenticated;
 create table if not exists public.food_library (
-  id uuid primary key,
+  id text not null check (length(id) between 1 and 200),
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
   name text not null,
   brand text not null default '',
@@ -241,22 +144,9 @@ create table if not exists public.food_library (
   barcode text,
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  server_updated_at timestamptz not null default now()
+  server_updated_at timestamptz not null default now(),
+  primary key (user_id, id)
 );
-create index if not exists food_library_sync_idx on public.food_library (user_id, server_updated_at);
-drop trigger if exists food_library_touch on public.food_library;
-create trigger food_library_touch before insert or update on public.food_library for each row execute function public.bt_touch();
-alter table public.food_library enable row level security;
-drop policy if exists "food_library_select_own" on public.food_library;
-drop policy if exists "food_library_insert_own" on public.food_library;
-drop policy if exists "food_library_update_own" on public.food_library;
-drop policy if exists "food_library_delete_own" on public.food_library;
-create policy "food_library_select_own" on public.food_library for select to authenticated using (user_id = (select auth.uid()));
-create policy "food_library_insert_own" on public.food_library for insert to authenticated with check (user_id = (select auth.uid()));
-create policy "food_library_update_own" on public.food_library for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
-create policy "food_library_delete_own" on public.food_library for delete to authenticated using (user_id = (select auth.uid()));
-revoke all on public.food_library from anon;
-grant select, insert, update, delete on public.food_library to authenticated;
 create table if not exists public.meals (
   id uuid primary key,
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
@@ -269,20 +159,6 @@ create table if not exists public.meals (
   deleted_at timestamptz,
   server_updated_at timestamptz not null default now()
 );
-create index if not exists meals_sync_idx on public.meals (user_id, server_updated_at);
-drop trigger if exists meals_touch on public.meals;
-create trigger meals_touch before insert or update on public.meals for each row execute function public.bt_touch();
-alter table public.meals enable row level security;
-drop policy if exists "meals_select_own" on public.meals;
-drop policy if exists "meals_insert_own" on public.meals;
-drop policy if exists "meals_update_own" on public.meals;
-drop policy if exists "meals_delete_own" on public.meals;
-create policy "meals_select_own" on public.meals for select to authenticated using (user_id = (select auth.uid()));
-create policy "meals_insert_own" on public.meals for insert to authenticated with check (user_id = (select auth.uid()));
-create policy "meals_update_own" on public.meals for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
-create policy "meals_delete_own" on public.meals for delete to authenticated using (user_id = (select auth.uid()));
-revoke all on public.meals from anon;
-grant select, insert, update, delete on public.meals to authenticated;
 create table if not exists public.meal_items (
   id uuid primary key,
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
@@ -300,20 +176,6 @@ create table if not exists public.meal_items (
   deleted_at timestamptz,
   server_updated_at timestamptz not null default now()
 );
-create index if not exists meal_items_sync_idx on public.meal_items (user_id, server_updated_at);
-drop trigger if exists meal_items_touch on public.meal_items;
-create trigger meal_items_touch before insert or update on public.meal_items for each row execute function public.bt_touch();
-alter table public.meal_items enable row level security;
-drop policy if exists "meal_items_select_own" on public.meal_items;
-drop policy if exists "meal_items_insert_own" on public.meal_items;
-drop policy if exists "meal_items_update_own" on public.meal_items;
-drop policy if exists "meal_items_delete_own" on public.meal_items;
-create policy "meal_items_select_own" on public.meal_items for select to authenticated using (user_id = (select auth.uid()));
-create policy "meal_items_insert_own" on public.meal_items for insert to authenticated with check (user_id = (select auth.uid()));
-create policy "meal_items_update_own" on public.meal_items for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
-create policy "meal_items_delete_own" on public.meal_items for delete to authenticated using (user_id = (select auth.uid()));
-revoke all on public.meal_items from anon;
-grant select, insert, update, delete on public.meal_items to authenticated;
 create table if not exists public.weight_logs (
   id uuid primary key,
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
@@ -324,20 +186,6 @@ create table if not exists public.weight_logs (
   deleted_at timestamptz,
   server_updated_at timestamptz not null default now()
 );
-create index if not exists weight_logs_sync_idx on public.weight_logs (user_id, server_updated_at);
-drop trigger if exists weight_logs_touch on public.weight_logs;
-create trigger weight_logs_touch before insert or update on public.weight_logs for each row execute function public.bt_touch();
-alter table public.weight_logs enable row level security;
-drop policy if exists "weight_logs_select_own" on public.weight_logs;
-drop policy if exists "weight_logs_insert_own" on public.weight_logs;
-drop policy if exists "weight_logs_update_own" on public.weight_logs;
-drop policy if exists "weight_logs_delete_own" on public.weight_logs;
-create policy "weight_logs_select_own" on public.weight_logs for select to authenticated using (user_id = (select auth.uid()));
-create policy "weight_logs_insert_own" on public.weight_logs for insert to authenticated with check (user_id = (select auth.uid()));
-create policy "weight_logs_update_own" on public.weight_logs for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
-create policy "weight_logs_delete_own" on public.weight_logs for delete to authenticated using (user_id = (select auth.uid()));
-revoke all on public.weight_logs from anon;
-grant select, insert, update, delete on public.weight_logs to authenticated;
 create table if not exists public.body_measurements (
   id uuid primary key,
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
@@ -353,20 +201,6 @@ create table if not exists public.body_measurements (
   deleted_at timestamptz,
   server_updated_at timestamptz not null default now()
 );
-create index if not exists body_measurements_sync_idx on public.body_measurements (user_id, server_updated_at);
-drop trigger if exists body_measurements_touch on public.body_measurements;
-create trigger body_measurements_touch before insert or update on public.body_measurements for each row execute function public.bt_touch();
-alter table public.body_measurements enable row level security;
-drop policy if exists "body_measurements_select_own" on public.body_measurements;
-drop policy if exists "body_measurements_insert_own" on public.body_measurements;
-drop policy if exists "body_measurements_update_own" on public.body_measurements;
-drop policy if exists "body_measurements_delete_own" on public.body_measurements;
-create policy "body_measurements_select_own" on public.body_measurements for select to authenticated using (user_id = (select auth.uid()));
-create policy "body_measurements_insert_own" on public.body_measurements for insert to authenticated with check (user_id = (select auth.uid()));
-create policy "body_measurements_update_own" on public.body_measurements for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
-create policy "body_measurements_delete_own" on public.body_measurements for delete to authenticated using (user_id = (select auth.uid()));
-revoke all on public.body_measurements from anon;
-grant select, insert, update, delete on public.body_measurements to authenticated;
 create table if not exists public.progress_photos (
   id uuid primary key,
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
@@ -378,20 +212,6 @@ create table if not exists public.progress_photos (
   deleted_at timestamptz,
   server_updated_at timestamptz not null default now()
 );
-create index if not exists progress_photos_sync_idx on public.progress_photos (user_id, server_updated_at);
-drop trigger if exists progress_photos_touch on public.progress_photos;
-create trigger progress_photos_touch before insert or update on public.progress_photos for each row execute function public.bt_touch();
-alter table public.progress_photos enable row level security;
-drop policy if exists "progress_photos_select_own" on public.progress_photos;
-drop policy if exists "progress_photos_insert_own" on public.progress_photos;
-drop policy if exists "progress_photos_update_own" on public.progress_photos;
-drop policy if exists "progress_photos_delete_own" on public.progress_photos;
-create policy "progress_photos_select_own" on public.progress_photos for select to authenticated using (user_id = (select auth.uid()));
-create policy "progress_photos_insert_own" on public.progress_photos for insert to authenticated with check (user_id = (select auth.uid()));
-create policy "progress_photos_update_own" on public.progress_photos for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
-create policy "progress_photos_delete_own" on public.progress_photos for delete to authenticated using (user_id = (select auth.uid()));
-revoke all on public.progress_photos from anon;
-grant select, insert, update, delete on public.progress_photos to authenticated;
 create table if not exists public.journal_entries (
   id uuid primary key,
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
@@ -406,20 +226,6 @@ create table if not exists public.journal_entries (
   deleted_at timestamptz,
   server_updated_at timestamptz not null default now()
 );
-create index if not exists journal_entries_sync_idx on public.journal_entries (user_id, server_updated_at);
-drop trigger if exists journal_entries_touch on public.journal_entries;
-create trigger journal_entries_touch before insert or update on public.journal_entries for each row execute function public.bt_touch();
-alter table public.journal_entries enable row level security;
-drop policy if exists "journal_entries_select_own" on public.journal_entries;
-drop policy if exists "journal_entries_insert_own" on public.journal_entries;
-drop policy if exists "journal_entries_update_own" on public.journal_entries;
-drop policy if exists "journal_entries_delete_own" on public.journal_entries;
-create policy "journal_entries_select_own" on public.journal_entries for select to authenticated using (user_id = (select auth.uid()));
-create policy "journal_entries_insert_own" on public.journal_entries for insert to authenticated with check (user_id = (select auth.uid()));
-create policy "journal_entries_update_own" on public.journal_entries for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
-create policy "journal_entries_delete_own" on public.journal_entries for delete to authenticated using (user_id = (select auth.uid()));
-revoke all on public.journal_entries from anon;
-grant select, insert, update, delete on public.journal_entries to authenticated;
 create table if not exists public.user_goals (
   id uuid primary key,
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
@@ -437,20 +243,6 @@ create table if not exists public.user_goals (
   deleted_at timestamptz,
   server_updated_at timestamptz not null default now()
 );
-create index if not exists user_goals_sync_idx on public.user_goals (user_id, server_updated_at);
-drop trigger if exists user_goals_touch on public.user_goals;
-create trigger user_goals_touch before insert or update on public.user_goals for each row execute function public.bt_touch();
-alter table public.user_goals enable row level security;
-drop policy if exists "user_goals_select_own" on public.user_goals;
-drop policy if exists "user_goals_insert_own" on public.user_goals;
-drop policy if exists "user_goals_update_own" on public.user_goals;
-drop policy if exists "user_goals_delete_own" on public.user_goals;
-create policy "user_goals_select_own" on public.user_goals for select to authenticated using (user_id = (select auth.uid()));
-create policy "user_goals_insert_own" on public.user_goals for insert to authenticated with check (user_id = (select auth.uid()));
-create policy "user_goals_update_own" on public.user_goals for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
-create policy "user_goals_delete_own" on public.user_goals for delete to authenticated using (user_id = (select auth.uid()));
-revoke all on public.user_goals from anon;
-grant select, insert, update, delete on public.user_goals to authenticated;
 create table if not exists public.achievements (
   id uuid primary key,
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
@@ -460,20 +252,6 @@ create table if not exists public.achievements (
   deleted_at timestamptz,
   server_updated_at timestamptz not null default now()
 );
-create index if not exists achievements_sync_idx on public.achievements (user_id, server_updated_at);
-drop trigger if exists achievements_touch on public.achievements;
-create trigger achievements_touch before insert or update on public.achievements for each row execute function public.bt_touch();
-alter table public.achievements enable row level security;
-drop policy if exists "achievements_select_own" on public.achievements;
-drop policy if exists "achievements_insert_own" on public.achievements;
-drop policy if exists "achievements_update_own" on public.achievements;
-drop policy if exists "achievements_delete_own" on public.achievements;
-create policy "achievements_select_own" on public.achievements for select to authenticated using (user_id = (select auth.uid()));
-create policy "achievements_insert_own" on public.achievements for insert to authenticated with check (user_id = (select auth.uid()));
-create policy "achievements_update_own" on public.achievements for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
-create policy "achievements_delete_own" on public.achievements for delete to authenticated using (user_id = (select auth.uid()));
-revoke all on public.achievements from anon;
-grant select, insert, update, delete on public.achievements to authenticated;
 create table if not exists public.weekly_reports (
   id uuid primary key,
   user_id uuid not null default auth.uid() references auth.users (id) on delete cascade,
@@ -484,20 +262,29 @@ create table if not exists public.weekly_reports (
   deleted_at timestamptz,
   server_updated_at timestamptz not null default now()
 );
-create index if not exists weekly_reports_sync_idx on public.weekly_reports (user_id, server_updated_at);
-drop trigger if exists weekly_reports_touch on public.weekly_reports;
-create trigger weekly_reports_touch before insert or update on public.weekly_reports for each row execute function public.bt_touch();
-alter table public.weekly_reports enable row level security;
-drop policy if exists "weekly_reports_select_own" on public.weekly_reports;
-drop policy if exists "weekly_reports_insert_own" on public.weekly_reports;
-drop policy if exists "weekly_reports_update_own" on public.weekly_reports;
-drop policy if exists "weekly_reports_delete_own" on public.weekly_reports;
-create policy "weekly_reports_select_own" on public.weekly_reports for select to authenticated using (user_id = (select auth.uid()));
-create policy "weekly_reports_insert_own" on public.weekly_reports for insert to authenticated with check (user_id = (select auth.uid()));
-create policy "weekly_reports_update_own" on public.weekly_reports for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
-create policy "weekly_reports_delete_own" on public.weekly_reports for delete to authenticated using (user_id = (select auth.uid()));
-revoke all on public.weekly_reports from anon;
-grant select, insert, update, delete on public.weekly_reports to authenticated;
+
+-- Pour chaque table : index de synchronisation, déclencheur server_updated_at, RLS et droits
+do $$
+declare t text;
+begin
+  foreach t in array array['profiles', 'nutrition_goals', 'exercise_library', 'workout_programs', 'workout_sessions', 'workout_exercises', 'workout_sets', 'food_library', 'meals', 'meal_items', 'weight_logs', 'body_measurements', 'progress_photos', 'journal_entries', 'user_goals', 'achievements', 'weekly_reports'] loop
+    execute format('create index if not exists %I on public.%I (user_id, server_updated_at)', t || '_sync_idx', t);
+    execute format('drop trigger if exists %I on public.%I', t || '_touch', t);
+    execute format('create trigger %I before insert or update on public.%I for each row execute function public.bt_touch()', t || '_touch', t);
+    execute format('alter table public.%I enable row level security', t);
+    execute format('drop policy if exists %I on public.%I', t || '_select_own', t);
+    execute format('drop policy if exists %I on public.%I', t || '_insert_own', t);
+    execute format('drop policy if exists %I on public.%I', t || '_update_own', t);
+    execute format('drop policy if exists %I on public.%I', t || '_delete_own', t);
+    execute format('create policy %I on public.%I for select to authenticated using (user_id = (select auth.uid()))', t || '_select_own', t);
+    execute format('create policy %I on public.%I for insert to authenticated with check (user_id = (select auth.uid()))', t || '_insert_own', t);
+    execute format('create policy %I on public.%I for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()))', t || '_update_own', t);
+    execute format('create policy %I on public.%I for delete to authenticated using (user_id = (select auth.uid()))', t || '_delete_own', t);
+    execute format('revoke all on public.%I from anon', t);
+    execute format('grant select, insert, update, delete on public.%I to authenticated', t);
+  end loop;
+end $$;
+
 -- Index métier
 create index if not exists workout_sets_exercise_idx on public.workout_sets (user_id, exercise_id);
 create index if not exists workout_sets_session_idx on public.workout_sets (session_id);
