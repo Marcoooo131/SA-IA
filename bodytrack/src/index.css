@@ -1,0 +1,169 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/barlow-condensed/700.css';
+
+@theme {
+  --color-bg: #0a0b0d;
+  --color-surface: #131518;
+  --color-surface-2: #1b1e22;
+  --color-surface-3: #24282d;
+  --color-line: #2a2f35;
+  --color-ink: #f4f5f6;
+  --color-muted: #8b929c;
+  --color-faint: #5b626b;
+  --color-accent: #2efc86;
+  --color-accent-dim: #12301f;
+  --color-accent-ink: #04140b;
+  --color-warn: #fbbf24;
+  --color-danger: #f87171;
+  --color-info: #60a5fa;
+  --color-carbs: #60a5fa;
+  --color-fat: #fbbf24;
+  --color-protein: #2efc86;
+  --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Barlow Condensed', 'Inter Variable', system-ui, sans-serif;
+  --radius-card: 18px;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior-y: none;
+  }
+  input,
+  select,
+  textarea,
+  button {
+    font: inherit;
+  }
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+}
+
+@layer components {
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: var(--radius-card);
+  }
+  .field {
+    width: 100%;
+    background: var(--color-surface-2);
+    border: 1px solid var(--color-line);
+    border-radius: 12px;
+    padding: 0.65rem 0.8rem;
+    color: var(--color-ink);
+    transition: border-color 0.15s;
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--color-accent);
+  }
+  .field::placeholder {
+    color: var(--color-faint);
+  }
+  .label {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--color-muted);
+    margin-bottom: 0.35rem;
+    font-weight: 500;
+  }
+  .display {
+    font-family: var(--font-display);
+    letter-spacing: 0.01em;
+  }
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
+  }
+}
+@keyframes pop {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.anim-fade-up {
+  animation: fade-up 0.28s ease-out both;
+}
+.anim-sheet-up {
+  animation: sheet-up 0.26s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+.anim-pop {
+  animation: pop 0.35s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade-up,
+  .anim-sheet-up,
+  .anim-pop {
+    animation: none;
+  }
+}
+
+/* Impression / export PDF des bilans */
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+  }
+}

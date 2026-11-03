@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#0a0b0d" />
+    <meta name="description" content="BODYTRACK : coaching musculation et nutrition – séances, records, calories, poids et bilans." />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="BODYTRACK" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <title>BODYTRACK</title>
+    <style>
+      /* Écran de lancement affiché avant le chargement de l'application */
+      html, body { background: #0a0b0d; margin: 0; }
+      #splash { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; background: #0a0b0d; color: #f4f5f6; font-family: system-ui, sans-serif; z-index: 100; transition: opacity .3s; }
+      #splash .logo { width: 84px; height: 84px; border-radius: 24px; background: #131518; display: grid; place-items: center; box-shadow: 0 0 60px rgba(46,252,134,.25); }
+      #splash .word { letter-spacing: .28em; font-weight: 800; font-size: 18px; }
+      #splash .bar { width: 120px; height: 3px; background: #1b1e22; border-radius: 3px; overflow: hidden; }
+      #splash .bar i { display: block; width: 40%; height: 100%; background: #2efc86; border-radius: 3px; animation: s 1s ease-in-out infinite alternate; }
+      @keyframes s { from { transform: translateX(-10%); } to { transform: translateX(160%); } }
+    </style>
+  </head>
+  <body>
+    <div id="splash">
+      <div class="logo">
+        <svg width="46" height="46" viewBox="0 0 64 64" fill="none"><path d="M10 40 L22 28 L32 36 L46 18 L54 24" stroke="#2efc86" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="54" cy="24" r="4" fill="#2efc86"/></svg>
+      </div>
+      <div class="word">BODYTRACK</div>
+      <div class="bar"><i></i></div>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

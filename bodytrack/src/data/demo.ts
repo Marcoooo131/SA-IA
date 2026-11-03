@@ -118,19 +118,29 @@ export function buildDemoData(todayDate: string): AppData {
     dinner: [[['potato-boiled', 300], ['turkey-raw', 150], ['mixed-veg', 200], ['olive-oil', 10]], [['rice-cooked', 220], ['tuna-canned', 120], ['zucchini', 200], ['olive-oil', 10]], [['sweet-potato', 280], ['beef-rump', 150], ['salad', 60], ['olive-oil', 10]], [['pasta-cooked', 250], ['shrimp-cooked', 150], ['spinach', 150], ['olive-oil', 10]]],
   };
   const mealTypes: MealType[] = ['breakfast', 'lunch', 'snack', 'dinner'];
+  const fixed = new Set(['whey', 'olive-oil', 'egg', 'honey', 'butter']);
   for (let i = 0; i <= days; i++) {
     const date = addDays(start, i);
     if (r() < 0.1 && i !== days) continue;
-    const scale = 0.93 + r() * 0.16;
+    const dayMeals: { mt: MealType; items: [string, number][] }[] = [];
     for (const mt of mealTypes) {
       if (i === days && mt === 'dinner') continue; // aujourd'hui : dîner pas encore saisi
       if (mt === 'snack' && r() < 0.15) continue;
-      const choice = templates[mt][Math.floor(r() * templates[mt].length)];
+      dayMeals.push({ mt, items: templates[mt][Math.floor(r() * templates[mt].length)] });
+    }
+    // Quantités ajustées pour que la journée complète tourne autour de l'objectif (± 6 %)
+    const kcalOf = (fid: string, q: number) => (food(fid).kcal100 * q) / 100;
+    const all = dayMeals.flatMap((m) => m.items);
+    const fixedKcal = all.filter(([f]) => fixed.has(f)).reduce((a, [f, q]) => a + kcalOf(f, q), 0);
+    const varKcal = all.filter(([f]) => !fixed.has(f)).reduce((a, [f, q]) => a + kcalOf(f, q), 0);
+    const dayTarget = plan.calories * (0.94 + r() * 0.12) * (i === days ? 0.7 : 1);
+    const scale = Math.max(0.7, Math.min(1.6, (dayTarget - fixedKcal) / varKcal));
+    for (const { mt, items } of dayMeals) {
       const meal: Meal = { id: uid(), date, mealType: mt, isFavorite: false, favoriteName: '', createdAt: now, updatedAt: now };
       data.meals.push(meal);
-      choice.forEach(([fid, q], pos) => {
+      items.forEach(([fid, q], pos) => {
         const f = food(fid);
-        const qty = roundTo(q * (fid === 'whey' || fid === 'olive-oil' || fid === 'egg' ? 1 : scale), 5);
+        const qty = roundTo(q * (fixed.has(fid) ? 1 : scale), 5);
         const item: MealItem = { id: uid(), mealId: meal.id, foodId: f.id, name: f.name, quantity: qty, unit: f.unit, kcal100: f.kcal100, protein100: f.protein100, carbs100: f.carbs100, fat100: f.fat100, position: pos, updatedAt: now };
         data.mealItems.push(item);
       });

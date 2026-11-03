@@ -31,8 +31,10 @@ export function nutritionInsights(ctx: Ctx, onDate: ISODate): Insight[] {
   const p = ctx.data.profile;
   const goal = ctx.goalOn(onDate);
   if (!p || !goal) return out;
-  const n7 = nutritionAverages(ctx, addDays(onDate, -6), onDate);
-  const n30 = nutritionAverages(ctx, addDays(onDate, -29), onDate);
+  // La journée en cours est encore incomplète : les moyennes s'arrêtent à la veille
+  const y = addDays(onDate, -1);
+  const n7 = nutritionAverages(ctx, addDays(y, -6), y);
+  const n30 = nutritionAverages(ctx, addDays(y, -29), y);
 
   if (n7.loggedDays < 4) {
     out.push({
@@ -155,7 +157,7 @@ export function nutritionInsights(ctx: Ctx, onDate: ISODate): Insight[] {
 
   // Dépense observée vs estimée (nécessite des données suffisantes)
   const window = 28;
-  const nW = nutritionAverages(ctx, addDays(onDate, -(window - 1)), onDate);
+  const nW = nutritionAverages(ctx, addDays(y, -(window - 1)), y);
   const slopeW = weightSlope(ctx.data.weights, onDate, window);
   if (nW.loggedDays >= 18 && slopeW !== null && nW.avgKcal) {
     const obs = observedTdee(nW.avgKcal, slopeW);
@@ -343,7 +345,7 @@ export function crossInsights(ctx: Ctx, onDate: ISODate): Insight[] {
   const wChange = averageChange(ctx.data.weights, onDate, 28);
   if (s.length >= 3 && wChange !== null) {
     const strength = s[s.length - 1].strengthIndex! - s[0].strengthIndex!;
-    const n = nutritionAverages(ctx, addDays(onDate, -27), onDate);
+    const n = nutritionAverages(ctx, addDays(onDate, -28), addDays(onDate, -1));
     const goal = ctx.goalOn(onDate);
     const protPct = goal && n.avgProtein ? (n.avgProtein / goal.proteinG) * 100 : null;
     const parts = [`poids moyen ${fmtSigned(wChange, 1, 'kg')}`, `indice de force ${fmtSigned(strength, 1)} points`];
