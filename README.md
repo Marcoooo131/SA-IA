@@ -14,6 +14,11 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > rôles administrateur / collaborateur appliqués par la base, rendez-vous confidentiels, commentaires, historique,
 > pièces jointes ; publié sur GitHub Pages (`…/SA-IA/agenda/`) une fois Supabase configuré.
 
+> 🏋️ **BODYTRACK** (React + TypeScript + Supabase, distinct de l'application Movers) :
+> [`bodytrack/`](bodytrack/README.md) — PWA de coaching musculation & nutrition : séances en direct avec chrono de repos et records,
+> programmes, journal alimentaire (Open Food Facts), simulateur de poids, mensurations, photos privées, coach analytique,
+> bilans hebdomadaires et mensuels (PDF) ; local d'abord, synchronisation Supabase optionnelle (`…/SA-IA/bodytrack/`).
+
 > 🔔 **Rappels Movers** (page `…/SA-IA/rappels/`) : liste triée et notifications des « Horaire de Rappel »
 > des tâches attribuées par l'agent Dispatch, lues depuis le dossier Teams de l'équipe —
 > [tutoriel](rappels-equipe/TUTORIEL.md).
