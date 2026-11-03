@@ -21,6 +21,10 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > 🧾 **Calculette NID / LID** (page `…/SA-IA/nid/`) : pose de la LID (veille de la NID) pour une installation
 > (1 mois max) ou une résiliation (3 factures complètes, sans écraser de mois) — [`calculette-nid/`](calculette-nid/index.html).
 
+> 🎓 **Workshop « L'art de la découverte client »** (page `…/SA-IA/workshop-decouverte/`) : atelier interactif
+> pour l'équipe Movers — questions ouvertes, 4 mises en situation, exercice « Transforme ta question ! », challenge noté,
+> mode présentation — [`workshop-decouverte/`](workshop-decouverte/README.md).
+
 > 💬 **Relances SMS Movers & Takeovers** (Python, distinct de l'application Movers) :
 > [`sms-reminders/`](sms-reminders/README.md) — import des rendez-vous, relances automatiques J-2 / J-1,
 > suivi des confirmations ; mode simulation tant que le fournisseur SMS n'est pas configuré.
