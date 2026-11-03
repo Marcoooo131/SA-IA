@@ -68,10 +68,45 @@
       <button type="button" class="chip-btn" data-action="timer" data-secs="60">1 min</button>
     </div>`;
 
+  /* ---------- Voix du client (synthèse vocale du navigateur, aucun fichier ni serveur) ---------- */
+  const STORE_SOUND = 'workshop-decouverte.sound';
+  const voice = {
+    supported: 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window,
+    on: store.get(STORE_SOUND, true),
+    pick() {
+      const all = window.speechSynthesis.getVoices().filter((v) => /^fr(-|_|$)/i.test(v.lang));
+      const pref = [/google/i, /natural|neural|online/i, /amélie|amelie|thomas|denise|henri|audrey|aurélie|julie/i];
+      for (const re of pref) { const v = all.find((x) => re.test(x.name) && /fr[-_]FR/i.test(x.lang)) || all.find((x) => re.test(x.name)); if (v) return v; }
+      return all.find((x) => /fr[-_]FR/i.test(x.lang)) || all[0] || null;
+    },
+    speak(text, btn) {
+      if (!this.supported || !this.on) return;
+      const synth = window.speechSynthesis;
+      this.stop();
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'fr-FR';
+      const v = this.pick();
+      if (v) u.voice = v;
+      u.rate = 0.97;
+      const bub = btn && btn.closest('.bubble');
+      if (bub) bub.classList.add('is-speaking');
+      u.onend = u.onerror = () => { if (bub) bub.classList.remove('is-speaking'); };
+      synth.speak(u);
+    },
+    stop() {
+      if (!this.supported) return;
+      window.speechSynthesis.cancel();
+      document.querySelectorAll('.bubble.is-speaking').forEach((b) => b.classList.remove('is-speaking'));
+    }
+  };
+  // Chrome charge la liste des voix en différé
+  if (voice.supported) { window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices(); }
+
   const bubble = (who, text, cls) =>
     `<div class="bubble bubble--${who} ${cls || ''}">
       <span class="bubble__who">${icon(who === 'agent' ? 'headset' : 'user')}${who === 'agent' ? 'Conseiller' : 'Client'}</span>
       <p>${esc(text)}</p>
+      ${who === 'client' && voice.supported ? `<button type="button" class="bubble__play" data-action="speak" data-text="${esc(text)}" aria-label="Écouter la réponse du client" title="Réécouter">${icon('volume')}</button>` : ''}
     </div>`;
 
   const header = (eyebrow, title, lead) =>
@@ -597,6 +632,7 @@
     S.step = step;
     lastAnimated = 'panel';
     stopTimer();
+    voice.stop();
     if (location.hash !== '#' + D.steps[step].id) history.replaceState(null, '', '#' + D.steps[step].id);
     render();
     window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
@@ -619,6 +655,10 @@
   function toggleReveal(key, btn) {
     if (S.opened.has(key)) S.opened.delete(key); else S.opened.add(key);
     const open = S.opened.has(key);
+    if (open) {
+      const play = document.querySelector(`.reveal[data-reveal-key="${key}"] .bubble--client [data-action="speak"]`);
+      if (play) voice.speak(play.dataset.text, play); else voice.stop();
+    } else voice.stop();
     document.querySelectorAll(`[data-reveal-key="${key}"]`).forEach((el) => {
       el.classList.toggle('is-open', open);
       el.classList.toggle('is-flipped', open);
@@ -650,6 +690,18 @@
     b.innerHTML = icon(S.showAll ? 'eye' : 'eyeOff') + `<span class="tool__label">${S.showAll ? 'Réponses visibles' : 'Réponses masquées'}</span>`;
     lastAnimated = null;
     render({ noAnim: true });
+  }
+
+  function renderSoundButton() {
+    const b = $('#toggleSound');
+    b.setAttribute('aria-pressed', voice.on);
+    b.innerHTML = icon(voice.on ? 'volume' : 'volumeOff') + `<span class="tool__label">${voice.on ? 'Voix activée' : 'Voix coupée'}</span>`;
+  }
+  function toggleSound() {
+    voice.on = !voice.on;
+    store.set(STORE_SOUND, voice.on);
+    if (!voice.on) voice.stop();
+    renderSoundButton();
   }
 
   function toggleNotes() {
@@ -711,6 +763,12 @@
       case 'goto': go(+btn.dataset.step); break;
       case 'reveal': toggleReveal(btn.dataset.key, btn); break;
       case 'timer': startTimer(+btn.dataset.secs); break;
+      case 'speak': {
+        const bub = btn.closest('.bubble');
+        if (bub && bub.classList.contains('is-speaking')) voice.stop();
+        else { const was = voice.on; voice.on = true; voice.speak(btn.dataset.text, btn); voice.on = was; }
+        break;
+      }
 
       case 'sit-select': {
         S.sitActive = +btn.dataset.index;
@@ -800,6 +858,9 @@
     $('#nextBtn').addEventListener('click', () => (S.step === D.steps.length - 1 ? restart() : go(S.step + 1)));
     $('#toggleAnswers').addEventListener('click', toggleAnswers);
     $('#toggleNotes').addEventListener('click', toggleNotes);
+    $('#toggleSound').addEventListener('click', toggleSound);
+    if (!voice.supported) $('#toggleSound').hidden = true;
+    renderSoundButton();
     $('#toggleFullscreen').addEventListener('click', toggleFullscreen);
     $('#timerClose').addEventListener('click', stopTimer);
     document.addEventListener('fullscreenchange', onFsChange);
@@ -821,6 +882,7 @@
       else if (k === 'f' || k === 'F') toggleFullscreen();
       else if (k === 'h' || k === 'H') toggleAnswers();
       else if (k === 'n' || k === 'N') toggleNotes();
+      else if (k === 's' || k === 'S') toggleSound();
       else if (k === 'Escape') stopTimer();
       else if (S.step === 4 && S.quiz.phase === 'play' && /^[abcABC]$/.test(k)) {
         const r = S.quiz.rounds[S.quiz.i];

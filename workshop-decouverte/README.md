@@ -26,6 +26,7 @@ Conçu pour être animé par un responsable d'équipe en vidéoprojection, et co
 | `F` ou bouton ⛶ | Plein écran (mode présentation) |
 | `H` ou bouton « Réponses masquées » | Affiche **toutes** les réponses d'un coup (mode révision) ou revient au mode atelier |
 | `N` ou bouton « Notes » | Conseils d'animation de l'écran en cours (à garder masqués devant l'équipe si besoin) |
+| `S` ou bouton « Voix » | Active ou coupe la voix du client (lecture automatique des réponses client) |
 | `A` `B` `C` | Répondre au challenge final |
 | Boutons « 30 s » / « 1 min » | Minuteur de réflexion flottant |
 | `Échap` | Arrête le minuteur |
@@ -37,10 +38,17 @@ Conseils :
 
 Chaque étape a sa propre adresse (`#introduction`, `#situations`, `#challenge`…), ce qui permet de reprendre directement à un écran.
 
+## Voix du client
+
+Quand on clique sur « Écouter la réponse du client » (écran 2) ou « Réponse du client » (mises en situation), la réponse est
+**lue à voix haute** par la synthèse vocale française du navigateur (aucun fichier audio, rien n'est envoyé).
+Le petit haut-parleur dans chaque bulle client permet de la réécouter, y compris au challenge final.
+La voix dépend de l'appareil : Chrome et Edge proposent les voix les plus naturelles. Branchez le PC sur les enceintes de la salle.
+
 ## Données conservées
 
 Aucun compte, aucun serveur. Seuls sont enregistrés **dans le navigateur de l'appareil** (`localStorage`) :
-le meilleur score, le dernier score et le nombre de parties du challenge, ainsi que les propositions notées dans l'exercice 4.
+le meilleur score, le dernier score et le nombre de parties du challenge, les propositions notées dans l'exercice 4 et le réglage de la voix.
 Si le stockage est bloqué (navigation privée), le workshop fonctionne normalement sans mémoriser.
 
 ## Modifier le contenu
