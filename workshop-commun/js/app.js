@@ -1,5 +1,7 @@
 /*
- * Workshop « L'art de la découverte client » – application monopage sans dépendance.
+ * Moteur commun des workshops Movers – application monopage sans dépendance.
+ * Le contenu (et les libellés propres à chaque atelier) vient de window.WORKSHOP_DATA (js/data.js
+ * du dossier de l'atelier). Les libellés absents de WORKSHOP_DATA.labels prennent les valeurs par défaut ci-dessous.
  * Rendu : chaque écran est une fonction qui renvoie du HTML ; les interactions passent
  * par des attributs data-action (délégation d'événements sur #screen).
  */
@@ -9,9 +11,59 @@
   const D = window.WORKSHOP_DATA;
   const icon = window.icon;
   const $ = (sel, root) => (root || document).querySelector(sel);
-  const STORE_QUIZ = 'workshop-decouverte.quiz';
-  const STORE_TEAM = 'workshop-decouverte.team';
-  const STAGES = ['Contexte', 'Mauvaise approche', 'Questions', 'Opportunités', 'Conclusion'];
+  /* Libellés d'interface : valeurs par défaut = workshop « découverte client » */
+  const T = Object.assign({
+    introEyebrow: 'Workshop Movers · Conservation client',
+    introTitleHtml: 'L\'art de la <span class="accent">découverte</span> client',
+    cmpEyebrow: 'Étape 2 · Comprendre la différence',
+    cmpTitleHtml: 'Question fermée <span class="vs">ou</span> question ouverte\u00a0?',
+    cmpLead: 'Même client, même situation. Seule la question change… et toute la conversation avec elle.',
+    cmpClosedTag: 'Question fermée',
+    cmpOpenTag: 'Question ouverte',
+    meterLabel: 'Information obtenue',
+    cmpWhyTitle: 'Pourquoi la deuxième question est-elle plus intéressante ?',
+    openersTitle: 'Les mots qui ouvrent',
+    closersTitle: 'Les tournures qui ferment',
+    examplesTitle: 'À vous : comment ouvririez-vous ces questions ?',
+    flipClosed: 'Fermée',
+    flipOpen: 'Ouverte',
+    flipBack: 'Revenir à la question fermée',
+    sitEyebrow: 'Étape 3 · Mises en situation Movers',
+    sitTitle: 'Les 4 situations pratiques',
+    sitLead: "Lisez le contexte, faites réfléchir l'équipe, puis révélez pas à pas les questions, les réponses du client et les opportunités.",
+    stages: ['Contexte', 'Mauvaise approche', 'Questions', 'Opportunités', 'Conclusion'],
+    questionsLabel: 'Questions ouvertes',
+    questionsPrompt: '<strong>À vous de jouer.</strong> Quelles questions ouvertes poseriez-vous à ce client ? Proposez vos formulations avant de révéler celles du support.',
+    revealQuestion: 'Révéler la question',
+    oppsLabel: 'Opportunités de conservation',
+    oppsPrompt: "<strong>Qu'avez-vous repéré ?</strong> Quelles opportunités de conservation ces réponses font-elles émerger ?",
+    oppsReveal: 'Révéler les opportunités',
+    oppsHide: 'Masquer les opportunités',
+    synthesisLabel: 'Reformulation de synthèse',
+    trEyebrow: 'Étape 4 · Exercice collectif',
+    trTitle: 'Transforme ta question !',
+    trLead: "Une question fermée s'affiche. À l'équipe de proposer, à l'oral, une version ouverte. Puis on compare avec une proposition de reformulation.",
+    trTag: 'Question fermée',
+    trHint: "Réponse probable : « Oui. » / « Non. » … et la conversation s'arrête.",
+    trRevealTag: 'Proposition de reformulation',
+    trReveal: 'Révéler une reformulation',
+    trNext: 'Question suivante',
+    quizTitle: 'Saurais-tu conserver ce client ?',
+    quizLead: 'Trois situations tirées au hasard. Pour chacune, choisissez la meilleure question à poser.',
+    quizAsk: 'Quelle est la meilleure question à poser ?',
+    quizBest: 'Meilleure question',
+    quizMsgs: [
+      ['On rejoue ?', "Les questions fermées ont la vie dure. Reprenez les mots qui ouvrent : « comment », « qu'est-ce qui », « quels »."],
+      ['Bon début', 'Le réflexe se construit. Méfiez-vous des solutions proposées trop tôt.'],
+      ['Très bien joué', 'Vous savez faire parler le client. Encore un effort pour un sans-faute !'],
+      ['Sans-faute !', 'Vous laissez le client trouver lui-même les raisons de rester. Bravo.']
+    ],
+    conclTitle: 'Les 5 réflexes à adopter'
+  }, D.labels || {});
+  const PREFIX = D.storageKey || 'workshop-decouverte';
+  const STORE_QUIZ = PREFIX + '.quiz';
+  const STORE_TEAM = PREFIX + '.team';
+  const STAGES = T.stages;
 
   /* ---------- Stockage local (facultatif : l'outil fonctionne sans) ---------- */
   const store = {
@@ -69,7 +121,7 @@
     </div>`;
 
   /* ---------- Voix du client (synthèse vocale du navigateur, aucun fichier ni serveur) ---------- */
-  const STORE_SOUND = 'workshop-decouverte.sound';
+  const STORE_SOUND = 'workshop-decouverte.sound'; // réglage de voix commun à tous les ateliers
   const voice = {
     supported: 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window,
     on: store.get(STORE_SOUND, true),
@@ -125,8 +177,8 @@
     return `
     <section class="intro">
       <div class="intro__hero anim">
-        <span class="eyebrow">${icon('sparkles')} Workshop Movers · Conservation client</span>
-        <h1 class="intro__title">L'art de la <span class="accent">découverte</span> client</h1>
+        <span class="eyebrow">${icon('sparkles')} ${esc(T.introEyebrow)}</span>
+        <h1 class="intro__title">${T.introTitleHtml}</h1>
         <p class="intro__subtitle">${esc(I.subtitle)}</p>
       </div>
 
@@ -166,15 +218,15 @@
   function compareCard(kind) {
     const c = D.comparison[kind];
     const key = 'cmp-' + kind;
-    const label = kind === 'closed' ? 'Question fermée' : 'Question ouverte';
+    const label = kind === 'closed' ? T.cmpClosedTag : T.cmpOpenTag;
     return `
     <article class="compare compare--${kind} anim" style="--d:${kind === 'closed' ? 80 : 200}ms">
       <span class="tag tag--${kind}">${icon(kind === 'closed' ? 'x' : 'check')}${label}</span>
       ${bubble('agent', c.question)}
       ${revealBlock(key, `
         ${bubble('client', c.answer, kind === 'closed' ? 'bubble--short' : '')}
-        <div class="meter" style="--gain:${c.gain}%">
-          <div class="meter__head"><span>Information obtenue</span><b>${c.gain} %</b></div>
+        <div class="meter ${c.tone ? 'meter--' + c.tone : ''}" style="--gain:${c.gain}%">
+          <div class="meter__head"><span>${esc(T.meterLabel)}</span><b>${c.gain} %</b></div>
           <div class="meter__track"><div class="meter__fill"></div></div>
         </div>
         <p class="verdict">${esc(c.verdict)}</p>`)}
@@ -187,14 +239,13 @@
   function renderComparison() {
     const C = D.comparison;
     return `
-    ${header('Étape 2 · Comprendre la différence', 'Question fermée <span class="vs">ou</span> question ouverte\u00a0?',
-      "Même client, même situation. Seule la question change… et toute la conversation avec elle.")}
+    ${header(esc(T.cmpEyebrow), T.cmpTitleHtml, esc(T.cmpLead))}
 
     <div class="compare-grid">${compareCard('closed')}${compareCard('open')}</div>
 
     <section class="block anim" style="--d:300ms">
       <div class="block__bar">
-        <h2 class="h2">${icon('lightbulb')} Pourquoi la deuxième question est-elle plus intéressante ?</h2>
+        <h2 class="h2">${icon('lightbulb')} ${esc(T.cmpWhyTitle)}</h2>
         ${S.showAll ? '' : revealButton('cmp-why', "Révéler l'explication", "Masquer l'explication", 'lightbulb')}
       </div>
       ${revealBlock('cmp-why', `<div class="why-grid">${C.why.map((w) => `
@@ -203,18 +254,18 @@
 
     <section class="words anim" style="--d:360ms">
       <div class="words__col words__col--open">
-        <h3>${icon('check')} Les mots qui ouvrent</h3>
+        <h3>${icon('check')} ${esc(T.openersTitle)}</h3>
         <div class="chips">${C.openers.map((w) => `<span class="chip chip--open">${esc(w)}</span>`).join('')}</div>
       </div>
       <div class="words__col words__col--closed">
-        <h3>${icon('x')} Les tournures qui ferment</h3>
+        <h3>${icon('x')} ${esc(T.closersTitle)}</h3>
         <div class="chips">${C.closers.map((w) => `<span class="chip chip--closed">${esc(w)}</span>`).join('')}</div>
       </div>
     </section>
 
     <section class="block block--plain anim" style="--d:420ms">
       <div class="block__bar">
-        <h2 class="h2">${icon('repeat')} À vous : comment ouvririez-vous ces questions ?</h2>
+        <h2 class="h2">${icon('repeat')} ${esc(T.examplesTitle)}</h2>
         ${timerButtons()}
       </div>
       <div class="flip-grid">
@@ -224,17 +275,17 @@
           return `
           <article class="flip ${o ? 'is-flipped' : ''}" data-reveal-key="${key}">
             <div class="flip__closed">
-              <span class="tag tag--closed">${icon('x')}Fermée</span>
+              <span class="tag tag--closed">${icon('x')}${esc(T.flipClosed)}</span>
               <p class="flip__q">«\u00a0${esc(ex.closed)}\u00a0»</p>
             </div>
             <div class="flip__arrow">${icon('arrowRight')}</div>
             <div class="flip__open">
-              <span class="tag tag--open">${icon('check')}Ouverte</span>
+              <span class="tag tag--open">${icon('check')}${esc(T.flipOpen)}</span>
               <p class="flip__q">«\u00a0${esc(ex.open)}\u00a0»</p>
               <p class="flip__insight">${esc(ex.insight)}</p>
             </div>
-            ${S.showAll ? '' : `<button class="btn btn--small ${o ? 'btn--ghost' : 'btn--dark'}" type="button" data-action="reveal" data-key="${key}" aria-expanded="${o}" data-closed="Transformer" data-open="Revenir à la question fermée">
-              ${icon(o ? 'rotate' : 'repeat')}<span>${o ? 'Revenir à la question fermée' : 'Transformer'}</span></button>`}
+            ${S.showAll ? '' : `<button class="btn btn--small ${o ? 'btn--ghost' : 'btn--dark'}" type="button" data-action="reveal" data-key="${key}" aria-expanded="${o}" data-closed="Transformer" data-open="${esc(T.flipBack)}">
+              ${icon(o ? 'rotate' : 'repeat')}<span>${o ? esc(T.flipBack) : 'Transformer'}</span></button>`}
           </article>`;
         }).join('')}
       </div>
@@ -248,8 +299,7 @@
 
   function renderSituations() {
     return `
-    ${header('Étape 3 · Mises en situation Movers', 'Les 4 situations pratiques',
-      "Lisez le contexte, faites réfléchir l'équipe, puis révélez pas à pas les questions, les réponses du client et les opportunités.")}
+    ${header(esc(T.sitEyebrow), esc(T.sitTitle), esc(T.sitLead))}
     <div class="sit-tabs anim" role="tablist" aria-label="Choisir une situation">
       ${D.situations.map((s, i) => `
         <button class="sit-tab ${i === S.sitActive ? 'is-active' : ''} ${situationDone(i) ? 'is-done' : ''}" type="button" role="tab"
@@ -313,10 +363,10 @@
       html += `
       <div class="sit-block ${anim('questions')}">
         <div class="block__bar">
-          <span class="label label--good">${icon('message')} Questions ouvertes</span>
+          <span class="label label--good">${icon('message')} ${esc(T.questionsLabel)}</span>
           ${timerButtons()}
         </div>
-        ${shownQ === 0 ? `<div class="prompt">${icon('users')}<p><strong>À vous de jouer.</strong> Quelles questions ouvertes poseriez-vous à ce client ? Proposez vos formulations avant de révéler celles du support.</p></div>` : ''}
+        ${shownQ === 0 ? `<div class="prompt">${icon('users')}<p>${T.questionsPrompt}</p></div>` : ''}
         <ol class="qlist">
           ${s.questions.slice(0, shownQ).map((q, n) => {
             const key = k('a' + n);
@@ -335,7 +385,7 @@
         </ol>
         ${shownQ < s.questions.length ? `
           <button class="btn btn--outline" type="button" data-action="sit-next-q">
-            ${icon('eye')}<span>Révéler la question ${shownQ + 1} / ${s.questions.length}</span>
+            ${icon('eye')}<span>${esc(T.revealQuestion)} ${shownQ + 1} / ${s.questions.length}</span>
           </button>` : ''}
       </div>`;
     }
@@ -345,13 +395,13 @@
       html += `
       <div class="sit-block ${anim('opps')}">
         <div class="block__bar">
-          <span class="label label--good">${icon('shieldCheck')} Opportunités de conservation</span>
+          <span class="label label--good">${icon('shieldCheck')} ${esc(T.oppsLabel)}</span>
           ${S.showAll ? '' : timerButtons()}
         </div>
-        ${isOpen(key) ? '' : `<div class="prompt">${icon('search')}<p><strong>Qu'avez-vous repéré ?</strong> Quelles opportunités de conservation ces réponses font-elles émerger ?</p></div>`}
+        ${isOpen(key) ? '' : `<div class="prompt">${icon('search')}<p>${T.oppsPrompt}</p></div>`}
         ${revealBlock(key, `<div class="opps">${s.opportunities.map((o, n) => `
           <div class="opp" style="--d:${n * 70}ms"><span>${icon('check')}</span><div><strong>${esc(o.title)}</strong><p>${esc(o.text)}</p></div></div>`).join('')}</div>`)}
-        ${S.showAll ? '' : revealButton(key, 'Révéler les opportunités', 'Masquer les opportunités', 'sparkles')}
+        ${S.showAll ? '' : revealButton(key, T.oppsReveal, T.oppsHide, 'sparkles')}
       </div>`;
     }
 
@@ -359,7 +409,7 @@
       html += `
       <div class="sit-block sit-block--end ${anim('end')}">
         <div class="synthesis">
-          <span class="label">${icon('repeat')} Reformulation de synthèse</span>
+          <span class="label">${icon('repeat')} ${esc(T.synthesisLabel)}</span>
           <p>${esc(s.synthesis)}</p>
         </div>
         <div class="lesson">
@@ -395,8 +445,7 @@
     const key = 'tr-' + n;
     const open = isOpen(key);
     return `
-    ${header('Étape 4 · Exercice collectif', 'Transforme ta question !',
-      "Une question fermée s'affiche. À l'équipe de proposer, à l'oral, une version ouverte. Puis on compare avec une proposition de reformulation.")}
+    ${header(esc(T.trEyebrow), esc(T.trTitle), esc(T.trLead))}
 
     <div class="pager anim" role="tablist" aria-label="Questions de l'exercice">
       ${D.transform.map((_, j) => `<button type="button" role="tab" class="pager__dot ${j === n ? 'is-active' : ''} ${isOpen('tr-' + j) ? 'is-done' : ''}" aria-selected="${j === n}" data-action="tr-go" data-index="${j}">${j + 1}</button>`).join('')}
@@ -404,9 +453,9 @@
 
     <article class="transform anim" style="--d:80ms">
       <div class="transform__closed">
-        <span class="tag tag--closed">${icon('x')}Question fermée ${n + 1} / ${D.transform.length}</span>
+        <span class="tag tag--closed">${icon('x')}${esc(T.trTag)} ${n + 1} / ${D.transform.length}</span>
         <p class="transform__q">«\u00a0${esc(t.closed)}\u00a0»</p>
-        <p class="transform__hint">Réponse probable : « Oui. » / « Non. » … et la conversation s'arrête.</p>
+        <p class="transform__hint">${esc(T.trHint)}</p>
       </div>
 
       <div class="transform__think">
@@ -423,7 +472,7 @@
       <div class="transform__reveal ${open ? 'is-open' : ''}" data-reveal-key="${key}">
         ${open ? `
           <div class="burst" aria-hidden="true">${Array.from({ length: 10 }, (_, j) => `<i style="--a:${j * 36}deg"></i>`).join('')}</div>
-          <span class="tag tag--open">${icon('sparkles')}Proposition de reformulation</span>
+          <span class="tag tag--open">${icon('sparkles')}${esc(T.trRevealTag)}</span>
           <ul class="proposals">
             ${t.proposals.map((p, j) => `<li style="--d:${120 + j * 160}ms">«\u00a0${esc(p)}\u00a0»</li>`).join('')}
           </ul>
@@ -433,9 +482,9 @@
       <div class="transform__actions">
         ${S.showAll ? '' : (open
           ? `<button class="btn btn--ghost" type="button" data-action="tr-hide">${icon('eyeOff')}<span>Masquer</span></button>`
-          : `<button class="btn btn--primary btn--lg" type="button" data-action="tr-reveal">${icon('sparkles')}<span>Révéler une reformulation</span></button>`)}
+          : `<button class="btn btn--primary btn--lg" type="button" data-action="tr-reveal">${icon('sparkles')}<span>${esc(T.trReveal)}</span></button>`)}
         ${n < D.transform.length - 1
-          ? `<button class="btn btn--outline" type="button" data-action="tr-go" data-index="${n + 1}"><span>Question suivante</span>${icon('arrowRight')}</button>`
+          ? `<button class="btn btn--outline" type="button" data-action="tr-go" data-index="${n + 1}"><span>${esc(T.trNext)}</span>${icon('arrowRight')}</button>`
           : `<button class="btn btn--outline" type="button" data-action="goto" data-step="4"><span>Passer au challenge final</span>${icon('arrowRight')}</button>`}
       </div>
     </article>`;
@@ -458,8 +507,7 @@
   function renderChallenge() {
     const Q = S.quiz;
     const stats = S.quizStats;
-    const head = header('Étape 5 · Le challenge final', 'Saurais-tu conserver ce client ?',
-      'Trois situations tirées au hasard. Pour chacune, choisissez la meilleure question à poser.');
+    const head = header('Étape 5 · Le challenge final', esc(T.quizTitle), esc(T.quizLead));
 
     if (Q.phase === 'intro') {
       return `${head}
@@ -478,12 +526,7 @@
 
     if (Q.phase === 'results') {
       const score = quizScore();
-      const msg = [
-        ['On rejoue ?', "Les questions fermées ont la vie dure. Reprenez les mots qui ouvrent : « comment », « qu'est-ce qui », « quels »."],
-        ['Bon début', 'Le réflexe se construit. Méfiez-vous des solutions proposées trop tôt.'],
-        ['Très bien joué', 'Vous savez faire parler le client. Encore un effort pour un sans-faute !'],
-        ['Sans-faute !', 'Vous laissez le client trouver lui-même les raisons de rester. Bravo.']
-      ][score];
+      const msg = T.quizMsgs[score];
       return `${head}
       <article class="results anim">
         <div class="ring" style="--p:${(score / 3) * 100}">
@@ -532,7 +575,7 @@
 
     <article class="quiz anim" style="--d:60ms">
       ${bubble('client', item.client, 'bubble--lg')}
-      <p class="quiz__ask">Quelle est la meilleure question à poser ?</p>
+      <p class="quiz__ask">${esc(T.quizAsk)}</p>
       <div class="options" role="group" aria-label="Propositions">
         ${r.order.map((optIdx, pos) => {
           const o = item.options[optIdx];
@@ -555,7 +598,7 @@
       <div class="feedback ${chosenOpt.correct ? 'is-ok' : 'is-ko'}">
         <h3>${icon(chosenOpt.correct ? 'check' : 'alert')} ${chosenOpt.correct ? 'Bonne réponse !' : 'Pas tout à fait…'}</h3>
         ${chosenOpt.correct ? '' : `<p class="feedback__why"><b>Votre choix :</b> ${esc(chosenOpt.why)}</p>`}
-        <p><b>Meilleure question : ${letters[r.order.findIndex((j) => item.options[j].correct)]}.</b> ${esc(item.explanation)}</p>
+        <p><b>${esc(T.quizBest)} : ${letters[r.order.findIndex((j) => item.options[j].correct)]}.</b> ${esc(item.explanation)}</p>
         <button class="btn btn--primary" type="button" data-action="quiz-next">
           <span>${Q.i < Q.rounds.length - 1 ? 'Situation suivante' : 'Voir les résultats'}</span>${icon('arrowRight')}
         </button>
@@ -569,7 +612,7 @@
   function renderConclusion() {
     const best = S.quizStats.best;
     return `
-    ${header('Étape 6 · Conclusion', 'Les 5 réflexes à adopter', 'À appliquer dès le prochain appel.')}
+    ${header('Étape 6 · Conclusion', esc(T.conclTitle), 'À appliquer dès le prochain appel.')}
     <ol class="reflexes">
       ${D.reflexes.map((r, i) => `
         <li class="reflex anim" style="--d:${80 + i * 100}ms">

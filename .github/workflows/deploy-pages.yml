@@ -80,9 +80,13 @@ jobs:
       # Calculette NID / LID (…/nid/) : page statique, calcul 100 % local
       - name: Calculette NID / LID
         run: mkdir -p dist/nid && cp calculette-nid/index.html dist/nid/index.html
-      # Workshop « L'art de la découverte client » (…/workshop-decouverte/) : site statique, sans build
-      - name: Workshop découverte client
-        run: mkdir -p dist/workshop-decouverte && cp -r workshop-decouverte/. dist/workshop-decouverte/ && rm -f dist/workshop-decouverte/README.md
+      # Workshops Movers (sites statiques, sans build) : moteur partagé workshop-commun/ +
+      # « L'art de la découverte client » (…/workshop-decouverte/) et « Le brise-glace » (…/workshop-brise-glace/)
+      - name: Workshops Movers
+        run: |
+          for w in workshop-commun workshop-decouverte workshop-brise-glace; do
+            mkdir -p dist/$w && cp -r $w/. dist/$w/ && rm -f dist/$w/README.md
+          done
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

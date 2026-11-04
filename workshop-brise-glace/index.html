@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="description" content="Workshop interactif pour l'équipe Movers : désamorcer un client mécontent ou qui veut résilier, et l'accompagner dans son déménagement sans le vexer.">
+  <title>Le brise-glace – Workshop Movers</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23E30613'/%3E%3Cpath d='M32 14c5 4 11 6 16 6v12c0 10-7 16-16 19-9-3-16-9-16-19V20c5 0 11-2 16-6z' fill='none' stroke='%23fff' stroke-width='4' stroke-linejoin='round'/%3E%3Cpath d='M30 38h4M29 27a3 3 0 1 1 4.5 2.6c-1 .6-1.5 1.2-1.5 2.4' fill='none' stroke='%23fff' stroke-width='3.5' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../workshop-commun/css/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#screen">Aller au contenu</a>
+
+  <header class="topbar">
+    <div class="topbar__inner">
+      <div class="brand">
+        <span class="brand__mark" aria-hidden="true" data-icon="shield"></span>
+        <span class="brand__text">
+          <strong>Workshop Movers</strong>
+          <span>Le brise-glace</span>
+        </span>
+      </div>
+
+      <nav class="stepper" aria-label="Étapes du workshop">
+        <ol id="stepper"></ol>
+      </nav>
+
+      <div class="tools">
+        <button class="tool" id="toggleAnswers" type="button" aria-pressed="false" title="Afficher ou masquer toutes les réponses (touche H)">
+          <span data-icon="eyeOff"></span><span class="tool__label">Réponses masquées</span>
+        </button>
+        <button class="tool" id="toggleSound" type="button" aria-pressed="true" title="Voix du client : activer ou couper (touche S)">
+          <span data-icon="volume"></span><span class="tool__label">Voix activée</span>
+        </button>
+        <button class="tool" id="toggleNotes" type="button" aria-pressed="false" title="Notes de l'animateur (touche N)">
+          <span data-icon="clipboard"></span><span class="tool__label">Notes</span>
+        </button>
+        <button class="tool tool--icon" id="toggleFullscreen" type="button" title="Mode présentation plein écran (touche F)" aria-label="Plein écran">
+          <span data-icon="maximize"></span>
+        </button>
+      </div>
+    </div>
+    <div class="progress" role="progressbar" aria-label="Progression du workshop" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+      <div class="progress__bar" id="progressBar"></div>
+    </div>
+  </header>
+
+  <aside class="notes" id="notes" hidden>
+    <span class="notes__tag"><span data-icon="clipboard"></span> Note animateur</span>
+    <p id="notesText"></p>
+  </aside>
+
+  <main id="screen" class="screen" tabindex="-1" aria-live="polite"></main>
+
+  <footer class="navbar">
+    <div class="navbar__inner">
+      <button class="btn btn--ghost" id="prevBtn" type="button">
+        <span data-icon="arrowLeft"></span><span class="btn__label">Précédent</span>
+      </button>
+      <div class="navbar__status" id="navStatus"></div>
+      <button class="btn btn--primary" id="nextBtn" type="button">
+        <span class="btn__label">Suivant</span><span data-icon="arrowRight"></span>
+      </button>
+    </div>
+  </footer>
+
+  <div class="timer" id="timer" hidden role="timer" aria-live="off">
+    <svg viewBox="0 0 48 48" aria-hidden="true"><circle class="timer__track" cx="24" cy="24" r="20"/><circle class="timer__ring" id="timerRing" cx="24" cy="24" r="20"/></svg>
+    <div class="timer__body">
+      <span class="timer__label">Temps de réflexion</span>
+      <strong class="timer__value" id="timerValue">0:30</strong>
+    </div>
+    <button class="timer__close" id="timerClose" type="button" aria-label="Arrêter le minuteur"><span data-icon="x"></span></button>
+  </div>
+
+  <noscript><p class="noscript">Ce workshop nécessite JavaScript pour fonctionner.</p></noscript>
+
+  <script src="../workshop-commun/js/icons.js"></script>
+  <script src="js/data.js"></script>
+  <script src="../workshop-commun/js/app.js"></script>
+</body>
+</html>
