@@ -1,0 +1,42 @@
+# MARKETPLACE 3X : typage, tests unitaires, tests d'intégration (PostgreSQL), build.
+name: Marketplace 3X — tests
+
+on:
+  push:
+    paths: ["marketplace-3x/**", ".github/workflows/marketplace-3x.yml"]
+  pull_request:
+    paths: ["marketplace-3x/**", ".github/workflows/marketplace-3x.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: marketplace3x_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: marketplace-3x
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/marketplace3x_test
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/marketplace3x_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: marketplace-3x/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run test:unit
+      - run: npm run test:integration
+      - run: npm run build

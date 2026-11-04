@@ -14,6 +14,11 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > rôles administrateur / collaborateur appliqués par la base, rendez-vous confidentiels, commentaires, historique,
 > pièces jointes ; publié sur GitHub Pages (`…/SA-IA/agenda/`) une fois Supabase configuré.
 
+> 🛍️ **MARKETPLACE 3X** (Next.js + TypeScript + PostgreSQL/Prisma, distinct de l'application Movers) :
+> [`marketplace-3x/`](marketplace-3x/README.md) — marketplace collaborative particuliers · indépendants · fournisseurs :
+> annonces, délégation des ventes, liens commerciaux traçables, moteur de commissions testé, paiement Stripe Connect
+> (bac à sable en démo), litiges, versements, administration complète ; comptes de démonstration fournis.
+
 > 🏋️ **BODYTRACK** (React + TypeScript + Supabase, distinct de l'application Movers) :
 > [`bodytrack/`](bodytrack/README.md) — PWA de coaching musculation & nutrition : séances en direct avec chrono de repos et records,
 > programmes, journal alimentaire (Open Food Facts), simulateur de poids, mensurations, photos privées, coach analytique,

@@ -9,6 +9,7 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  outputFileTracingRoot: __dirname,
   experimental: { serverActions: { bodySizeLimit: "12mb" } },
   images: { dangerouslyAllowSVG: true, contentDispositionType: "inline" },
   async headers() {
