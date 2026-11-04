@@ -1,0 +1,28 @@
+# Prospection ERP BTP : tests unitaires (scoring, messages, rentabilité, analyse) et build de production.
+name: Prospection ERP — tests
+
+on:
+  push:
+    paths: ["prospection-erp/**", ".github/workflows/prospection-erp.yml"]
+  pull_request:
+    paths: ["prospection-erp/**", ".github/workflows/prospection-erp.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: prospection-erp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: prospection-erp/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build

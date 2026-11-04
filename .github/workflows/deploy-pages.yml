@@ -65,6 +65,14 @@ jobs:
           npm test
           npm run build
           mkdir -p ../dist/bodytrack && cp -r dist/. ../dist/bodytrack/
+      # Prospection ERP BTP (…/prospection/) : outil de prospection local-first (données dans le navigateur)
+      - name: Build de la prospection ERP
+        working-directory: prospection-erp
+        run: |
+          npm ci
+          npm test
+          npm run build
+          mkdir -p ../dist/prospection && cp -r dist/. ../dist/prospection/
       # Rappels de l'équipe Movers (…/rappels/) : page statique, sans aucune donnée (elle lit sur le PC de
       # l'agent le fichier écrit par l'agent Dispatch dans le dossier Teams)
       - name: Page des rappels de l'équipe
