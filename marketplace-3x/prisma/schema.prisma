@@ -1,0 +1,1046 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// MARKETPLACE 3X — modèle de données
+// Conventions :
+//  * Montants en centimes d'euro (Int) — jamais de flottants pour l'argent.
+//  * Taux en points de base (bps) : 10000 = 100 %, 2000 = 20 %.
+//  * Les données financières (Payment, CommissionTransaction, LedgerEntry, Payout,
+//    Refund) sont séparées des données d'affichage (Product, Order…) et ne sont
+//    écrites que par les services serveur (src/server/services/finance/*).
+//  * LedgerEntry est un journal en ajout seul : on n'y modifie ni ne supprime rien.
+// ─────────────────────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ───────────── Utilisateurs, rôles, sessions ─────────────
+
+enum Role {
+  INDIVIDUAL
+  PROFESSIONAL
+  SUPPLIER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model User {
+  id              String     @id @default(cuid())
+  email           String     @unique
+  passwordHash    String
+  displayName     String
+  primaryRole     Role
+  status          UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  avatarUrl       String?
+  city            String?
+  postalCode      String?
+  referralCode    String     @unique
+  referredById    String?
+  isDemo          Boolean    @default(false)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  lastLoginAt     DateTime?
+
+  referredBy User?  @relation("Referral", fields: [referredById], references: [id])
+  referrals  User[] @relation("Referral")
+
+  roles               UserRole[]
+  sessions            Session[]
+  emailTokens         EmailVerificationToken[]
+  resetTokens         PasswordResetToken[]
+  individualProfile   IndividualProfile?
+  professionalProfile ProfessionalProfile?
+  supplierProfile     SupplierProfile?
+  payoutAccount       PayoutAccount?
+
+  products            Product[]             @relation("ProductOwner")
+  favorites           Favorite[]
+  cart                Cart?
+  orders              Order[]               @relation("BuyerOrders")
+  sellerOrders        Order[]               @relation("SellerOrders")
+  delegationRequests  DelegationRequest[]
+  offersSent          CollaborationOffer[]  @relation("OfferFrom")
+  offersReceived      CollaborationOffer[]  @relation("OfferTo")
+  contractsAsOwner    CollaborationContract[] @relation("ContractOwner")
+  contractsAsPro      CollaborationContract[] @relation("ContractPro")
+  affiliateLinks      AffiliateLink[]
+  catalogSelections   CatalogSelection[]
+  commissions         CommissionTransaction[]
+  payouts             Payout[]
+  participations      ConversationParticipant[]
+  messages            Message[]
+  notifications       Notification[]
+  reviewsWritten      Review[]              @relation("ReviewAuthor")
+  reviewsReceived     Review[]              @relation("ReviewTarget")
+  disputesOpened      Dispute[]
+  reportsMade         Report[]
+  auditLogs           AuditLog[]
+  savedSearches       SavedSearch[]
+  productOffers       ProductOffer[]
+  priceProposals      PriceProposal[]
+  shipmentsHandled    Shipment[]
+  referralRewards     ReferralReward[]      @relation("RewardReferrer")
+  payments            Payment[]
+}
+
+model UserRole {
+  id        String   @id @default(cuid())
+  userId    String
+  role      Role
+  grantedAt DateTime @default(now())
+  grantedBy String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, role])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  userAgent String?
+  ip        String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model IndividualProfile {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  bio                String?
+  acceptsDelegation  Boolean  @default(false)
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ProfessionalProfile {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  refCode            String             @unique
+  headline           String?
+  bio                String?
+  serviceArea        String?
+  serviceRadiusKm    Int                @default(30)
+  specialties        String[]
+  categorySlugs      String[]
+  defaultCommissionBps Int              @default(2000)
+  offersPickup       Boolean            @default(false)
+  siret              String?
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  verifiedAt         DateTime?
+  verificationNote   String?
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SupplierProfile {
+  id                 String             @id @default(cuid())
+  userId             String             @unique
+  companyName        String
+  legalForm          String?
+  siret              String?
+  vatNumber          String?
+  website            String?
+  description        String?
+  defaultShippingDays Int               @default(3)
+  verificationStatus VerificationStatus @default(UNVERIFIED)
+  verifiedAt         DateTime?
+  verificationNote   String?
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Compte bénéficiaire chez le prestataire de paiement (Stripe Connect…).
+// La vérification d'identité (KYC) est réalisée par le prestataire.
+enum PayoutAccountStatus {
+  NOT_STARTED
+  PENDING
+  VERIFIED
+  RESTRICTED
+}
+
+model PayoutAccount {
+  id                String              @id @default(cuid())
+  userId            String              @unique
+  provider          String
+  providerAccountId String              @unique
+  status            PayoutAccountStatus @default(PENDING)
+  payoutsEnabled    Boolean             @default(false)
+  updatedAt         DateTime            @updatedAt
+  createdAt         DateTime            @default(now())
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ───────────── Catalogue ─────────────
+
+model Category {
+  id         String     @id @default(cuid())
+  slug       String     @unique
+  name       String
+  icon       String     @default("Package")
+  parentId   String?
+  position   Int        @default(0)
+  restricted Boolean    @default(false) // catégorie soumise à contrôle renforcé
+  parent     Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children   Category[] @relation("CategoryTree")
+  products   Product[]
+}
+
+enum SellerKind {
+  INDIVIDUAL
+  SUPPLIER
+}
+
+enum ProductCondition {
+  NEW
+  LIKE_NEW
+  VERY_GOOD
+  GOOD
+  FAIR
+}
+
+enum ProductStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  PAUSED
+  SOLD_OUT
+  REMOVED
+}
+
+// Product regroupe l'article et son annonce publique (prix, statut, visibilité).
+// Voir docs/ARCHITECTURE.md § « Produit et annonce ».
+model Product {
+  id                    String           @id @default(cuid())
+  ownerId               String
+  sellerKind            SellerKind
+  categoryId            String
+  title                 String
+  description           String
+  brand                 String?
+  condition             ProductCondition
+  priceCents            Int
+  minPriceCents         Int?             // prix plancher validé par le propriétaire (offres / délégation)
+  recommendedPriceCents Int?
+  wholesalePriceCents   Int?
+  shippingCents         Int              @default(0)
+  shippingDays          Int              @default(3)
+  shippingMethods       String[]
+  handPickup            Boolean          @default(false)
+  city                  String?
+  postalCode            String?
+  status                ProductStatus    @default(ACTIVE)
+  openToProfessionals   Boolean          @default(false) // particulier : accepte les propositions d'indépendants
+  affiliateEnabled      Boolean          @default(false) // fournisseur : ouvert au réseau de commerciaux
+  contractId            String?          // vente déléguée à un indépendant
+  sku                   String?
+  viewCount             Int              @default(0)
+  moderationNote        String?
+  isDemo                Boolean          @default(false)
+  publishedAt           DateTime?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  owner          User                   @relation("ProductOwner", fields: [ownerId], references: [id])
+  category       Category               @relation(fields: [categoryId], references: [id])
+  contract       CollaborationContract? @relation(fields: [contractId], references: [id])
+  images         ProductImage[]
+  variants       ProductVariant[]
+  inventory      Inventory[]
+  favorites      Favorite[]
+  commissionRules CommissionRule[]
+  affiliateLinks AffiliateLink[]
+  selections     CatalogSelection[]
+  orderItems     OrderItem[]
+  cartItems      CartItem[]
+  offers         ProductOffer[]
+  priceProposals PriceProposal[]
+
+  @@index([status, categoryId])
+  @@index([ownerId])
+  @@index([sellerKind, status])
+  @@index([contractId])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  url       String
+  alt       String?
+  position  Int     @default(0)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductVariant {
+  id         String      @id @default(cuid())
+  productId  String
+  name       String      // ex. « Taille M / Noir »
+  sku        String?
+  priceCents Int?        // surcharge du prix produit
+  product    Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  inventory  Inventory?
+  orderItems OrderItem[]
+  cartItems  CartItem[]
+}
+
+// Stock disponible. `quantity` est décrémentée atomiquement à la commande
+// (UPDATE … WHERE quantity >= n) pour empêcher la survente.
+model Inventory {
+  id        String          @id @default(cuid())
+  productId String
+  variantId String?         @unique
+  quantity  Int
+  updatedAt DateTime        @updatedAt
+  product   Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+}
+
+model Favorite {
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([userId, productId])
+}
+
+model SavedSearch {
+  id             String    @id @default(cuid())
+  userId         String
+  label          String
+  query          String?
+  filters        Json
+  lastNotifiedAt DateTime?
+  createdAt      DateTime  @default(now())
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum ProductOfferStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  USED
+}
+
+// Offre de prix d'un acheteur sur une annonce (négociation).
+model ProductOffer {
+  id          String             @id @default(cuid())
+  productId   String
+  buyerId     String
+  amountCents Int
+  message     String?
+  status      ProductOfferStatus @default(PENDING)
+  decidedById String?
+  createdAt   DateTime           @default(now())
+  decidedAt   DateTime?
+  product     Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyer       User               @relation(fields: [buyerId], references: [id])
+}
+
+// ───────────── Délégation & collaboration ─────────────
+
+enum CollaborationMode {
+  SALES_ONLY      // l'indépendant commercialise, le propriétaire expédie
+  FULL_SERVICE    // l'indépendant récupère, prépare et expédie
+}
+
+enum DelegationRequestStatus {
+  OPEN
+  MATCHED
+  CLOSED
+}
+
+model DelegationRequest {
+  id               String                  @id @default(cuid())
+  ownerId          String
+  title            String
+  description      String
+  city             String
+  postalCode       String?
+  categorySlugs    String[]
+  estimatedItems   Int
+  estimatedValueCents Int?
+  mode             CollaborationMode
+  maxCommissionBps Int?
+  status           DelegationRequestStatus @default(OPEN)
+  createdAt        DateTime                @default(now())
+  owner            User                    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  offers           CollaborationOffer[]
+
+  @@index([status, city])
+}
+
+enum OfferStatus {
+  PENDING
+  ACCEPTED
+  REFUSED
+  WITHDRAWN
+}
+
+model CollaborationOffer {
+  id             String             @id @default(cuid())
+  fromUserId     String
+  toUserId       String
+  professionalId String             // toujours l'indépendant concerné
+  ownerId        String             // toujours le propriétaire concerné
+  requestId      String?
+  commissionBps  Int
+  mode           CollaborationMode
+  handlesShipping Boolean           @default(false)
+  durationDays   Int                @default(90)
+  message        String
+  status         OfferStatus        @default(PENDING)
+  createdAt      DateTime           @default(now())
+  decidedAt      DateTime?
+  from           User               @relation("OfferFrom", fields: [fromUserId], references: [id])
+  to             User               @relation("OfferTo", fields: [toUserId], references: [id])
+  request        DelegationRequest? @relation(fields: [requestId], references: [id])
+  contract       CollaborationContract?
+
+  @@index([professionalId, status])
+  @@index([ownerId, status])
+}
+
+enum ContractStatus {
+  ACTIVE
+  ENDED
+  SUSPENDED
+}
+
+// Les conditions financières d'un contrat sont figées à l'acceptation :
+// aucun utilisateur ne peut les modifier ensuite (avenant = nouveau contrat).
+model CollaborationContract {
+  id              String            @id @default(cuid())
+  offerId         String            @unique
+  ownerId         String
+  professionalId  String
+  commissionBps   Int
+  mode            CollaborationMode
+  handlesShipping Boolean
+  startsAt        DateTime          @default(now())
+  endsAt          DateTime
+  status          ContractStatus    @default(ACTIVE)
+  createdAt       DateTime          @default(now())
+  endedAt         DateTime?
+  offer           CollaborationOffer @relation(fields: [offerId], references: [id])
+  owner           User              @relation("ContractOwner", fields: [ownerId], references: [id])
+  professional    User              @relation("ContractPro", fields: [professionalId], references: [id])
+  products        Product[]
+  priceProposals  PriceProposal[]
+  orderItems      OrderItem[]
+}
+
+enum ProposalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Modification de prix proposée par l'indépendant : validée par le propriétaire.
+model PriceProposal {
+  id           String         @id @default(cuid())
+  productId    String
+  contractId   String
+  proposedById String
+  priceCents   Int
+  reason       String?
+  status       ProposalStatus @default(PENDING)
+  createdAt    DateTime       @default(now())
+  decidedAt    DateTime?
+  product      Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  contract     CollaborationContract @relation(fields: [contractId], references: [id])
+  proposedBy   User           @relation(fields: [proposedById], references: [id])
+}
+
+// ───────────── Commissions : règles ─────────────
+
+enum CommissionType {
+  PERCENT // value en bps
+  FIXED   // value en centimes
+}
+
+// Commission proposée par un fournisseur aux apporteurs d'affaires, par produit.
+model CommissionRule {
+  id        String         @id @default(cuid())
+  productId String
+  type      CommissionType
+  value     Int
+  active    Boolean        @default(true)
+  createdAt DateTime       @default(now())
+  product   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId, active])
+}
+
+// ───────────── Affiliation ─────────────
+
+// Sélection personnelle d'un indépendant dans le catalogue fournisseurs.
+model CatalogSelection {
+  professionalId String
+  productId      String
+  createdAt      DateTime @default(now())
+  professional   User     @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@id([professionalId, productId])
+}
+
+model AffiliateLink {
+  id             String   @id @default(cuid())
+  professionalId String
+  productId      String
+  clicks         Int      @default(0)
+  createdAt      DateTime @default(now())
+  professional   User     @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attributions   AffiliateAttribution[]
+
+  @@unique([professionalId, productId])
+}
+
+// Une visite issue d'un lien commercial. `visitorKey` n'est conservé qu'avec consentement.
+model AffiliateAttribution {
+  id         String   @id @default(cuid())
+  linkId     String
+  visitorKey String?
+  userId     String?
+  consented  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  convertedAt DateTime?
+  link       AffiliateLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  orderItems OrderItem[]
+
+  @@index([visitorKey])
+}
+
+// ───────────── Panier & commandes ─────────────
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String     @unique
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+}
+
+model CartItem {
+  id            String          @id @default(cuid())
+  cartId        String
+  productId     String
+  variantId     String?
+  quantity      Int             @default(1)
+  attributionId String?
+  offerId       String?         // offre acceptée : prix négocié
+  createdAt     DateTime        @default(now())
+  cart          Cart            @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product       Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variant       ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([cartId, productId, variantId])
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  SHIPPED
+  DELIVERED
+  COMPLETED
+  CANCELLED
+  REFUNDED
+  DISPUTED
+}
+
+enum SaleType {
+  P2P                 // particulier → acheteur
+  DELEGATED           // particulier via indépendant
+  SUPPLIER_DIRECT     // fournisseur → acheteur
+  SUPPLIER_AFFILIATE  // fournisseur via lien d'un indépendant
+}
+
+// Une commande = un vendeur. Un paiement peut couvrir plusieurs commandes (panier multi-vendeurs).
+model Order {
+  id               String      @id @default(cuid())
+  number           String      @unique
+  buyerId          String
+  sellerId         String
+  paymentId        String?
+  status           OrderStatus @default(PENDING_PAYMENT)
+  subtotalCents    Int
+  shippingCents    Int
+  discountCents    Int         @default(0)
+  totalCents       Int
+  shippingName     String
+  shippingLine1    String
+  shippingLine2    String?
+  shippingPostal   String
+  shippingCity     String
+  shippingCountry  String      @default("FR")
+  carrierChoice    String?
+  promoCodeId      String?
+  sellerIsProfessional Boolean @default(false) // information précontractuelle (droit de rétractation)
+  paidAt           DateTime?
+  shippedAt        DateTime?
+  deliveredAt      DateTime?
+  receivedAt       DateTime?
+  completedAt      DateTime?
+  cancelledAt      DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  buyer            User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  seller           User        @relation("SellerOrders", fields: [sellerId], references: [id])
+  payment          Payment?    @relation(fields: [paymentId], references: [id])
+  promoCode        PromoCode?  @relation(fields: [promoCodeId], references: [id])
+  items            OrderItem[]
+  shipments        Shipment[]
+  disputes         Dispute[]
+  refunds          Refund[]
+  reviews          Review[]
+
+  @@index([buyerId])
+  @@index([sellerId, status])
+  @@index([paymentId])
+}
+
+model OrderItem {
+  id               String    @id @default(cuid())
+  orderId          String
+  productId        String
+  variantId        String?
+  title            String
+  unitPriceCents   Int
+  quantity         Int
+  saleType         SaleType
+  contractId       String?
+  professionalId   String?   // indépendant bénéficiaire (délégation ou affiliation)
+  attributionId    String?
+  commissionBpsSnapshot Int? // taux figé au moment de la commande
+  commissionFixedSnapshot Int?
+  order            Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product          Product   @relation(fields: [productId], references: [id])
+  variant          ProductVariant? @relation(fields: [variantId], references: [id])
+  contract         CollaborationContract? @relation(fields: [contractId], references: [id])
+  attribution      AffiliateAttribution? @relation(fields: [attributionId], references: [id])
+  commissions      CommissionTransaction[]
+}
+
+model PromoCode {
+  id             String         @id @default(cuid())
+  code           String         @unique
+  type           CommissionType
+  value          Int
+  minOrderCents  Int            @default(0)
+  maxUses        Int?
+  usedCount      Int            @default(0)
+  validFrom      DateTime?
+  validUntil     DateTime?
+  active         Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  orders         Order[]
+}
+
+// ───────────── Finances ─────────────
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  PARTIALLY_REFUNDED
+  REFUNDED
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  buyerId         String
+  provider        String        // "stripe" | "demo"
+  providerRef     String?       @unique // id de session de paiement
+  providerPaymentIntent String?
+  amountCents     Int
+  currency        String        @default("eur")
+  status          PaymentStatus @default(PENDING)
+  transferGroup   String        @unique
+  idempotencyKey  String        @unique
+  createdAt       DateTime      @default(now())
+  succeededAt     DateTime?
+  buyer           User          @relation(fields: [buyerId], references: [id])
+  orders          Order[]
+  refunds         Refund[]
+}
+
+enum Beneficiary {
+  SELLER
+  PROFESSIONAL
+  SUPPLIER
+  PLATFORM
+}
+
+enum CommissionKind {
+  SELLER_PROCEEDS     // part du propriétaire / fournisseur
+  PRO_COMMISSION      // commission nette de l'indépendant
+  PLATFORM_FEE        // frais de plateforme
+  SHIPPING            // frais de port reversés à l'expéditeur
+  PROMO_DISCOUNT      // remise financée par la plateforme (montant négatif)
+}
+
+enum CommissionStatus {
+  PENDING       // commande créée, paiement non confirmé
+  VALIDATING    // paiement confirmé, en attente de livraison / réception
+  VALIDATED     // réception confirmée, délai de rétractation / retour en cours
+  AVAILABLE     // payable
+  PAID          // versée
+  CANCELLED     // annulée (remboursement, annulation)
+  DISPUTED      // gelée par un litige
+}
+
+// Répartition d'un article de commande entre bénéficiaires.
+// Montants calculés exclusivement côté serveur par le moteur de commissions.
+model CommissionTransaction {
+  id            String           @id @default(cuid())
+  orderItemId   String
+  beneficiaryId String?          // null pour la plateforme
+  beneficiary   Beneficiary
+  kind          CommissionKind
+  amountCents   Int
+  status        CommissionStatus @default(PENDING)
+  availableAt   DateTime?
+  payoutId      String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  orderItem     OrderItem        @relation(fields: [orderItemId], references: [id])
+  user          User?            @relation(fields: [beneficiaryId], references: [id])
+  payout        Payout?          @relation(fields: [payoutId], references: [id])
+  history       CommissionStatusEvent[]
+
+  @@index([beneficiaryId, status])
+  @@index([status, availableAt])
+}
+
+model CommissionStatusEvent {
+  id            String           @id @default(cuid())
+  commissionId  String
+  fromStatus    CommissionStatus?
+  toStatus      CommissionStatus
+  reason        String
+  actorId       String?
+  createdAt     DateTime         @default(now())
+  commission    CommissionTransaction @relation(fields: [commissionId], references: [id])
+}
+
+// Journal financier en ajout seul (traçabilité de chaque mouvement).
+model LedgerEntry {
+  id          String   @id @default(cuid())
+  event       String   // PAYMENT_SUCCEEDED, ALLOCATION_CREATED, REFUND, PAYOUT…
+  amountCents Int
+  currency    String   @default("eur")
+  accountRef  String   // ex. "user:<id>:proceeds", "platform:fees", "buyer:<id>"
+  paymentId   String?
+  orderId     String?
+  commissionId String?
+  payoutId    String?
+  refundId    String?
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([orderId])
+  @@index([accountRef])
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
+model Payout {
+  id            String       @id @default(cuid())
+  userId        String
+  amountCents   Int
+  provider      String
+  providerRef   String?      @unique
+  status        PayoutStatus @default(PENDING)
+  idempotencyKey String      @unique
+  createdAt     DateTime     @default(now())
+  paidAt        DateTime?
+  failureReason String?
+  user          User         @relation(fields: [userId], references: [id])
+  commissions   CommissionTransaction[]
+}
+
+enum RefundStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+}
+
+model Refund {
+  id           String       @id @default(cuid())
+  orderId      String
+  paymentId    String
+  amountCents  Int
+  reason       String
+  status       RefundStatus @default(PENDING)
+  providerRef  String?      @unique
+  requestedById String?
+  idempotencyKey String     @unique
+  createdAt    DateTime     @default(now())
+  processedAt  DateTime?
+  order        Order        @relation(fields: [orderId], references: [id])
+  payment      Payment      @relation(fields: [paymentId], references: [id])
+}
+
+// Idempotence des webhooks du prestataire de paiement.
+model WebhookEvent {
+  id          String   @id // identifiant d'événement fourni par le prestataire
+  provider    String
+  type        String
+  processedAt DateTime @default(now())
+  payload     Json
+}
+
+enum RewardStatus {
+  PENDING
+  AVAILABLE
+  PAID
+  CANCELLED
+}
+
+model ReferralReward {
+  id          String       @id @default(cuid())
+  referrerId  String
+  refereeId   String       @unique
+  amountCents Int
+  status      RewardStatus @default(PENDING)
+  reason      String
+  createdAt   DateTime     @default(now())
+  referrer    User         @relation("RewardReferrer", fields: [referrerId], references: [id])
+}
+
+// ───────────── Livraison ─────────────
+
+enum ShipmentStatus {
+  PENDING
+  IN_TRANSIT
+  DELIVERED
+  RETURN_IN_TRANSIT
+  RETURNED
+  LOST
+}
+
+model Shipment {
+  id             String         @id @default(cuid())
+  orderId        String
+  handledById    String         // vendeur, indépendant ou fournisseur
+  carrier        String
+  trackingNumber String?
+  status         ShipmentStatus @default(IN_TRANSIT)
+  isReturn       Boolean        @default(false)
+  shippedAt      DateTime       @default(now())
+  deliveredAt    DateTime?
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  handledBy      User           @relation(fields: [handledById], references: [id])
+}
+
+// ───────────── Messagerie & notifications ─────────────
+
+model Conversation {
+  id           String   @id @default(cuid())
+  subject      String
+  productId    String?
+  orderId      String?
+  offerId      String?
+  contractId   String?
+  lastMessageAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  participants ConversationParticipant[]
+  messages     Message[]
+}
+
+model ConversationParticipant {
+  conversationId String
+  userId         String
+  lastReadAt     DateTime?
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  attachmentUrl  String?
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId, createdAt])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+enum EmailStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+// File d'envoi des e-mails (transactionnels). Le pilote SMTP est optionnel en développement.
+model EmailOutbox {
+  id        String      @id @default(cuid())
+  to        String
+  subject   String
+  text      String
+  status    EmailStatus @default(QUEUED)
+  error     String?
+  createdAt DateTime    @default(now())
+  sentAt    DateTime?
+}
+
+// ───────────── Avis, litiges, signalements ─────────────
+
+model Review {
+  id        String   @id @default(cuid())
+  orderId   String
+  authorId  String
+  targetId  String
+  targetRole Role
+  rating    Int
+  comment   String?
+  createdAt DateTime @default(now())
+  order     Order    @relation(fields: [orderId], references: [id])
+  author    User     @relation("ReviewAuthor", fields: [authorId], references: [id])
+  target    User     @relation("ReviewTarget", fields: [targetId], references: [id])
+
+  @@unique([orderId, authorId, targetId])
+  @@index([targetId])
+}
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED_REFUND
+  RESOLVED_NO_REFUND
+}
+
+model Dispute {
+  id          String        @id @default(cuid())
+  orderId     String
+  openedById  String
+  reason      String
+  description String
+  status      DisputeStatus @default(OPEN)
+  resolution  String?
+  createdAt   DateTime      @default(now())
+  resolvedAt  DateTime?
+  order       Order         @relation(fields: [orderId], references: [id])
+  openedBy    User          @relation(fields: [openedById], references: [id])
+}
+
+enum ReportStatus {
+  OPEN
+  ACTIONED
+  DISMISSED
+}
+
+// Signalements (notice and action — DSA art. 16).
+model Report {
+  id          String       @id @default(cuid())
+  reporterId  String?
+  targetType  String       // PRODUCT | USER | MESSAGE
+  targetId    String
+  reason      String
+  details     String?
+  status      ReportStatus @default(OPEN)
+  decision    String?
+  createdAt   DateTime     @default(now())
+  decidedAt   DateTime?
+  reporter    User?        @relation(fields: [reporterId], references: [id])
+}
+
+// ───────────── Administration, conformité ─────────────
+
+model AdminSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+  actor      User?    @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
+
+model ConsentRecord {
+  id         String   @id @default(cuid())
+  visitorKey String
+  userId     String?
+  analytics  Boolean
+  affiliate  Boolean
+  createdAt  DateTime @default(now())
+}
