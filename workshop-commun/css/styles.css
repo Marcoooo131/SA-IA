@@ -680,3 +680,7 @@ kbd { font: 600 .75em var(--font); border: 1px solid var(--line); border-bottom-
 .bubble.is-speaking .bubble__play { background: var(--red); border-color: var(--red); color: #fff; animation: pulse 1s ease-in-out infinite; }
 .tool#toggleSound[aria-pressed="true"] { background: #fff; border-color: var(--line); color: var(--text); }
 .tool#toggleSound[aria-pressed="false"] { color: var(--muted); }
+
+/* Jauge colorée selon le sens (ex. « Tension du client » : rouge = élevée, vert = apaisée) */
+.meter--red .meter__fill, .compare--open .meter--red .meter__fill { background: linear-gradient(90deg, #ff5a63, var(--red)); }
+.meter--green .meter__fill, .compare--open .meter--green .meter__fill { background: linear-gradient(90deg, #2fb072, var(--ok)); }

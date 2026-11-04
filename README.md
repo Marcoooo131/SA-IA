@@ -29,6 +29,9 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > 🎓 **Workshop « L'art de la découverte client »** (page `…/SA-IA/workshop-decouverte/`) : atelier interactif
 > pour l'équipe Movers — questions ouvertes, 4 mises en situation, exercice « Transforme ta question ! », challenge noté,
 > mode présentation — [`workshop-decouverte/`](workshop-decouverte/README.md).
+>
+> 🧊 **Workshop « Le brise-glace »** (page `…/SA-IA/workshop-brise-glace/`) : désamorcer un client mécontent ou qui veut
+> résilier, et l'accompagner dans son déménagement sans le vexer — [`workshop-brise-glace/`](workshop-brise-glace/README.md).
 
 > 💬 **Relances SMS Movers & Takeovers** (Python, distinct de l'application Movers) :
 > [`sms-reminders/`](sms-reminders/README.md) — import des rendez-vous, relances automatiques J-2 / J-1,

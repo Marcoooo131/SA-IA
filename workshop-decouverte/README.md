@@ -63,26 +63,29 @@ Les propositions sont mélangées à chaque partie : n'écrivez pas « la répon
 
 ```
 workshop-decouverte/
-├── index.html        squelette de la page (en-tête, navigation, minuteur)
+├── index.html        page de l'atelier (titre, en-tête)
+└── js/data.js        contenu pédagogique
+workshop-commun/      moteur partagé avec les autres workshops (ne pas dupliquer)
 ├── css/styles.css    identité visuelle, animations, responsive
 ├── js/icons.js       icônes au trait intégrées
-├── js/data.js        contenu pédagogique
-└── js/app.js         navigation, révélations, exercice, quiz, plein écran
+└── js/app.js         navigation, révélations, voix, exercice, quiz, plein écran
 ```
+
+Les libellés d'interface propres à un atelier se règlent dans `labels` de son `data.js` ;
+ceux qui manquent prennent les valeurs par défaut de `workshop-commun/js/app.js` (celles de ce workshop).
 
 ## Tester en local
 
 ```bash
-cd workshop-decouverte
-python3 -m http.server 8000     # puis ouvrir http://localhost:8000
+python3 -m http.server 8000     # depuis la racine du dépôt, puis ouvrir http://localhost:8000/workshop-decouverte/
 ```
 
 Ouvrir directement `index.html` dans le navigateur fonctionne aussi.
 
 ## Déploiement GitHub Pages
 
-Le workflow existant [`.github/workflows/deploy-pages.yml`](../.github/workflows/deploy-pages.yml) copie ce dossier dans
-`dist/workshop-decouverte/` et publie le site à chaque push sur `main` (ou manuellement via *Actions → Déploiement GitHub Pages → Run workflow*).
+Le workflow existant [`.github/workflows/deploy-pages.yml`](../.github/workflows/deploy-pages.yml) copie ce dossier et `workshop-commun/` dans
+`dist/` et publie le site à chaque push sur `main` (ou manuellement via *Actions → Déploiement GitHub Pages → Run workflow*).
 
 Prérequis (une seule fois) : *Settings → Pages → Source* = **GitHub Actions**.
 
