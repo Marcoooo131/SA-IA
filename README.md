@@ -38,6 +38,9 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 >
 > 🧊 **Workshop « Le brise-glace »** (page `…/SA-IA/workshop-brise-glace/`) : désamorcer un client mécontent ou qui veut
 > résilier, et l'accompagner dans son déménagement sans le vexer — [`workshop-brise-glace/`](workshop-brise-glace/README.md).
+>
+> 😄 **Workshop « L'humour brise-glace »** (page `…/SA-IA/workshop-humour/`) : une touche d'humour bienveillant pour détendre
+> le client qui déménage, avec ses limites (jamais à chaud, jamais du client) — [`workshop-humour/`](workshop-humour/README.md).
 
 > 💬 **Relances SMS Movers & Takeovers** (Python, distinct de l'application Movers) :
 > [`sms-reminders/`](sms-reminders/README.md) — import des rendez-vous, relances automatiques J-2 / J-1,
