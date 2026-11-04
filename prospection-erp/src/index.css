@@ -1,0 +1,59 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-bg: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-line: #e3e6eb;
+  --color-ink: #16191d;
+  --color-muted: #5d6673;
+  --color-accent: #1d4ed8;
+  --color-accent-soft: #e8eefc;
+  --color-ok: #15803d;
+  --color-warn: #b45309;
+  --color-danger: #b91c1c;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0f1216;
+    --color-surface: #171b21;
+    --color-line: #2a3039;
+    --color-ink: #eef1f4;
+    --color-muted: #9aa3ae;
+    --color-accent: #7aa2ff;
+    --color-accent-soft: #1c2740;
+    --color-ok: #4ade80;
+    --color-warn: #fbbf24;
+    --color-danger: #f87171;
+  }
+}
+
+@layer base {
+  html { color-scheme: light dark; }
+  body { background: var(--color-bg); color: var(--color-ink); font-family: var(--font-sans); margin: 0; }
+  input, select, textarea {
+    background: var(--color-surface); color: var(--color-ink); border: 1px solid var(--color-line);
+    border-radius: 8px; padding: 6px 9px; font: inherit; min-width: 0;
+  }
+  textarea { width: 100%; }
+  input[type='checkbox'] { padding: 0; }
+  table { border-collapse: collapse; width: 100%; }
+  th { text-align: left; font-weight: 600; color: var(--color-muted); font-size: 12px; }
+  th, td { padding: 7px 8px; border-bottom: 1px solid var(--color-line); vertical-align: top; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+}
+
+@layer components {
+  .card { background: var(--color-surface); border: 1px solid var(--color-line); border-radius: 12px; padding: 16px; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; padding: 7px 12px; font-weight: 600; font-size: 14px; border: 1px solid var(--color-line); background: var(--color-surface); color: var(--color-ink); cursor: pointer; }
+  .btn:hover { border-color: var(--color-accent); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary { background: var(--color-accent); border-color: var(--color-accent); color: #fff; }
+  .btn-danger { color: var(--color-danger); }
+  .label { display: block; font-size: 12px; font-weight: 600; color: var(--color-muted); margin-bottom: 3px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; border: 1px solid var(--color-line); border-radius: 999px; padding: 3px 10px; font-size: 13px; cursor: pointer; user-select: none; }
+  .chip[aria-pressed='true'] { background: var(--color-accent-soft); border-color: var(--color-accent); color: var(--color-accent); font-weight: 600; }
+  .muted { color: var(--color-muted); }
+  .badge { display: inline-block; border-radius: 6px; padding: 1px 7px; font-size: 12px; font-weight: 700; }
+}

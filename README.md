@@ -19,6 +19,12 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > programmes, journal alimentaire (Open Food Facts), simulateur de poids, mensurations, photos privées, coach analytique,
 > bilans hebdomadaires et mensuels (PDF) ; local d'abord, synchronisation Supabase optionnelle (`…/SA-IA/bodytrack/`).
 
+> 📈 **Prospection ERP BTP** (React + TypeScript, distinct de l'application Movers) :
+> [`prospection-erp/`](prospection-erp/README.md) — stratégie commerciale d'un ERP bâtiment à 15 € HT / mois : recherche d'artisans
+> et TPE du bâtiment dans les données publiques (filtre créations < 30 j / 3 / 6 / 12 mois), score /100 justifié avec niveau de confiance,
+> messages LinkedIn / e-mail courts et personnalisés, suivi multicanal, calculateur MRR / ARR / CAC (10 à 500 clients) et analyse
+> mensuelle avec recommandations ; local-first (`…/SA-IA/prospection/`).
+
 > 🔔 **Rappels Movers** (page `…/SA-IA/rappels/`) : liste triée et notifications des « Horaire de Rappel »
 > des tâches attribuées par l'agent Dispatch, lues depuis le dossier Teams de l'équipe —
 > [tutoriel](rappels-equipe/TUTORIEL.md).
