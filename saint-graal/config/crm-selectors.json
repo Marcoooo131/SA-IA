@@ -1,0 +1,30 @@
+{
+  "_doc": "Repères d'interface du CRM. Chaque repère est soit {\"label\": \"...\"} (champ retrouvé par son libellé visible, comme un utilisateur), soit {\"role\": \"button\", \"name\": \"...\"}, soit {\"css\": \"...\"}. valide=false tant que les repères n'ont pas été confrontés à la vidéo Partie 2 et au CRM réel : le MODE AUTONOME est alors refusé.",
+  "valide": false,
+
+  "rechercheGlobale": {
+    "ouvrir": { "role": "button", "name": "Search" },
+    "champ": { "role": "searchbox", "name": "Search" },
+    "resultat": { "css": "[role='listitem'] a, [role='gridcell'] a" }
+  },
+
+  "contrat": {
+    "numero": { "label": "Contract Number" },
+    "sectionTermination": { "text": "Termination Information" },
+    "lastIncomeDate": { "label": "Last Income Date" },
+    "caseCategory": { "label": "Case Category" },
+    "caseReason": { "label": "Case Reason" },
+    "nextInvoiceDate": { "label": "Next Invoice Date" }
+  },
+
+  "actions": {
+    "saveAndClose": { "role": "button", "name": "Save & Close" },
+    "notificationErreur": { "css": "[role='alert'], [data-id='notificationWrapper'] [aria-label*='rror']" },
+    "dialogueAbandon": { "role": "button", "name": "Discard changes" }
+  },
+
+  "connexion": {
+    "_doc": "Élément présent uniquement quand l'utilisateur est connecté (sert à l'état de connexion CRM).",
+    "indicateurConnecte": { "role": "button", "name": "Search" }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "_doc": "Configuration SAINT GRAAL. Toute valeur à null = information non confirmée : les dossiers concernés passent EN ATTENTE, jamais de supposition. Les surcharges locales (chemins, URL) vont dans config/local.config.json (non versionné).",
+
+  "excel": {
+    "chemin": null,
+    "ongletSource": "Contract Advanced Find View",
+    "ongletsAConserver": ["Contract Advanced Find View", "Feuil1", "Feuil2", "hiddenSheet"],
+    "ongletSuivi": "SUIVI SAINT GRAAL",
+    "ongletTableauDeBord": "TABLEAU DE BORD SAINT GRAAL",
+    "dossierSauvegardes": "sauvegardes"
+  },
+
+  "collaborateurs": {
+    "Kader": ["kader"],
+    "Chloé": ["chloé", "chloe"],
+    "Estef": ["estef"],
+    "Marc Antoine": ["marc antoine", "marc-antoine", "marcantoine"]
+  },
+
+  "calculette": {
+    "url": "../calculette-nid/index.html",
+    "_doc_mode": "Mode de la calculette (\"Installation\" ou \"Résiliation\") et colonne Excel qui fournit la date de référence. NON CONFIRMÉ tant que les vidéos n'ont pas été analysées : à null, aucun calcul n'est lancé.",
+    "mode": null,
+    "colonneDateReference": null,
+    "colonneNid": "Next Invoice Date"
+  },
+
+  "crm": {
+    "url": null,
+    "canalNavigateur": "msedge",
+    "dossierProfil": "profil-navigateur",
+    "formatDate": "dd/MM/yyyy",
+    "delaiMaxMs": 30000
+  },
+
+  "regles": {
+    "_doc": "Contrôles anti-doublon et de prudence. Valeurs par défaut = comportement le plus prudent.",
+    "attenteSiLastLidPopulationDateRenseignee": true,
+    "ecraserLidExistanteDifferente": false,
+    "modifierCaseCategoryExistante": false,
+    "correspondancesCaseReason": {},
+    "caseCategoryParCaseReason": {}
+  },
+
+  "modes": {
+    "_doc": "Le MODE AUTONOME reste bloqué tant que autonomeAutorise=false (à passer à true après validation des tests et des sélecteurs CRM).",
+    "autonomeAutorise": false
+  },
+
+  "serveur": { "port": 4777 }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "saint-graal",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "SAINT GRAAL – agent de pose des LID (Excel → calculette NID/LID → CRM → suivi Excel).",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test --test-concurrency=1 test/*.test.js",
+    "fixture": "node test/fixtures/make-fixture.js"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "playwright": "1.63.0"
+  },
+  "engines": { "node": ">=20" }
+}

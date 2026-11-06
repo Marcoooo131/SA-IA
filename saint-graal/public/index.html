@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SAINT GRAAL – Pose des LID</title>
+<style>
+  :root { --rouge:#e30613; --rouge-f:#b8050f; --noir:#111; --gris:#f3f4f6; --ligne:#e5e7eb; --muet:#6b7280; --ok:#0f7b3f; --warn:#b45309; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--gris); color:var(--noir); font:14px/1.45 "Segoe UI",system-ui,sans-serif; }
+  header { background:var(--noir); color:#fff; padding:14px 24px; display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+  .marque { display:flex; align-items:center; gap:12px; }
+  .marque .pastille { width:40px; height:40px; border-radius:10px; background:var(--rouge); display:grid; place-items:center; font-weight:900; font-size:18px; }
+  .marque h1 { margin:0; font-size:22px; letter-spacing:.12em; }
+  .marque small { color:#9ca3af; display:block; letter-spacing:0; font-weight:400; font-size:12px; }
+  .connexions { display:flex; gap:10px; margin-left:auto; flex-wrap:wrap; align-items:center; }
+  .cx { background:#1f1f1f; border:1px solid #333; border-radius:999px; padding:5px 12px; font-size:12px; display:flex; gap:6px; align-items:center; max-width:340px; }
+  .cx b { white-space:nowrap; } .cx span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#d1d5db; }
+  .pt { width:9px; height:9px; border-radius:50%; background:#6b7280; flex:none; }
+  .pt.ok { background:#22c55e; } .pt.ko { background:var(--rouge); }
+  button { font:inherit; cursor:pointer; border-radius:8px; border:1px solid var(--ligne); background:#fff; padding:8px 14px; }
+  button:disabled { opacity:.45; cursor:not-allowed; }
+  .btn-cx { background:transparent; color:#fff; border-color:#444; }
+  nav { display:flex; gap:4px; padding:0 24px; background:#fff; border-bottom:1px solid var(--ligne); }
+  nav button { border:none; border-bottom:3px solid transparent; border-radius:0; padding:12px 16px; font-weight:600; color:var(--muet); background:none; }
+  nav button.on { color:var(--noir); border-bottom-color:var(--rouge); }
+  main { padding:20px 24px 40px; max-width:1400px; margin:0 auto; }
+  .grille { display:grid; grid-template-columns: 1.1fr 1fr; gap:18px; }
+  @media (max-width:1000px) { .grille { grid-template-columns:1fr; } }
+  .carte { background:#fff; border:1px solid var(--ligne); border-radius:14px; padding:18px; margin-bottom:18px; }
+  .carte h2 { margin:0 0 12px; font-size:14px; text-transform:uppercase; letter-spacing:.08em; color:var(--muet); }
+  .commandes { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+  .modes { display:flex; border:2px solid var(--noir); border-radius:10px; overflow:hidden; }
+  .modes label { padding:9px 14px; cursor:pointer; font-weight:600; border-right:1px solid var(--noir); }
+  .modes label:last-child { border-right:none; }
+  .modes input { position:absolute; opacity:0; width:1px; height:1px; }
+  .modes label:has(input:focus-visible) { outline:3px solid var(--rouge); outline-offset:-3px; }
+  .modes label:has(input:checked) { background:var(--noir); color:#fff; }
+  .modes label:has(input:disabled) { opacity:.4; cursor:not-allowed; }
+  .gros { font-weight:800; letter-spacing:.06em; padding:12px 22px; font-size:15px; }
+  .lancer { background:var(--rouge); color:#fff; border-color:var(--rouge); }
+  .lancer:hover:not(:disabled) { background:var(--rouge-f); }
+  .pause { background:#fff; border:2px solid var(--noir); }
+  .arreter { background:var(--noir); color:#fff; border-color:var(--noir); }
+  .statut { margin-left:auto; font-weight:700; padding:6px 12px; border-radius:999px; background:var(--gris); }
+  .statut.en_cours { background:#dcfce7; color:var(--ok); } .statut.pause, .statut.attente_validation { background:#fef3c7; color:var(--warn); }
+  .statut.arret_demande { background:#fee2e2; color:var(--rouge); }
+  .fichier { display:flex; gap:8px; margin-top:12px; }
+  .fichier input { flex:1; padding:9px 12px; border:1px solid #d1d5db; border-radius:8px; font:inherit; }
+  .avert { color:var(--warn); font-size:12px; margin-top:8px; }
+  dl.courant { display:grid; grid-template-columns: 170px 1fr; gap:8px 12px; margin:0; }
+  dl.courant dt { color:var(--muet); } dl.courant dd { margin:0; font-weight:600; }
+  .num { font-family: Consolas, ui-monospace, monospace; white-space:nowrap; }
+  .barre { height:12px; background:var(--gris); border-radius:99px; overflow:hidden; margin:10px 0 4px; }
+  .barre > div { height:100%; background:var(--rouge); width:0; transition:width .3s; }
+  .tuiles { display:grid; grid-template-columns: repeat(auto-fill, minmax(120px,1fr)); gap:10px; }
+  .tuile { background:var(--gris); border-radius:10px; padding:10px 12px; }
+  .tuile .v { font-size:24px; font-weight:800; } .tuile .k { font-size:12px; color:var(--muet); }
+  .tuile.r .v { color:var(--rouge); }
+  #journal { height:460px; overflow:auto; font-size:13px; border:1px solid var(--ligne); border-radius:10px; }
+  .je { display:grid; grid-template-columns: 70px 190px 1fr; gap:8px; padding:6px 10px; border-bottom:1px solid var(--gris); }
+  .je .h { color:var(--muet); font-family:Consolas,monospace; } .je .e { font-weight:600; }
+  .je.succes { background:#f0fdf4; } .je.avertissement { background:#fffbeb; } .je.erreur { background:#fef2f2; color:var(--rouge-f); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--ligne); }
+  th { background:var(--gris); font-size:12px; text-transform:uppercase; color:var(--muet); }
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; z-index:10; }
+  .modal.on { display:flex; }
+  .modal .boite { background:#fff; border-radius:16px; width:min(860px, 94vw); max-height:92vh; overflow:auto; border-top:6px solid var(--rouge); padding:22px; }
+  .modal h3 { margin:0 0 4px; font-size:20px; }
+  .modal img { width:100%; border:1px solid var(--ligne); border-radius:8px; margin-top:12px; }
+  .modal .actions { display:flex; gap:10px; justify-content:flex-end; margin-top:16px; }
+  .valider { background:var(--ok); color:#fff; border-color:var(--ok); }
+  .refuser { background:#fff; color:var(--rouge); border:2px solid var(--rouge); }
+  .cache { display:none !important; }
+  pre { background:var(--gris); padding:10px; border-radius:8px; overflow:auto; font-size:12px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="marque"><div class="pastille">SG</div><h1>SAINT GRAAL<small>Agent de pose des LID</small></h1></div>
+  <div class="connexions">
+    <div class="cx" title=""><i class="pt" id="pt-crm"></i><b>CRM</b><span id="cx-crm">inconnu</span></div>
+    <div class="cx"><i class="pt" id="pt-excel"></i><b>Excel</b><span id="cx-excel">inconnu</span></div>
+    <div class="cx"><i class="pt" id="pt-calculette"></i><b>Calculette</b><span id="cx-calculette">inconnu</span></div>
+    <button class="btn-cx" id="b-cx" type="button">Vérifier les connexions</button>
+  </div>
+</header>
+<nav>
+  <button class="on" data-vue="pilotage" type="button">Pilotage</button>
+  <button data-vue="tableau" type="button">Tableau de bord</button>
+  <button data-vue="analyse" type="button">Analyse de l'Excel</button>
+</nav>
+<main>
+  <section id="v-pilotage">
+    <div class="carte">
+      <div class="commandes">
+        <div class="modes" role="radiogroup" aria-label="Mode">
+          <label><input type="radio" name="mode" value="TEST" checked> Mode test</label>
+          <label><input type="radio" name="mode" value="SUPERVISÉ"> Supervisé</label>
+          <label id="l-auto"><input type="radio" name="mode" value="AUTONOME"> Autonome</label>
+        </div>
+        <button class="gros lancer" id="b-lancer" type="button">▶ LANCER</button>
+        <button class="gros pause" id="b-pause" type="button" disabled>❚❚ PAUSE</button>
+        <button class="gros arreter" id="b-arreter" type="button" disabled>■ ARRÊTER</button>
+        <span class="statut" id="statut">Arrêté</span>
+      </div>
+      <div class="fichier">
+        <input id="chemin" placeholder="Chemin complet du fichier Excel (ex. C:\Users\…\LID posées par MO-TO - Chloé2.xlsx)">
+        <button id="b-fichier" type="button">Utiliser ce fichier</button>
+      </div>
+      <div class="avert" id="avert-auto"></div>
+      <div class="avert" id="avert-excel"></div>
+    </div>
+
+    <div class="grille">
+      <div>
+        <div class="carte">
+          <h2>Suivi en temps réel</h2>
+          <dl class="courant">
+            <dt>Contrat traité</dt><dd class="num" id="c-contrat">—</dd>
+            <dt>Collaborateur associé</dt><dd id="c-collab">—</dd>
+            <dt>Étape actuelle</dt><dd id="c-etape">—</dd>
+            <dt>Ancienne Last Income Date</dt><dd id="c-ancienne">—</dd>
+            <dt>Date calculée</dt><dd id="c-date">—</dd>
+            <dt>Case Reason sélectionné</dt><dd id="c-reason">—</dd>
+            <dt>Résultat</dt><dd id="c-resultat">—</dd>
+          </dl>
+          <div class="barre"><div id="progression"></div></div>
+          <div style="color:var(--muet);font-size:12px" id="progression-t">0 / 0</div>
+        </div>
+        <div class="carte">
+          <h2>Session en cours</h2>
+          <div class="tuiles">
+            <div class="tuile"><div class="v" id="k-traites">0</div><div class="k">Traités</div></div>
+            <div class="tuile r"><div class="v" id="k-poses">0</div><div class="k">LID posées</div></div>
+            <div class="tuile"><div class="v" id="k-conformes">0</div><div class="k">Déjà conformes</div></div>
+            <div class="tuile"><div class="v" id="k-simules">0</div><div class="k">Simulés (test)</div></div>
+            <div class="tuile"><div class="v" id="k-attente">0</div><div class="k">En attente</div></div>
+            <div class="tuile"><div class="v" id="k-erreurs">0</div><div class="k">Erreurs</div></div>
+            <div class="tuile"><div class="v" id="k-ignores">0</div><div class="k">Déjà traités</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="carte">
+        <h2>Journal d'activité</h2>
+        <div id="journal" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="v-tableau" class="cache">
+    <div class="carte">
+      <h2>Aujourd'hui – poses confirmées dans le CRM</h2>
+      <div class="tuiles" id="t-tuiles"></div>
+    </div>
+    <div class="grille">
+      <div class="carte"><h2>Historique par journée</h2><table id="t-jours"></table></div>
+      <div class="carte"><h2>Historique par collaborateur</h2><table id="t-collab"></table></div>
+    </div>
+    <div class="carte"><h2>Dernières opérations (onglet SUIVI SAINT GRAAL)</h2><div style="overflow:auto"><table id="t-dernieres"></table></div></div>
+  </section>
+
+  <section id="v-analyse" class="cache">
+    <div class="carte">
+      <h2>Analyse du fichier Excel (lecture seule)</h2>
+      <button id="b-analyse" type="button">Analyser le fichier</button>
+      <div id="analyse" style="margin-top:12px"></div>
+    </div>
+  </section>
+</main>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="m-titre">
+  <div class="boite">
+    <h3 id="m-titre">Validation avant Save &amp; Close</h3>
+    <div style="color:var(--muet)">Mode supervisé : rien n'est enregistré sans votre accord.</div>
+    <table style="margin-top:12px"><tbody id="m-corps"></tbody></table>
+    <div id="m-detail"></div>
+    <img id="m-img" alt="Capture du contrat avant enregistrement">
+    <div class="actions">
+      <button class="gros refuser" id="b-refuser" type="button">✕ Refuser (ne rien enregistrer)</button>
+      <button class="gros valider" id="b-valider" type="button">✓ Valider et enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+const api = async (url, body) => {
+  const r = await fetch(url, body === undefined ? {} : { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(body) });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.erreur || r.statusText);
+  return d;
+};
+const alerte = (e) => alert(e.message || e);
+const LIB = { arrete:'Arrêté', en_cours:'En cours', pause:'En pause', arret_demande:'Arrêt en cours…', attente_validation:'Validation attendue' };
+
+function connexion(nom, v) {
+  $('cx-' + nom).textContent = v; $('cx-' + nom).parentElement.title = v;
+  $('pt-' + nom).className = 'pt ' + (v.startsWith('OK') ? 'ok' : v.startsWith('KO') ? 'ko' : '');
+}
+
+function rendreEtat(e) {
+  for (const n of ['crm', 'excel', 'calculette']) connexion(n, e.connexions[n]);
+  const s = e.statut;
+  $('statut').textContent = (LIB[s] || s) + (s !== 'arrete' ? ' – ' + e.mode : '');
+  $('statut').className = 'statut ' + s;
+  $('b-lancer').disabled = s !== 'arrete';
+  $('b-pause').disabled = !['en_cours', 'pause'].includes(s);
+  $('b-pause').textContent = s === 'pause' ? '▶ REPRENDRE' : '❚❚ PAUSE';
+  $('b-arreter').disabled = s === 'arrete' || s === 'arret_demande';
+  document.querySelectorAll('input[name=mode]').forEach((i) => { i.disabled = s !== 'arrete' || (i.value === 'AUTONOME' && !e.autonomeAutorise); });
+  $('avert-auto').textContent = e.autonomeAutorise ? '' : 'Mode autonome verrouillé : ' + (e.motifAutonome || '');
+  $('avert-excel').textContent = e.excelEnAttenteEcriture ? `⚠ ${e.excelEnAttenteEcriture} ligne(s) de suivi en attente d'écriture : fermez le fichier Excel.` : '';
+  if (document.activeElement !== $('chemin') && e.fichierExcel) $('chemin').value = e.fichierExcel;
+  const c = e.courant || {};
+  $('c-contrat').textContent = c.contrat || '—';
+  $('c-collab').textContent = c.collaborateur || '—';
+  $('c-etape').textContent = c.etape || '—';
+  $('c-ancienne').textContent = c.ancienneLid || '—';
+  $('c-date').textContent = c.dateCalculee || '—';
+  $('c-reason').textContent = c.caseReason || '—';
+  $('c-resultat').textContent = c.resultat || '—';
+  for (const [k, v] of Object.entries(e.compteurs)) if ($('k-' + k)) $('k-' + k).textContent = v;
+  const p = e.total ? Math.round(100 * e.compteurs.traites / e.total) : 0;
+  $('progression').style.width = p + '%';
+  $('progression-t').textContent = `${e.compteurs.traites} / ${e.total} dossier(s) – ${p} %`;
+
+  const v = e.validation;
+  $('modal').classList.toggle('on', !!v && s === 'attente_validation');
+  if (v) {
+    const lignes = [['Contrat', `<span class="num">${esc(v.contrat)}</span>`], ['Collaborateur', esc(v.collaborateur)],
+      ['Ancienne Last Income Date', esc(v.ancienneLid || '(vide)')], ['Nouvelle Last Income Date', `<b style="color:var(--rouge)">${esc(v.nouvelleLid)}</b>`],
+      ['Case Reason', `<b>${esc(v.caseReason)}</b>`], ['Case Category', esc(v.caseCategory || '(vide)')]];
+    $('m-corps').innerHTML = lignes.map(([a, b]) => `<tr><th style="width:240px">${a}</th><td>${b}</td></tr>`).join('');
+    $('m-detail').innerHTML = v.detailCalcul?.length ? '<div style="margin-top:10px;font-weight:600">Détail de la calculette</div><table>' +
+      v.detailCalcul.map((r) => '<tr>' + r.map((x) => `<td>${esc(x)}</td>`).join('') + '</tr>').join('') + '</table>' : '';
+    $('m-img').src = v.capture ? '/captures/' + encodeURIComponent(v.capture) : '';
+    $('m-img').classList.toggle('cache', !v.capture);
+  }
+}
+
+function ajouterJournal(e) {
+  const d = document.createElement('div');
+  d.className = 'je ' + e.niveau;
+  d.innerHTML = `<span class="h">${esc(e.heure)}</span><span class="e">${esc(e.etape)}</span><span>${esc(e.message)}</span>`;
+  const j = $('journal');
+  const enBas = j.scrollTop + j.clientHeight >= j.scrollHeight - 30;
+  j.appendChild(d);
+  while (j.children.length > 600) j.firstChild.remove();
+  if (enBas) j.scrollTop = j.scrollHeight;
+}
+
+async function init() {
+  const e = await api('/api/etat');
+  e.journal.forEach(ajouterJournal);
+  rendreEtat(e);
+  const es = new EventSource('/api/evenements');
+  es.addEventListener('etat', (m) => rendreEtat(JSON.parse(m.data)));
+  es.addEventListener('journal', (m) => ajouterJournal(JSON.parse(m.data)));
+}
+
+$('b-lancer').onclick = () => {
+  const mode = document.querySelector('input[name=mode]:checked').value;
+  if (mode === 'AUTONOME' && !confirm('MODE AUTONOME : les contrats seront enregistrés sans validation. Continuer ?')) return;
+  api('/api/lancer', { mode }).catch(alerte);
+};
+$('b-pause').onclick = () => api($('b-pause').textContent.includes('REPRENDRE') ? '/api/reprendre' : '/api/pause', {}).catch(alerte);
+$('b-arreter').onclick = () => api('/api/arreter', {}).catch(alerte);
+$('b-valider').onclick = () => api('/api/validation', { decision: true }).catch(alerte);
+$('b-refuser').onclick = () => api('/api/validation', { decision: false }).catch(alerte);
+$('b-cx').onclick = async () => { $('b-cx').disabled = true; try { await api('/api/connexions', {}); } catch (e) { alerte(e); } $('b-cx').disabled = false; };
+$('b-fichier').onclick = () => api('/api/excel', { chemin: $('chemin').value }).then(() => api('/api/connexions', {})).catch(alerte);
+
+document.querySelectorAll('nav button').forEach((b) => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach((x) => x.classList.toggle('on', x === b));
+  for (const v of ['pilotage', 'tableau', 'analyse']) $('v-' + v).classList.toggle('cache', v !== b.dataset.vue);
+  if (b.dataset.vue === 'tableau') tableau();
+});
+
+async function tableau() {
+  try {
+    const s = await api('/api/tableau');
+    const collabs = Object.keys(s.jourParCollaborateur);
+    $('t-tuiles').innerHTML = [["Total aujourd'hui", s.totalJour, 'r'], ...collabs.map((c) => [c, s.jourParCollaborateur[c], '']),
+      ['En attente', s.enAttente, ''], ['Erreurs', s.erreurs, ''], ['Total historique', s.totalPoses, '']]
+      .map(([k, v, c]) => `<div class="tuile ${c}"><div class="v">${v}</div><div class="k">${esc(k)}</div></div>`).join('');
+    $('t-jours').innerHTML = `<tr><th>Jour</th>${collabs.map((c) => `<th>${esc(c)}</th>`).join('')}<th>Total</th></tr>` +
+      (s.parJour.map((j) => `<tr><td>${esc(j.jour)}</td>${collabs.map((c) => `<td>${j[c]}</td>`).join('')}<td><b>${j.total}</b></td></tr>`).join('') || '<tr><td colspan="9">Aucune pose confirmée</td></tr>');
+    $('t-collab').innerHTML = '<tr><th>Collaborateur</th><th>LID posées</th><th>Déjà conformes</th></tr>' +
+      s.parCollaborateur.map((c) => `<tr><td>${esc(c.collaborateur)}</td><td><b>${c.poses}</b></td><td>${c.conformes}</td></tr>`).join('');
+    const cols = ['Date de traitement', 'Heure', 'Collaborateur associé', 'Numéro de contrat', 'Nouvelle Last Income Date', 'Case Reason', 'Statut', 'Commentaire / Erreur'];
+    $('t-dernieres').innerHTML = `<tr>${cols.map((c) => `<th>${esc(c)}</th>`).join('')}</tr>` +
+      s.dernieres.map((l) => `<tr>${cols.map((c) => `<td${c === 'Numéro de contrat' ? ' class="num"' : ''}>${esc(l[c])}</td>`).join('')}</tr>`).join('');
+  } catch (e) { $('t-tuiles').textContent = e.message; }
+}
+
+$('b-analyse').onclick = async () => {
+  try {
+    const a = await api('/api/apercu');
+    const tab = (o) => '<table>' + Object.entries(o).map(([k, v]) => `<tr><td>${esc(k)}</td><td><b>${esc(v ?? '❌ absente')}</b></td></tr>`).join('') + '</table>';
+    $('analyse').innerHTML = `
+      <p><b>${a.total}</b> ligne(s). Onglets : ${a.onglets.map((o) => esc(`${o.nom} (${o.etat}, ${o.lignes} l.)`)).join(' · ')}
+      ${a.ongletsManquants.length ? `<br><span style="color:var(--rouge)">Onglets attendus absents : ${esc(a.ongletsManquants.join(', '))}</span>` : ''}</p>
+      <div class="grille"><div><h2>Colonnes essentielles</h2>${tab(a.colonnes)}</div>
+      <div><h2>Dossiers par collaborateur</h2>${tab(a.parCollaborateur)}<h2 style="margin-top:14px">Case Reason (dossiers concernés)</h2>${tab(a.caseReasons)}</div></div>
+      <h2 style="margin-top:14px">Règle calculette configurée</h2>
+      <p>Mode : <b>${esc(a.regleCalculette.mode ?? 'NON CONFIRMÉ')}</b> – colonne de date de référence : <b>${esc(a.regleCalculette.colonneDateReference ?? 'NON CONFIRMÉE')}</b></p>
+      <h2>Toutes les colonnes du fichier</h2><pre>${esc(a.colonnesDisponibles.join('\n'))}</pre>`;
+  } catch (e) { $('analyse').textContent = e.message; }
+};
+
+init().catch((e) => { document.body.insertAdjacentHTML('afterbegin', `<div style="background:#e30613;color:#fff;padding:10px">Serveur SAINT GRAAL injoignable : ${esc(e.message)}</div>`); });
+</script>
+</body>
+</html>

@@ -32,6 +32,9 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > 🧾 **Calculette NID / LID** (page `…/SA-IA/nid/`) : pose de la LID (veille de la NID) pour une installation
 > (1 mois max) ou une résiliation (3 factures complètes, sans écraser de mois) — [`calculette-nid/`](calculette-nid/index.html).
 
+> 🏆 **SAINT GRAAL** (outil local, poste Windows) : agent qui pose les LID dans le CRM à partir de l'Excel,
+> via la calculette NID / LID existante, avec modes test / supervisé / autonome et suivi Excel — [`saint-graal/`](saint-graal/README.md).
+
 > 🎓 **Workshop « L'art de la découverte client »** (page `…/SA-IA/workshop-decouverte/`) : atelier interactif
 > pour l'équipe Movers — questions ouvertes, 4 mises en situation, exercice « Transforme ta question ! », challenge noté,
 > mode présentation — [`workshop-decouverte/`](workshop-decouverte/README.md).

@@ -1,0 +1,8 @@
+node_modules
+data/
+captures/
+sauvegardes/
+profil-navigateur/
+config/local.config.json
+*.xlsx
+!test/fixtures/*.xlsx
