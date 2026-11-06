@@ -2,11 +2,13 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { chargerConfig, RACINE, resoudre, maintenant } from './util.js';
+import { chargerConfig, RACINE, resoudre, maintenant, enregistrerReglages } from './util.js';
+import { spawn } from 'node:child_process';
 import { Agent } from './agent.js';
 import { lireDossiers, lireHistorique, statistiques } from './excel.js';
 
-const cfg = chargerConfig();
+let cfg;
+try { cfg = chargerConfig(); } catch (e) { console.error('\n  ! ' + e.message + '\n'); process.exit(1); }
 const agent = new Agent(cfg);
 const clients = new Set();
 
@@ -16,13 +18,6 @@ const diffuser = (type, data) => {
 };
 agent.on('etat', (e) => diffuser('etat', e));
 agent.on('journal', (e) => diffuser('journal', e));
-
-function sauverLocal(modif) {
-  const f = path.join(RACINE, 'config', 'local.config.json');
-  const actuel = fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : {};
-  for (const [k, v] of Object.entries(modif)) actuel[k] = { ...(actuel[k] || {}), ...v };
-  fs.writeFileSync(f, JSON.stringify(actuel, null, 2));
-}
 
 async function corps(req) {
   let b = '';
@@ -66,7 +61,7 @@ const routes = {
     if (!fs.existsSync(chemin)) throw new Error(`Fichier introuvable : ${chemin}`);
     cfg.excel.chemin = chemin;
     agent.suivi = null;
-    sauverLocal({ excel: { chemin } });
+    if (!process.env.SAINT_GRAAL_DEMO) enregistrerReglages({ excel: { chemin } });
     return { ok: true, chemin };
   },
 };
@@ -77,7 +72,9 @@ const serveur = http.createServer(async (req, res) => {
   try {
     if (u.pathname === '/' || u.pathname === '/index.html') {
       res.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
-      return res.end(fs.readFileSync(path.join(RACINE, 'public', 'index.html')));
+      let html = fs.readFileSync(path.join(RACINE, 'public', 'index.html'), 'utf8');
+      if (process.env.SAINT_GRAAL_DEMO) html = html.replace('<body>', '<body><div style="background:#e30613;color:#fff;padding:8px 24px;font-weight:700">DÉMONSTRATION – CRM de test et Excel fictifs : le vrai CRM n\'est pas utilisé.</div>');
+      return res.end(html);
     }
     if (u.pathname === '/api/evenements') {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive' });
@@ -102,10 +99,24 @@ const serveur = http.createServer(async (req, res) => {
   }
 });
 
-const port = cfg.serveur.port || 4777;
-serveur.listen(port, '127.0.0.1', () => {
-  console.log(`\n  SAINT GRAAL prêt : http://127.0.0.1:${port}\n`);
+function ouvrirNavigateur(url) {
+  if (process.platform === 'win32') spawn('cmd', ['/c', 'start', '', url], { detached: true, stdio: 'ignore' }).unref();
+  else if (process.platform === 'darwin') spawn('open', [url], { detached: true, stdio: 'ignore' }).unref();
+}
+
+let port = cfg.serveur.port || 4777;
+serveur.on('error', (e) => {
+  if (e.code === 'EADDRINUSE' && port < (cfg.serveur.port || 4777) + 10) {
+    console.log(`Le port ${port} est déjà pris (une autre fenêtre SAINT GRAAL est ouverte ?) : essai du port ${port + 1}.`);
+    serveur.listen(++port, '127.0.0.1');
+  } else { console.error(e.message); process.exit(1); }
 });
+serveur.on('listening', () => {
+  const url = `http://127.0.0.1:${port}`;
+  console.log(`\n  SAINT GRAAL prêt : ${url}\n  Pour arrêter : fermer cette fenêtre.\n`);
+  if (process.argv.includes('--open')) ouvrirNavigateur(url);
+});
+serveur.listen(port, '127.0.0.1');
 
 let fermeture = false;
 async function quitter() {

@@ -15,19 +15,44 @@ function fusion(base, sur) {
   return out;
 }
 
-/** Charge la config versionnée + config/local.config.json (surcharges du poste) + surcharges passées. */
+/** Fichier de réglages du poste, modifiable au Bloc-notes (créé par 1-installer.bat). */
+export const FICHIER_REGLAGES = path.join(RACINE, 'reglages.json');
+
+function lireJson(f, nom = path.basename(f)) {
+  const txt = fs.readFileSync(f, 'utf8').replace(/^\uFEFF/, '');
+  try { return JSON.parse(txt); } catch (e) {
+    const pos = Number((e.message.match(/position (\d+)/) || [])[1]);
+    const ligne = Number.isFinite(pos) ? txt.slice(0, pos).split('\n').length : null;
+    throw new Error(`Faute de frappe dans ${nom}${ligne ? ` vers la ligne ${ligne}` : ''} : chaque valeur texte entre guillemets droits "…", une virgule entre deux lignes, pas de virgule avant } (${e.message})`);
+  }
+}
+
+/** Charge la config versionnée + reglages.json (poste) + SAINT_GRAAL_CONFIG + surcharges passées. */
 export function chargerConfig(surcharges = {}) {
-  const lire = (f) => JSON.parse(fs.readFileSync(path.join(RACINE, 'config', f), 'utf8'));
+  const lire = (f) => lireJson(path.join(RACINE, 'config', f));
   let cfg = lire('saint-graal.config.json');
   const local = path.join(RACINE, 'config', 'local.config.json');
-  if (fs.existsSync(local)) cfg = fusion(cfg, JSON.parse(fs.readFileSync(local, 'utf8')));
-  if (process.env.SAINT_GRAAL_CONFIG) cfg = fusion(cfg, JSON.parse(fs.readFileSync(process.env.SAINT_GRAAL_CONFIG, 'utf8')));
+  if (fs.existsSync(local)) cfg = fusion(cfg, lireJson(local));
+  if (fs.existsSync(FICHIER_REGLAGES)) cfg = fusion(cfg, lireJson(FICHIER_REGLAGES));
+  if (process.env.SAINT_GRAAL_CONFIG) cfg = fusion(cfg, lireJson(process.env.SAINT_GRAAL_CONFIG));
   cfg = fusion(cfg, surcharges);
-  cfg.selecteurs = fusion(lire('crm-selectors.json'), surcharges.selecteurs || {});
+  cfg.selecteurs = fusion(lire('crm-selectors.json'), cfg.selecteurs || {});
+  for (const k of ['url', 'nomUtilisateur']) if (cfg.crm[k] === '') cfg.crm[k] = null;
+  if (cfg.excel.chemin === '') cfg.excel.chemin = null;
   return cfg;
 }
 
-export const resoudre = (p) => (p ? (path.isAbsolute(p) ? p : path.join(RACINE, p)) : p);
+/** Enregistre des réglages du poste dans reglages.json (fusion, sans perdre le reste). */
+export function enregistrerReglages(modif) {
+  const actuel = fs.existsSync(FICHIER_REGLAGES) ? lireJson(FICHIER_REGLAGES) : {};
+  fs.writeFileSync(FICHIER_REGLAGES, JSON.stringify(fusion(actuel, modif), null, 2));
+}
+
+/**
+ * Chemin de travail. Les données (journal, captures, sauvegardes Excel, session du navigateur)
+ * vont dans SAINT_GRAAL_DONNEES (défini par 4-lancer.bat, hors du dossier de l'agent) si présent.
+ */
+export const resoudre = (p) => (p ? (path.isAbsolute(p) ? p : path.join(process.env.SAINT_GRAAL_DONNEES || RACINE, p)) : p);
 
 /** Minuscules, sans accents, espaces normalisés : pour reconnaître un collaborateur. */
 export const sansAccents = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '')

@@ -86,19 +86,12 @@ sert uniquement aux statistiques : la pose est faite avec votre compte CRM.
 
 ## 5. Installation sur le poste (Windows)
 
-1. Installer [Node.js LTS](https://nodejs.org) (version 20 ou plus).
-2. Dans le dossier `saint-graal` : `npm install`. Le navigateur utilisé est **Microsoft Edge**, déjà
-   présent sur le poste (`crm.canalNavigateur: "msedge"`).
-3. Créer `config/local.config.json` (non versionné) :
-   ```json
-   { "crm": { "url": "https://<votre-crm>/", "nomUtilisateur": "Prénom Nom" },
-     "excel": { "chemin": "C:\\Users\\…\\LID posées par MO-TO - Chloé2.xlsx" } }
-   ```
-4. `npm start`, puis ouvrir **http://127.0.0.1:4777**.
-5. Au premier lancement, une fenêtre Edge s'ouvre : connectez-vous au CRM. La session est gardée dans
-   `profil-navigateur/`.
-6. Onglet **Analyse de l'Excel** : il vérifie les onglets, les colonnes, les collaborateurs et les
-   Case Reason. Ensuite, **Mode test**.
+👉 **Suivez le [tutoriel pas à pas](TUTORIEL.md)** : fichiers `.bat` à double-cliquer dans `windows/`
+(`1-installer`, `2-demo`, `3-decouvrir`, `4-lancer`), réglages dans `reglages.json`, données (journal,
+captures, sauvegardes Excel, session Edge) dans `%USERPROFILE%\Saint-Graal-donnees`.
+
+En ligne de commande : `npm install`, `npm run demo` (CRM et Excel fictifs), `npm run decouvrir`
+(contrôle des repères sur le vrai CRM, lecture seule), `npm start`.
 
 ## 6. Architecture
 

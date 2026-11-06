@@ -6,3 +6,6 @@ profil-navigateur/
 config/local.config.json
 *.xlsx
 !test/fixtures/*.xlsx
+reglages.json
+decouverte.txt
+decouverte-recherche.png

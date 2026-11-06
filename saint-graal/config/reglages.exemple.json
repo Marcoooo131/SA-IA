@@ -1,0 +1,13 @@
+{
+  "crm": {
+    "url": "",
+    "nomUtilisateur": ""
+  },
+  "calculette": {
+    "mode": null,
+    "colonneDateReference": null
+  },
+  "modes": {
+    "autonomeAutorise": false
+  }
+}

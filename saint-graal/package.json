@@ -6,6 +6,8 @@
   "description": "SAINT GRAAL – agent de pose des LID (Excel → calculette NID/LID → CRM → suivi Excel).",
   "scripts": {
     "start": "node src/server.js",
+    "demo": "node src/demo.js",
+    "decouvrir": "node src/decouvrir.js",
     "test": "node --test --test-concurrency=1 test/*.test.js",
     "fixture": "node test/fixtures/make-fixture.js"
   },
