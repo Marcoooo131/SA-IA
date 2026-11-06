@@ -69,7 +69,7 @@ Carte de test : `4242 4242 4242 4242`.
 1. Base PostgreSQL hébergée (Neon, Supabase, RDS…) → `DATABASE_URL`.
 2. Variables : `APP_URL`, `APP_SECRET`, `PAYMENT_PROVIDER`, clés Stripe, `CRON_SECRET`, `SMTP_URL`, `EMAIL_FROM`.
 3. Commande de build : `npm run build` ; migrations : `npm run db:deploy` (étape de release).
-4. `vercel.json` planifie `/api/cron/finance` toutes les heures (validation et disponibilité des commissions).
+4. `vercel.json` planifie `/api/cron/finance` chaque nuit (offre gratuite Vercel ; passer à l'heure sur un plan payant).
 5. **Stockage des images** : brancher S3 / R2 / Vercel Blob (`src/server/storage`) — le disque Vercel est éphémère.
 6. Environnement de démonstration en ligne : `ALLOW_DEMO_PAYMENTS=true` + `PAYMENT_PROVIDER=demo`.
 
@@ -86,6 +86,7 @@ Carte de test : `4242 4242 4242 4242`.
 - [Règles financières, moteur de commissions, paiements](docs/FINANCE.md)
 - [Conformité : implémenté / à valider par un juriste](docs/COMPLIANCE.md)
 - [Plan de développement et suite](docs/ROADMAP.md)
+- **[Tutoriel de mise en ligne (Supabase + Vercel)](docs/TUTORIEL-LANCEMENT.md)**
 
 ## Sécurité des dépendances
 

@@ -26,9 +26,38 @@ const localDriver: StorageDriver = {
   },
 };
 
+/**
+ * Pilote Supabase Storage (production, ex. Vercel) : bucket public créé automatiquement au premier envoi.
+ * Variables : SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY (clé secrète, côté serveur uniquement), STORAGE_BUCKET.
+ */
+let bucketReady = false;
+const supabaseDriver: StorageDriver = {
+  async put(key, data, contentType) {
+    const url = process.env.SUPABASE_URL?.replace(/\/$/, "");
+    const secret = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const bucket = process.env.STORAGE_BUCKET ?? "marketplace-images";
+    if (!url || !secret) throw new AppError("Stockage Supabase non configuré (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)");
+    const headers = { Authorization: `Bearer ${secret}`, apikey: secret };
+    if (!bucketReady) {
+      const r = await fetch(`${url}/storage/v1/bucket`, {
+        method: "POST", headers: { ...headers, "content-type": "application/json" },
+        body: JSON.stringify({ id: bucket, name: bucket, public: true, file_size_limit: MAX_IMAGE_BYTES }),
+      });
+      if (!r.ok && r.status !== 409 && !(await r.text()).toLowerCase().includes("exist")) throw new AppError("Création du bucket de stockage impossible");
+      bucketReady = true;
+    }
+    const res = await fetch(`${url}/storage/v1/object/${bucket}/${key}`, {
+      method: "POST", headers: { ...headers, "content-type": contentType, "cache-control": "31536000" }, body: new Uint8Array(data),
+    });
+    if (!res.ok) throw new AppError("Envoi de l'image impossible, réessayez");
+    return `${url}/storage/v1/object/public/${bucket}/${key}`;
+  },
+};
+
 function driver(): StorageDriver {
   const name = process.env.STORAGE_DRIVER ?? "local";
   if (name === "local") return localDriver;
+  if (name === "supabase") return supabaseDriver;
   throw new AppError(`Pilote de stockage « ${name} » non configuré`);
 }
 

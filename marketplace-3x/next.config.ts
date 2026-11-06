@@ -11,7 +11,12 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   outputFileTracingRoot: __dirname,
   experimental: { serverActions: { bodySizeLimit: "12mb" } },
-  images: { dangerouslyAllowSVG: true, contentDispositionType: "inline" },
+  images: {
+    dangerouslyAllowSVG: true,
+    contentDispositionType: "inline",
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    remotePatterns: [{ protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" }],
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
