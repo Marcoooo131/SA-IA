@@ -82,10 +82,10 @@ jobs:
         run: mkdir -p dist/nid && cp calculette-nid/index.html dist/nid/index.html
       # Workshops Movers (sites statiques, sans build) : moteur partagé workshop-commun/ +
       # « L'art de la découverte client » (…/workshop-decouverte/), « Le brise-glace » (…/workshop-brise-glace/)
-      # et « L'humour brise-glace » (…/workshop-humour/)
+      # « L'humour brise-glace » (…/workshop-humour/) et « Humour & diplomatie » (…/workshop-humour-diplomatie/)
       - name: Workshops Movers
         run: |
-          for w in workshop-commun workshop-decouverte workshop-brise-glace workshop-humour; do
+          for w in workshop-commun workshop-decouverte workshop-brise-glace workshop-humour workshop-humour-diplomatie; do
             mkdir -p dist/$w && cp -r $w/. dist/$w/ && rm -f dist/$w/README.md
           done
       - uses: actions/upload-pages-artifact@v3
