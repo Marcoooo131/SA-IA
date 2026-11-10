@@ -1,0 +1,12 @@
+# Appel FICTIF — aucune donnée client réelle. Agent fictif : Agent 03.
+[00:00] COMMERCIAL : Bonjour, service clients, Julien à l'appareil.
+[00:03] CLIENT : Bonjour, on a acheté une maison à vingt kilomètres, on déménage en juin. Je voulais savoir comment arrêter le contrat.
+[00:10] COMMERCIAL : D'accord. C'est une maison ou un appartement que vous quittez ?
+[00:13] CLIENT : Un appartement. Là c'est une maison avec un garage, c'est plus grand.
+[00:17] COMMERCIAL : Vous avez des enfants ?
+[00:19] CLIENT : Oui, deux.
+[00:21] COMMERCIAL : Notre service vous permet d'être protégé 24h/24 avec un centre de télésurveillance, des détecteurs et l'intervention d'un agent en cas d'alarme, et nous avons de nombreux clients qui sont satisfaits de la réactivité de nos équipes, notamment lors des levées de doute qui permettent de vérifier rapidement ce qui se passe chez vous, que vous soyez présent ou absent, de jour comme de nuit, toute l'année, et ce sans que vous ayez à vous en préoccuper au quotidien.
+[00:45] CLIENT : Oui, mais c'est une autre maison, il faudrait tout refaire.
+[00:49] COMMERCIAL : Je vous propose de transférer votre contrat à la nouvelle adresse.
+[00:53] CLIENT : Je vais réfléchir.
+[00:55] COMMERCIAL : Très bien. Bonne journée.

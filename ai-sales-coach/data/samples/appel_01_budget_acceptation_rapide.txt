@@ -1,0 +1,12 @@
+# Appel FICTIF — aucune donnée client réelle. Agent fictif : Agent 01.
+[00:00] COMMERCIAL : Service clients, j'écoute.
+[00:03] CLIENT : Oui bonjour, je vous appelle parce que je déménage le mois prochain et je voudrais résilier mon contrat.
+[00:09] COMMERCIAL : Vous voulez résilier ?
+[00:11] CLIENT : Oui. Avec le déménagement, franchement c'est devenu trop cher pour nous, on doit faire des économies.
+[00:17] COMMERCIAL : D'accord. Vous avez reçu votre dernière facture ?
+[00:20] CLIENT : Oui oui.
+[00:22] COMMERCIAL : Pas de souci, je lance la résiliation. Vous allez recevoir un courrier.
+[00:27] CLIENT : D'accord. Et pour le matériel ?
+[00:30] COMMERCIAL : Malheureusement je ne sais pas, normalement un technicien passe le récupérer.
+[00:36] CLIENT : Bon. Merci.
+[00:38] COMMERCIAL : Au revoir.

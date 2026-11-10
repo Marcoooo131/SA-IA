@@ -1,0 +1,17 @@
+# Secrets et données locales — ne jamais publier
+.env
+data/runtime/
+*.db
+*.enc
+.encryption.key
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+# Divers
+.DS_Store
+*.log

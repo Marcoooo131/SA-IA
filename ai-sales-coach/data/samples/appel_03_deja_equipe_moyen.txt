@@ -1,0 +1,14 @@
+# Appel FICTIF — aucune donnée client réelle. Agent fictif : Agent 01.
+[00:00] COMMERCIAL : Bonjour, Thomas du service clients, que puis-je faire pour vous ?
+[00:04] CLIENT : Bonjour. On déménage dans un appartement et il y a déjà une alarme installée par l'ancien propriétaire, donc on n'aura plus besoin de la vôtre.
+[00:12] COMMERCIAL : Est-ce que vous déménagez bientôt ?
+[00:14] CLIENT : Dans trois semaines.
+[00:16] COMMERCIAL : Vous êtes satisfait de notre service ?
+[00:18] CLIENT : Oui, on n'a jamais eu de souci. Mais là, il y a déjà ce qu'il faut.
+[00:22] COMMERCIAL : Notre système est relié à un centre de télésurveillance 24h/24 avec intervention d'agents de sécurité, c'est une protection complète pour votre domicile.
+[00:31] CLIENT : Oui mais l'autre alarme est déjà là, je ne vais pas payer deux fois.
+[00:35] COMMERCIAL : Je comprends. Vous savez si l'autre alarme est reliée à une télésurveillance ?
+[00:39] CLIENT : Je ne sais pas, je n'ai pas regardé.
+[00:41] COMMERCIAL : Je vous propose de vérifier ce point avant de décider : si elle n'est pas télésurveillée, on pourra comparer ensemble. Je vous rappelle vendredi ?
+[00:49] CLIENT : D'accord, rappelez-moi vendredi.
+[00:51] COMMERCIAL : Très bien, bonne journée.

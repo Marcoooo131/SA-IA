@@ -1,0 +1,32 @@
+# Tests of the AI Sales Coach (Python / Streamlit).
+name: AI Sales Coach — tests
+
+on:
+  push:
+    paths: ["ai-sales-coach/**", ".github/workflows/ai-sales-coach-tests.yml"]
+  pull_request:
+    paths: ["ai-sales-coach/**", ".github/workflows/ai-sales-coach-tests.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.13"]
+    defaults:
+      run:
+        working-directory: ai-sales-coach
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: pip install -r requirements.txt
+      - run: python -m pytest
+      - name: Demo data on synthetic calls
+        run: python scripts/load_demo.py
+        env:
+          ASC_DATA_DIR: ${{ runner.temp }}/asc

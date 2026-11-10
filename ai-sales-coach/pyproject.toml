@@ -1,0 +1,14 @@
+[project]
+name = "ai-sales-coach"
+version = "1.0.0"
+description = "Coach IA de rétention commerciale (déménagement) : analyse d'appels, coaching, entraînement, RAG."
+requires-python = ">=3.11"
+readme = "README.md"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 160

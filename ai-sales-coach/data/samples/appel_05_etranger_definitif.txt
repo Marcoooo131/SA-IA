@@ -1,0 +1,10 @@
+# Appel FICTIF — aucune donnée client réelle. Agent fictif : Agent 02.
+[00:00] COMMERCIAL : Bonjour, ici Inès du service clients, je vous remercie de votre appel. Comment allez-vous ?
+[00:04] CLIENT : Bien merci. Je pars vivre au Canada définitivement le mois prochain, je dois résilier, ma décision est prise.
+[00:11] COMMERCIAL : Je comprends tout à fait, et félicitations pour ce beau projet. Je respecte votre décision. Avant de finaliser, puis-je vous demander ce que devient votre logement actuel ?
+[00:20] CLIENT : On le vend, il y a déjà des acheteurs.
+[00:23] COMMERCIAL : Très bien. Les acheteurs pourraient reprendre l'installation s'ils le souhaitent : je peux vous expliquer la démarche de reprise prévue, pour que vous puissiez la leur transmettre. Qu'en pensez-vous ?
+[00:33] CLIENT : Pourquoi pas, ça peut les intéresser.
+[00:36] COMMERCIAL : Je récapitule : je vous envoie par e-mail la procédure de reprise pour les acheteurs, et je prends en compte votre départ à la date que vous me confirmerez. Cela vous convient-il ?
+[00:46] CLIENT : Oui, parfait.
+[00:48] COMMERCIAL : Merci pour votre fidélité, et si un jour vous revenez en France, n'hésitez pas. Bonne journée et bon déménagement !

@@ -45,6 +45,12 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > ⚖️ **Workshop « Brise-glace : humour & diplomatie »** (page `…/SA-IA/workshop-humour-diplomatie/`) : prendre la température
 > du client, apaiser d'abord, sourire ensuite — [`workshop-humour-diplomatie/`](workshop-humour-diplomatie/README.md).
 
+> 🎯 **AI Sales Coach** (Python + Streamlit, distinct de l'application Movers) :
+> [`ai-sales-coach/`](ai-sales-coach/README.md) — coach IA de rétention commerciale (déménagement) : analyse d'appels audio ou
+> transcrits (Whisper local), note /100 sur 7 critères avec extraits réels horodatés, erreurs et meilleures formulations,
+> occasions manquées, conversation idéale, coaching individuel GROW, entraînement face à 7 clients simulés, tableau de bord,
+> base de connaissances RAG sourcée ; fonctionne hors ligne, API externes bloquées par défaut. Appels fournis : fictifs.
+
 > 💬 **Relances SMS Movers & Takeovers** (Python, distinct de l'application Movers) :
 > [`sms-reminders/`](sms-reminders/README.md) — import des rendez-vous, relances automatiques J-2 / J-1,
 > suivi des confirmations ; mode simulation tant que le fournisseur SMS n'est pas configuré.

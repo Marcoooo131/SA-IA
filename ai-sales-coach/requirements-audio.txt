@@ -1,0 +1,6 @@
+# Transcription audio LOCALE (Whisper). Optionnel, ~1 à 2 Go avec les modèles.
+# faster-whisper embarque son propre décodeur audio (PyAV) : pas besoin de ffmpeg.
+faster-whisper>=1.0
+# Diarisation (distinguer automatiquement commercial / client) — optionnel, lourd (PyTorch),
+# nécessite un jeton Hugging Face (ASC_HF_TOKEN) et l'acceptation des conditions du modèle :
+# pyannote.audio>=3.1

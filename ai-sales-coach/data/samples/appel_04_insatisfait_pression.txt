@@ -1,0 +1,8 @@
+# Appel FICTIF — aucune donnée client réelle. Agent fictif : Agent 03.
+COMMERCIAL : Oui bonjour.
+CLIENT : Bonjour, je suis Monsieur Dupont, mon numéro c'est le 06 12 34 56 78. J'en ai marre, trois fausses alarmes ce mois-ci, personne ne rappelle, et en plus je déménage. Je veux résilier, c'est inadmissible.
+COMMERCIAL : Calmez-vous monsieur. Les fausses alarmes, c'est souvent une mauvaise utilisation.
+CLIENT : Pardon ? Vous êtes en train de me dire que c'est de ma faute ?
+COMMERCIAL : Je dis juste que c'est la procédure, vous devez vérifier vos détecteurs. Pour la résiliation, vous êtes obligé d'envoyer un courrier.
+CLIENT : Très bien, je vais l'envoyer ce courrier, et je ne reviendrai jamais chez vous.
+COMMERCIAL : D'accord. Au revoir.

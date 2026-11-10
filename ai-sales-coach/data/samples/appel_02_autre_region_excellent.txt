@@ -1,0 +1,18 @@
+# Appel FICTIF — aucune donnée client réelle. Agent fictif : Agent 02.
+[00:00] COMMERCIAL : Bonjour, je suis Camille du service clients, merci de votre appel. Comment puis-je vous aider ?
+[00:05] CLIENT : Bonjour, voilà, je suis muté à Bordeaux, on déménage dans une autre région en septembre, donc je pense qu'il faut que je résilie l'alarme.
+[00:14] COMMERCIAL : Félicitations pour cette mutation ! Je comprends, un déménagement c'est beaucoup d'organisation. Pour bien vous accompagner, je vais vous poser quelques questions. Qu'est-ce qui vous amène à penser que la résiliation est nécessaire ?
+[00:25] CLIENT : Ben je me disais que vous n'étiez pas forcément là-bas, et puis c'est un nouveau logement, je ne sais pas encore comment ça se passe.
+[00:33] COMMERCIAL : C'est tout à fait normal de se poser la question. Parlez-moi de votre futur logement : comment se présente-t-il ?
+[00:39] CLIENT : C'est une maison avec un jardin, dans un quartier qu'on ne connaît pas encore. On sera propriétaires cette fois. Avec les enfants, je veux être tranquille.
+[00:50] COMMERCIAL : Si je comprends bien, vous devenez propriétaires d'une maison avec jardin, dans un quartier que vous ne connaissez pas encore, et la tranquillité de vos enfants compte beaucoup pour vous. C'est bien ça ?
+[01:00] CLIENT : Exactement.
+[01:02] COMMERCIAL : Quels sont les points de la maison qui vous préoccupent le plus en matière de sécurité ?
+[01:07] CLIENT : Le rez-de-chaussée surtout, avec la baie vitrée sur le jardin. Et on voyage pas mal, on s'absente souvent.
+[01:15] COMMERCIAL : Vous m'avez dit que vous vous absentez souvent et que la baie vitrée vous inquiète : c'est justement dans ces moments-là que la télésurveillance prend tout son sens, vous n'êtes pas seuls à veiller sur votre maison. Qu'est-ce que vous en pensez ?
+[01:28] CLIENT : Oui, c'est vrai que ça nous rassurait ici. Mais vous êtes présents à Bordeaux ?
+[01:33] COMMERCIAL : Je vous propose de vérifier ensemble la continuité du service à votre nouvelle adresse plutôt qu'une résiliation : je regarde les modalités de transfert prévues dans votre cas et je vous explique concrètement comment ça se passe. Qu'en pensez-vous ?
+[01:45] CLIENT : Ah bon, je ne savais pas que c'était possible. Pourquoi pas, oui.
+[01:49] COMMERCIAL : Très bien. Je récapitule : vous déménagez en septembre à Bordeaux, dans une maison avec jardin ; je vérifie la continuité du service à cette adresse et je vous envoie par écrit les modalités sous 48 heures. Un conseiller vous rappellera jeudi pour fixer la date d'installation. Cela vous convient-il ?
+[02:05] CLIENT : Oui, ça me va très bien.
+[02:07] COMMERCIAL : Merci pour votre confiance, et bon déménagement !

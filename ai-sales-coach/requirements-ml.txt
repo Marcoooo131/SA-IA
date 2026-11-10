@@ -1,0 +1,4 @@
+# Recherche documentaire sémantique (RAG) — optionnel, ~500 Mo à 2 Go (PyTorch CPU).
+sentence-transformers>=2.7
+# Base vectorielle persistante alternative (ASC_VECTOR_STORE=chroma) — optionnel.
+chromadb>=0.5
