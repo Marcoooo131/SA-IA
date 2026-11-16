@@ -114,15 +114,19 @@ async function icon(Comp, color, size = 256) {
     s.addShape(pres.shapes.OVAL, { x, y, w: D, h: D, fill: { color: C.accent4 }, line: { color: C.accent4 }, objectName: "Pictogramme " + title });
     s.addImage({ data: await icon(Ico, Rr), x: x + 0.13, y: y + 0.13, w: D - 0.26, h: D - 0.26, altText: title });
     const runs = [{ text: title, options: { bold: true, fontSize: 15, color: C.text1, breakLine: true } }];
-    lines.forEach((l, i) => runs.push({ text: l, options: { fontSize: 12, color: C.text2, breakLine: i < lines.length - 1 } }));
+    lines.forEach((l, i) => { const q = l.startsWith('«'); runs.push({ text: l, options: { fontSize: 12, italic: q, color: q ? C.accent1 : C.text2, breakLine: i < lines.length - 1 } }); });
     s.addText(runs, { x: x + D + 0.18, y: y - 0.03, w: w - D - 0.18, h: 1.5, valign: "top", margin: 0, paraSpaceAfter: 3, isTextBox: true });
   };
-  const rx = R.x + 0.28, rw = R.w - 0.45;
-  await item(rx, PY + HH + 0.5, rw, tb.TbHomeCheck, "1. Le client reste dans son logement",
+  const rx = R.x + 0.28, rw = R.w - 0.45, T = PY + HH;
+  const sep = (y) => s.addShape(pres.shapes.LINE, { x: R.x + 0.3, y, w: R.w - 0.6, h: 0, line: { color: C.background2, width: 1 }, objectName: "Séparateur" });
+  await item(rx, T + 0.2, rw, tb.TbHomeCheck, "1. Le client reste dans son logement",
     ["Reste propriétaire ou locataire", "Souhaite simplement arrêter son contrat", "Ne déménage pas"]);
-  s.addShape(pres.shapes.LINE, { x: R.x + 0.3, y: PY + HH + 2.3, w: R.w - 0.6, h: 0, line: { color: C.background2, width: 1 }, objectName: "Séparateur" });
-  await item(rx, PY + HH + 2.6, rw, md.MdStorefront, "2. Cessation d’activité",
-    ["Cesse son activité professionnelle", "Mais conserve le local équipé de l’alarme", "→ Le dossier reste chez Defence"]);
+  sep(T + 1.5);
+  await item(rx, T + 1.63, rw, md.MdStorefront, "2. Cessation d’activité",
+    ["Cesse son activité professionnelle", "Mais conserve le local équipé de l’alarme"]);
+  sep(T + 2.53);
+  await item(rx, T + 2.66, rw, tb.TbMessageCircleX, "3. Phrases à proscrire",
+    ["« Je pense déménager »", "« C’est en projet »", "« Je viens de mettre en vente la maison »", "« Je quitte temporairement »"]);
 
   // ---------- Critère principal ----------
   const BY = 6.45;
