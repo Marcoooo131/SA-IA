@@ -77,6 +77,7 @@ réindexée automatiquement.
 |---|---|
 | `python` n'est pas reconnu | Réinstallez Python en cochant « Add to PATH », ou utilisez `py -3.11` |
 | `Activate.ps1` bloqué | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
+| Page noire / vide (onglet « Streamlit ») | Regardez la fenêtre noire : un message d'erreur y est affiché. Sinon : fermez les anciens onglets, ouvrez **http://127.0.0.1:8501** (et non localhost), Ctrl+F5, essayez Chrome ou une fenêtre InPrivate (extensions désactivées). Sur un poste d'entreprise, un antivirus ou un proxy peut bloquer la connexion WebSocket : demandez au support d'autoriser 127.0.0.1:8501 |
 | Port 8501 occupé | `streamlit run app\main.py --server.port 8502` |
 | Mot de passe administrateur perdu | Supprimez `data\runtime\sales_coach.db` (⚠️ efface les analyses) ou créez un compte via Python : voir LANCEMENT_LOCAL.md |
 | « Déchiffrement impossible » | La clé de chiffrement a changé : restaurez `ASC_ENCRYPTION_KEY` ou `data\runtime\.encryption.key` |

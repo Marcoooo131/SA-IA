@@ -10,6 +10,10 @@ font = "sans serif"
 headless = true
 maxUploadSize = 200
 enableXsrfProtection = true
+# Certains antivirus / proxys d'entreprise bloquent les WebSockets compressés (page noire).
+enableWebsocketCompression = false
+address = "127.0.0.1"
+port = 8501
 
 [browser]
 gatherUsageStats = false
