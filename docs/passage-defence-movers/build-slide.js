@@ -62,7 +62,7 @@ async function icon(Comp, color, size = 256) {
   });
 
   // ---------- Panels ----------
-  const PY = 1.45, PH = 4.9;
+  const PY = 1.45, PH = 4.82;
   const L = { x: 0.5, w: 7.75 }, R = { x: 8.55, w: 4.28 };
 
   const panel = (p, fill, name) => s.addShape(pres.shapes.ROUNDED_RECTANGLE, {
@@ -125,18 +125,18 @@ async function icon(Comp, color, size = 256) {
     ["Cesse son activité professionnelle", "Mais conserve le local équipé de l’alarme", "→ Le dossier reste chez Defence"]);
 
   // ---------- Critère principal ----------
-  const BY = 6.55;
-  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 0.5, y: BY, w: 12.33, h: 0.65, rectRadius: 0.12, fill: { color: C.text1 }, line: { color: C.text1 }, objectName: "Critère principal" });
-  s.addShape(pres.shapes.OVAL, { x: 0.68, y: BY + 0.08, w: 0.49, h: 0.49, fill: { color: C.accent1 }, line: { color: C.accent1 }, objectName: "Pastille clé" });
-  s.addImage({ data: await icon(fa.FaKey, HEX.white), x: 0.795, y: BY + 0.195, w: 0.26, h: 0.26, altText: "Critère principal" });
+  const BY = 6.45;
+  s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x: 0.5, y: BY, w: 12.33, h: 0.75, rectRadius: 0.12, fill: { color: C.text1 }, line: { color: C.text1 }, objectName: "Critère principal" });
+  s.addShape(pres.shapes.OVAL, { x: 0.68, y: BY + 0.13, w: 0.49, h: 0.49, fill: { color: C.accent1 }, line: { color: C.accent1 }, objectName: "Pastille clé" });
+  s.addImage({ data: await icon(fa.FaKey, HEX.white), x: 0.795, y: BY + 0.245, w: 0.26, h: 0.26, altText: "Le bon sens" });
   s.addText([
-    { text: "CRITÈRE PRINCIPAL   ", options: { bold: true, color: C.accent1, fontSize: 13, charSpacing: 1 } },
-    { text: "Le client quitte-t-il ", options: { color: C.background1, fontSize: 16 } },
-    { text: "définitivement le logement", options: { color: C.background1, fontSize: 16, bold: true } },
-    { text: " ou conserve-t-il ", options: { color: C.background1, fontSize: 16 } },
-    { text: "le local équipé", options: { color: C.background1, fontSize: 16, bold: true } },
-    { text: " ?", options: { color: C.background1, fontSize: 16 } },
-  ], { x: 1.4, y: BY, w: 11.3, h: 0.65, valign: "middle", margin: 0, isTextBox: true });
+    { text: "LE BON SENS   ", options: { bold: true, color: C.accent1, fontSize: 13, charSpacing: 1 } },
+    { text: "Movers uniquement si le client ", options: { color: C.background1, fontSize: 16 } },
+    { text: "déménage de façon certaine", options: { color: C.background1, fontSize: 16, bold: true } },
+    { text: " et ", options: { color: C.background1, fontSize: 16 } },
+    { text: "n’a plus aucun lien avec le logement quitté", options: { color: C.background1, fontSize: 16, bold: true } },
+    { text: ", de façon définitive.", options: { color: C.background1, fontSize: 16 } },
+  ], { x: 1.4, y: BY, w: 11.25, h: 0.75, valign: "middle", margin: 0, isTextBox: true });
 
   s.addNotes("Règle : transfert vers Movers uniquement pour déménagement définitif, vente du logement, départ définitif à l'étranger, décès du titulaire ou divorce concernant le titulaire. Le client qui reste dans son logement ou qui cesse son activité en conservant le local équipé reste chez Defence.");
 
