@@ -19,6 +19,11 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > programmes, journal alimentaire (Open Food Facts), simulateur de poids, mensurations, photos privées, coach analytique,
 > bilans hebdomadaires et mensuels (PDF) ; local d'abord, synchronisation Supabase optionnelle (`…/SA-IA/bodytrack/`).
 
+> 🗓️ **Plateforme SaaS de rendez-vous qualifiés — dossier de conception** (Phase 1, aucun code produit) :
+> [`plateforme-rdv/`](plateforme-rdv/README.md) — étude concurrentielle sourcée, positionnement (rénovation & déménagement),
+> architecture FastAPI + Next.js + PostgreSQL multi-tenant (RLS), schéma SQL testé, abonnements Stripe, maquettes,
+> budget, risques, MVP et feuille de route.
+
 > 📈 **Prospection ERP BTP** (React + TypeScript, distinct de l'application Movers) :
 > [`prospection-erp/`](prospection-erp/README.md) — stratégie commerciale d'un ERP bâtiment à 15 € HT / mois : recherche d'artisans
 > et TPE du bâtiment dans les données publiques (filtre créations < 30 j / 3 / 6 / 12 mois), score /100 justifié avec niveau de confiance,
