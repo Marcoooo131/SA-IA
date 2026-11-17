@@ -1,0 +1,35 @@
+[project]
+name = "venio"
+version = "0.1.0"
+description = "Venio — plateforme SaaS de prise de rendez-vous qualifiés"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115,<0.116",
+  "uvicorn[standard]>=0.30",
+  "sqlalchemy[asyncio]>=2.0,<2.1",
+  "asyncpg>=0.29",
+  "pydantic>=2.8",
+  "pydantic-settings>=2.4",
+  "email-validator>=2.2",
+  "argon2-cffi>=23.1",
+  "python-multipart>=0.0.9",
+  "pillow>=10.4",
+  "tzdata",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "httpx>=0.27", "ruff>=0.6"]
+
+[tool.ruff]
+line-length = 130
+target-version = "py312"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["venio*"]
+
+[tool.setuptools.package-data]
+venio = ["migrations/*.sql"]
