@@ -3,6 +3,7 @@
 Usage : python -m venio.migrate   (utilise VENIO_DATABASE_ADMIN_URL)
 """
 import asyncio
+import os
 from pathlib import Path
 
 import asyncpg
@@ -31,6 +32,12 @@ async def migrate(admin_url: str | None = None) -> list[str]:
                 await conn.execute(path.read_text(encoding="utf-8"))
                 await conn.execute("INSERT INTO schema_migration (name) VALUES ($1)", path.name)
             applied.append(path.name)
+        # Rattache le rôle de connexion de l'application au groupe venio_app (sans BYPASSRLS).
+        app_role = os.environ.get("VENIO_APP_DB_ROLE")
+        if app_role:
+            if not app_role.replace("_", "").isalnum():
+                raise ValueError("VENIO_APP_DB_ROLE invalide")
+            await conn.execute(f'GRANT venio_app TO "{app_role}"')
     finally:
         await conn.close()
     return applied

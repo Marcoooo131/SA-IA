@@ -6,6 +6,14 @@
 > ils doivent être revérifiés sur les pages officielles avant toute décision tarifaire.
 > Aucun chiffre de marché (taille, croissance) n'est avancé faute de source fiable vérifiée.
 
+## Décisions validées (17/11/2026)
+
+- **Nom : Venio.**
+- **Moteur généraliste**, adaptable à toute activité ; **lancement commercial avec des modèles prêts pour la rénovation et le déménagement** (et un modèle générique).
+- **Répartition : développement par Claude, vente par le fondateur.**
+- **Pilotes sur les versions de test** dès qu'elles sont stables.
+- Développement : voir [`../venio/`](../venio/README.md) (version pilote 0.1).
+
 ## Sommaire
 
 | # | Point demandé | Document |

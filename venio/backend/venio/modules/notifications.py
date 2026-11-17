@@ -74,10 +74,14 @@ async def schedule_reminders(conn: AsyncConnection, tenant: dict, booking: dict,
             await _enqueue(conn, tenant["id"], booking["id"], contact["id"], template_key, contact.get("email"), when)
 
 
-async def cancel_pending(conn: AsyncConnection, booking_id: UUID) -> None:
+async def cancel_pending(conn: AsyncConnection, booking_id: UUID, reminders_only: bool = False) -> None:
+    """Annule les messages non encore envoyés. Un report n'annule que les rappels (recalculés ensuite) :
+    la confirmation et l'alerte « nouvelle demande » partent quand même."""
     ids = await fetch_all(
-        conn, "UPDATE notification SET status = 'cancelled' WHERE booking_id = :b AND status = 'scheduled' RETURNING id",
-        b=booking_id,
+        conn,
+        "UPDATE notification SET status = 'cancelled' WHERE booking_id = :b AND status = 'scheduled'"
+        " AND (NOT :ro OR template_key = 'client_reminder') RETURNING id",
+        b=booking_id, ro=reminders_only,
     )
     if ids:
         await execute(
@@ -96,7 +100,7 @@ async def on_booking_cancelled(conn: AsyncConnection, tenant: dict, booking: dic
 
 
 async def on_booking_rescheduled(conn: AsyncConnection, tenant: dict, booking: dict, contact: dict | None) -> None:
-    await cancel_pending(conn, booking["id"])
+    await cancel_pending(conn, booking["id"], reminders_only=True)
     if contact:
         now = datetime.now(timezone.utc)
         await _enqueue(conn, tenant["id"], booking["id"], contact["id"], "client_rescheduled", contact.get("email"), now)

@@ -30,7 +30,7 @@ async def _insert_tenant(conn: AsyncConnection, tid: UUID, name: str, vertical: 
                     "INSERT INTO tenant (id, slug, name, vertical, notification_email, public_profile)"
                     " VALUES (:id, :slug, :name, :vertical, :email, CAST(:profile AS jsonb))",
                     id=tid, slug=slug, name=name, vertical=vertical, email=email,
-                    profile=j({"tagline": "", "description": "", "phone": "", "email": email,
+                    profile=j({"tagline": "", "description": "", "phone": "", "email": "",
                                "address": "", "service_area": "", "reassurance": []}),
                 )
             return slug

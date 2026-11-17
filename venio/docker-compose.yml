@@ -1,0 +1,61 @@
+# Environnement de démonstration / pilote : docker compose up --build
+# Production : remplacer les secrets, activer HTTPS (proxy) et VENIO_COOKIE_SECURE=true.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-postgres}
+      POSTGRES_DB: venio
+      VENIO_DB_PASSWORD: ${VENIO_DB_PASSWORD:-change-me-app}
+    volumes:
+      - db:/var/lib/postgresql/data
+      - ./deploy/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d venio"]
+      interval: 5s
+      retries: 20
+
+  migrate:
+    build: ./backend
+    command: ["python", "-m", "venio.migrate"]
+    environment:
+      VENIO_DATABASE_ADMIN_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-change-me-postgres}@db:5432/venio
+      VENIO_APP_DB_ROLE: venio
+    depends_on:
+      db: { condition: service_healthy }
+
+  api: &api
+    build: ./backend
+    environment: &api_env
+      VENIO_ENVIRONMENT: ${VENIO_ENVIRONMENT:-development}
+      VENIO_DATABASE_URL: postgresql+asyncpg://venio:${VENIO_DB_PASSWORD:-change-me-app}@db:5432/venio
+      VENIO_SECRET_KEY: ${VENIO_SECRET_KEY:-dev-only-change-me}
+      VENIO_PUBLIC_BASE_URL: ${VENIO_PUBLIC_BASE_URL:-http://localhost:3000}
+      VENIO_COOKIE_SECURE: ${VENIO_COOKIE_SECURE:-false}
+      VENIO_EMAIL_PROVIDER: ${VENIO_EMAIL_PROVIDER:-log}
+      VENIO_EMAIL_FROM: ${VENIO_EMAIL_FROM:-Venio <no-reply@venio.local>}
+      VENIO_SMTP_HOST: ${VENIO_SMTP_HOST:-}
+      VENIO_SMTP_PORT: ${VENIO_SMTP_PORT:-587}
+      VENIO_SMTP_USER: ${VENIO_SMTP_USER:-}
+      VENIO_SMTP_PASSWORD: ${VENIO_SMTP_PASSWORD:-}
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  worker:
+    <<: *api
+    command: ["python", "-m", "venio.worker"]
+
+  web:
+    build:
+      context: ./web
+      args:
+        VENIO_API_URL: http://api:8000
+    ports:
+      - "3000:3000"
+    depends_on: [api]
+
+volumes:
+  db:
+  uploads:

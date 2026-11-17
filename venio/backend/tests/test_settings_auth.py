@@ -103,6 +103,12 @@ async def test_business_can_reschedule_and_mark_no_show(client_factory):
     bid = bookings[0]["id"]
     r = await pro.patch(f"/api/bookings/{bid}", json={"start": day_slots[4]["start"]})
     assert r.status_code == 200, r.text
+    # Report avant l'envoi : la confirmation et l'alerte partent quand même, seuls les rappels sont recalculés.
+    by_key = {}
+    for n in (await pro.get("/api/notifications")).json():
+        by_key.setdefault(n["template_key"], []).append(n["status"])
+    assert by_key["client_confirmation"] == ["scheduled"] and by_key["business_new_booking"] == ["scheduled"]
+    assert sorted(by_key["client_reminder"]) == ["cancelled", "scheduled"]
     r = await pro.patch(f"/api/bookings/{bid}", json={"status": "no_show"})
     assert r.json()["status"] == "no_show"
     case = (await pro.get("/api/case-files")).json()[0]

@@ -19,7 +19,7 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > programmes, journal alimentaire (Open Food Facts), simulateur de poids, mensurations, photos privées, coach analytique,
 > bilans hebdomadaires et mensuels (PDF) ; local d'abord, synchronisation Supabase optionnelle (`…/SA-IA/bodytrack/`).
 
-> 🗓️ **Plateforme SaaS de rendez-vous qualifiés — dossier de conception** (Phase 1, aucun code produit) :
+> 🗓️ **Venio — plateforme SaaS de rendez-vous qualifiés** : application [`venio/`](venio/README.md) (version pilote 0.1 : API FastAPI + PostgreSQL RLS, interface Next.js) et dossier de conception
 > [`plateforme-rdv/`](plateforme-rdv/README.md) — étude concurrentielle sourcée, positionnement (rénovation & déménagement),
 > architecture FastAPI + Next.js + PostgreSQL multi-tenant (RLS), schéma SQL testé, abonnements Stripe, maquettes,
 > budget, risques, MVP et feuille de route.
