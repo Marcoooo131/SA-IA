@@ -6,7 +6,7 @@ et reçoivent une confirmation. L'entreprise reçoit un dossier structuré.
 
 Conception et stratégie : [`../plateforme-rdv/`](../plateforme-rdv/README.md).
 
-**Mise en ligne gratuite (Supabase + Render + Netlify + Brevo) : [DEPLOIEMENT-GRATUIT.md](DEPLOIEMENT-GRATUIT.md).**
+**Mise en ligne gratuite (Supabase + Render + Netlify + Brevo) : [tutoriel pas à pas](TUTORIEL-MISE-EN-LIGNE.md) · [vue technique](DEPLOIEMENT-GRATUIT.md).**
 
 ## État réel des fonctionnalités
 

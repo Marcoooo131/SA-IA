@@ -1,5 +1,7 @@
 # Mise en ligne gratuite de Venio (version pilote)
 
+> **Tutoriel détaillé clic par clic : [TUTORIEL-MISE-EN-LIGNE.md](TUTORIEL-MISE-EN-LIGNE.md).** Ce document-ci est la vue d'ensemble technique.
+
 Coût : **0 €**, sans carte bancaire. Quatre services gratuits :
 
 | Rôle | Service | Offre gratuite (à vérifier sur leurs sites, ces offres évoluent) |
