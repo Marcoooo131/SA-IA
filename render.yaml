@@ -31,8 +31,10 @@ services:
         value: https://ycmtyvcftzmnsezueykf.supabase.co
       - key: VENIO_SUPABASE_SERVICE_KEY  # clé secrète Supabase (sb_secret_… ou service_role)
         sync: false
-      - key: VENIO_EMAIL_PROVIDER        # "log" tant que Brevo n'est pas configuré, puis "smtp"
+      - key: VENIO_EMAIL_PROVIDER        # "log" tant que Brevo n'est pas configuré, puis "brevo" (Render gratuit bloque le SMTP)
         value: log
+      - key: VENIO_BREVO_API_KEY         # clé API Brevo (xkeysib-…), utilisée avec VENIO_EMAIL_PROVIDER=brevo
+        sync: false
       - key: VENIO_SMTP_HOST
         value: smtp-relay.brevo.com
       - key: VENIO_SMTP_PORT

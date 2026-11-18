@@ -40,7 +40,11 @@ bucket privé `venio-files` sont en place sur le projet **venio** (`ycmtyvcftzmn
 
 1. Créer un compte sur brevo.com.
 2. *Expéditeurs* : ajouter et valider l'adresse d'envoi (ex. votre adresse professionnelle).
-3. *SMTP & API → SMTP* : générer une clé SMTP. Notez l'identifiant SMTP et la clé.
+3. *SMTP & API → API keys* : générer une clé API (`xkeysib-…`).
+
+> **Render gratuit bloque le SMTP sortant** (ports 25, 465, 587) : les envois SMTP y échouent avec « timed out ».
+> Venio envoie donc par l'API web de Brevo (`VENIO_EMAIL_PROVIDER=brevo`). Le SMTP (`smtp`) reste possible
+> sur une offre Render payante ou chez un autre hébergeur.
 
 Tant que cette étape n'est pas faite, laissez `VENIO_EMAIL_PROVIDER=log` : rien n'est envoyé et l'interface
 affiche « Non envoyé (mode test) ».
@@ -54,7 +58,7 @@ affiche « Non envoyé (mode test) ».
    - `VENIO_DATABASE_URL` : l'URL de l'étape 1.2 ;
    - `VENIO_SUPABASE_SERVICE_KEY` : la clé de l'étape 1.3 ;
    - `VENIO_PUBLIC_BASE_URL` : l'adresse Netlify (étape 4 ; mettez provisoirement `https://exemple.netlify.app`) ;
-   - `VENIO_SMTP_USER`, `VENIO_SMTP_PASSWORD`, `VENIO_EMAIL_FROM` : Brevo (étape 2), puis passer `VENIO_EMAIL_PROVIDER` à `smtp`.
+   - `VENIO_BREVO_API_KEY`, `VENIO_EMAIL_FROM` : Brevo (étape 2), puis passer `VENIO_EMAIL_PROVIDER` à `brevo`.
 4. Déployer. Vérifier : `https://venio-api-XXXX.onrender.com/api/health` doit répondre `{"status":"ok"}`.
 
 ## 4. Netlify — interface (10 min)

@@ -6,6 +6,8 @@ chaque message dans le contexte RLS de l'entreprise concernée.
 
 Fournisseur "log" (par défaut) : le message est rendu et enregistré avec le statut « logged »,
 il n'est PAS envoyé. Fournisseur "smtp" : envoi réel (Brevo, Scaleway TEM, Postmark… via SMTP).
+Fournisseur "brevo" : envoi réel par l'API web de Brevo (HTTPS). À utiliser chez les hébergeurs qui
+bloquent le SMTP sortant, comme l'offre gratuite de Render.
 """
 from __future__ import annotations
 
@@ -14,10 +16,12 @@ import logging
 import smtplib
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
+from email.utils import parseaddr
 from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
+import httpx
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from ..config import get_settings
@@ -188,6 +192,23 @@ def _send_smtp(to: str, subject: str, body: str) -> str:
     return msg.get("Message-ID", "")
 
 
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
+
+
+def _send_brevo(to: str, subject: str, body: str) -> str:
+    s = get_settings()
+    if not s.brevo_api_key:
+        raise RuntimeError("VENIO_BREVO_API_KEY manquante.")
+    name, address = parseaddr(s.email_from)
+    payload = {"sender": {"name": name or "Venio", "email": address}, "to": [{"email": to}],
+               "subject": subject, "textContent": body}
+    r = httpx.post(BREVO_API_URL, json=payload, timeout=20,
+                   headers={"api-key": s.brevo_api_key, "accept": "application/json"})
+    if r.status_code >= 300:
+        raise RuntimeError(f"Brevo {r.status_code}: {r.text[:200]}")
+    return r.json().get("messageId", "")
+
+
 async def deliver(conn: AsyncConnection, notification_id: UUID) -> str:
     notif = await fetch_one(conn, "SELECT * FROM notification WHERE id = :n FOR UPDATE", n=notification_id)
     if not notif or notif["status"] != "scheduled":
@@ -200,6 +221,9 @@ async def deliver(conn: AsyncConnection, notification_id: UUID) -> str:
     provider = get_settings().email_provider
     if provider == "smtp":
         msg_id = await asyncio.to_thread(_send_smtp, notif["to_address"], subject, body)
+        status = "sent"
+    elif provider == "brevo":
+        msg_id = await asyncio.to_thread(_send_brevo, notif["to_address"], subject, body)
         status = "sent"
     else:
         log.info("[email non envoyé — fournisseur log] à %s : %s", notif["to_address"], subject)

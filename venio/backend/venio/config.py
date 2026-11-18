@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     session_days: int = 30
     cors_origins: list[str] = ["http://localhost:3000"]
 
-    # Notifications : "log" (enregistrées et visibles, non envoyées) ou "smtp".
+    # Notifications : "log" (enregistrées et visibles, non envoyées), "smtp" ou "brevo" (API web, HTTPS).
     email_provider: str = "log"
     email_from: str = "Venio <no-reply@venio.local>"
     smtp_host: str = ""
@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     smtp_user: str = ""
     smtp_password: str = ""
     smtp_starttls: bool = True
+    brevo_api_key: str = ""
 
     # Envoi des notifications dans le processus de l'API (une seule instance, ex. offre gratuite).
     run_worker: bool = False
