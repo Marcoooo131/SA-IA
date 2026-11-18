@@ -1,13 +1,15 @@
 """Catalogue Stripe : offres (mensuel / annuel), packs de crédits SMS, portail client.
 
 Les prix sont retrouvés par « lookup key » : relancer la configuration ne crée jamais de doublon.
-Usage (une fois par compte Stripe, mode test d'abord) :
+L'API crée automatiquement ce qui manque au premier besoin (ensure_catalog) : il suffit de poser la clé
+Stripe sur le serveur. La commande ci-dessous reste disponible pour préparer un compte à l'avance :
     VENIO_STRIPE_SECRET_KEY=sk_test_… VENIO_DATABASE_ADMIN_URL=… python -m venio.billing.catalog
 Les montants sont hors taxes (TVA à décider avant le passage en réel : Stripe Tax ou prix TTC).
 """
 from __future__ import annotations
 
 import asyncio
+import threading
 from typing import Any
 
 from .stripe_api import request
@@ -92,6 +94,33 @@ def ensure_portal(plans: list[dict[str, Any]], prices: dict[str, str]) -> str:
         },
         "metadata": {"venio": "1"},
     }, idempotency_key="venio-portal-config-v1")["id"]
+
+
+_lock = threading.Lock()
+_cache: dict[str, Any] = {}
+
+
+def ensure_catalog(plans: list[dict[str, Any]]) -> dict[str, Any]:
+    """Prix des offres et des packs + portail client, créés chez Stripe s'ils n'existent pas (une seule fois)."""
+    wanted = {plan_lookup(p["code"], i) for p in plans for i in ("month", "year")} | {pack_lookup(c) for c in PACKS}
+    with _lock:
+        if _cache and wanted <= set(_cache["prices"]):
+            return _cache
+        prices = ensure_prices(plans)
+        _cache.update(prices=prices, portal=ensure_portal(plans, prices))
+        return _cache
+
+
+def reset_cache() -> None:
+    with _lock:
+        _cache.clear()
+
+
+def plan_from_lookup(lookup_key: str | None) -> str | None:
+    """« venio_pro_year » → « pro »."""
+    if lookup_key and lookup_key.startswith("venio_") and lookup_key.rsplit("_", 1)[-1] in ("month", "year"):
+        return lookup_key[len("venio_"):].rsplit("_", 1)[0]
+    return None
 
 
 async def _main() -> None:

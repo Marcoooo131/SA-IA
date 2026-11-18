@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 
 from ..config import get_settings
 from ..db import execute, fetch_one, tx
+from .catalog import plan_from_lookup
 from .stripe_api import request
 
 log = logging.getLogger("venio.billing")
@@ -82,8 +83,10 @@ async def sync_subscription(stripe_sub: dict[str, Any], tenant_hint: str | None 
         if not cur:
             log.warning("entreprise %s inconnue pour l'abonnement %s", tenant_id, stripe_sub.get("id"))
             return None
+        code = plan_from_lookup(price.get("lookup_key")) or (price.get("metadata") or {}).get("venio_plan")
         plan = await fetch_one(
-            conn, "SELECT id FROM plan WHERE stripe_price_monthly = :p OR stripe_price_yearly = :p", p=price.get("id"))
+            conn, "SELECT id FROM plan WHERE code = :c OR stripe_price_monthly = :p OR stripe_price_yearly = :p"
+                  " ORDER BY (code = :c) DESC LIMIT 1", c=code or "", p=price.get("id"))
         if status == "incomplete" and cur["status"] == "trialing" and not cur["stripe_subscription_id"]:
             return UUID(str(tenant_id))  # paiement pas encore abouti : l'essai en cours continue
         past_due_since = cur["past_due_since"] if status == "past_due" else None

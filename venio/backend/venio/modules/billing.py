@@ -40,6 +40,17 @@ async def _stripe(*args, **kwargs) -> dict:
         raise api_error(502, "stripe_error", f"Le service de paiement a refusé la demande : {exc}")
 
 
+async def _catalog(conn) -> dict[str, Any]:
+    """Offres, packs et portail chez Stripe — créés automatiquement au premier besoin."""
+    plans = await fetch_all(conn, "SELECT code, name, monthly_cents, yearly_cents FROM plan WHERE is_active ORDER BY monthly_cents")
+    try:
+        return await asyncio.to_thread(catalog.ensure_catalog, plans)
+    except BillingNotConfigured as exc:
+        raise api_error(503, "billing_not_configured", str(exc))
+    except StripeError as exc:
+        raise api_error(502, "stripe_error", f"Le service de paiement a refusé la demande : {exc}")
+
+
 async def _credits(conn) -> dict[str, Any]:
     tz = (await fetch_one(conn, "SELECT timezone FROM tenant"))["timezone"]
     lim = await fetch_one(conn, "SELECT pe.value FROM subscription s JOIN plan_entitlement pe ON pe.plan_id = s.plan_id"
@@ -58,7 +69,7 @@ async def billing(auth: Auth = Depends(current_auth)) -> dict:
     async with tx(tenant_id=auth.tenant_id) as conn:
         sub = await load_subscription(conn)
         plans = await fetch_all(
-            conn, "SELECT id, code, name, monthly_cents, yearly_cents, stripe_price_monthly IS NOT NULL AS purchasable"
+            conn, "SELECT id, code, name, monthly_cents, yearly_cents"
                   " FROM plan WHERE is_public AND is_active ORDER BY monthly_cents")
         ents = await fetch_all(conn, "SELECT p.code, e.key, e.value FROM plan_entitlement e JOIN plan p ON p.id = e.plan_id")
         credits = await _credits(conn)
@@ -72,7 +83,7 @@ async def billing(auth: Auth = Depends(current_auth)) -> dict:
                                               "current_period_end", "cancel_at_period_end", "past_due_since")} | {
             "has_stripe": bool(sub["stripe_subscription_id"]), "has_customer": bool(sub["stripe_customer_id"])} if sub else None,
         "access": access_state(sub),
-        "plans": [{**{k: p[k] for k in ("code", "name", "monthly_cents", "yearly_cents", "purchasable")},
+        "plans": [{**{k: p[k] for k in ("code", "name", "monthly_cents", "yearly_cents")}, "purchasable": bool(s.stripe_secret_key),
                    "entitlements": by_plan.get(p["code"], {})} for p in plans],
         "packs": [{"code": c, **v} for c, v in catalog.PACKS.items()],
         "credits": credits, "grants": grants,
@@ -101,8 +112,7 @@ async def checkout(body: CheckoutIn, auth: Auth = Depends(admin)) -> dict:
         sub = await load_subscription(conn)
         if sub["stripe_subscription_id"] and sub["status"] not in ("canceled", "incomplete"):
             raise api_error(409, "already_subscribed", "Vous avez déjà un abonnement : changez d'offre depuis « Gérer mon abonnement ».")
-        plan = await fetch_one(conn, "SELECT stripe_price_monthly, stripe_price_yearly FROM plan WHERE code = :c", c=body.plan)
-        price = plan and (plan["stripe_price_monthly"] if body.interval == "month" else plan["stripe_price_yearly"])
+        price = (await _catalog(conn))["prices"].get(catalog.plan_lookup(body.plan, body.interval))
         if not price:
             raise api_error(503, "billing_not_configured", "Cette offre n'est pas encore disponible au paiement en ligne.")
         customer = await _ensure_customer(conn, auth, sub)
@@ -127,13 +137,11 @@ async def checkout(body: CheckoutIn, auth: Auth = Depends(admin)) -> dict:
 async def portal(auth: Auth = Depends(admin)) -> dict:
     async with tx(tenant_id=auth.tenant_id) as conn:
         sub = await load_subscription(conn)
-    if not sub or not sub["stripe_customer_id"]:
-        raise api_error(409, "no_customer", "Aucun moyen de paiement enregistré : choisissez d'abord une offre.")
-    params: dict[str, Any] = {"customer": sub["stripe_customer_id"], "return_url": _app_url("/app/abonnement"), "locale": "fr"}
-    configs = (await _stripe("GET", "/billing_portal/configurations", {"active": True, "limit": 100})).get("data", [])
-    venio_cfg = next((c["id"] for c in configs if (c.get("metadata") or {}).get("venio") == "1"), None)
-    if venio_cfg:
-        params["configuration"] = venio_cfg
+        if not sub or not sub["stripe_customer_id"]:
+            raise api_error(409, "no_customer", "Aucun moyen de paiement enregistré : choisissez d'abord une offre.")
+        cat = await _catalog(conn)
+    params: dict[str, Any] = {"customer": sub["stripe_customer_id"], "return_url": _app_url("/app/abonnement"),
+                              "locale": "fr", "configuration": cat["portal"]}
     return {"url": (await _stripe("POST", "/billing_portal/sessions", params))["url"]}
 
 
@@ -144,27 +152,17 @@ class PackIn(BaseModel):
 @router.post("/sms-pack")
 async def buy_pack(body: PackIn, auth: Auth = Depends(admin)) -> dict:
     pack = catalog.PACKS[body.pack]
-    prices = await asyncio.to_thread(_prices_by_lookup, [catalog.pack_lookup(body.pack)])
-    price = prices.get(catalog.pack_lookup(body.pack))
-    if not price:
-        raise api_error(503, "billing_not_configured", "Les packs de SMS ne sont pas encore disponibles au paiement en ligne.")
     async with tx(tenant_id=auth.tenant_id) as conn:
+        price_id = (await _catalog(conn))["prices"][catalog.pack_lookup(body.pack)]
         customer = await _ensure_customer(conn, auth, await load_subscription(conn))
     session = await _stripe("POST", "/checkout/sessions", {
         "mode": "payment", "customer": customer, "client_reference_id": str(auth.tenant_id),
-        "line_items": [{"price": price["id"], "quantity": 1}], "locale": "fr",
+        "line_items": [{"price": price_id, "quantity": 1}], "locale": "fr",
         "metadata": {"tenant_id": str(auth.tenant_id), "venio_pack": body.pack, "credits": pack["credits"]},
         "invoice_creation": {"enabled": True},
         "success_url": _app_url("/app/abonnement?retour=pack"), "cancel_url": _app_url("/app/abonnement?retour=annule"),
     })
     return {"url": session["url"]}
-
-
-def _prices_by_lookup(keys: list[str]) -> dict[str, dict]:
-    try:
-        return catalog.prices_by_lookup(keys)
-    except BillingNotConfigured:
-        return {}
 
 
 @public_router.post("/api/billing/webhook")

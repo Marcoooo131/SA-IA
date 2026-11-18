@@ -91,9 +91,10 @@ Le paiement reste **en mode test** : l'API refuse de démarrer avec une clé ré
 `VENIO_STRIPE_LIVE_ENABLED` n'est pas activé, ce qui ne se fera qu'avec votre accord explicite.
 
 1. Stripe, mode **Test** : *Développeurs → Clés API* → clé secrète `sk_test_…`.
-2. Créer les produits et prix (une seule fois, sans doublon si on relance) :
-   `VENIO_STRIPE_SECRET_KEY=sk_test_… VENIO_DATABASE_ADMIN_URL=… python -m venio.billing.catalog`
-   (offres Starter, Pro, Business en mensuel et annuel, packs de 100 et 500 crédits SMS, configuration du portail client).
+2. Rien à créer à la main : au premier paiement, l'API crée dans votre compte Stripe les offres Starter, Pro et
+   Business (mensuel et annuel), les packs de 100 et 500 crédits SMS et la configuration du portail client
+   (retrouvés ensuite par leur « lookup key » : jamais de doublon). La commande
+   `python -m venio.billing.catalog` reste disponible pour préparer un compte à l'avance.
 3. *Développeurs → Webhooks → Ajouter un endpoint* : `https://<site>.netlify.app/api/billing/webhook`, événements
    `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`,
    `customer.subscription.deleted`, `customer.subscription.trial_will_end`, `invoice.paid`, `invoice.payment_failed`,

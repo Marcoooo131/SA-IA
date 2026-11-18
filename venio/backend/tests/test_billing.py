@@ -1,5 +1,6 @@
 """Abonnements Stripe : garde-fous, paiement, webhooks, états d'accès, packs de SMS (Stripe simulé)."""
 import json
+import re
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -24,6 +25,8 @@ class FakeStripe:
         self.prices = {f"venio_{p}_{i}": {"id": f"price_{p}_{i}", "lookup_key": f"venio_{p}_{i}", "product": f"prod_{p}",
                                           "recurring": {"interval": i}} for p in ("starter", "pro", "business") for i in ("month", "year")}
         self.prices |= {f"venio_{c}": {"id": f"price_{c}", "lookup_key": f"venio_{c}", "product": f"prod_{c}"} for c in ("sms_100", "sms_500")}
+        self.products: dict[str, dict] = {}
+        self.portals: list[dict] = [{"id": "bpc_venio", "metadata": {"venio": "1"}}]
 
     def _resp(self, url, body, status=200):
         return httpx.Response(status, json=body, request=httpx.Request("POST", url))
@@ -40,6 +43,21 @@ class FakeStripe:
             return self._resp(url, {"id": f"cs_{len(self.calls)}", "url": f"https://checkout.stripe.test/{len(self.calls)}"})
         if path == "/billing_portal/sessions":
             return self._resp(url, {"url": "https://billing.stripe.test/portal"})
+        if path == "/products":
+            pid = f"prod_{len(self.products) + 1}"
+            self.products[pid] = {"id": pid, "name": params["name"], "metadata": {"venio_ref": params["metadata[venio_ref]"]}}
+            return self._resp(url, self.products[pid])
+        if path == "/prices":
+            key = params["lookup_key"]
+            assert key not in self.prices, f"prix en double : {key}"
+            self.prices[key] = {"id": f"price_new_{key}", "lookup_key": key, "product": params["product"],
+                                "unit_amount": int(params["unit_amount"]), "currency": params["currency"],
+                                **({"recurring": {"interval": params["recurring[interval]"]}} if "recurring[interval]" in params else {})}
+            return self._resp(url, self.prices[key])
+        if path == "/billing_portal/configurations":
+            cfg = {"id": f"bpc_{len(self.portals) + 1}", "metadata": {"venio": params.get("metadata[venio]")}}
+            self.portals.append(cfg)
+            return self._resp(url, cfg)
         return self._resp(url, {"error": {"message": f"inattendu {path}"}}, 400)
 
     def get(self, url, params=None, headers=None, timeout=None):
@@ -52,7 +70,13 @@ class FakeStripe:
             keys = [v for k, v in q if k.startswith("lookup_keys")]
             return self._resp(url, {"data": [self.prices[k] for k in keys if k in self.prices]})
         if path == "/billing_portal/configurations":
-            return self._resp(url, {"data": [{"id": "bpc_venio", "metadata": {"venio": "1"}}]})
+            return self._resp(url, {"data": self.portals})
+        if path == "/products/search":
+            ref = re.search(r"'([^']+)'$", dict(q)["query"]).group(1)
+            return self._resp(url, {"data": [p for p in self.products.values() if p["metadata"]["venio_ref"] == ref]})
+        if path.startswith("/prices/"):
+            pid = path.split("/")[-1]
+            return self._resp(url, next(p for p in self.prices.values() if p["id"] == pid))
         return self._resp(url, {"error": {"message": f"inattendu {path}"}}, 404)
 
     def subscription(self, sid, tenant_id, status="active", plan="pro", interval="month", **extra):
@@ -66,8 +90,9 @@ class FakeStripe:
 
 @pytest.fixture
 def stripe(monkeypatch, database):
-    from venio.billing import stripe_api
+    from venio.billing import catalog, stripe_api
     from venio.config import get_settings
+    catalog.reset_cache()
     fake = FakeStripe()
     monkeypatch.setattr(stripe_api.httpx, "post", fake.post)
     monkeypatch.setattr(stripe_api.httpx, "get", fake.get)
@@ -75,21 +100,8 @@ def stripe(monkeypatch, database):
     monkeypatch.setenv("VENIO_STRIPE_WEBHOOK_SECRET", WEBHOOK_SECRET)
     get_settings.cache_clear()
     yield fake
+    catalog.reset_cache()
     get_settings.cache_clear()
-
-
-@pytest.fixture
-async def priced(database):
-    """Prix Stripe (test) rattachés aux offres, comme après « python -m venio.billing.catalog »."""
-    conn = await asyncpg.connect(database["admin_url"])
-    try:
-        for p in ("starter", "pro", "business"):
-            await conn.execute("UPDATE plan SET stripe_price_monthly = $1, stripe_price_yearly = $2 WHERE code = $3",
-                               f"price_{p}_month", f"price_{p}_year", p)
-        yield
-        await conn.execute("UPDATE plan SET stripe_price_monthly = NULL, stripe_price_yearly = NULL")
-    finally:
-        await conn.close()
 
 
 async def _webhook(client, event, secret=WEBHOOK_SECRET, ts=None):
@@ -181,7 +193,7 @@ async def test_billing_without_stripe_configured(client_factory):
     assert r.status_code == 503 and r.json()["detail"]["code"] == "billing_not_configured"
 
 
-async def test_checkout_keeps_trial_and_creates_customer_once(client_factory, stripe, priced):
+async def test_checkout_keeps_trial_and_creates_customer_once(client_factory, stripe):
     pro = client_factory()
     t = await signup(pro)
     r1 = await pro.post("/api/billing/checkout", json={"plan": "business", "interval": "year"})
@@ -198,7 +210,7 @@ async def test_checkout_keeps_trial_and_creates_customer_once(client_factory, st
     assert (await pro.get("/api/billing")).json()["subscription"]["status"] == "trialing"
 
 
-async def test_webhook_activates_subscription_idempotently(client_factory, stripe, priced):
+async def test_webhook_activates_subscription_idempotently(client_factory, stripe):
     pro, hook = client_factory(), client_factory()
     t = await signup(pro)
     stripe.subscription("sub_1", t["tenant_id"], plan="business", interval="year")
@@ -223,7 +235,7 @@ async def test_webhook_activates_subscription_idempotently(client_factory, strip
     assert page["accepting_bookings"] is False
 
 
-async def test_past_due_grace_then_public_bookings_suspended(client_factory, database, stripe, priced):
+async def test_past_due_grace_then_public_bookings_suspended(client_factory, database, stripe):
     pro, hook, visitor = client_factory(), client_factory(), client_factory()
     t = await signup(pro)
     stripe.subscription("sub_pd", t["tenant_id"], status="past_due")
@@ -256,7 +268,7 @@ async def test_live_event_refused_in_test_mode(client_factory, stripe):
     assert r.status_code == 400 and r.json()["detail"]["code"] == "live_refused"
 
 
-async def test_portal(client_factory, stripe, priced):
+async def test_portal(client_factory, stripe):
     pro = client_factory()
     await signup(pro)
     assert (await pro.post("/api/billing/portal")).status_code == 409   # aucun client Stripe encore
@@ -267,7 +279,7 @@ async def test_portal(client_factory, stripe, priced):
     assert portal_call[2]["configuration"] == "bpc_venio" and portal_call[2]["return_url"].endswith("/app/abonnement")
 
 
-async def test_member_cannot_pay(client_factory, database, stripe, priced):
+async def test_member_cannot_pay(client_factory, database, stripe):
     pro = client_factory()
     t = await signup(pro)
     await _admin_sql(database, "UPDATE membership SET role = 'member' WHERE tenant_id = $1", uuid.UUID(t["tenant_id"]))
@@ -276,7 +288,7 @@ async def test_member_cannot_pay(client_factory, database, stripe, priced):
 
 # ----------------------------------------------------------------------------- packs de SMS
 
-async def test_sms_pack_credited_once_and_used_after_monthly_allowance(client_factory, database, stripe, priced, monkeypatch):
+async def test_sms_pack_credited_once_and_used_after_monthly_allowance(client_factory, database, stripe, monkeypatch):
     pro, hook = client_factory(), client_factory()
     t = await signup(pro)
     r = await pro.post("/api/billing/sms-pack", json={"pack": "sms_100"})
@@ -308,3 +320,28 @@ async def test_sms_pack_credited_once_and_used_after_monthly_allowance(client_fa
     row = (await pro.get("/api/missed-calls/calls")).json()[0]
     assert row["decision"] == "sent" and row["sms_status"] == "logged"       # envois payants désactivés
     assert (await pro.get("/api/billing")).json()["credits"]["extra_balance"] == 100   # crédit rendu
+
+
+async def test_catalog_created_automatically_once(client_factory, stripe):
+    """Clé posée sur le serveur, compte Stripe vide : l'API crée offres, packs et portail au premier besoin."""
+    from venio.billing import catalog
+    stripe.prices.clear()
+    stripe.portals.clear()
+    pro = client_factory()
+    await signup(pro)
+    assert (await pro.post("/api/billing/checkout", json={"plan": "pro", "interval": "year"})).status_code == 200
+    created = {k: v for k, v in stripe.prices.items()}
+    assert set(created) == {f"venio_{p}_{i}" for p in ("starter", "pro", "business") for i in ("month", "year")} | {"venio_sms_100", "venio_sms_500"}
+    assert created["venio_pro_month"]["unit_amount"] == 6900 and created["venio_pro_year"]["unit_amount"] == 68400
+    assert created["venio_pro_year"]["recurring"] == {"interval": "year"} and "recurring" not in created["venio_sms_100"]
+    assert len(stripe.products) == 5 and len(stripe.portals) == 1
+    session = [c[2] for c in stripe.calls if c[1] == "/checkout/sessions"][-1]
+    assert session["line_items[0][price]"] == "price_new_venio_pro_year"
+    # Autres achats, puis redémarrage du serveur (cache vidé) : jamais de doublon chez Stripe.
+    assert (await pro.post("/api/billing/sms-pack", json={"pack": "sms_500"})).status_code == 200
+    catalog.reset_cache()
+    assert (await pro.post("/api/billing/portal")).status_code == 200
+    assert len(stripe.products) == 5 and len(stripe.portals) == 1 and len(stripe.prices) == 8
+    # Un abonnement payé avec ces prix est rattaché à la bonne offre grâce à la lookup key.
+    from venio.billing.catalog import plan_from_lookup
+    assert plan_from_lookup("venio_business_month") == "business" and plan_from_lookup("venio_sms_100") is None
