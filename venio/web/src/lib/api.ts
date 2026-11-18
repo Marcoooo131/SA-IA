@@ -1,3 +1,5 @@
+import { DEMO } from "./routes";
+
 export class ApiError extends Error {
   constructor(public status: number, public code: string, message: string, public extra: Record<string, unknown> = {}) {
     super(message);
@@ -9,6 +11,10 @@ type Options = { method?: string; body?: unknown; headers?: Record<string, strin
 /** Appel à l'API Venio (même origine : /api, cookie de session HttpOnly). */
 export async function api<T = unknown>(path: string, opts: Options = {}): Promise<T> {
   const headers: Record<string, string> = { ...(opts.headers ?? {}) };
+  if (DEMO) {
+    const { demoApi } = await import("./demo/server");
+    return (await demoApi(opts.method ?? "GET", path, opts.body, opts.form, opts.headers ?? {})) as T;
+  }
   let body: BodyInit | undefined;
   if (opts.form) body = opts.form;
   else if (opts.body !== undefined) {

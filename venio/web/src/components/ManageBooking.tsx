@@ -1,8 +1,9 @@
 "use client";
-import { use, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Spinner } from "@/components/ui";
 import { SlotPicker, type SlotsResponse } from "@/components/SlotPicker";
 import { api, errorMessage } from "@/lib/api";
+import { publicPagePath, withBase } from "@/lib/routes";
 import { BOOKING_STATUS, MEETING_LABELS, fmtDateTime } from "@/lib/format";
 
 type View = {
@@ -11,8 +12,7 @@ type View = {
   can_modify: boolean;
 };
 
-export default function ManageBooking({ params }: { params: Promise<{ slug: string; token: string }> }) {
-  const { slug, token } = use(params);
+export function ManageBooking({ slug, token }: { slug: string; token: string }) {
   const base = `/public/${slug}/manage/${token}`;
   const [view, setView] = useState<View | null>(null);
   const [mode, setMode] = useState<"view" | "move" | "cancel">("view");
@@ -61,7 +61,7 @@ export default function ManageBooking({ params }: { params: Promise<{ slug: stri
         <Alert kind="info">Le rendez-vous est trop proche pour être modifié en ligne.{view.tenant.phone && <> Appelez le <a className="underline" href={`tel:${view.tenant.phone}`}>{view.tenant.phone}</a>.</>}</Alert>
       )}
       {mode === "view" && b.status === "cancelled" && (
-        <a className="block rounded-lg bg-ink py-3 text-center font-medium text-white" href={`/r/${view.tenant.slug}`}>Reprendre rendez-vous</a>
+        <a className="block rounded-lg bg-ink py-3 text-center font-medium text-white" href={withBase(publicPagePath(view.tenant.slug))}>Reprendre rendez-vous</a>
       )}
       {mode === "move" && (
         <section className="space-y-3">

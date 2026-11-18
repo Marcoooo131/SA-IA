@@ -4,6 +4,7 @@ import { Alert, Button, Field, Input, Spinner, Textarea, cx } from "@/components
 import { SlotPicker, type SlotsResponse } from "@/components/SlotPicker";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { MEETING_LABELS, fmtDateTime } from "@/lib/format";
+import { DEMO } from "@/lib/routes";
 import { type Answers, type FlowDefinition, type FlowState, type Step, displayValue } from "@/lib/flow";
 
 type Hold = { id: string; starts_at: string; ends_at: string; hold_expires_at: string } | null;
@@ -494,7 +495,7 @@ function Success({ done, tenantName, timezone }: { done: Done; tenantName: strin
       <h2 className="text-2xl font-semibold tracking-tight">Rendez-vous confirmé</h2>
       <p className="text-lg first-letter:uppercase">{fmtDateTime(done.booking.starts_at, timezone)}</p>
       <p className="text-ink-soft">{done.booking.service_name} · {MEETING_LABELS[done.booking.meeting_type]}</p>
-      <p className="text-sm text-ink-soft">Un email de confirmation vous est envoyé. {tenantName} a bien reçu votre demande.</p>
+      <p className="text-sm text-ink-soft">{DEMO ? "Démonstration : aucun email n'est envoyé." : "Un email de confirmation vous est envoyé."} {tenantName} a bien reçu votre demande.</p>
       <div className="flex flex-col gap-2">
         <a href={icsFile(done, tenantName)} download="rendez-vous.ics" className="rounded-lg border border-line bg-white py-3 font-medium">Ajouter à mon agenda</a>
         <a href={done.manage_url} className="rounded-lg py-3 text-sm underline">Reporter ou annuler</a>

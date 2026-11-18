@@ -1,9 +1,10 @@
 "use client";
 import Link from "next/link";
-import { use, useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useMe } from "@/components/AppShell";
 import { Alert, Badge, Button, Card, Spinner, Textarea } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
+import { fileUrl } from "@/lib/routes";
 import { BOOKING_STATUS, CASE_STATUS, MEETING_LABELS, NOTIF_STATUS, TEMPLATE_LABELS, fmtDateTime } from "@/lib/format";
 
 type Detail = {
@@ -20,8 +21,7 @@ type Detail = {
 
 const ACTIONS: Record<string, string> = { confirmed: "Rendez-vous confirmé", rescheduled: "Rendez-vous déplacé", cancelled: "Rendez-vous annulé", completed: "Rendez-vous terminé", no_show: "Client absent" };
 
-export default function CaseDetail({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export function CaseDetail({ id }: { id: string }) {
   const me = useMe();
   const tz = me.tenant.timezone;
   const [d, setD] = useState<Detail | null>(null);
@@ -76,10 +76,10 @@ export default function CaseDetail({ params }: { params: Promise<{ id: string }>
               <h2 className="mb-3 font-semibold">Photos et documents</h2>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {d.files.map((f) => (
-                  <a key={f.id} href={`/api/files/${f.id}`} target="_blank" className="block overflow-hidden rounded-lg border border-line">
+                  <a key={f.id} href={fileUrl(f.id)} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border border-line">
                     {f.mime_type.startsWith("image/")
                       // eslint-disable-next-line @next/next/no-img-element
-                      ? <img src={`/api/files/${f.id}`} alt={f.original_name} className="aspect-square w-full object-cover" />
+                      ? <img src={fileUrl(f.id)} alt={f.original_name} className="aspect-square w-full object-cover" />
                       : <div className="grid aspect-square place-items-center bg-ink/5 text-sm">📄 {f.original_name}</div>}
                   </a>
                 ))}

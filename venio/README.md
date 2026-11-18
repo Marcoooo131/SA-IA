@@ -6,6 +6,11 @@ et reçoivent une confirmation. L'entreprise reçoit un dossier structuré.
 
 Conception et stratégie : [`../plateforme-rdv/`](../plateforme-rdv/README.md).
 
+**Démonstration sans serveur (GitHub Pages) : `…/SA-IA/venio/`** — même interface, API simulée dans le navigateur
+(`web/src/lib/demo/`) : données conservées dans ce navigateur uniquement, aucun email envoyé, seul l'appareil utilisé
+peut réserver. Pour montrer le produit, pas pour de vrais clients. Construction :
+`NEXT_PUBLIC_VENIO_DEMO=1 NEXT_PUBLIC_BASE_PATH=/SA-IA/venio npm run build` (sortie dans `web/out/`).
+
 **Mise en ligne gratuite (Supabase + Render + Netlify + Brevo) : [tutoriel pas à pas](TUTORIEL-MISE-EN-LIGNE.md) · [vue technique](DEPLOIEMENT-GRATUIT.md).**
 
 ## État réel des fonctionnalités
@@ -64,7 +69,7 @@ cd backend
 source <(scripts/test-db.sh)   # démarre un PostgreSQL 16 jetable et exporte VENIO_TEST_ADMIN_URL
 pytest -q                      # 30 tests : moteur de parcours, créneaux, parcours complet, isolation, concurrence
 cd ../web && npm run typecheck && npm run build
-node ../e2e/smoke.js /tmp/venio-shots   # scénario navigateur complet (serveurs démarrés)
+node ../e2e/smoke.cjs /tmp/venio-shots   # scénario navigateur complet (serveurs démarrés)
 ```
 
 ## Variables d'environnement (API)

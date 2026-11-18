@@ -50,6 +50,11 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
+      - name: Build de la démonstration statique (GitHub Pages)
+        run: rm -rf .next && npm run build
+        env:
+          NEXT_PUBLIC_VENIO_DEMO: "1"
+          NEXT_PUBLIC_BASE_PATH: /SA-IA/venio
 
   docker:
     runs-on: ubuntu-latest

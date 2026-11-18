@@ -5,6 +5,7 @@ import { useMe } from "@/components/AppShell";
 import { Alert, Badge, Card, Input, Spinner, cx } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { CASE_STATUS, fmtDate, fmtDateTime } from "@/lib/format";
+import { caseFilePath } from "@/lib/routes";
 
 type CaseRow = { id: string; created_at: string; status: string; summary: string; completeness: number; first_name: string; last_name: string | null; email: string; phone: string | null; service_name: string; next_booking: string | null };
 
@@ -46,7 +47,7 @@ export default function CasesPage() {
           <ul className="divide-y divide-line">
             {rows.map((r) => (
               <li key={r.id}>
-                <Link href={`/app/dossiers/${r.id}`} className="grid gap-1 px-5 py-3 hover:bg-ink/[0.02] md:grid-cols-[1fr_auto] md:items-center">
+                <Link href={caseFilePath(r.id)} className="grid gap-1 px-5 py-3 hover:bg-ink/[0.02] md:grid-cols-[1fr_auto] md:items-center">
                   <div className="min-w-0">
                     <p className="font-medium">{r.first_name} {r.last_name} <span className="text-sm font-normal text-ink-soft">· {r.service_name}</span></p>
                     <p className="line-clamp-1 text-sm text-ink-soft">{r.summary}</p>

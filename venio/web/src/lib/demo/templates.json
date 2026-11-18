@@ -1,0 +1,878 @@
+{
+ "default_hours": [
+  [
+   1,
+   "08:30",
+   "12:00"
+  ],
+  [
+   2,
+   "08:30",
+   "12:00"
+  ],
+  [
+   3,
+   "08:30",
+   "12:00"
+  ],
+  [
+   4,
+   "08:30",
+   "12:00"
+  ],
+  [
+   5,
+   "08:30",
+   "12:00"
+  ],
+  [
+   1,
+   "13:30",
+   "18:00"
+  ],
+  [
+   2,
+   "13:30",
+   "18:00"
+  ],
+  [
+   3,
+   "13:30",
+   "18:00"
+  ],
+  [
+   4,
+   "13:30",
+   "18:00"
+  ],
+  [
+   5,
+   "13:30",
+   "18:00"
+  ]
+ ],
+ "templates": {
+  "demenagement": {
+   "code": "demenagement",
+   "flow": {
+    "intro": "Bonjour ! Quelques questions sur votre déménagement, puis choisissez votre rendez-vous d'estimation.",
+    "service_rules": [
+     {
+      "service": "visio_estimation",
+      "when": {
+       "field": "logement_depart",
+       "op": "in",
+       "value": [
+        "studio",
+        "t2"
+       ]
+      }
+     },
+     {
+      "service": "visite_estimation"
+     }
+    ],
+    "steps": [
+     {
+      "id": "client",
+      "max_files": 5,
+      "next": "logement_depart",
+      "options": [
+       {
+        "icon": "🏠",
+        "label": "Votre logement",
+        "value": "particulier"
+       },
+       {
+        "icon": "🏢",
+        "label": "Des locaux professionnels",
+        "value": "entreprise"
+       }
+      ],
+      "required": true,
+      "routes": [],
+      "title": "Vous déménagez…",
+      "type": "single_choice"
+     },
+     {
+      "id": "logement_depart",
+      "max_files": 5,
+      "next": "surface",
+      "options": [
+       {
+        "icon": "🛏️",
+        "label": "Studio / T1",
+        "value": "studio"
+       },
+       {
+        "icon": "🚪",
+        "label": "T2",
+        "value": "t2"
+       },
+       {
+        "icon": "🏠",
+        "label": "T3",
+        "value": "t3"
+       },
+       {
+        "icon": "🏘️",
+        "label": "T4 ou plus",
+        "value": "t4_plus"
+       },
+       {
+        "icon": "🏡",
+        "label": "Maison",
+        "value": "maison"
+       }
+      ],
+      "required": true,
+      "routes": [],
+      "title": "Quel est le logement de départ ?",
+      "type": "single_choice"
+     },
+     {
+      "id": "surface",
+      "max": 400.0,
+      "max_files": 5,
+      "min": 10.0,
+      "next": "etage_depart",
+      "options": [],
+      "required": true,
+      "routes": [],
+      "step": 5.0,
+      "title": "Quelle est la surface approximative ?",
+      "type": "slider",
+      "unit": "m²"
+     },
+     {
+      "help": "0 pour un rez-de-chaussée ou une maison de plain-pied.",
+      "id": "etage_depart",
+      "max": 40.0,
+      "max_files": 5,
+      "min": 0.0,
+      "next": "distance",
+      "options": [],
+      "required": true,
+      "routes": [
+       {
+        "goto": "ascenseur_depart",
+        "when": {
+         "field": "etage_depart",
+         "op": "gt",
+         "value": 0
+        }
+       }
+      ],
+      "title": "À quel étage se trouve le logement de départ ?",
+      "type": "number"
+     },
+     {
+      "id": "ascenseur_depart",
+      "max_files": 5,
+      "next": "distance",
+      "options": [],
+      "required": true,
+      "routes": [],
+      "title": "Y a-t-il un ascenseur au départ ?",
+      "type": "yes_no"
+     },
+     {
+      "id": "distance",
+      "max_files": 5,
+      "next": "date_souhaitee",
+      "options": [
+       {
+        "icon": "📍",
+        "label": "Dans la même ville",
+        "value": "meme_ville"
+       },
+       {
+        "icon": "🚚",
+        "label": "À moins de 100 km",
+        "value": "moins_100km"
+       },
+       {
+        "icon": "🛣️",
+        "label": "À plus de 100 km",
+        "value": "plus_100km"
+       },
+       {
+        "icon": "🌍",
+        "label": "À l'étranger",
+        "value": "international"
+       }
+      ],
+      "required": true,
+      "routes": [],
+      "title": "Où déménagez-vous ?",
+      "type": "single_choice"
+     },
+     {
+      "id": "date_souhaitee",
+      "max_files": 5,
+      "next": "flexibilite",
+      "options": [],
+      "required": true,
+      "routes": [],
+      "title": "À quelle date souhaitez-vous déménager ?",
+      "type": "date"
+     },
+     {
+      "id": "flexibilite",
+      "max_files": 5,
+      "next": "prestations",
+      "options": [
+       {
+        "icon": "📌",
+        "label": "Date fixe",
+        "value": "date_fixe"
+       },
+       {
+        "icon": "↔️",
+        "label": "À une semaine près",
+        "value": "plus_ou_moins_semaine"
+       },
+       {
+        "icon": "🌿",
+        "label": "Très flexible",
+        "value": "flexible"
+       }
+      ],
+      "required": true,
+      "routes": [],
+      "title": "Cette date est-elle flexible ?",
+      "type": "single_choice"
+     },
+     {
+      "id": "prestations",
+      "max_files": 5,
+      "next": "photos",
+      "options": [
+       {
+        "icon": "📦",
+        "label": "Emballage des cartons",
+        "value": "emballage"
+       },
+       {
+        "icon": "🔩",
+        "label": "Démontage / remontage des meubles",
+        "value": "demontage"
+       },
+       {
+        "icon": "🏬",
+        "label": "Garde-meuble",
+        "value": "garde_meuble"
+       },
+       {
+        "icon": "🎹",
+        "label": "Piano ou objets lourds",
+        "value": "objets_lourds"
+       },
+       {
+        "icon": "🧽",
+        "label": "Nettoyage",
+        "value": "nettoyage"
+       }
+      ],
+      "required": false,
+      "routes": [],
+      "title": "Avez-vous besoin de services complémentaires ?",
+      "type": "multi_choice"
+     },
+     {
+      "help": "Facultatif, mais très utile pour préparer le rendez-vous.",
+      "id": "photos",
+      "max_files": 6,
+      "next": "precisions",
+      "options": [],
+      "required": false,
+      "routes": [],
+      "title": "Avez-vous des photos ou des documents ?",
+      "type": "photos"
+     },
+     {
+      "id": "precisions",
+      "max_files": 5,
+      "options": [],
+      "placeholder": "Accès, contraintes, questions…",
+      "required": false,
+      "routes": [],
+      "title": "Souhaitez-vous ajouter une précision ?",
+      "type": "long_text"
+     }
+    ],
+    "version": 1
+   },
+   "label": "Déménagement",
+   "services": [
+    {
+     "buffer_after_min": 30,
+     "description": "Un conseiller évalue le volume à déménager et prépare votre devis.",
+     "duration_min": 45,
+     "key": "visite_estimation",
+     "max_horizon_days": 45,
+     "meeting_type": "on_site",
+     "min_notice_min": 1440,
+     "name": "Visite d'estimation du volume"
+    },
+    {
+     "description": "Faites-nous visiter votre logement par vidéo depuis votre téléphone.",
+     "duration_min": 30,
+     "key": "visio_estimation",
+     "max_horizon_days": 30,
+     "meeting_type": "video",
+     "min_notice_min": 240,
+     "name": "Estimation en visio"
+    }
+   ]
+  },
+  "generique": {
+   "code": "generique",
+   "flow": {
+    "intro": "Bonjour ! Je vais vous aider à organiser votre rendez-vous. Pour commencer, quel est votre besoin ?",
+    "service_rules": [
+     {
+      "service": "appel",
+      "when": {
+       "field": "besoin",
+       "op": "eq",
+       "value": "suivi"
+      }
+     },
+     {
+      "service": "rendez_vous"
+     }
+    ],
+    "steps": [
+     {
+      "id": "besoin",
+      "max_files": 5,
+      "next": "description",
+      "options": [
+       {
+        "icon": "👋",
+        "label": "Un premier rendez-vous",
+        "value": "premier_rdv"
+       },
+       {
+        "icon": "📝",
+        "label": "Une demande de devis",
+        "value": "devis"
+       },
+       {
+        "icon": "🔁",
+        "label": "Le suivi d'une demande en cours",
+        "value": "suivi"
+       },
+       {
+        "icon": "💬",
+        "label": "Autre",
+        "value": "autre"
+       }
+      ],
+      "required": true,
+      "routes": [],
+      "title": "Quel est l'objet de votre demande ?",
+      "type": "single_choice"
+     },
+     {
+      "id": "description",
+      "max_files": 5,
+      "next": "delai",
+      "options": [],
+      "required": true,
+      "routes": [],
+      "title": "Décrivez votre besoin en quelques mots",
+      "type": "long_text"
+     },
+     {
+      "id": "delai",
+      "max_files": 5,
+      "next": "photos",
+      "options": [
+       {
+        "icon": "⚡",
+        "label": "Au plus vite",
+        "value": "au_plus_vite"
+       },
+       {
+        "icon": "📅",
+        "label": "Dans les 3 mois",
+        "value": "moins_3_mois"
+       },
+       {
+        "icon": "🗓️",
+        "label": "Dans 3 à 6 mois",
+        "value": "trois_six_mois"
+       },
+       {
+        "icon": "⏳",
+        "label": "Plus tard",
+        "value": "plus_6_mois"
+       },
+       {
+        "icon": "💡",
+        "label": "Je me renseigne",
+        "value": "je_me_renseigne"
+       }
+      ],
+      "required": true,
+      "routes": [],
+      "title": "Dans quel délai ?",
+      "type": "single_choice"
+     },
+     {
+      "help": "Facultatif, mais très utile pour préparer le rendez-vous.",
+      "id": "photos",
+      "max_files": 6,
+      "next": "precisions",
+      "options": [],
+      "required": false,
+      "routes": [],
+      "title": "Avez-vous des photos ou des documents ?",
+      "type": "photos"
+     },
+     {
+      "id": "precisions",
+      "max_files": 5,
+      "options": [],
+      "placeholder": "Accès, contraintes, questions…",
+      "required": false,
+      "routes": [],
+      "title": "Souhaitez-vous ajouter une précision ?",
+      "type": "long_text"
+     }
+    ],
+    "version": 1
+   },
+   "label": "Autre activité",
+   "services": [
+    {
+     "description": "Un premier échange pour comprendre votre besoin.",
+     "duration_min": 45,
+     "key": "rendez_vous",
+     "max_horizon_days": 60,
+     "meeting_type": "at_location",
+     "min_notice_min": 240,
+     "name": "Premier rendez-vous"
+    },
+    {
+     "description": "Un échange rapide par téléphone.",
+     "duration_min": 20,
+     "key": "appel",
+     "max_horizon_days": 30,
+     "meeting_type": "phone",
+     "min_notice_min": 120,
+     "name": "Appel téléphonique"
+    }
+   ]
+  },
+  "renovation": {
+   "code": "renovation",
+   "flow": {
+    "intro": "Bonjour ! Décrivez votre projet en quelques questions, puis choisissez votre rendez-vous.",
+    "service_rules": [
+     {
+      "service": "appel_decouverte",
+      "when": {
+       "field": "delai",
+       "op": "eq",
+       "value": "je_me_renseigne"
+      }
+     },
+     {
+      "service": "visite_technique"
+     }
+    ],
+    "steps": [
+     {
+      "id": "projet",
+      "max_files": 5,
+      "next": "autre_description",
+      "options": [
+       {
+        "icon": "🛁",
+        "label": "Salle de bain",
+        "value": "salle_de_bain"
+       },
+       {
+        "icon": "🍳",
+        "label": "Cuisine",
+        "value": "cuisine"
+       },
+       {
+        "icon": "🪟",
+        "label": "Fenêtres et portes",
+        "value": "menuiseries"
+       },
+       {
+        "icon": "🧱",
+        "label": "Isolation",
+        "value": "isolation"
+       },
+       {
+        "icon": "🔧",
+        "label": "Autre projet",
+        "value": "autre"
+       }
+      ],
+      "required": true,
+      "routes": [
+       {
+        "goto": "sdb_travaux",
+        "when": {
+         "field": "projet",
+         "op": "eq",
+         "value": "salle_de_bain"
+        }
+       },
+       {
+        "goto": "cuisine_travaux",
+        "when": {
+         "field": "projet",
+         "op": "eq",
+         "value": "cuisine"
+        }
+       },
+       {
+        "goto": "menuiseries_type",
+        "when": {
+         "field": "projet",
+         "op": "eq",
+         "value": "menuiseries"
+        }
+       },
+       {
+        "goto": "isolation_type",
+        "when": {
+         "field": "projet",
+         "op": "eq",
+         "value": "isolation"
+        }
+       }
+      ],
+      "title": "Quel est votre projet ?",
+      "type": "single_choice"
+     },
+     {
+      "help": "Plusieurs choix possibles.",
+      "id": "sdb_travaux",
+      "max_files": 5,
+      "next": "surface",
+      "options": [
+       {
+        "icon": "✨",
+        "label": "Rénovation complète",
+        "value": "renovation_complete"
+       },
+       {
+        "icon": "🚿",
+        "label": "Douche à l'italienne",
+        "value": "douche_italienne"
+       },
+       {
+        "icon": "🛁",
+        "label": "Baignoire",
+        "value": "baignoire"
+       },
+       {
+        "icon": "🪞",
+        "label": "Meuble vasque",
+        "value": "meuble_vasque"
+       },
+       {
+        "icon": "🔲",
+        "label": "Carrelage / faïence",
+        "value": "carrelage"
+       },
+       {
+        "icon": "♿",
+        "label": "Accessibilité / sécurité",
+        "value": "accessibilite"
+       }
+      ],
+      "required": true,
+      "routes": [],
+      "title": "Quels travaux envisagez-vous ?",
+      "type": "multi_choice"
+     },
+     {
+      "id": "cuisine_travaux",
+      "max_files": 5,
+      "next": "surface",
+      "options": [
+       {
+        "icon": "✨",
+        "label": "Cuisine neuve complète",
+        "value": "cuisine_complete"
+       },
+       {
+        "icon": "🛠️",
+        "label": "Rénovation partielle",
+        "value": "renovation_partielle"
+       },
+       {
+        "icon": "📦",
+        "label": "Pose d'une cuisine déjà achetée",
+        "value": "pose_seule"
+       }
+      ],
+      "required": true,
+      "routes": [],
+      "title": "Quel type de projet cuisine ?",
+      "type": "single_choice"
+     },
+     {
+      "id": "menuiseries_type",
+      "max_files": 5,
+      "next": "menuiseries_nombre",
+      "options": [
+       {
+        "icon": "🪟",
+        "label": "Fenêtres",
+        "value": "fenetres"
+       },
+       {
+        "icon": "🚪",
+        "label": "Porte d'entrée",
+        "value": "porte_entree"
+       },
+       {
+        "icon": "🏞️",
+        "label": "Baie vitrée",
+        "value": "baie_vitree"
+       },
+       {
+        "icon": "🏠",
+        "label": "Volets",
+        "value": "volets"
+       }
+      ],
+      "required": true,
+      "routes": [],
+      "title": "Que souhaitez-vous remplacer ou installer ?",
+      "type": "multi_choice"
+     },
+     {
+      "id": "menuiseries_nombre",
+      "max": 60.0,
+      "max_files": 5,
+      "min": 1.0,
+      "next": "logement",
+      "options": [],
+      "required": true,
+      "routes": [],
+      "title": "Combien d'éléments au total ?",
+      "type": "number",
+      "unit": "élément(s)"
+     },
+     {
+      "id": "isolation_type",
+      "max_files": 5,
+      "next": "surface",
+      "options": [
+       {
+        "icon": "🏠",
+        "label": "Combles / toiture",
+        "value": "combles"
+       },
+       {
+        "icon": "🧱",
+        "label": "Murs par l'intérieur",
+        "value": "murs_interieur"
+       },
+       {
+        "icon": "🏡",
+        "label": "Murs par l'extérieur",
+        "value": "murs_exterieur"
+       },
+       {
+        "icon": "🟫",
+        "label": "Planchers",
+        "value": "planchers"
+       }
+      ],
+      "required": true,
+      "routes": [],
+      "title": "Quelles parties isoler ?",
+      "type": "multi_choice"
+     },
+     {
+      "id": "autre_description",
+      "max_files": 5,
+      "next": "logement",
+      "options": [],
+      "placeholder": "Ex. : rénovation d'un séjour de 30 m²…",
+      "required": true,
+      "routes": [],
+      "title": "Décrivez votre projet en quelques mots",
+      "type": "long_text"
+     },
+     {
+      "id": "surface",
+      "max": 200.0,
+      "max_files": 5,
+      "min": 1.0,
+      "next": "logement",
+      "options": [],
+      "required": true,
+      "routes": [],
+      "step": 1.0,
+      "title": "Quelle est la surface approximative concernée ?",
+      "type": "slider",
+      "unit": "m²"
+     },
+     {
+      "id": "logement",
+      "max_files": 5,
+      "next": "anciennete",
+      "options": [
+       {
+        "icon": "🏡",
+        "label": "D'une maison",
+        "value": "maison"
+       },
+       {
+        "icon": "🏢",
+        "label": "D'un appartement",
+        "value": "appartement"
+       },
+       {
+        "icon": "🏪",
+        "label": "D'un local professionnel",
+        "value": "local_pro"
+       }
+      ],
+      "required": true,
+      "routes": [],
+      "title": "Il s'agit…",
+      "type": "single_choice"
+     },
+     {
+      "help": "Cela peut changer le taux de TVA applicable aux travaux.",
+      "id": "anciennete",
+      "max_files": 5,
+      "next": "delai",
+      "options": [],
+      "required": true,
+      "routes": [],
+      "title": "Le bâtiment a-t-il plus de 2 ans ?",
+      "type": "yes_no"
+     },
+     {
+      "id": "delai",
+      "max_files": 5,
+      "next": "budget",
+      "options": [
+       {
+        "icon": "⚡",
+        "label": "Au plus vite",
+        "value": "au_plus_vite"
+       },
+       {
+        "icon": "📅",
+        "label": "Dans les 3 mois",
+        "value": "moins_3_mois"
+       },
+       {
+        "icon": "🗓️",
+        "label": "Dans 3 à 6 mois",
+        "value": "trois_six_mois"
+       },
+       {
+        "icon": "⏳",
+        "label": "Plus tard",
+        "value": "plus_6_mois"
+       },
+       {
+        "icon": "💡",
+        "label": "Je me renseigne",
+        "value": "je_me_renseigne"
+       }
+      ],
+      "required": true,
+      "routes": [],
+      "title": "Quand souhaitez-vous réaliser les travaux ?",
+      "type": "single_choice"
+     },
+     {
+      "help": "Facultatif : cela nous aide à vous proposer des solutions adaptées.",
+      "id": "budget",
+      "max_files": 5,
+      "next": "photos",
+      "options": [
+       {
+        "label": "Moins de 5 000 €",
+        "value": "moins_5k"
+       },
+       {
+        "label": "5 000 à 15 000 €",
+        "value": "de_5_a_15k"
+       },
+       {
+        "label": "15 000 à 30 000 €",
+        "value": "de_15_a_30k"
+       },
+       {
+        "label": "Plus de 30 000 €",
+        "value": "plus_30k"
+       },
+       {
+        "label": "Je ne sais pas encore",
+        "value": "ne_sait_pas"
+       }
+      ],
+      "required": false,
+      "routes": [],
+      "title": "Avez-vous une enveloppe budgétaire en tête ?",
+      "type": "single_choice"
+     },
+     {
+      "help": "Facultatif, mais très utile pour préparer le rendez-vous.",
+      "id": "photos",
+      "max_files": 6,
+      "next": "precisions",
+      "options": [],
+      "required": false,
+      "routes": [],
+      "title": "Avez-vous des photos ou des documents ?",
+      "type": "photos"
+     },
+     {
+      "id": "precisions",
+      "max_files": 5,
+      "options": [],
+      "placeholder": "Accès, contraintes, questions…",
+      "required": false,
+      "routes": [],
+      "title": "Souhaitez-vous ajouter une précision ?",
+      "type": "long_text"
+     }
+    ],
+    "version": 1
+   },
+   "label": "Rénovation de l'habitat",
+   "services": [
+    {
+     "buffer_after_min": 30,
+     "description": "Nous venons chez vous pour étudier votre projet et établir un devis.",
+     "duration_min": 60,
+     "key": "visite_technique",
+     "max_horizon_days": 45,
+     "meeting_type": "on_site",
+     "min_notice_min": 1440,
+     "name": "Visite technique et devis"
+    },
+    {
+     "description": "Un premier échange téléphonique pour répondre à vos questions.",
+     "duration_min": 20,
+     "key": "appel_decouverte",
+     "max_horizon_days": 30,
+     "meeting_type": "phone",
+     "min_notice_min": 120,
+     "name": "Appel découverte"
+    }
+   ]
+  }
+ }
+}

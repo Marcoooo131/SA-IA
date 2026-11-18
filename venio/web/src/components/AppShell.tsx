@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
 import { Logo, Spinner, cx } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
+import { DEMO, publicPagePath, withBase } from "@/lib/routes";
 
 export type Me = {
   user: { id: string; email: string; full_name: string };
@@ -53,7 +54,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </nav>
           <div className="hidden space-y-2 px-4 py-6 text-xs text-ink-soft md:block">
-            <a href={`/r/${me.tenant.slug}`} target="_blank" className="block underline">Voir ma page publique ↗</a>
+            <a href={withBase(publicPagePath(me.tenant.slug))} target="_blank" className="block underline">Voir ma page publique ↗</a>
+            {DEMO && <button className="block underline" onClick={async () => { if (confirm("Effacer toutes les données de démonstration de ce navigateur ?")) { const { resetDemo } = await import("@/lib/demo/server"); resetDemo(); router.replace("/"); } }}>Réinitialiser la démo</button>}
             {trialDays !== null && <p>Essai gratuit : {trialDays} jour(s) restant(s)</p>}
             <button className="underline" onClick={async () => { await api("/auth/logout", { method: "POST" }); router.replace("/connexion"); }}>Se déconnecter</button>
           </div>

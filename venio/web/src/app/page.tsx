@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Logo } from "@/components/ui";
+import { DEMO } from "@/lib/routes";
 
 const steps = [
   { t: "Votre client décrit son besoin", d: "Une question à la fois, avec des choix visuels, des photos et sans compte à créer." },
@@ -19,7 +20,7 @@ export default function Home() {
       </header>
 
       <section className="mx-auto max-w-6xl px-5 pb-16 pt-10 md:pt-20">
-        <p className="mb-4 inline-block rounded-full bg-accent/15 px-3 py-1 text-sm font-medium text-accent-dark">Version pilote</p>
+        <p className="mb-4 inline-block rounded-full bg-accent/15 px-3 py-1 text-sm font-medium text-accent-dark">{DEMO ? "Démonstration" : "Version pilote"}</p>
         <h1 className="max-w-3xl text-4xl font-semibold leading-tight tracking-tight md:text-6xl">
           Chaque demande arrive complète.<br />Chaque rendez-vous est confirmé.
         </h1>
@@ -31,6 +32,7 @@ export default function Home() {
           <Link href="/inscription" className="rounded-lg bg-ink px-5 py-3 font-medium text-white hover:bg-ink-soft">Créer ma page de réservation</Link>
           <a href="#comment" className="rounded-lg border border-line bg-white px-5 py-3 font-medium hover:border-ink/40">Comment ça marche</a>
         </div>
+        {DEMO && <p className="mt-4 max-w-2xl text-sm text-ink-soft">Démonstration : créez un espace fictif, ouvrez votre page de réservation dans un autre onglet comme si vous étiez un client, puis retrouvez la demande dans votre espace.</p>}
         <p className="mt-4 text-sm text-ink-soft">14 jours d&apos;essai, sans carte bancaire. Modèles prêts pour la rénovation et le déménagement, adaptables à toute activité.</p>
       </section>
 

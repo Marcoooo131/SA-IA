@@ -1,19 +1,8 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { BookingFlow } from "@/components/BookingFlow";
 import { MEETING_LABELS } from "@/lib/format";
-import { getPublicPage } from "@/lib/server";
+import type { PublicPageData } from "@/lib/public";
 
-type Props = { params: Promise<{ slug: string }> };
-
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const page = await getPublicPage((await params).slug);
-  return page ? { title: `Prendre rendez-vous — ${page.name}`, description: page.profile.tagline || `Réservez en ligne avec ${page.name}.` } : {};
-}
-
-export default async function PublicBookingPage({ params }: Props) {
-  const page = await getPublicPage((await params).slug);
-  if (!page) notFound();
+export function PublicPage({ page }: { page: PublicPageData }) {
   const p = page.profile;
   const style = { "--brand": page.branding.primary_color ?? "#14213d", "--brand-accent": page.branding.accent_color ?? "#f28c28" } as React.CSSProperties;
 

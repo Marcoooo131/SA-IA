@@ -5,6 +5,7 @@ import { useMe } from "@/components/AppShell";
 import { Alert, Button, Card, Spinner } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { pct } from "@/lib/format";
+import { caseFilePath, publicPagePath, withBase } from "@/lib/routes";
 
 import { BookingRow, type Row } from "@/components/BookingRow";
 
@@ -40,7 +41,7 @@ export default function DashboardPage() {
       {welcome && (
         <Alert kind="success">
           Votre page est en ligne. Prochaines étapes : <Link className="underline" href="/app/parametres">vérifiez vos horaires et vos coordonnées</Link>,
-          faites une réservation test sur <a className="underline" href={`/r/${me.tenant.slug}`} target="_blank">votre page</a>, puis partagez le lien
+          faites une réservation test sur <a className="underline" href={withBase(publicPagePath(me.tenant.slug))} target="_blank">votre page</a>, puis partagez le lien
           (site web, fiche Google, signature d&apos;email).
         </Alert>
       )}
@@ -67,7 +68,7 @@ export default function DashboardPage() {
                 <ul className="divide-y divide-line">
                   {d.new_cases.map((c) => (
                     <li key={c.id} className="py-2.5">
-                      <Link href={`/app/dossiers/${c.id}`} className="block hover:underline">
+                      <Link href={caseFilePath(c.id)} className="block hover:underline">
                         <span className="font-medium">{c.first_name} {c.last_name}</span> <span className="text-sm text-ink-soft">· {c.service_name}</span>
                         <span className="line-clamp-1 text-sm text-ink-soft">{c.summary}</span>
                       </Link>

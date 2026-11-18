@@ -1,5 +1,5 @@
 // Scénario navigateur de bout en bout (Playwright) : inscription, réservation mobile, espace entreprise, report.
-// Usage : API + web démarrés, puis  node e2e/smoke.js /tmp/venio-shots
+// Usage : API + web démarrés, puis  node e2e/smoke.cjs /tmp/venio-shots
 const { chromium, devices } = require('playwright');
 const fs = require('fs');
 const SP = process.argv[2] || '.';

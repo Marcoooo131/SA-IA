@@ -88,6 +88,18 @@ jobs:
           for w in workshop-commun workshop-decouverte workshop-brise-glace workshop-humour workshop-humour-diplomatie; do
             mkdir -p dist/$w && cp -r $w/. dist/$w/ && rm -f dist/$w/README.md
           done
+      # Venio — démonstration (…/venio/) : interface de la plateforme de rendez-vous, sans serveur ;
+      # l'API est simulée dans le navigateur (données dans localStorage, aucun email envoyé).
+      - name: Build de la démonstration Venio
+        working-directory: venio/web
+        env:
+          NEXT_PUBLIC_VENIO_DEMO: "1"
+          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}/venio
+          NEXT_TELEMETRY_DISABLED: "1"
+        run: |
+          npm ci
+          npm run build
+          mkdir -p ../../dist/venio && cp -r out/. ../../dist/venio/
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
