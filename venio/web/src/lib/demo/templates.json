@@ -79,12 +79,12 @@
       "next": "logement_depart",
       "options": [
        {
-        "icon": "🏠",
+        "icon": "house",
         "label": "Votre logement",
         "value": "particulier"
        },
        {
-        "icon": "🏢",
+        "icon": "building-2",
         "label": "Des locaux professionnels",
         "value": "entreprise"
        }
@@ -100,27 +100,27 @@
       "next": "surface",
       "options": [
        {
-        "icon": "🛏️",
+        "icon": "bed-double",
         "label": "Studio / T1",
         "value": "studio"
        },
        {
-        "icon": "🚪",
+        "icon": "sofa",
         "label": "T2",
         "value": "t2"
        },
        {
-        "icon": "🏠",
+        "icon": "armchair",
         "label": "T3",
         "value": "t3"
        },
        {
-        "icon": "🏘️",
+        "icon": "building",
         "label": "T4 ou plus",
         "value": "t4_plus"
        },
        {
-        "icon": "🏡",
+        "icon": "house",
         "label": "Maison",
         "value": "maison"
        }
@@ -182,22 +182,22 @@
       "next": "date_souhaitee",
       "options": [
        {
-        "icon": "📍",
+        "icon": "map-pin",
         "label": "Dans la même ville",
         "value": "meme_ville"
        },
        {
-        "icon": "🚚",
+        "icon": "truck",
         "label": "À moins de 100 km",
         "value": "moins_100km"
        },
        {
-        "icon": "🛣️",
+        "icon": "route",
         "label": "À plus de 100 km",
         "value": "plus_100km"
        },
        {
-        "icon": "🌍",
+        "icon": "globe",
         "label": "À l'étranger",
         "value": "international"
        }
@@ -223,17 +223,17 @@
       "next": "prestations",
       "options": [
        {
-        "icon": "📌",
+        "icon": "pin",
         "label": "Date fixe",
         "value": "date_fixe"
        },
        {
-        "icon": "↔️",
+        "icon": "move-horizontal",
         "label": "À une semaine près",
         "value": "plus_ou_moins_semaine"
        },
        {
-        "icon": "🌿",
+        "icon": "leaf",
         "label": "Très flexible",
         "value": "flexible"
        }
@@ -249,27 +249,27 @@
       "next": "photos",
       "options": [
        {
-        "icon": "📦",
+        "icon": "package",
         "label": "Emballage des cartons",
         "value": "emballage"
        },
        {
-        "icon": "🔩",
+        "icon": "nut",
         "label": "Démontage / remontage des meubles",
         "value": "demontage"
        },
        {
-        "icon": "🏬",
+        "icon": "warehouse",
         "label": "Garde-meuble",
         "value": "garde_meuble"
        },
        {
-        "icon": "🎹",
+        "icon": "piano",
         "label": "Piano ou objets lourds",
         "value": "objets_lourds"
        },
        {
-        "icon": "🧽",
+        "icon": "spray-can",
         "label": "Nettoyage",
         "value": "nettoyage"
        }
@@ -350,22 +350,22 @@
       "next": "description",
       "options": [
        {
-        "icon": "👋",
+        "icon": "hand",
         "label": "Un premier rendez-vous",
         "value": "premier_rdv"
        },
        {
-        "icon": "📝",
+        "icon": "notebook-pen",
         "label": "Une demande de devis",
         "value": "devis"
        },
        {
-        "icon": "🔁",
+        "icon": "repeat",
         "label": "Le suivi d'une demande en cours",
         "value": "suivi"
        },
        {
-        "icon": "💬",
+        "icon": "message-circle",
         "label": "Autre",
         "value": "autre"
        }
@@ -391,27 +391,27 @@
       "next": "photos",
       "options": [
        {
-        "icon": "⚡",
+        "icon": "zap",
         "label": "Au plus vite",
         "value": "au_plus_vite"
        },
        {
-        "icon": "📅",
+        "icon": "calendar",
         "label": "Dans les 3 mois",
         "value": "moins_3_mois"
        },
        {
-        "icon": "🗓️",
+        "icon": "calendar-range",
         "label": "Dans 3 à 6 mois",
         "value": "trois_six_mois"
        },
        {
-        "icon": "⏳",
+        "icon": "hourglass",
         "label": "Plus tard",
         "value": "plus_6_mois"
        },
        {
-        "icon": "💡",
+        "icon": "lightbulb",
         "label": "Je me renseigne",
         "value": "je_me_renseigne"
        }
@@ -491,27 +491,27 @@
       "next": "autre_description",
       "options": [
        {
-        "icon": "🛁",
+        "icon": "bath",
         "label": "Salle de bain",
         "value": "salle_de_bain"
        },
        {
-        "icon": "🍳",
+        "icon": "cooking-pot",
         "label": "Cuisine",
         "value": "cuisine"
        },
        {
-        "icon": "🪟",
+        "icon": "app-window",
         "label": "Fenêtres et portes",
         "value": "menuiseries"
        },
        {
-        "icon": "🧱",
+        "icon": "brick-wall",
         "label": "Isolation",
         "value": "isolation"
        },
        {
-        "icon": "🔧",
+        "icon": "wrench",
         "label": "Autre projet",
         "value": "autre"
        }
@@ -561,32 +561,32 @@
       "next": "surface",
       "options": [
        {
-        "icon": "✨",
+        "icon": "sparkles",
         "label": "Rénovation complète",
         "value": "renovation_complete"
        },
        {
-        "icon": "🚿",
+        "icon": "shower-head",
         "label": "Douche à l'italienne",
         "value": "douche_italienne"
        },
        {
-        "icon": "🛁",
+        "icon": "bath",
         "label": "Baignoire",
         "value": "baignoire"
        },
        {
-        "icon": "🪞",
+        "icon": "droplet",
         "label": "Meuble vasque",
         "value": "meuble_vasque"
        },
        {
-        "icon": "🔲",
+        "icon": "grid-3x3",
         "label": "Carrelage / faïence",
         "value": "carrelage"
        },
        {
-        "icon": "♿",
+        "icon": "accessibility",
         "label": "Accessibilité / sécurité",
         "value": "accessibilite"
        }
@@ -602,17 +602,17 @@
       "next": "surface",
       "options": [
        {
-        "icon": "✨",
+        "icon": "sparkles",
         "label": "Cuisine neuve complète",
         "value": "cuisine_complete"
        },
        {
-        "icon": "🛠️",
+        "icon": "hammer",
         "label": "Rénovation partielle",
         "value": "renovation_partielle"
        },
        {
-        "icon": "📦",
+        "icon": "package",
         "label": "Pose d'une cuisine déjà achetée",
         "value": "pose_seule"
        }
@@ -628,22 +628,22 @@
       "next": "menuiseries_nombre",
       "options": [
        {
-        "icon": "🪟",
+        "icon": "app-window",
         "label": "Fenêtres",
         "value": "fenetres"
        },
        {
-        "icon": "🚪",
+        "icon": "door-open",
         "label": "Porte d'entrée",
         "value": "porte_entree"
        },
        {
-        "icon": "🏞️",
+        "icon": "rectangle-horizontal",
         "label": "Baie vitrée",
         "value": "baie_vitree"
        },
        {
-        "icon": "🏠",
+        "icon": "blinds",
         "label": "Volets",
         "value": "volets"
        }
@@ -672,22 +672,22 @@
       "next": "surface",
       "options": [
        {
-        "icon": "🏠",
+        "icon": "house",
         "label": "Combles / toiture",
         "value": "combles"
        },
        {
-        "icon": "🧱",
+        "icon": "brick-wall",
         "label": "Murs par l'intérieur",
         "value": "murs_interieur"
        },
        {
-        "icon": "🏡",
+        "icon": "fence",
         "label": "Murs par l'extérieur",
         "value": "murs_exterieur"
        },
        {
-        "icon": "🟫",
+        "icon": "layers",
         "label": "Planchers",
         "value": "planchers"
        }
@@ -728,17 +728,17 @@
       "next": "anciennete",
       "options": [
        {
-        "icon": "🏡",
+        "icon": "house",
         "label": "D'une maison",
         "value": "maison"
        },
        {
-        "icon": "🏢",
+        "icon": "building-2",
         "label": "D'un appartement",
         "value": "appartement"
        },
        {
-        "icon": "🏪",
+        "icon": "store",
         "label": "D'un local professionnel",
         "value": "local_pro"
        }
@@ -765,27 +765,27 @@
       "next": "budget",
       "options": [
        {
-        "icon": "⚡",
+        "icon": "zap",
         "label": "Au plus vite",
         "value": "au_plus_vite"
        },
        {
-        "icon": "📅",
+        "icon": "calendar",
         "label": "Dans les 3 mois",
         "value": "moins_3_mois"
        },
        {
-        "icon": "🗓️",
+        "icon": "calendar-range",
         "label": "Dans 3 à 6 mois",
         "value": "trois_six_mois"
        },
        {
-        "icon": "⏳",
+        "icon": "hourglass",
         "label": "Plus tard",
         "value": "plus_6_mois"
        },
        {
-        "icon": "💡",
+        "icon": "lightbulb",
         "label": "Je me renseigne",
         "value": "je_me_renseigne"
        }

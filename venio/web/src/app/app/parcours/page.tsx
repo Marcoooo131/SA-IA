@@ -1,7 +1,8 @@
 "use client";
+import { FlowIcon, ICONS, iconKey } from "@/lib/icons";
 import { useCallback, useEffect, useState } from "react";
 import { useMe } from "@/components/AppShell";
-import { Alert, Badge, Button, Card, Checkbox, Field, Input, Spinner } from "@/components/ui";
+import { Alert, Badge, Button, Card, Checkbox, Field, Input, Select, Spinner } from "@/components/ui";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { pct } from "@/lib/format";
 import type { FlowDefinition } from "@/lib/flow";
@@ -20,6 +21,8 @@ const TYPE_LABELS: Record<string, string> = {
   single_choice: "Choix unique", multi_choice: "Choix multiples", yes_no: "Oui / non", text: "Texte court", long_text: "Texte libre",
   number: "Nombre", slider: "Curseur", date: "Date", photos: "Photos / documents",
 };
+
+const ICON_CHOICES = Object.entries(ICONS).map(([k, v]) => [k, v.label] as const).sort((a, b) => a[1].localeCompare(b[1], "fr"));
 
 export default function FlowPage() {
   const me = useMe();
@@ -111,7 +114,11 @@ export default function FlowPage() {
               <div className="grid gap-2 sm:grid-cols-2">
                 {step.options.map((o, j) => (
                   <div key={o.value} className="flex items-center gap-2">
-                    <Input disabled={!canEdit} className="w-14 text-center" maxLength={8} value={o.icon ?? ""} onChange={(e) => edit((d) => { d.steps[i].options[j].icon = e.target.value || undefined; })} aria-label="Icône" />
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-control border border-line text-ink-muted"><FlowIcon name={o.icon} className="h-5 w-5" /></span>
+                    <Select disabled={!canEdit} className="w-40 shrink-0" value={iconKey(o.icon) ?? ""} onChange={(e) => edit((d) => { d.steps[i].options[j].icon = e.target.value || undefined; })} aria-label={`Icône du choix « ${o.label} »`}>
+                      <option value="">Sans icône</option>
+                      {ICON_CHOICES.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                    </Select>
                     <Input disabled={!canEdit} maxLength={80} value={o.label} onChange={(e) => edit((d) => { d.steps[i].options[j].label = e.target.value; })} aria-label="Libellé du choix" />
                   </div>
                 ))}

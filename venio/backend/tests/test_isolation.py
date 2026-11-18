@@ -81,7 +81,9 @@ async def test_every_tenant_table_has_rls(database):
     finally:
         await conn.close()
     unprotected = [r["relname"] for r in rows if not (r["relrowsecurity"] and r["relforcerowsecurity"])]
-    assert sorted(unprotected) == ["job", "user_session"]  # tables plateforme : identifiants uniquement, jamais exposées
+    # Tables plateforme : identifiants uniquement, jamais exposées, lues avant de connaître l'entreprise
+    # (file de tâches, sessions, lien court d'un SMS, adresse secrète d'un webhook de téléphonie).
+    assert sorted(unprotected) == ["job", "recovery_link", "telephony_endpoint", "user_session"]
 
 
 async def test_platform_tables_closed_to_other_roles(client_factory, database):
@@ -90,8 +92,8 @@ async def test_platform_tables_closed_to_other_roles(client_factory, database):
     conn = await asyncpg.connect(database["admin_url"])
     try:
         await conn.execute("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'outsider') THEN CREATE ROLE outsider NOBYPASSRLS; END IF; END $$")
-        await conn.execute("GRANT SELECT ON app_user, user_session, job, plan, tenant, booking TO outsider")
-        for t in ("app_user", "user_session", "job", "plan", "tenant", "booking"):
+        await conn.execute("GRANT SELECT ON app_user, user_session, job, plan, tenant, booking, recovery_link, telephony_endpoint, call TO outsider")
+        for t in ("app_user", "user_session", "job", "plan", "tenant", "booking", "recovery_link", "telephony_endpoint", "call"):
             try:
                 async with conn.transaction():
                     await conn.execute("SET LOCAL ROLE outsider")

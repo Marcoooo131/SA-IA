@@ -1,4 +1,5 @@
 "use client";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useMe } from "@/components/AppShell";
 import { BookingRow, type Row } from "@/components/BookingRow";
@@ -31,9 +32,9 @@ export default function AgendaPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Agenda</h1>
         <div className="flex items-center gap-2">
-          <Button variant="secondary" onClick={() => setFrom(addDays(from, -7))}>←</Button>
+          <Button variant="secondary" onClick={() => setFrom(addDays(from, -7))} aria-label="Semaine précédente"><ChevronLeft aria-hidden className="h-4 w-4" /></Button>
           <Button variant="secondary" onClick={() => setFrom(monday(todayIso()))}>Cette semaine</Button>
-          <Button variant="secondary" onClick={() => setFrom(addDays(from, 7))}>→</Button>
+          <Button variant="secondary" onClick={() => setFrom(addDays(from, 7))} aria-label="Semaine suivante"><ChevronRight aria-hidden className="h-4 w-4" /></Button>
         </div>
       </div>
       {error && <Alert>{error}</Alert>}

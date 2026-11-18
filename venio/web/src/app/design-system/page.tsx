@@ -7,6 +7,7 @@ import {
   Table, Tabs, Td, TextLink, Textarea, Th, ThreadProgress, ToastProvider, useToast,
 } from "@/components/ui";
 import { brandPair, brandStyle, contrast } from "@/lib/color";
+import { FlowIcon, ICONS } from "@/lib/icons";
 
 const COLORS: { token: string; hex: string; use: string; on?: string }[] = [
   { token: "ink", hex: "#14213d", use: "Texte principal, bouton principal", on: "#faf9f6" },
@@ -196,10 +197,20 @@ function Catalogue() {
           </div>
           <Card><Switch checked={sw} onChange={setSw} label="Récupération des appels manqués" description="Exemple d'interrupteur d'activation." /></Card>
         </div>
+        <Specimen label={`Icônes de parcours — ${Object.keys(ICONS).length} icônes au trait (Lucide), choisies dans l'éditeur de parcours`} className="mt-8">
+          <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-10">
+            {Object.entries(ICONS).map(([k, { Icon, label }]) => (
+              <div key={k} className="flex flex-col items-center gap-1.5 rounded-control border border-line bg-surface p-2 text-center">
+                <Icon aria-hidden className="h-5 w-5 text-ink" strokeWidth={1.5} />
+                <span className="text-[11px] leading-tight text-ink-muted">{label}</span>
+              </div>
+            ))}
+          </div>
+        </Specimen>
         <Specimen label="ChoiceTile — parcours client (une décision par écran, couleur de l'entreprise)" className="mt-8">
           <div style={brandStyle("#14213d")} className="grid max-w-xl gap-3 sm:grid-cols-3">
-            {[["visite", "🏠", "Visite technique", "Sur place, 1 h"], ["appel", "📞", "Appel", "15 min"], ["visio", "💻", "Visio", "30 min"]].map(([v, i, t, d]) => (
-              <ChoiceTile key={v} icon={i} title={t} description={d} selected={tile === v} onClick={() => setTile(v)} />
+            {[["visite", "house", "Visite technique", "Sur place, 1 h"], ["appel", "phone", "Appel", "15 min"], ["visio", "video", "Visio", "30 min"]].map(([v, i, t, d]) => (
+              <ChoiceTile key={v} icon={<FlowIcon name={i} className="h-6 w-6 text-ink-muted" />} title={t} description={d} selected={tile === v} onClick={() => setTile(v)} />
             ))}
           </div>
         </Specimen>

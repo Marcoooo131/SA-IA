@@ -1,4 +1,5 @@
 "use client";
+import { Hammer, Sparkles, Truck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -6,9 +7,9 @@ import { Alert, Button, Field, Input, Logo, cx } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 
 const VERTICALS = [
-  { code: "renovation", label: "Rénovation de l'habitat", icon: "🛠️", hint: "Salle de bain, cuisine, menuiseries, isolation…" },
-  { code: "demenagement", label: "Déménagement", icon: "🚚", hint: "Visite ou visio d'estimation du volume" },
-  { code: "generique", label: "Autre activité", icon: "✨", hint: "Un parcours simple, adaptable à tout métier" },
+  { code: "renovation", label: "Rénovation de l'habitat", Icon: Hammer, hint: "Salle de bain, cuisine, menuiseries, isolation…" },
+  { code: "demenagement", label: "Déménagement", Icon: Truck, hint: "Visite ou visio d'estimation du volume" },
+  { code: "generique", label: "Autre activité", Icon: Sparkles, hint: "Un parcours simple, adaptable à tout métier" },
 ];
 
 export default function Signup() {
@@ -45,7 +46,7 @@ export default function Signup() {
               <button type="button" key={v.code} onClick={() => setVertical(v.code)} aria-pressed={vertical === v.code}
                 className={cx("flex items-center gap-3 rounded-card border bg-surface p-3 text-left transition",
                   vertical === v.code ? "border-ink ring-1 ring-ink" : "border-line hover:border-ink/40")}>
-                <span className="text-2xl">{v.icon}</span>
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-control bg-sunken text-ink"><v.Icon aria-hidden className="h-5 w-5" strokeWidth={1.75} /></span>
                 <span><span className="block font-medium">{v.label}</span><span className="text-sm text-ink-muted">{v.hint}</span></span>
               </button>
             ))}

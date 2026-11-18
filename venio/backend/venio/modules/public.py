@@ -26,6 +26,7 @@ from ..flows.schema import FlowDefinition
 from ..ratelimit import limit
 from ..security import new_token, token_hash, unsign_token
 from . import notifications
+from ..telephony import service as missed_call_service
 from .booking_core import (
     MAX_DAYS_PER_QUERY, SlotUnavailable, create_hold, group_slots_by_day, load_default_flow,
     load_flow_version, load_public_tenant, log_booking_event, reschedule, service_by_id, service_by_key,
@@ -151,6 +152,8 @@ async def start_session(slug: str, body: StartIn) -> dict:
             t=tenant["id"], v=version_id, h=token_hash(token), s=j(source),
         )
         await _track(conn, tenant["id"], row["id"], version_id, "flow_start", props={"device": source.get("device")})
+        if source.get("mc"):  # arrivée par le lien d'un SMS d'appel manqué
+            await missed_call_service.attach_session(conn, tenant["id"], source["mc"], row["id"])
     return {"session_id": str(row["id"]), "resume_token": token,
             "definition": defn.model_dump(by_alias=True, exclude_none=True), "state": _state(defn, {}), "answers": {}}
 
@@ -416,6 +419,7 @@ async def confirm(slug: str, session_id: UUID, body: ConfirmIn, x_resume_token: 
             " WHERE id = :b RETURNING id, starts_at, ends_at",
             c=case["id"], l=j(address), b=held["id"],
         )
+        await missed_call_service.attach_booking(conn, tenant["id"], session_id, booking["id"])
         await execute(
             conn, "UPDATE intake_session SET status = 'completed', case_file_id = :c, updated_at = now() WHERE id = :i",
             c=case["id"], i=session_id,

@@ -30,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection
 from ..config import get_settings
 from ..db import execute, fetch_all, fetch_one, tx
 from ..security import signed_token
+from ..telephony.sms import segments as sms_segments
 
 log = logging.getLogger("venio.notifications")
 
@@ -212,28 +213,73 @@ def _send_brevo(to: str, subject: str, body: str) -> str:
     return r.json().get("messageId", "")
 
 
+BREVO_SMS_URL = "https://api.brevo.com/v3/transactionalSMS/sms"
+
+
+def _send_brevo_sms(to: str, body: str, sender: str) -> str:
+    """SMS transactionnel Brevo (API HTTPS). Format à confirmer par un premier envoi réel avant activation."""
+    s = get_settings()
+    if not s.brevo_api_key:
+        raise RuntimeError("VENIO_BREVO_API_KEY manquante.")
+    payload = {"sender": sender, "recipient": to.lstrip("+"), "content": body, "type": "transactional",
+               "unicodeEnabled": sms_segments(body)["encoding"] == "UCS-2"}
+    r = httpx.post(BREVO_SMS_URL, json=payload, timeout=20,
+                   headers={"api-key": s.brevo_api_key, "accept": "application/json"})
+    if r.status_code >= 300:
+        raise RuntimeError(f"Brevo SMS {r.status_code}: {r.text[:200]}")
+    return str(r.json().get("messageId", ""))
+
+
+async def _mark(conn, notification_id, status: str, provider: str, msg_id: str | None = None) -> None:
+    await execute(
+        conn,
+        "UPDATE notification SET status = :st, provider = :p, provider_msg_id = :m, sent_at = now(),"
+        " attempts = attempts + 1, last_error = NULL WHERE id = :n",
+        st=status, p=provider, m=msg_id, n=notification_id,
+    )
+
+
+async def _deliver_sms(conn: AsyncConnection, notif: dict, body: str) -> str:
+    """Tout SMS passe ici. Trois garde-fous avant le moindre appel réseau, dans cet ordre :
+    ligne de test (jamais d'envoi), interrupteur des envois payants, fournisseur SMS explicite."""
+    from ..telephony.service import recovery_line_provider, refund_credits
+    settings = get_settings()
+    if notif["template_key"] == "missed_call_sms" and await recovery_line_provider(conn, notif["id"]) == "simulator":
+        log.info("[SMS simulé — ligne de test] à %s", notif["to_address"])
+        await refund_credits(conn, notif)
+        await _mark(conn, notif["id"], "logged", "simulateur")
+        return "logged"
+    if not settings.paid_sending_enabled:
+        log.info("[%s non envoyé — envois payants désactivés] à %s", notif["channel"], notif["to_address"])
+        await refund_credits(conn, notif)
+        await _mark(conn, notif["id"], "logged", "envoi-payant-desactive")
+        return "logged"
+    if settings.sms_provider != "brevo":
+        # Jamais de repli silencieux sur le fournisseur d'emails pour un SMS.
+        raise RuntimeError(f"Envoi par {notif['channel']} : aucun fournisseur SMS configuré.")
+    from ..telephony.service import load_settings
+    _, cfg = await load_settings(conn)
+    sender = cfg.sender or settings.sms_default_sender
+    msg_id = await asyncio.to_thread(_send_brevo_sms, notif["to_address"], body, sender)
+    await _mark(conn, notif["id"], "sent", "brevo-sms", msg_id)
+    return "sent"
+
+
 async def deliver(conn: AsyncConnection, notification_id: UUID) -> str:
     notif = await fetch_one(conn, "SELECT * FROM notification WHERE id = :n FOR UPDATE", n=notification_id)
     if not notif or notif["status"] != "scheduled":
         return "ignored"
-    ctx = await _context(conn, notif)
-    if notif["template_key"].startswith("client_reminder") and ctx["booking"]["status"] != "confirmed":
-        await execute(conn, "UPDATE notification SET status = 'skipped' WHERE id = :n", n=notification_id)
-        return "skipped"
-    subject, body = render(notif["template_key"], ctx)
+    if notif.get("body"):
+        subject, body = None, notif["body"]  # message pré-rendu (SMS de récupération d'appel manqué)
+    else:
+        ctx = await _context(conn, notif)
+        if notif["template_key"].startswith("client_reminder") and ctx["booking"]["status"] != "confirmed":
+            await execute(conn, "UPDATE notification SET status = 'skipped' WHERE id = :n", n=notification_id)
+            return "skipped"
+        subject, body = render(notif["template_key"], ctx)
     settings = get_settings()
     if notif["channel"] != "email":
-        if not settings.paid_sending_enabled:
-            log.info("[%s non envoyé — envois payants désactivés] à %s : %s", notif["channel"], notif["to_address"], subject)
-            await execute(
-                conn,
-                "UPDATE notification SET status = 'logged', provider = 'envoi-payant-desactive', sent_at = now(),"
-                " attempts = attempts + 1, last_error = NULL WHERE id = :n",
-                n=notification_id,
-            )
-            return "logged"
-        # Jamais de repli silencieux sur le fournisseur d'emails pour un SMS.
-        raise RuntimeError(f"Envoi par {notif['channel']} pas encore disponible.")
+        return await _deliver_sms(conn, notif, body)
     provider = settings.email_provider
     if provider == "smtp":
         msg_id = await asyncio.to_thread(_send_smtp, notif["to_address"], subject, body)
@@ -269,6 +315,9 @@ async def run_due_jobs(batch: int = 20) -> int:
             async with tx(tenant_id=job["tenant_id"]) as conn:
                 if job["kind"] == "send_notification":
                     await deliver(conn, job["ref_id"])
+                elif job["kind"] == "missed_call_evaluate":
+                    from ..telephony.service import evaluate
+                    await evaluate(conn, job["ref_id"])
             async with tx() as conn:
                 await execute(conn, "UPDATE job SET status = 'done' WHERE id = :i", i=job["id"])
         except Exception as exc:  # noqa: BLE001 — toute erreur est journalisée et réessayée

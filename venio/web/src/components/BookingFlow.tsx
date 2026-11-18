@@ -1,6 +1,7 @@
 "use client";
+import { ArrowLeft, CalendarCheck, CalendarPlus, Camera, Check, Paperclip } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, CalendarCheck, CalendarPlus } from "lucide-react";
+import { FlowIcon } from "@/lib/icons";
 import { Alert, Button, Checkbox, buttonClass, Field, Input, Spinner, Textarea, ThreadProgress, cx } from "@/components/ui";
 import { SlotPicker, type SlotsResponse } from "@/components/SlotPicker";
 import { ApiError, api, errorMessage } from "@/lib/api";
@@ -59,6 +60,8 @@ export function BookingFlow({ slug, tenantName, timezone, services, intro }: {
     const params = new URLSearchParams(window.location.search);
     const source: Record<string, string> = { device: window.matchMedia("(max-width: 640px)").matches ? "mobile" : "desktop" };
     for (const k of ["utm_source", "utm_medium", "utm_campaign"]) if (params.get(k)) source[k] = params.get(k)!;
+    // Arrivée par le lien d'un SMS d'appel manqué : rattache la demande à l'appel (statistiques de récupération).
+    if (params.get("mc")) source.mc = params.get("mc")!.replace(/[^A-Za-z0-9]/g, "").slice(0, 16);
     if (document.referrer) source.referrer = document.referrer.slice(0, 200);
     const d = await api<{ session_id: string; resume_token: string; definition: FlowDefinition; state: FlowState; answers: Answers }>(
       `/public/${slug}/sessions`, { method: "POST", body: { source } });
@@ -309,7 +312,7 @@ function StepView({ step, value, busy, onAnswer, uploadUrl, headers, files, onFi
               <button key={o.value} disabled={busy} onClick={() => onAnswer(o.value)}
                 className={cx("flex min-h-24 flex-col items-start justify-between rounded-card border bg-surface p-3 text-left transition hover:border-[var(--brand)]",
                   value === o.value ? "border-[var(--brand)] ring-1 ring-[var(--brand)]" : "border-line")}>
-                {o.icon && <span className="text-2xl">{o.icon}</span>}
+                <FlowIcon name={o.icon} className="h-6 w-6 text-ink-muted" />
                 <span className="font-medium leading-snug">{o.label}</span>
                 {o.description && <span className="text-xs text-ink-muted">{o.description}</span>}
               </button>
@@ -325,8 +328,8 @@ function StepView({ step, value, busy, onAnswer, uploadUrl, headers, files, onFi
                   <button key={o.value} aria-pressed={sel} onClick={() => setDraft(sel ? (draft as string[]).filter((v) => v !== o.value) : [...(draft as string[]), o.value])}
                     className={cx("flex min-h-20 items-start gap-2 rounded-card border bg-surface p-3 text-left transition",
                       sel ? "border-[var(--brand)] ring-1 ring-[var(--brand)]" : "border-line hover:border-ink/40")}>
-                    <span className={cx("mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border text-xs", sel ? "border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-fg)]" : "border-line")}>{sel && "✓"}</span>
-                    <span>{o.icon && <span className="mr-1">{o.icon}</span>}<span className="font-medium">{o.label}</span></span>
+                    <span className={cx("mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border", sel ? "border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-fg)]" : "border-line-strong")}>{sel && <Check aria-hidden className="h-3.5 w-3.5" strokeWidth={3} />}</span>
+                    <span className="flex items-start gap-2"><FlowIcon name={o.icon} className="mt-0.5 h-4 w-4 shrink-0 text-ink-muted" /><span className="font-medium">{o.label}</span></span>
                   </button>
                 );
               })}
@@ -380,7 +383,7 @@ function StepView({ step, value, busy, onAnswer, uploadUrl, headers, files, onFi
         {step.type === "photos" && (
           <div>
             <label className={cx("flex cursor-pointer flex-col items-center gap-2 rounded-card border-2 border-dashed border-line bg-surface p-6 text-center hover:border-[var(--brand)]", uploading && "opacity-60")}>
-              <span className="text-3xl">📷</span>
+              <Camera aria-hidden className="h-7 w-7 text-ink-muted" strokeWidth={1.5} />
               <span className="font-medium">Ajouter des photos ou un document</span>
               <span className="text-xs text-ink-muted">JPEG, PNG, WebP ou PDF · 10 Mo maximum · {step.max_files} fichiers maximum</span>
               <input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" className="sr-only" disabled={uploading}
@@ -411,7 +414,7 @@ function StepView({ step, value, busy, onAnswer, uploadUrl, headers, files, onFi
             <ul className="mt-3 space-y-1">
               {(draft as string[]).map((id) => (
                 <li key={id} className="flex items-center justify-between rounded-control bg-surface px-3 py-2 text-sm">
-                  <span>📎 {files.find((f) => f.id === id)?.original_name ?? "Fichier"}</span>
+                  <span className="flex items-center gap-2"><Paperclip aria-hidden className="h-4 w-4 text-ink-muted" />{files.find((f) => f.id === id)?.original_name ?? "Fichier"}</span>
                   <button className="text-xs underline" onClick={() => setDraft((draft as string[]).filter((x) => x !== id))}>Retirer</button>
                 </li>
               ))}

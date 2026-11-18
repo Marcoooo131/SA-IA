@@ -1,4 +1,5 @@
 "use client";
+import { ArrowLeft, FileText } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useMe } from "@/components/AppShell";
@@ -43,7 +44,7 @@ export function CaseDetail({ id }: { id: string }) {
 
   return (
     <div className="space-y-5">
-      <Link href="/app/dossiers" className="text-sm text-ink-muted hover:underline">← Demandes</Link>
+      <Link href="/app/dossiers" className="inline-flex items-center gap-1 text-sm text-ink-muted hover:text-ink"><ArrowLeft aria-hidden className="h-4 w-4" />Demandes</Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{c.first_name} {c.last_name}</h1>
@@ -80,7 +81,7 @@ export function CaseDetail({ id }: { id: string }) {
                     {f.mime_type.startsWith("image/")
                       // eslint-disable-next-line @next/next/no-img-element
                       ? <img src={fileUrl(f.id)} alt={f.original_name} className="aspect-square w-full object-cover" />
-                      : <div className="grid aspect-square place-items-center bg-ink/5 text-sm">📄 {f.original_name}</div>}
+                      : <div className="grid aspect-square place-items-center bg-sunken p-2 text-center text-sm text-ink-muted"><span className="flex flex-col items-center gap-1.5"><FileText aria-hidden className="h-6 w-6" />{f.original_name}</span></div>}
                   </a>
                 ))}
               </div>

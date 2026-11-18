@@ -85,7 +85,7 @@ export function ChoiceTile({ selected, title, description, icon, className, ...p
     <button type="button" aria-pressed={selected} {...p}
       className={cx("flex min-h-20 w-full flex-col items-start justify-between gap-2 rounded-card border bg-surface p-3.5 text-left transition-[border-color,box-shadow] duration-150",
         selected ? "border-[var(--brand)] ring-1 ring-[var(--brand)]" : "border-line hover:border-[var(--brand)]", className)}>
-      {icon && <span aria-hidden className="text-2xl leading-none">{icon}</span>}
+      {icon && <span aria-hidden className="leading-none">{icon}</span>}
       <span>
         <span className="block font-medium text-ink">{title}</span>
         {description && <span className="mt-0.5 block text-sm text-ink-muted">{description}</span>}

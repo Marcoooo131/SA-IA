@@ -1,4 +1,5 @@
 "use client";
+import { Check, Copy } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useMe } from "@/components/AppShell";
@@ -33,7 +34,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-2">
           <code className="hidden rounded bg-surface px-2 py-1 text-xs text-ink-muted sm:block">{me.public_url}</code>
           <Button variant="secondary" onClick={async () => { await navigator.clipboard.writeText(me.public_url); setCopied(true); }}>
-            {copied ? "Lien copié ✓" : "Copier mon lien de réservation"}
+            {copied ? <><Check aria-hidden className="h-4 w-4" />Lien copié</> : <><Copy aria-hidden className="h-4 w-4" />Copier mon lien de réservation</>}
           </Button>
         </div>
       </div>

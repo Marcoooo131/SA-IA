@@ -62,10 +62,17 @@ async def test_sms_does_not_fall_back_to_email_when_enabled(client_factory, data
     monkeypatch.setenv("VENIO_EMAIL_PROVIDER", "brevo")
     monkeypatch.setenv("VENIO_BREVO_API_KEY", "test")
     get_settings.cache_clear()
-    monkeypatch.setattr(notifications.httpx, "post", lambda *a, **k: (_ for _ in ()).throw(AssertionError("réseau")))
+    urls = []
+
+    def record(url, **k):
+        urls.append(url)
+        raise RuntimeError("réseau coupé pour le test")
+    monkeypatch.setattr(notifications.httpx, "post", record)
 
     notif_id, tenant_id = await _booking_with_sms(client_factory, database["admin_url"])
-    with pytest.raises(RuntimeError, match="pas encore disponible"):
+    with pytest.raises(RuntimeError, match="réseau coupé"):
         async with tx(tenant_id=tenant_id) as conn:
             await notifications.deliver(conn, notif_id)
     get_settings.cache_clear()
+    # Envois payants autorisés : le SMS part par l'API SMS de Brevo, jamais par le service d'emails.
+    assert urls == [notifications.BREVO_SMS_URL]

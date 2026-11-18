@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .db import dispose_engine
-from .modules import business, identity, public, settings_api
+from .modules import business, identity, missed_calls, public, settings_api
 from .modules.notifications import worker_loop
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -51,7 +51,9 @@ def create_app() -> FastAPI:
     async def health() -> dict:
         return {"status": "ok"}
 
-    for module in (identity, public, business, settings_api):
+    # Le lien court et le webhook de téléphonie passent avant /api/public/{slug} (même préfixe).
+    app.include_router(missed_calls.public_router)
+    for module in (identity, public, business, settings_api, missed_calls):
         app.include_router(module.router)
     return app
 

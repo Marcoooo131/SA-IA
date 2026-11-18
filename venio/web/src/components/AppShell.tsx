@@ -1,5 +1,5 @@
 "use client";
-import { CalendarDays, ExternalLink, Inbox, LayoutDashboard, LogOut, RotateCcw, Send, Settings, Workflow } from "lucide-react";
+import { CalendarDays, ExternalLink, Inbox, LayoutDashboard, LogOut, PhoneMissed, RotateCcw, Send, Settings, Workflow } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
@@ -22,6 +22,7 @@ export const useMe = () => useContext(MeContext)!;
 const NAV = [
   { href: "/app", label: "Tableau de bord", Icon: LayoutDashboard },
   { href: "/app/dossiers", label: "Demandes", Icon: Inbox },
+  { href: "/app/appels", label: "Appels manqués", Icon: PhoneMissed },
   { href: "/app/agenda", label: "Agenda", Icon: CalendarDays },
   { href: "/app/parcours", label: "Parcours", Icon: Workflow },
   { href: "/app/envois", label: "Envois", Icon: Send },

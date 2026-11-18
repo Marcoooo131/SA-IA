@@ -36,7 +36,8 @@ peut réserver. Pour montrer le produit, pas pour de vrais clients. Construction
 | Abonnements Stripe, quotas appliqués, back-office interne | ❌ Prochaine étape (offres et quotas déjà en base ; essai Pro de 14 jours créé à l'inscription, non bloquant) |
 | Synchronisation Google / Outlook, messagerie client, invitations de collaborateurs | ❌ À venir |
 | Design system « le fil » : jetons de couleur à contraste vérifié, polices auto-hébergées (Fraunces, Inter, JetBrains Mono), composants et états partagés, catalogue sur `/design-system`, couleur d'entreprise corrigée automatiquement pour rester lisible | ✅ Audit axe WCAG 2.1 AA : 0 violation sur 11 pages |
-| Récupération des appels manqués, vitrine commerciale, démonstration interactive | 📐 Conçus, non développés — [05-extension-acquisition.md](../plateforme-rdv/05-extension-acquisition.md) |
+| Récupération des appels manqués (cœur) : lignes de test simulées, événements normalisés indépendants du fournisseur (webhook signé, idempotent), machine d'états, délai de validation, 12 règles (masqué, fixe/étranger, exclusions, STOP, anti-rafale, plafond, rappelé, demande récente, horaires, crédits, plafond journalier), SMS par Brevo derrière l'interrupteur des envois payants, lien court suivi jusqu'au rendez-vous, historique, statistiques, réglages | ✅ 48 tests dédiés. **Aucun SMS réel** : lignes de test uniquement, fournisseur de téléphonie à choisir (étape 3) |
+| Vitrine commerciale, démonstration interactive | 📐 Conçues, non développées — [05-extension-acquisition.md](../plateforme-rdv/05-extension-acquisition.md) |
 
 ## Lancer en local
 

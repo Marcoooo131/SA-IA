@@ -1,4 +1,5 @@
 "use client";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Spinner, cx } from "@/components/ui";
 import { errorMessage } from "@/lib/api";
@@ -46,11 +47,11 @@ export function SlotPicker({ load, onPick, busyStart, selected }: {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Button variant="ghost" disabled={!canPrev || loading} onClick={() => setFrom(addDays(from, -WINDOW))} aria-label="Semaine précédente">←</Button>
+        <Button variant="ghost" disabled={!canPrev || loading} onClick={() => setFrom(addDays(from, -WINDOW))} aria-label="Semaine précédente"><ChevronLeft aria-hidden className="h-4 w-4" /></Button>
         <span className="text-sm text-ink-muted">
           {data ? `${fmtDayLabel(data.from).day} ${fmtDayLabel(data.from).month} – ${fmtDayLabel(data.to).day} ${fmtDayLabel(data.to).month}` : " "}
         </span>
-        <Button variant="ghost" disabled={!data?.has_more || loading} onClick={() => setFrom(addDays(from, WINDOW))} aria-label="Semaine suivante">→</Button>
+        <Button variant="ghost" disabled={!data?.has_more || loading} onClick={() => setFrom(addDays(from, WINDOW))} aria-label="Semaine suivante"><ChevronRight aria-hidden className="h-4 w-4" /></Button>
       </div>
       {error && <Alert>{error}</Alert>}
       {loading ? (

@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     # tant qu'il vaut False, aucun SMS ne part, quel que soit le fournisseur configuré. Les emails ne sont
     # pas concernés (offre gratuite Brevo : 300 par jour, sans facturation au-delà, les envois sont refusés).
     paid_sending_enabled: bool = False
+    # Fournisseur des SMS réels (utilisé seulement si paid_sending_enabled) et expéditeur par défaut
+    # (nom alphanumérique de 11 caractères maximum, à enregistrer chez Brevo).
+    sms_provider: str = "brevo"
+    sms_default_sender: str = "Venio"
 
     # Envoi des notifications dans le processus de l'API (une seule instance, ex. offre gratuite).
     run_worker: bool = False

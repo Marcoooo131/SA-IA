@@ -1,15 +1,21 @@
 "use client";
+import { X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useMe } from "@/components/AppShell";
+import { MissedCallSettings } from "@/components/MissedCallSettings";
 import { Alert, Button, Card, Checkbox, Field, Input, Select, Spinner, Textarea, cx } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { MEETING_LABELS, fmtDateTime } from "@/lib/format";
 
-const TABS = [["page", "Page publique"], ["horaires", "Horaires"], ["prestations", "Prestations"], ["absences", "Absences"]] as const;
+const TABS = [["page", "Page publique"], ["horaires", "Horaires"], ["prestations", "Prestations"], ["absences", "Absences"], ["appels", "Appels manqués"]] as const;
 type Tab = (typeof TABS)[number][0];
 
 export default function SettingsPage() {
   const [tab, setTab] = useState<Tab>("page");
+  useEffect(() => {
+    const t = new URLSearchParams(window.location.search).get("onglet");
+    if (t && TABS.some(([k]) => k === t)) setTab(t as Tab);
+  }, []);
   return (
     <div className="space-y-5">
       <h1 className="text-2xl font-semibold tracking-tight">Paramètres</h1>
@@ -20,6 +26,7 @@ export default function SettingsPage() {
       {tab === "horaires" && <HoursTab />}
       {tab === "prestations" && <ServicesTab />}
       {tab === "absences" && <TimeOffTab />}
+      {tab === "appels" && <MissedCallSettings />}
     </div>
   );
 }
@@ -128,7 +135,7 @@ function HoursTab() {
                       <Input type="time" className="max-w-32" value={rule.start_time} onChange={(e) => update(r.id, r.rules.map((x) => (x === rule ? { ...x, start_time: e.target.value } : x)))} />
                       <span>–</span>
                       <Input type="time" className="max-w-32" value={rule.end_time} onChange={(e) => update(r.id, r.rules.map((x) => (x === rule ? { ...x, end_time: e.target.value } : x)))} />
-                      <Button type="button" variant="ghost" onClick={() => update(r.id, r.rules.filter((x) => x !== rule))} aria-label="Supprimer la plage">✕</Button>
+                      <Button type="button" variant="ghost" onClick={() => update(r.id, r.rules.filter((x) => x !== rule))} aria-label="Supprimer la plage"><X aria-hidden className="h-4 w-4" /></Button>
                     </div>
                   ))}
                   <button className="text-sm underline" onClick={() => update(r.id, [...r.rules, { weekday: wd, start_time: "09:00", end_time: "12:00" }])}>+ Ajouter une plage</button>

@@ -64,7 +64,9 @@ class Option(_Strict):
     value: str = Field(pattern=r"^[a-z0-9_]{1,40}$")
     label: str = Field(min_length=1, max_length=80)
     description: str | None = Field(default=None, max_length=160)
-    icon: str | None = Field(default=None, max_length=8)  # emoji
+    # Nom d'icône au trait (ex. "bath", catalogue : web/src/lib/icons.tsx). Les emojis des anciennes versions
+    # restent acceptés et sont convertis à l'affichage.
+    icon: str | None = Field(default=None, max_length=32)
 
 
 class Route(_Strict):
