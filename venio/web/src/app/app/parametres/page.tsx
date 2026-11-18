@@ -6,6 +6,7 @@ import { MissedCallSettings } from "@/components/MissedCallSettings";
 import { Alert, Button, Card, Checkbox, Field, Input, Select, Spinner, Textarea, cx } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { MEETING_LABELS, fmtDateTime } from "@/lib/format";
+import { DEMO } from "@/lib/routes";
 
 const TABS = [["page", "Page publique"], ["horaires", "Horaires"], ["prestations", "Prestations"], ["absences", "Absences"], ["appels", "Appels manqués"]] as const;
 type Tab = (typeof TABS)[number][0];
@@ -16,6 +17,8 @@ export default function SettingsPage() {
     const t = new URLSearchParams(window.location.search).get("onglet");
     if (t && TABS.some(([k]) => k === t)) setTab(t as Tab);
   }, []);
+  // Assistant de configuration : l'étape « horaires » est validée quand l'entreprise les a consultés.
+  useEffect(() => { if (tab === "horaires" && !DEMO) api("/onboarding", { method: "POST", body: { seen: "horaires" } }).catch(() => {}); }, [tab]);
   return (
     <div className="space-y-5">
       <h1 className="text-2xl font-semibold tracking-tight">Paramètres</h1>

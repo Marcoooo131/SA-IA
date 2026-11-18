@@ -85,6 +85,24 @@ select cron.schedule('venio-keepalive', '*/10 * * * *',
 
 Le traitement des emails tourne dans l'API (`VENIO_RUN_WORKER=true`) : tant qu'elle est éveillée, les rappels partent à l'heure.
 
+## 5 bis. Stripe — abonnements (mode test)
+
+Le paiement reste **en mode test** : l'API refuse de démarrer avec une clé réelle (`sk_live_…`) tant que
+`VENIO_STRIPE_LIVE_ENABLED` n'est pas activé, ce qui ne se fera qu'avec votre accord explicite.
+
+1. Stripe, mode **Test** : *Développeurs → Clés API* → clé secrète `sk_test_…`.
+2. Créer les produits et prix (une seule fois, sans doublon si on relance) :
+   `VENIO_STRIPE_SECRET_KEY=sk_test_… VENIO_DATABASE_ADMIN_URL=… python -m venio.billing.catalog`
+   (offres Starter, Pro, Business en mensuel et annuel, packs de 100 et 500 crédits SMS, configuration du portail client).
+3. *Développeurs → Webhooks → Ajouter un endpoint* : `https://<site>.netlify.app/api/billing/webhook`, événements
+   `checkout.session.completed`, `customer.subscription.created`, `customer.subscription.updated`,
+   `customer.subscription.deleted`, `customer.subscription.trial_will_end`, `invoice.paid`, `invoice.payment_failed`,
+   `invoice.payment_action_required`. Copier le secret de signature `whsec_…`.
+4. Render : `VENIO_STRIPE_SECRET_KEY` (clé `sk_test_…`) et `VENIO_STRIPE_WEBHOOK_SECRET` (`whsec_…`).
+5. Tester avec la carte `4242 4242 4242 4242`, une date future et n'importe quel code.
+
+Avant le passage en réel : décider de la TVA (Stripe Tax ou prix TTC) — les prix sont aujourd'hui hors taxes.
+
 ## 6. Vérification finale
 
 1. Ouvrir l'adresse Netlify → *Essai gratuit* → créer votre espace.

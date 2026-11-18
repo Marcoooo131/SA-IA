@@ -27,6 +27,7 @@ from ..ratelimit import limit
 from ..security import new_token, token_hash, unsign_token
 from . import notifications
 from ..telephony import service as missed_call_service
+from ..billing import service as billing_service
 from .booking_core import (
     MAX_DAYS_PER_QUERY, SlotUnavailable, create_hold, group_slots_by_day, load_default_flow,
     load_flow_version, load_public_tenant, log_booking_event, reschedule, service_by_id, service_by_key,
@@ -118,10 +119,13 @@ async def public_page(slug: str) -> dict:
             " WHERE is_active ORDER BY created_at",
         )
         await _track(conn, tenant["id"], None, flow[0] if flow else None, "page_view")
+        billing_blocked = await billing_service.public_blocked(conn)
     return {
         "slug": tenant["slug"], "name": tenant["name"], "vertical": tenant["vertical"],
         "timezone": tenant["timezone"], "branding": tenant["branding"], "profile": tenant["public_profile"],
-        "accepting_bookings": tenant["status"] == "active" and flow is not None,
+        # Abonnement suspendu (essai terminé sans offre, impayé après le délai de grâce, résiliation) :
+        # la page reste visible avec les coordonnées, mais n'accepte plus de nouvelle réservation.
+        "accepting_bookings": tenant["status"] == "active" and flow is not None and not billing_blocked,
         "services": services,
         "flow": {"version_id": str(flow[0]), "intro": flow[1].intro} if flow else None,
     }
@@ -141,6 +145,8 @@ async def start_session(slug: str, body: StartIn) -> dict:
     source = {k[:40]: str(v)[:200] for k, v in list(body.source.items())[:10]}
     token = new_token()
     async with tx(tenant_id=tenant["id"]) as conn:
+        if await billing_service.public_blocked(conn):
+            raise api_error(423, "not_accepting", "Les réservations en ligne sont momentanément indisponibles. Contactez directement l'entreprise.")
         flow = await load_default_flow(conn)
         if not flow:
             raise api_error(423, "not_accepting", "Aucun parcours n'est publié.")

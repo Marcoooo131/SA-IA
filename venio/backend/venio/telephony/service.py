@@ -10,7 +10,7 @@ import hmac
 import logging
 import secrets
 import string
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
@@ -142,17 +142,22 @@ async def _schedule_evaluation(conn, tenant_id, call, cfg: MissedCallConfig, lin
 
 # ----------------------------------------------------------------------------- décision
 
-async def _credits_left(conn, month_start) -> int | None:
+EXTRA_PERIOD = date(2000, 1, 1)   # solde des crédits achetés (packs), sans expiration — voir billing/service.py
+
+
+async def _credit_balances(conn, month_start) -> tuple[int, int]:
+    """(crédits restants du forfait mensuel, crédits achetés disponibles)."""
     lim = await fetch_one(
         conn,
         "SELECT pe.value FROM subscription s JOIN plan_entitlement pe ON pe.plan_id = s.plan_id"
         " AND pe.key = 'limit.sms_credits_per_month'",
     )
-    if not lim or lim["value"] is None:
-        return 0
     used = await fetch_one(
         conn, "SELECT value FROM usage_counter WHERE key = 'sms_credits' AND period = :p", p=month_start)
-    return int(lim["value"]) - int(used["value"] if used else 0)
+    extra = await fetch_one(
+        conn, "SELECT value FROM usage_counter WHERE key = 'sms_credits_extra' AND period = :p", p=EXTRA_PERIOD)
+    monthly = int(lim["value"]) if lim and lim["value"] is not None else 0
+    return max(0, monthly - int(used["value"] if used else 0)), max(0, int(extra["value"]) if extra else 0)
 
 
 async def _excluded_numbers(conn, line: dict[str, Any], tenant: dict[str, Any]) -> set[str]:
@@ -219,7 +224,7 @@ async def evaluate(conn: AsyncConnection, recovery_id: UUID) -> str:
         sent_30d=await count_sent(now - timedelta(days=30)) if number else 0,
         called_back=called_back, recent_request=recent_request, has_page=has_page,
         local_now=now.astimezone(tz), call_ended_local=ended.astimezone(tz),
-        credits_needed=credits_needed, credits_left=await _credits_left(conn, month_start),
+        credits_needed=credits_needed, credits_left=sum(await _credit_balances(conn, month_start)),
         sent_today=sent_today, daily_limit=DAILY_SAFETY_LIMIT, config=cfg,
     )
     country = tenant["holidays_country"]
@@ -241,16 +246,23 @@ async def evaluate(conn: AsyncConnection, recovery_id: UUID) -> str:
     seg = sms.segments(body)["segments"]
     await execute(conn, "INSERT INTO recovery_link (code, tenant_id, recovery_id) VALUES (:c, :t, :r)",
                   c=code, t=tenant["id"], r=recovery_id)
+    # Le forfait mensuel d'abord, puis les crédits achetés.
+    monthly_left, _ = await _credit_balances(conn, month_start)
+    from_monthly = min(seg, monthly_left)
+    from_extra = seg - from_monthly
     await execute(
         conn,
         "INSERT INTO usage_counter (tenant_id, key, period, value) VALUES (:t, 'sms_credits', :p, :v)"
         " ON CONFLICT (tenant_id, key, period) DO UPDATE SET value = usage_counter.value + :v",
-        t=tenant["id"], p=month_start, v=seg)
+        t=tenant["id"], p=month_start, v=from_monthly)
+    if from_extra:
+        await execute(conn, "UPDATE usage_counter SET value = value - :v WHERE key = 'sms_credits_extra' AND period = :p",
+                      v=from_extra, p=EXTRA_PERIOD)
     notif = await fetch_one(
         conn,
-        "INSERT INTO notification (tenant_id, channel, template_key, to_address, scheduled_for, body, segments)"
-        " VALUES (:t, 'sms', 'missed_call_sms', :to, now(), :b, :s) RETURNING id",
-        t=tenant["id"], to=number, b=body, s=seg)
+        "INSERT INTO notification (tenant_id, channel, template_key, to_address, scheduled_for, body, segments, extra_segments)"
+        " VALUES (:t, 'sms', 'missed_call_sms', :to, now(), :b, :s, :x) RETURNING id",
+        t=tenant["id"], to=number, b=body, s=seg, x=from_extra)
     await execute(conn, "INSERT INTO job (tenant_id, kind, ref_id) VALUES (:t, 'send_notification', :r)",
                   t=tenant["id"], r=notif["id"])
     await execute(
@@ -264,11 +276,15 @@ async def evaluate(conn: AsyncConnection, recovery_id: UUID) -> str:
 async def refund_credits(conn: AsyncConnection, notification: dict[str, Any]) -> None:
     """Un SMS qui ne part pas (simulé, envois payants désactivés) ne consomme pas de crédit."""
     seg = notification.get("segments") or 0
-    if seg:
+    extra = notification.get("extra_segments") or 0
+    if seg - extra:
         await execute(
             conn, "UPDATE usage_counter SET value = GREATEST(value - :v, 0) WHERE key = 'sms_credits'"
             " AND period = date_trunc('month', :at AT TIME ZONE (SELECT timezone FROM tenant))::date",
-            v=seg, at=notification["created_at"])
+            v=seg - extra, at=notification["created_at"])
+    if extra:
+        await execute(conn, "UPDATE usage_counter SET value = value + :v WHERE key = 'sms_credits_extra' AND period = :p",
+                      v=extra, p=EXTRA_PERIOD)
 
 
 async def recovery_line_provider(conn: AsyncConnection, notification_id: UUID) -> str | None:

@@ -1,9 +1,9 @@
 "use client";
-import { CalendarDays, ExternalLink, Inbox, LayoutDashboard, LogOut, PhoneMissed, RotateCcw, Send, Settings, Workflow } from "lucide-react";
+import { CalendarDays, CreditCard, ExternalLink, Inbox, LayoutDashboard, LogOut, PhoneMissed, RotateCcw, Send, Settings, Workflow } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
-import { Logo, Spinner, ToastProvider, cx } from "@/components/ui";
+import { Alert, Logo, Spinner, ToastProvider, cx } from "@/components/ui";
 import { ApiError, api } from "@/lib/api";
 import { DEMO, publicPagePath, withBase } from "@/lib/routes";
 
@@ -12,6 +12,7 @@ export type Me = {
   role: "owner" | "admin" | "member";
   tenant: { id: string; slug: string; name: string; vertical: string; timezone: string };
   subscription: { status: string; trial_ends_at: string | null; plan_name: string } | null;
+  access?: { state: string; public_blocked: boolean; days_left: number | null; grace_ends_at: string | null };
   public_url: string;
 };
 
@@ -68,6 +69,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               })}
             </nav>
             <div className="mt-auto hidden space-y-0.5 border-t border-line p-3 md:block">
+              <Link href="/app/abonnement" className={cx(linkClass, path.startsWith("/app/abonnement") && "bg-sunken text-ink")}>
+                <CreditCard aria-hidden className="h-4 w-4" strokeWidth={1.75} />Abonnement
+              </Link>
               <a href={withBase(publicPagePath(me.tenant.slug))} target="_blank" rel="noreferrer" className={linkClass}>
                 <ExternalLink aria-hidden className="h-4 w-4" strokeWidth={1.75} />Ma page de réservation
               </a>
@@ -83,10 +87,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </aside>
           <main className="min-w-0 px-4 py-6 md:px-10 md:py-8">
-            <div className="mx-auto max-w-6xl">{children}</div>
+            <div className="mx-auto max-w-6xl">
+              <AccessBanner me={me} />
+              {children}
+            </div>
           </main>
         </div>
       </ToastProvider>
     </MeContext.Provider>
   );
+}
+
+/** Bandeau d'état de l'abonnement : discret pendant l'essai, explicite quand les réservations sont menacées. */
+function AccessBanner({ me }: { me: Me }) {
+  const a = me.access;
+  const path = usePathname();
+  if (!a || path.startsWith("/app/abonnement")) return null;
+  const link = <Link href="/app/abonnement" className="font-semibold underline underline-offset-2">Voir l&apos;abonnement</Link>;
+  let kind: "info" | "warning" | "error" | null = null;
+  let text: React.ReactNode = null;
+  if (a.state === "trial" && a.days_left !== null && a.days_left <= 5) {
+    kind = "info"; text = <>Votre essai gratuit se termine dans {a.days_left} jour(s). Choisissez une offre pour que votre page continue d&apos;accepter des réservations. {link}</>;
+  } else if (a.state === "trial_expired") {
+    kind = "error"; text = <>Votre essai est terminé : votre page n&apos;accepte plus de nouvelles réservations. Vos données sont conservées. {link}</>;
+  } else if (a.state === "past_due") {
+    kind = "warning"; text = <>Le dernier paiement a échoué. Mettez à jour votre carte pour éviter la suspension des réservations. {link}</>;
+  } else if (a.state === "restricted" || a.state === "canceled") {
+    kind = "error"; text = <>Les nouvelles réservations sont suspendues ({a.state === "canceled" ? "abonnement résilié" : "impayé"}). Les rendez-vous confirmés sont maintenus. {link}</>;
+  }
+  if (!kind) return null;
+  return <div className="mb-6"><Alert kind={kind}>{text}</Alert></div>;
 }

@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, Response
 from pydantic import BaseModel, EmailStr, Field
 
+from ..billing.service import access_state
 from ..config import get_settings
 from ..db import execute, fetch_all, fetch_one, tx
 from ..deps import COOKIE, Auth, current_auth
@@ -108,7 +109,8 @@ async def me(auth: Auth = Depends(current_auth)) -> dict:
         tenant = await fetch_one(conn, "SELECT id, slug, name, vertical, timezone FROM tenant WHERE id = :t", t=auth.tenant_id)
         sub = await fetch_one(
             conn,
-            "SELECT s.status, s.trial_ends_at, s.current_period_end, p.code AS plan_code, p.name AS plan_name"
+            "SELECT s.status, s.trial_ends_at, s.current_period_end, s.past_due_since, s.stripe_subscription_id,"
+            " s.cancel_at_period_end, p.code AS plan_code, p.name AS plan_name"
             " FROM subscription s JOIN plan p ON p.id = s.plan_id WHERE s.tenant_id = :t",
             t=auth.tenant_id,
         )
@@ -122,7 +124,8 @@ async def me(auth: Auth = Depends(current_auth)) -> dict:
         "user": {"id": str(auth.user_id), "email": auth.email, "full_name": auth.full_name},
         "role": auth.role,
         "tenant": {**tenant, "id": str(tenant["id"])},
-        "subscription": sub,
+        "subscription": {k: v for k, v in sub.items() if k != "stripe_subscription_id"} if sub else None,
+        "access": access_state(sub),
         "workspaces": [{**w, "id": str(w["id"])} for w in workspaces],
         "public_url": f"{get_settings().public_base_url}/r/{tenant['slug']}",
     }

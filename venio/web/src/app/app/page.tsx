@@ -9,6 +9,7 @@ import { pct } from "@/lib/format";
 import { caseFilePath, publicPagePath, withBase } from "@/lib/routes";
 
 import { BookingRow, type Row } from "@/components/BookingRow";
+import { OnboardingCard } from "@/components/OnboardingCard";
 
 type Dashboard = {
   today: Row[]; upcoming: Row[];
@@ -46,6 +47,7 @@ export default function DashboardPage() {
           (site web, fiche Google, signature d&apos;email).
         </Alert>
       )}
+      <OnboardingCard />
       {error && <Alert>{error}</Alert>}
       {!d ? <Spinner /> : (
         <>

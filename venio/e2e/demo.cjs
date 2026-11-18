@@ -89,7 +89,10 @@ fs.mkdirSync(`${SP}/shots`, { recursive: true });
   await c.goto(manage);
   await c.waitForSelector('text=voici votre rendez-vous');
   await c.click('button:has-text("Déplacer")');
-  await c.locator('.grid button:has-text(":")').nth(2).click();
+  // Le nombre de créneaux restants dépend de l'heure d'exécution (fin de journée : parfois un seul).
+  const moveSlots = c.locator('.grid button:has-text(":")');
+  await moveSlots.first().waitFor();
+  await moveSlots.nth(Math.min(2, (await moveSlots.count()) - 1)).click();
   await c.waitForSelector('text=a été déplacé');
   await c.click('button:has-text("Annuler")'); await c.click('button:has-text("Oui, annuler")');
   await c.waitForSelector('text=Votre rendez-vous est annulé');

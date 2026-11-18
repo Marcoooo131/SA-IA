@@ -40,6 +40,13 @@ class Settings(BaseSettings):
     sms_provider: str = "brevo"
     sms_default_sender: str = "Venio"
 
+    # Stripe (abonnements, packs de SMS). Mode test uniquement tant que stripe_live_enabled vaut False :
+    # une clé réelle (sk_live_…) est alors refusée au démarrage et à chaque appel.
+    stripe_secret_key: str = ""
+    stripe_webhook_secret: str = ""
+    stripe_live_enabled: bool = False
+    billing_grace_days: int = 14   # impayé : accès maintenu ce nombre de jours, puis nouvelles réservations suspendues
+
     # Envoi des notifications dans le processus de l'API (une seule instance, ex. offre gratuite).
     run_worker: bool = False
 
