@@ -146,6 +146,10 @@ Contenu (détail en [01-strategie.md §6](01-strategie.md#6-fonctionnalités-ind
 
 ## 19. Feuille de route jusqu'au lancement
 
+> **Mise à jour 18/11/2026 :** la pilote 0.1 est en ligne. Les étapes suivantes (direction artistique, appels manqués,
+> Stripe, vitrine, démonstration, pilotes) sont ordonnées dans [05 — Feuille de route](05-extension-acquisition.md#feuille-de-route-mise-à-jour) ;
+> le tableau ci-dessous reste la référence pour la bêta payante et le lancement.
+
 | Période | Phase | Livrables | Critère de passage |
 |---|---|---|---|
 | **S1–S4** | **Validation** (sans code produit) | 20–30 entretiens d'artisans et déménageurs ; page de vente + liste d'attente ; test de prix ; **pilotes « concierge »** : parcours monté à la main avec des outils existants pour 5 entreprises | ≥ 5 entreprises prêtes à piloter, ≥ 3 pré-engagements écrits |

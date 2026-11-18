@@ -14,6 +14,13 @@
 - **Pilotes sur les versions de test** dès qu'elles sont stables.
 - Développement : voir [`../venio/`](../venio/README.md) (version pilote 0.1).
 
+## Extension stratégique (18/11/2026) — prioritaire
+
+Trois piliers : **ne plus perdre de prospects** (récupération des appels manqués), **simplifier la prise de rendez-vous**,
+**automatiser le suivi**. Conception complète, coûts, limites, webhooks, sécurité, tests et **nouvelle feuille de route** :
+[05-extension-acquisition.md](05-extension-acquisition.md) (modules A à E). Elle prime sur les sections du 01–04 qu'elle
+met à jour (grille d'offres §11.4, direction artistique, feuille de route §19).
+
 ## Sommaire
 
 | # | Point demandé | Document |
@@ -39,6 +46,12 @@
 | 19 | Feuille de route jusqu'au lancement | [04-business-plan.md §19](04-business-plan.md#19-feuille-de-route-jusquau-lancement) |
 | — | Ressources nécessaires | [04-business-plan.md §20](04-business-plan.md#20-ressources-nécessaires) |
 | — | Décisions attendues de votre part | [04-business-plan.md §21](04-business-plan.md#21-décisions-à-valider-avant-de-coder) |
+| A | Récupération des appels manqués | [05 §A](05-extension-acquisition.md#a-récupération-automatique-des-appels-manqués) |
+| B | Vitrine commerciale et démonstration | [05 §B](05-extension-acquisition.md#b-vitrine-commerciale-et-démonstration) |
+| C | Stripe et parcours commercial | [05 §C](05-extension-acquisition.md#c-stripe-et-parcours-commercial) |
+| D | Direction artistique et design system | [05 §D](05-extension-acquisition.md#d-direction-artistique-et-design-system) |
+| E | Proposition de valeur en trois piliers | [05 §E](05-extension-acquisition.md#e-nouvelle-proposition-de-valeur-trois-piliers) |
+| — | Feuille de route mise à jour (18/11/2026) | [05 — Feuille de route](05-extension-acquisition.md#feuille-de-route-mise-à-jour) |
 
 ## En une page
 

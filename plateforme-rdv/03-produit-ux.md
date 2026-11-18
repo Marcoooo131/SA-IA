@@ -8,6 +8,10 @@ le développement.
 
 ## Direction artistique (proposition provisoire)
 
+> **Remplacée le 18/11/2026** par la direction artistique et le design system du
+> [05 §D](05-extension-acquisition.md#d-direction-artistique-et-design-system) (« le fil », contrastes vérifiés,
+> trois interfaces sur un seul design system). Le texte ci-dessous est conservé pour l'historique.
+
 - **Deux univers distincts :**
   - *Client final* : chaleureux, aéré, gros boutons tactiles, une seule décision par écran, couleurs **de l'entreprise cliente**
     (notre marque reste discrète : « Propulsé par Venio »).

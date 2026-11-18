@@ -31,10 +31,11 @@ peut réserver. Pour montrer le produit, pas pour de vrais clients. Construction
 | Paramètres : page publique, couleurs, points forts, horaires, prestations, absences | ✅ |
 | Parcours : édition des textes, icônes et caractère obligatoire, brouillon, publication versionnée (les demandes en cours restent sur leur version) | ✅ — l'ajout de questions/conditions dans l'interface n'est **pas encore** disponible (modification par nous en attendant) |
 | Statistiques : entonnoir par question, conversion, abandons, absences, avec avertissement de faible volume | ✅ |
-| Emails (confirmation, rappel J-1, report, annulation, alertes entreprise) via file de tâches + worker | ✅ Fournisseur `log` par défaut : **rien n'est envoyé**, le statut affiché est « Non envoyé (mode test) ». Envoi réel avec `VENIO_EMAIL_PROVIDER=smtp` (non testé contre un vrai serveur SMTP) |
+| Emails (confirmation, rappel J-1, report, annulation, alertes entreprise) via file de tâches + worker | ✅ Fournisseur `log` par défaut : **rien n'est envoyé**, le statut affiché est « Non envoyé (mode test) ». Envoi réel avec `VENIO_EMAIL_PROVIDER=brevo` (API web Brevo, **vérifié en production le 18/11/2026**) ou `smtp` (bloqué sur l'offre gratuite de Render) |
 | SMS | ❌ Pas encore : le consentement est recueilli, l'envoi viendra avec le choix du fournisseur |
 | Abonnements Stripe, quotas appliqués, back-office interne | ❌ Prochaine étape (offres et quotas déjà en base ; essai Pro de 14 jours créé à l'inscription, non bloquant) |
 | Synchronisation Google / Outlook, messagerie client, invitations de collaborateurs | ❌ À venir |
+| Récupération des appels manqués, vitrine commerciale, démonstration interactive, nouveau design system | 📐 Conçus, non développés — [05-extension-acquisition.md](../plateforme-rdv/05-extension-acquisition.md) |
 
 ## Lancer en local
 

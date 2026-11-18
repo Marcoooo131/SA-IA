@@ -239,6 +239,9 @@ Résiliation : à la fin de la période payée → lecture seule 30 j → export
 
 ### 11.4 Grille d'offres proposée (hypothèses à valider en entretiens)
 
+> **Mise à jour 18/11/2026 :** appels manqués, lignes téléphoniques et crédits SMS (qui remplacent la ligne « SMS inclus »)
+> sont définis dans [05 — Offres et limites](05-extension-acquisition.md#offres-et-limites-mises-à-jour).
+
 | | **Starter** | **Pro** | **Business** |
 |---|---|---|---|
 | Prix HT / mois (mensuel) | 29 € | 69 € | 149 € |
