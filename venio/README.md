@@ -6,6 +6,8 @@ et reçoivent une confirmation. L'entreprise reçoit un dossier structuré.
 
 Conception et stratégie : [`../plateforme-rdv/`](../plateforme-rdv/README.md).
 
+**Mise en ligne gratuite (Supabase + Render + Netlify + Brevo) : [DEPLOIEMENT-GRATUIT.md](DEPLOIEMENT-GRATUIT.md).**
+
 ## État réel des fonctionnalités
 
 | Fonctionnalité | État |
@@ -18,7 +20,7 @@ Conception et stratégie : [`../plateforme-rdv/`](../plateforme-rdv/README.md).
 | Créneaux : horaires par collaborateur, pauses, jours fériés FR, délai minimum, horizon, battement (trajet), absences, changement d'heure | ✅ Testé |
 | Anti-double réservation : blocage temporaire 10 min + contrainte d'exclusion PostgreSQL | ✅ Testé (15 réservations simultanées → 1 seule réussit) |
 | Zone d'intervention par codes postaux, adresse et téléphone exigés pour les visites sur place | ✅ |
-| Photos/PDF : 10 Mo max, ré-encodage des images (suppression EXIF/GPS), accès réservé à l'entreprise | ✅ Stockage disque local (S3 à brancher pour la production multi-serveurs) |
+| Photos/PDF : 10 Mo max, ré-encodage des images (suppression EXIF/GPS), accès réservé à l'entreprise | ✅ Stockage disque local ou bucket privé Supabase Storage (`VENIO_STORAGE_BACKEND=supabase`) |
 | Confirmation, lien de gestion signé (report, annulation, délai configurable), fichier agenda .ics | ✅ |
 | Espace entreprise : tableau de bord, demandes, dossier complet, notes, statuts, agenda semaine, terminé/absent/annulé, report | ✅ |
 | Paramètres : page publique, couleurs, points forts, horaires, prestations, absences | ✅ |
@@ -60,7 +62,7 @@ Les fichiers Docker sont vérifiés par l'intégration continue ; ils n'ont pas 
 ```bash
 cd backend
 source <(scripts/test-db.sh)   # démarre un PostgreSQL 16 jetable et exporte VENIO_TEST_ADMIN_URL
-pytest -q                      # 29 tests : moteur de parcours, créneaux, parcours complet, isolation, concurrence
+pytest -q                      # 30 tests : moteur de parcours, créneaux, parcours complet, isolation, concurrence
 cd ../web && npm run typecheck && npm run build
 node ../e2e/smoke.js /tmp/venio-shots   # scénario navigateur complet (serveurs démarrés)
 ```
@@ -76,7 +78,9 @@ node ../e2e/smoke.js /tmp/venio-shots   # scénario navigateur complet (serveurs
 | `VENIO_PUBLIC_BASE_URL` | URL publique de l'interface (liens dans les emails) |
 | `VENIO_COOKIE_SECURE` | `true` derrière HTTPS |
 | `VENIO_EMAIL_PROVIDER` | `log` (aucun envoi) ou `smtp` + `VENIO_SMTP_HOST/PORT/USER/PASSWORD`, `VENIO_EMAIL_FROM` |
-| `VENIO_STORAGE_DIR` | Dossier des fichiers déposés |
+| `VENIO_STORAGE_DIR` | Dossier des fichiers déposés (stockage local) |
+| `VENIO_STORAGE_BACKEND` | `local` ou `supabase` (+ `VENIO_SUPABASE_URL`, `VENIO_SUPABASE_SERVICE_KEY`, `VENIO_SUPABASE_BUCKET`) |
+| `VENIO_RUN_WORKER` | `true` : envoi des emails dans le processus de l'API (une seule instance) |
 
 ## Architecture
 

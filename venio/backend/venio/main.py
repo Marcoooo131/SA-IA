@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -7,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings
 from .db import dispose_engine
 from .modules import business, identity, public, settings_api
+from .modules.notifications import worker_loop
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
 
@@ -19,7 +21,10 @@ async def lifespan(app: FastAPI):
             raise RuntimeError("VENIO_SECRET_KEY doit être défini (32 caractères minimum) en production.")
         if not settings.cookie_secure:
             raise RuntimeError("VENIO_COOKIE_SECURE doit valoir true en production.")
+    worker = asyncio.create_task(worker_loop()) if settings.run_worker else None
     yield
+    if worker:
+        worker.cancel()
     await dispose_engine()
 
 

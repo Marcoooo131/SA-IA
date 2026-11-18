@@ -4,8 +4,8 @@ import type { NextConfig } from "next";
 const API_URL = process.env.VENIO_API_URL ?? "http://127.0.0.1:8000";
 
 const config: NextConfig = {
-  output: "standalone",
-  outputFileTracingRoot: __dirname,
+  // Image Docker autonome ; Netlify utilise son propre adaptateur.
+  ...(process.env.NEXT_STANDALONE === "1" ? { output: "standalone" as const, outputFileTracingRoot: __dirname } : {}),
   async rewrites() {
     return [{ source: "/api/:path*", destination: `${API_URL}/api/:path*` }];
   },

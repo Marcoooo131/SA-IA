@@ -7,4 +7,4 @@ RUN pip install --no-cache-dir . && useradd --system --uid 10001 venio && mkdir 
 USER venio
 ENV VENIO_STORAGE_DIR=/data/uploads
 EXPOSE 8000
-CMD ["uvicorn", "venio.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+CMD ["sh", "-c", "exec uvicorn venio.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips '*'"]

@@ -5,6 +5,7 @@ Aucun compte n'est demandé au client final. Un parcours est protégé par un je
 """
 from __future__ import annotations
 
+import asyncio
 import re
 from datetime import date, datetime, timedelta
 from typing import Any, Literal
@@ -241,7 +242,7 @@ async def upload(slug: str, session_id: UUID, file: UploadFile = File(...),
         if count["n"] >= 20:
             raise api_error(422, "too_many_files", "Nombre maximum de fichiers atteint.")
         try:
-            key = storage.save(str(tenant["id"]), data, file.content_type or "")
+            key = await asyncio.to_thread(storage.save, str(tenant["id"]), data, file.content_type or "")
         except storage.StorageError as exc:
             raise api_error(422, "invalid_file", str(exc)) from None
         row = await fetch_one(

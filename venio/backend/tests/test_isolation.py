@@ -82,3 +82,21 @@ async def test_every_tenant_table_has_rls(database):
         await conn.close()
     unprotected = [r["relname"] for r in rows if not (r["relrowsecurity"] and r["relforcerowsecurity"])]
     assert sorted(unprotected) == ["job", "user_session"]  # tables plateforme : identifiants uniquement, jamais exposées
+
+
+async def test_platform_tables_closed_to_other_roles(client_factory, database):
+    """Un rôle étranger à l'application (ex. l'API REST publique de Supabase) ne lit rien, même avec un GRANT."""
+    await signup(client_factory())
+    conn = await asyncpg.connect(database["admin_url"])
+    try:
+        await conn.execute("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'outsider') THEN CREATE ROLE outsider NOBYPASSRLS; END IF; END $$")
+        await conn.execute("GRANT SELECT ON app_user, user_session, job, plan, tenant, booking TO outsider")
+        for t in ("app_user", "user_session", "job", "plan", "tenant", "booking"):
+            try:
+                async with conn.transaction():
+                    await conn.execute("SET LOCAL ROLE outsider")
+                    assert await conn.fetchval(f"SELECT count(*) FROM {t}") == 0, t
+            except asyncpg.InsufficientPrivilegeError:
+                pass  # refus explicite : tout aussi fermé
+    finally:
+        await conn.close()

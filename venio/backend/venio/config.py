@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_starttls: bool = True
 
+    # Envoi des notifications dans le processus de l'API (une seule instance, ex. offre gratuite).
+    run_worker: bool = False
+
     hold_minutes: int = 10
     trial_days: int = 14
 

@@ -1,0 +1,45 @@
+# Render — API Venio (offre gratuite). Créer via « New > Blueprint » en pointant sur ce dépôt.
+# Les valeurs marquées sync: false sont saisies dans le tableau de bord Render (jamais dans Git).
+services:
+  - type: web
+    name: venio-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./venio/backend/Dockerfile
+    dockerContext: ./venio/backend
+    healthCheckPath: /api/health
+    autoDeploy: true
+    buildFilter:
+      paths: ["venio/backend/**"]
+    envVars:
+      - key: VENIO_ENVIRONMENT
+        value: production
+      - key: VENIO_COOKIE_SECURE
+        value: "true"
+      - key: VENIO_RUN_WORKER
+        value: "true"
+      - key: VENIO_SECRET_KEY
+        generateValue: true
+      - key: VENIO_DATABASE_URL          # postgresql+asyncpg://venio.<ref>:<mot de passe>@<hôte du pooler session>:5432/postgres
+        sync: false
+      - key: VENIO_PUBLIC_BASE_URL       # https://<votre-site>.netlify.app
+        sync: false
+      - key: VENIO_STORAGE_BACKEND
+        value: supabase
+      - key: VENIO_SUPABASE_URL
+        value: https://ycmtyvcftzmnsezueykf.supabase.co
+      - key: VENIO_SUPABASE_SERVICE_KEY  # clé secrète Supabase (sb_secret_… ou service_role)
+        sync: false
+      - key: VENIO_EMAIL_PROVIDER        # "log" tant que Brevo n'est pas configuré, puis "smtp"
+        value: log
+      - key: VENIO_SMTP_HOST
+        value: smtp-relay.brevo.com
+      - key: VENIO_SMTP_PORT
+        value: "587"
+      - key: VENIO_SMTP_USER
+        sync: false
+      - key: VENIO_SMTP_PASSWORD
+        sync: false
+      - key: VENIO_EMAIL_FROM            # ex. "Venio <rdv@votre-domaine.fr>" (adresse validée dans Brevo)
+        sync: false

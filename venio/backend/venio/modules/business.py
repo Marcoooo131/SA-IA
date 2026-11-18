@@ -1,6 +1,7 @@
 """Espace entreprise : tableau de bord, rendez-vous, dossiers, notes, fichiers, historique d'envois."""
 from __future__ import annotations
 
+import asyncio
 from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 from uuid import UUID
@@ -292,7 +293,7 @@ async def download(file_id: UUID, auth: Auth = Depends(current_auth)) -> Respons
         f = await fetch_one(conn, "SELECT storage_key, mime_type, original_name FROM file_object WHERE id = :f", f=file_id)
     if not f:
         raise api_error(404, "not_found", "Fichier introuvable.")
-    data = storage.read(f["storage_key"])
+    data = await asyncio.to_thread(storage.read, f["storage_key"])
     safe_name = "".join(ch for ch in f["original_name"] if ch.isalnum() or ch in "._- ") or "fichier"
     return Response(content=data, media_type=f["mime_type"], headers={
         "Content-Disposition": f'inline; filename="{safe_name}"', "X-Content-Type-Options": "nosniff",
