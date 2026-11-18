@@ -52,6 +52,8 @@ met à jour (grille d'offres §11.4, direction artistique, feuille de route §19
 | D | Direction artistique et design system | [05 §D](05-extension-acquisition.md#d-direction-artistique-et-design-system) |
 | E | Proposition de valeur en trois piliers | [05 §E](05-extension-acquisition.md#e-nouvelle-proposition-de-valeur-trois-piliers) |
 | — | Feuille de route mise à jour (18/11/2026) | [05 — Feuille de route](05-extension-acquisition.md#feuille-de-route-mise-à-jour) |
+| — | Kit pilotes appels manqués (étape 7) | [06-pilotes.md](06-pilotes.md) |
+| — | Liste de contrôle du lancement (étape 8) | [07-lancement.md](07-lancement.md) |
 
 ## En une page
 

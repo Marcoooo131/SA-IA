@@ -122,7 +122,7 @@ export default function MissedCallsPage() {
                     </Td>
                     <Td className="text-right">
                       <div className="flex justify-end gap-1">
-                        {c.number_tel && <a href={`tel:${c.number_tel}`} className={buttonClass("ghost", "sm")} aria-label={`Rappeler le ${c.number_display}`}><Phone aria-hidden className="h-4 w-4" />Rappeler</a>}
+                        {c.number_tel && <a href={`tel:${c.number_tel}`} className={buttonClass("ghost", "sm", "px-2")} aria-label={`Rappeler le ${c.number_display}`} title="Rappeler"><Phone aria-hidden className="h-4 w-4" /></a>}
                         <Button variant="ghost" size="sm" onClick={() => setDetail(c)}>Détail</Button>
                       </div>
                     </Td>

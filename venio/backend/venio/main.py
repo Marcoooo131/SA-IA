@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .db import dispose_engine
-from .modules import billing, business, identity, missed_calls, public, settings_api
+from .modules import billing, business, demo, identity, missed_calls, public, settings_api
 from .modules.notifications import worker_loop
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -57,7 +57,7 @@ def create_app() -> FastAPI:
     app.include_router(missed_calls.public_router)
     app.include_router(billing.public_router)
     app.include_router(billing.onboarding_router)
-    for module in (identity, public, business, settings_api, missed_calls, billing):
+    for module in (identity, public, business, settings_api, missed_calls, billing, demo):
         app.include_router(module.router)
     return app
 

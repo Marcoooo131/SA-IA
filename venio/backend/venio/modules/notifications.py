@@ -269,6 +269,13 @@ async def deliver(conn: AsyncConnection, notification_id: UUID) -> str:
     notif = await fetch_one(conn, "SELECT * FROM notification WHERE id = :n FOR UPDATE", n=notification_id)
     if not notif or notif["status"] != "scheduled":
         return "ignored"
+    demo = await fetch_one(conn, "SELECT is_demo FROM tenant WHERE id = :t", t=notif["tenant_id"])
+    if demo and demo["is_demo"]:
+        # Espace de démonstration : rien ne part, jamais (ni email ni SMS), quel que soit le réglage.
+        from ..telephony.service import refund_credits
+        await refund_credits(conn, notif)
+        await _mark(conn, notification_id, "logged", "demonstration")
+        return "logged"
     if notif.get("body"):
         subject, body = None, notif["body"]  # message pré-rendu (SMS de récupération d'appel manqué)
     else:
@@ -347,9 +354,15 @@ async def run_due_jobs(batch: int = 20) -> int:
 
 
 async def worker_loop(interval_s: float = 10.0) -> None:
+    turns = 0
     while True:
         try:
             await run_due_jobs()
+            turns += 1
+            if turns % 60 == 1:  # environ toutes les 10 minutes : suppression des espaces de démonstration expirés
+                from .demo import purge
+                async with tx() as conn:
+                    await purge(conn)
         except Exception:  # noqa: BLE001
             log.exception("boucle worker")
         await asyncio.sleep(interval_s)

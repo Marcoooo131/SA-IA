@@ -42,12 +42,13 @@ export function ThreadProgress({ value, label = "Progression" }: { value: number
 }
 
 /** Cadre de téléphone pour présenter une vraie page du produit (vitrine, démonstration). */
-export function PhoneFrame({ children, className, label }: { children: ReactNode; className?: string; label?: string }) {
+export function PhoneFrame({ children, className, label, size = "md" }: { children: ReactNode; className?: string; label?: string; size?: "sm" | "md" }) {
+  const sm = size === "sm";
   return (
-    <figure className={cx("mx-auto w-[300px] rounded-[2.2rem] border border-ink/15 bg-ink p-2.5 shadow-float", className)}>
-      <div className="relative h-[560px] overflow-hidden rounded-[1.7rem] bg-paper">
-        <span aria-hidden className="absolute left-1/2 top-2 z-10 h-5 w-20 -translate-x-1/2 rounded-full bg-ink" />
-        <div className="h-full overflow-y-auto pt-9">{children}</div>
+    <figure className={cx("mx-auto rounded-[2.2rem] border border-ink/15 bg-ink shadow-float", sm ? "w-[210px] p-2" : "w-[300px] p-2.5", className)}>
+      <div className={cx("relative overflow-hidden bg-paper", sm ? "h-[420px] rounded-[1.6rem]" : "h-[560px] rounded-[1.7rem]")}>
+        <span aria-hidden className={cx("absolute left-1/2 z-10 -translate-x-1/2 rounded-full bg-ink", sm ? "top-1.5 h-4 w-14" : "top-2 h-5 w-20")} />
+        <div className={cx("h-full overflow-y-auto", sm ? "pt-7" : "pt-9")} tabIndex={0} role="region" aria-label={label ?? "Aperçu sur téléphone"}>{children}</div>
       </div>
       {label && <figcaption className="sr-only">{label}</figcaption>}
     </figure>

@@ -118,6 +118,7 @@ class Facts:
     sent_today: int
     daily_limit: int
     config: MissedCallConfig = field(default_factory=MissedCallConfig)
+    ignore_hours: bool = False        # espace de démonstration uniquement (aucun envoi réel n'y est possible)
 
 
 @dataclass(frozen=True)
@@ -155,7 +156,7 @@ def decide(f: Facts, is_holiday: Callable[[date], bool]) -> Decision:
         return Decision("skip", "recent_request")
     if not f.has_page:
         return Decision("skip", "no_page")
-    if not in_window(f.local_now, cfg, is_holiday):
+    if not f.ignore_hours and not in_window(f.local_now, cfg, is_holiday):
         nxt = next_window_start(f.local_now, cfg, is_holiday)
         too_late = nxt is None or nxt - f.call_ended_local > timedelta(hours=cfg.max_defer_hours)
         if cfg.out_of_hours == "skip" or too_late:

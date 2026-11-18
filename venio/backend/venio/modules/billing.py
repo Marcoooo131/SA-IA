@@ -63,6 +63,13 @@ async def _credits(conn) -> dict[str, Any]:
             "extra_balance": int(extra["value"]) if extra else 0}
 
 
+async def _refuse_demo(auth: Auth) -> None:
+    async with tx(tenant_id=auth.tenant_id) as conn:
+        t = await fetch_one(conn, "SELECT is_demo FROM tenant")
+    if t and t["is_demo"]:
+        raise api_error(403, "demo", "Espace de démonstration : aucun paiement n'est possible.")
+
+
 @router.get("")
 async def billing(auth: Auth = Depends(current_auth)) -> dict:
     s = get_settings()
@@ -108,6 +115,7 @@ class CheckoutIn(BaseModel):
 
 @router.post("/checkout")
 async def checkout(body: CheckoutIn, auth: Auth = Depends(admin)) -> dict:
+    await _refuse_demo(auth)
     async with tx(tenant_id=auth.tenant_id) as conn:
         sub = await load_subscription(conn)
         if sub["stripe_subscription_id"] and sub["status"] not in ("canceled", "incomplete"):
@@ -135,6 +143,7 @@ async def checkout(body: CheckoutIn, auth: Auth = Depends(admin)) -> dict:
 
 @router.post("/portal")
 async def portal(auth: Auth = Depends(admin)) -> dict:
+    await _refuse_demo(auth)
     async with tx(tenant_id=auth.tenant_id) as conn:
         sub = await load_subscription(conn)
         if not sub or not sub["stripe_customer_id"]:
@@ -151,6 +160,7 @@ class PackIn(BaseModel):
 
 @router.post("/sms-pack")
 async def buy_pack(body: PackIn, auth: Auth = Depends(admin)) -> dict:
+    await _refuse_demo(auth)
     pack = catalog.PACKS[body.pack]
     async with tx(tenant_id=auth.tenant_id) as conn:
         price_id = (await _catalog(conn))["prices"][catalog.pack_lookup(body.pack)]
@@ -163,6 +173,20 @@ async def buy_pack(body: PackIn, auth: Auth = Depends(admin)) -> dict:
         "success_url": _app_url("/app/abonnement?retour=pack"), "cancel_url": _app_url("/app/abonnement?retour=annule"),
     })
     return {"url": session["url"]}
+
+
+@public_router.get("/api/plans")
+async def public_plans() -> dict:
+    """Offres publiques pour la page Tarifs de la vitrine (même source que l'abonnement)."""
+    async with tx() as conn:
+        plans = await fetch_all(conn, "SELECT code, name, monthly_cents, yearly_cents FROM plan WHERE is_public AND is_active ORDER BY monthly_cents")
+        ents = await fetch_all(conn, "SELECT p.code, e.key, e.value FROM plan_entitlement e JOIN plan p ON p.id = e.plan_id")
+    by_plan: dict[str, dict[str, Any]] = {}
+    for e in ents:
+        by_plan.setdefault(e["code"], {})[e["key"]] = e["value"]
+    return {"plans": [{**p, "entitlements": by_plan.get(p["code"], {})} for p in plans],
+            "packs": [{"code": c, **v} for c, v in catalog.PACKS.items()],
+            "trial_days": get_settings().trial_days, "currency": "EUR", "taxes": "HT"}
 
 
 @public_router.post("/api/billing/webhook")

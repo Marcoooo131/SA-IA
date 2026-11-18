@@ -334,6 +334,18 @@ async def simulate(body: SimulateIn, auth: Auth = Depends(current_auth)) -> dict
         raw = json.dumps({"events": events}).encode()
         parsed = SimulatorAdapter().parse(raw, {})
         await ingest(conn, auth.tenant_id, line, parsed)
+        demo = await fetch_one(conn, "SELECT is_demo FROM tenant")
+        if demo["is_demo"]:
+            # Démonstration : la décision et l'envoi (simulé) sont traités tout de suite, sans attendre le worker.
+            from ..telephony.service import evaluate
+            from .notifications import deliver
+            rec = await fetch_one(conn, "SELECT r.id FROM missed_call_recovery r JOIN call c ON c.id = r.call_id"
+                                        " WHERE c.provider_call_id = :c", c=call_id)
+            if rec:
+                await evaluate(conn, rec["id"])
+                n = await fetch_one(conn, "SELECT notification_id FROM missed_call_recovery WHERE id = :r", r=rec["id"])
+                if n and n["notification_id"]:
+                    await deliver(conn, n["notification_id"])
     return {"call_id": call_id, "scenario": body.scenario}
 
 

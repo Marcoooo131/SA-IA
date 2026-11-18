@@ -1,5 +1,5 @@
 "use client";
-import { Hammer, Sparkles, Truck } from "lucide-react";
+import { Car, Hammer, KeyRound, Sparkles, Truck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -9,6 +9,8 @@ import { api, errorMessage } from "@/lib/api";
 const VERTICALS = [
   { code: "renovation", label: "Rénovation de l'habitat", Icon: Hammer, hint: "Salle de bain, cuisine, menuiseries, isolation…" },
   { code: "demenagement", label: "Déménagement", Icon: Truck, hint: "Visite ou visio d'estimation du volume" },
+  { code: "garage", label: "Garage et atelier automobile", Icon: Car, hint: "Entretien, diagnostic de panne, pneus, carrosserie" },
+  { code: "immobilier", label: "Agence immobilière", Icon: KeyRound, hint: "Estimation, mise en location, rendez-vous en agence" },
   { code: "generique", label: "Autre activité", Icon: Sparkles, hint: "Un parcours simple, adaptable à tout métier" },
 ];
 

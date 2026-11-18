@@ -175,7 +175,7 @@ async def evaluate(conn: AsyncConnection, recovery_id: UUID) -> str:
         return "ignored"
     call = await fetch_one(conn, "SELECT * FROM call WHERE id = :c", c=rec["call_id"])
     line = await fetch_one(conn, "SELECT * FROM telephony_line WHERE id = :l", l=call["line_id"])
-    tenant = await fetch_one(conn, "SELECT id, slug, name, timezone, holidays_country, status, public_profile FROM tenant")
+    tenant = await fetch_one(conn, "SELECT id, slug, name, timezone, holidays_country, status, public_profile, is_demo FROM tenant")
     number = call["from_number"]
     # Sérialise les décisions pour un même numéro : deux appels simultanés ne déclenchent qu'un SMS.
     if number:
@@ -225,7 +225,7 @@ async def evaluate(conn: AsyncConnection, recovery_id: UUID) -> str:
         called_back=called_back, recent_request=recent_request, has_page=has_page,
         local_now=now.astimezone(tz), call_ended_local=ended.astimezone(tz),
         credits_needed=credits_needed, credits_left=sum(await _credit_balances(conn, month_start)),
-        sent_today=sent_today, daily_limit=DAILY_SAFETY_LIMIT, config=cfg,
+        sent_today=sent_today, daily_limit=DAILY_SAFETY_LIMIT, config=cfg, ignore_hours=bool(tenant["is_demo"]),
     )
     country = tenant["holidays_country"]
     d = decide(facts, lambda day: bool(country) and is_holiday(country, day))

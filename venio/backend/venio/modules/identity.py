@@ -17,7 +17,7 @@ from .provisioning import create_tenant
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-Vertical = Literal["renovation", "demenagement", "generique"]
+Vertical = Literal["renovation", "demenagement", "garage", "immobilier", "generique"]
 
 
 class SignupIn(BaseModel):
@@ -106,7 +106,7 @@ async def logout(response: Response, auth: Auth = Depends(current_auth)) -> dict
 @router.get("/me")
 async def me(auth: Auth = Depends(current_auth)) -> dict:
     async with tx(tenant_id=auth.tenant_id, user_id=auth.user_id) as conn:
-        tenant = await fetch_one(conn, "SELECT id, slug, name, vertical, timezone FROM tenant WHERE id = :t", t=auth.tenant_id)
+        tenant = await fetch_one(conn, "SELECT id, slug, name, vertical, timezone, is_demo FROM tenant WHERE id = :t", t=auth.tenant_id)
         sub = await fetch_one(
             conn,
             "SELECT s.status, s.trial_ends_at, s.current_period_end, s.past_due_since, s.stripe_subscription_id,"

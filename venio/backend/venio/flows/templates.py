@@ -234,7 +234,111 @@ GENERIQUE: dict[str, Any] = {
     },
 }
 
-TEMPLATES: dict[str, dict[str, Any]] = {t["code"]: t for t in (RENOVATION, DEMENAGEMENT, GENERIQUE)}
+GARAGE: dict[str, Any] = {
+    "code": "garage",
+    "label": "Garage et atelier automobile",
+    "services": [
+        {"key": "rdv_atelier", "name": "Rendez-vous atelier", "meeting_type": "at_location",
+         "duration_min": 60, "min_notice_min": 240, "max_horizon_days": 30,
+         "description": "Déposez votre véhicule à l'atelier à l'heure convenue."},
+        {"key": "diagnostic", "name": "Diagnostic", "meeting_type": "at_location",
+         "duration_min": 45, "min_notice_min": 120, "max_horizon_days": 21,
+         "description": "Nous identifions l'origine du problème et vous remettons un devis."},
+        {"key": "appel_conseil", "name": "Appel conseil", "meeting_type": "phone",
+         "duration_min": 15, "min_notice_min": 60, "max_horizon_days": 14,
+         "description": "Un échange rapide pour vous orienter avant de venir."},
+    ],
+    "flow": {
+        "intro": "Bonjour ! Dites-nous ce dont votre véhicule a besoin, puis choisissez votre créneau.",
+        "steps": [
+            {"id": "besoin", "type": "single_choice", "title": "De quoi votre véhicule a-t-il besoin ?",
+             "options": [
+                 {"value": "entretien", "label": "Entretien / révision", "icon": "wrench"},
+                 {"value": "panne", "label": "Panne ou bruit anormal", "icon": "circle-help"},
+                 {"value": "pneus", "label": "Pneus", "icon": "car"},
+                 {"value": "freins", "label": "Freins", "icon": "shield-check"},
+                 {"value": "climatisation", "label": "Climatisation", "icon": "snowflake"},
+                 {"value": "carrosserie", "label": "Carrosserie", "icon": "paint-roller"},
+                 {"value": "controle_technique", "label": "Préparation au contrôle technique", "icon": "check"}],
+             "routes": [{"when": {"field": "besoin", "op": "eq", "value": "panne"}, "goto": "symptomes"}],
+             "next": "vehicule"},
+            {"id": "symptomes", "type": "long_text", "title": "Décrivez ce que vous constatez",
+             "placeholder": "Ex. : voyant moteur allumé, bruit en freinant, démarrage difficile…", "next": "roulant"},
+            {"id": "roulant", "type": "yes_no", "title": "Le véhicule peut-il rouler jusqu'au garage ?",
+             "help": "Si ce n'est pas le cas, nous vous rappelons pour organiser la suite.", "next": "vehicule"},
+            {"id": "vehicule", "type": "text", "title": "Quel est votre véhicule ?",
+             "placeholder": "Marque, modèle et année (ex. : Peugeot 208, 2019)", "next": "kilometrage"},
+            {"id": "kilometrage", "type": "number", "required": False, "title": "Kilométrage approximatif",
+             "min": 0, "max": 999999, "unit": "km", "next": "delai"},
+            {"id": "delai", "type": "single_choice", "title": "Pour quand ?",
+             "options": [
+                 {"value": "au_plus_vite", "label": "Au plus vite", "icon": "zap"},
+                 {"value": "cette_semaine", "label": "Cette semaine", "icon": "calendar"},
+                 {"value": "flexible", "label": "Je suis flexible", "icon": "leaf"}],
+             "next": "photos"},
+            _photos(),
+            PRECISIONS,
+        ],
+        "service_rules": [
+            {"when": {"field": "roulant", "op": "eq", "value": False}, "service": "appel_conseil"},
+            {"when": {"field": "besoin", "op": "eq", "value": "panne"}, "service": "diagnostic"},
+            {"service": "rdv_atelier"},
+        ],
+    },
+}
+
+IMMOBILIER: dict[str, Any] = {
+    "code": "immobilier",
+    "label": "Agence immobilière",
+    "services": [
+        {"key": "estimation", "name": "Estimation sur place", "meeting_type": "on_site",
+         "duration_min": 60, "buffer_after_min": 30, "min_notice_min": 1440, "max_horizon_days": 30,
+         "description": "Un conseiller visite votre bien et vous remet une estimation argumentée."},
+        {"key": "rdv_agence", "name": "Rendez-vous en agence", "meeting_type": "at_location",
+         "duration_min": 45, "min_notice_min": 240, "max_horizon_days": 30,
+         "description": "Un échange en agence pour préparer votre projet."},
+        {"key": "appel_conseil", "name": "Appel avec un conseiller", "meeting_type": "phone",
+         "duration_min": 20, "min_notice_min": 120, "max_horizon_days": 21,
+         "description": "Un premier échange téléphonique."},
+    ],
+    "flow": {
+        "intro": "Bonjour ! Quelques questions sur votre projet immobilier, puis choisissez votre rendez-vous.",
+        "steps": [
+            {"id": "projet", "type": "single_choice", "title": "Quel est votre projet ?",
+             "options": [
+                 {"value": "vendre", "label": "Vendre un bien", "icon": "euro"},
+                 {"value": "mettre_en_location", "label": "Mettre un bien en location", "icon": "key-round"},
+                 {"value": "acheter", "label": "Acheter", "icon": "house"},
+                 {"value": "louer", "label": "Louer un logement", "icon": "building"}],
+             "routes": [{"when": {"field": "projet", "op": "in", "value": ["acheter", "louer"]}, "goto": "recherche"}],
+             "next": "type_bien"},
+            {"id": "type_bien", "type": "single_choice", "title": "De quel type de bien s'agit-il ?",
+             "options": [
+                 {"value": "appartement", "label": "Appartement", "icon": "building-2"},
+                 {"value": "maison", "label": "Maison", "icon": "house"},
+                 {"value": "terrain", "label": "Terrain", "icon": "trees"},
+                 {"value": "local", "label": "Local professionnel", "icon": "store"}],
+             "next": "surface"},
+            {"id": "surface", "type": "slider", "title": "Quelle est sa surface approximative ?",
+             "min": 10, "max": 500, "step": 5, "unit": "m²", "next": "pieces"},
+            {"id": "pieces", "type": "number", "required": False, "title": "Combien de pièces ?",
+             "min": 1, "max": 20, "next": "delai"},
+            {"id": "recherche", "type": "long_text", "title": "Décrivez le bien que vous recherchez",
+             "placeholder": "Secteur, type de bien, surface, budget…", "next": "delai"},
+            {"id": "delai", "type": "single_choice", "title": "Dans quel délai ?", "options": DELAI_OPTIONS,
+             "next": "photos"},
+            _photos(),
+            PRECISIONS,
+        ],
+        "service_rules": [
+            {"when": {"field": "delai", "op": "eq", "value": "je_me_renseigne"}, "service": "appel_conseil"},
+            {"when": {"field": "projet", "op": "in", "value": ["vendre", "mettre_en_location"]}, "service": "estimation"},
+            {"service": "rdv_agence"},
+        ],
+    },
+}
+
+TEMPLATES: dict[str, dict[str, Any]] = {t["code"]: t for t in (RENOVATION, DEMENAGEMENT, GARAGE, IMMOBILIER, GENERIQUE)}
 
 
 def get_template(code: str) -> dict[str, Any]:

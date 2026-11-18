@@ -66,6 +66,7 @@ export function smsState(c: McCall): { label: string; tone: "good" | "bad" | "ne
   if (c.sms_status === "sent") return { label: "Envoyé", tone: "good" };
   if (c.sms_status === "failed") return { label: "Échec d'envoi", tone: "bad" };
   if (c.sms_status === "logged" && c.sms_provider === "simulateur") return { label: "Simulé (ligne de test)", tone: "info" };
+  if (c.sms_status === "logged" && c.sms_provider === "demonstration") return { label: "Simulé (démonstration)", tone: "info" };
   if (c.sms_status === "logged") return { label: "Non envoyé : envois payants désactivés", tone: "warning" };
   return { label: "En cours d'envoi", tone: "info" };
 }

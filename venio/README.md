@@ -19,7 +19,7 @@ peut réserver. Pour montrer le produit, pas pour de vrais clients. Construction
 |---|---|
 | Inscription, connexion, sessions (cookie HttpOnly), plusieurs espaces par utilisateur | ✅ Opérationnel, testé |
 | Isolation des entreprises : RLS PostgreSQL (rôle applicatif sans BYPASSRLS) + contrôles API | ✅ Testé (API et SQL direct) |
-| Modèles métier : rénovation, déménagement, générique (adaptable à toute activité) | ✅ |
+| Modèles métier : rénovation, déménagement, garage, immobilier, générique (adaptable à toute activité) | ✅ |
 | Parcours conditionnel (choix, multi-choix, oui/non, texte, nombre, curseur, date, photos), validation serveur, reprise après fermeture, retour arrière, modification depuis le récapitulatif | ✅ |
 | Prestation choisie selon les réponses (ex. « je me renseigne » → appel au lieu d'une visite) | ✅ |
 | Créneaux : horaires par collaborateur, pauses, jours fériés FR, délai minimum, horizon, battement (trajet), absences, changement d'heure | ✅ Testé |
@@ -38,7 +38,9 @@ peut réserver. Pour montrer le produit, pas pour de vrais clients. Construction
 | Synchronisation Google / Outlook, messagerie client, invitations de collaborateurs | ❌ À venir |
 | Design system « le fil » : jetons de couleur à contraste vérifié, polices auto-hébergées (Fraunces, Inter, JetBrains Mono), composants et états partagés, catalogue sur `/design-system`, couleur d'entreprise corrigée automatiquement pour rester lisible | ✅ Audit axe WCAG 2.1 AA : 0 violation sur 11 pages |
 | Récupération des appels manqués (cœur) : lignes de test simulées, événements normalisés indépendants du fournisseur (webhook signé, idempotent), machine d'états, délai de validation, 12 règles (masqué, fixe/étranger, exclusions, STOP, anti-rafale, plafond, rappelé, demande récente, horaires, crédits, plafond journalier), SMS par Brevo derrière l'interrupteur des envois payants, lien court suivi jusqu'au rendez-vous, historique, statistiques, réglages | ✅ 48 tests dédiés. **Aucun SMS réel** : lignes de test uniquement, fournisseur de téléphonie à choisir (étape 3) |
-| Vitrine commerciale, démonstration interactive | 📐 Conçues, non développées — [05-extension-acquisition.md](../plateforme-rdv/05-extension-acquisition.md) |
+| Vitrine commerciale (accueil, fonctionnalités, secteurs, tarifs depuis `/api/plans`, démo, ressources, FAQ, pages légales provisoires, sitemap) | ✅ 0 violation axe. Captures réelles générées par `node e2e/captures.cjs` |
+| Démonstration interactive (`/demo`) : espace jetable par visiteur, appel manqué simulé, SMS simulé, réservation réelle dans l'espace fictif | ✅ 3 tests : aucun envoi possible, aucun paiement, purge automatique sous 2 h |
+| Pilotes et lancement | 🟡 Préparés : [06-pilotes.md](../plateforme-rdv/06-pilotes.md), [07-lancement.md](../plateforme-rdv/07-lancement.md) |
 
 ## Lancer en local
 

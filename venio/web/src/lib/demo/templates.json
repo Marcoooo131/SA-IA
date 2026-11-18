@@ -326,6 +326,214 @@
     }
    ]
   },
+  "garage": {
+   "code": "garage",
+   "flow": {
+    "intro": "Bonjour ! Dites-nous ce dont votre véhicule a besoin, puis choisissez votre créneau.",
+    "service_rules": [
+     {
+      "service": "appel_conseil",
+      "when": {
+       "field": "roulant",
+       "op": "eq",
+       "value": false
+      }
+     },
+     {
+      "service": "diagnostic",
+      "when": {
+       "field": "besoin",
+       "op": "eq",
+       "value": "panne"
+      }
+     },
+     {
+      "service": "rdv_atelier"
+     }
+    ],
+    "steps": [
+     {
+      "id": "besoin",
+      "max_files": 5,
+      "next": "vehicule",
+      "options": [
+       {
+        "icon": "wrench",
+        "label": "Entretien / révision",
+        "value": "entretien"
+       },
+       {
+        "icon": "circle-help",
+        "label": "Panne ou bruit anormal",
+        "value": "panne"
+       },
+       {
+        "icon": "car",
+        "label": "Pneus",
+        "value": "pneus"
+       },
+       {
+        "icon": "shield-check",
+        "label": "Freins",
+        "value": "freins"
+       },
+       {
+        "icon": "snowflake",
+        "label": "Climatisation",
+        "value": "climatisation"
+       },
+       {
+        "icon": "paint-roller",
+        "label": "Carrosserie",
+        "value": "carrosserie"
+       },
+       {
+        "icon": "check",
+        "label": "Préparation au contrôle technique",
+        "value": "controle_technique"
+       }
+      ],
+      "required": true,
+      "routes": [
+       {
+        "goto": "symptomes",
+        "when": {
+         "field": "besoin",
+         "op": "eq",
+         "value": "panne"
+        }
+       }
+      ],
+      "title": "De quoi votre véhicule a-t-il besoin ?",
+      "type": "single_choice"
+     },
+     {
+      "id": "symptomes",
+      "max_files": 5,
+      "next": "roulant",
+      "options": [],
+      "placeholder": "Ex. : voyant moteur allumé, bruit en freinant, démarrage difficile…",
+      "required": true,
+      "routes": [],
+      "title": "Décrivez ce que vous constatez",
+      "type": "long_text"
+     },
+     {
+      "help": "Si ce n'est pas le cas, nous vous rappelons pour organiser la suite.",
+      "id": "roulant",
+      "max_files": 5,
+      "next": "vehicule",
+      "options": [],
+      "required": true,
+      "routes": [],
+      "title": "Le véhicule peut-il rouler jusqu'au garage ?",
+      "type": "yes_no"
+     },
+     {
+      "id": "vehicule",
+      "max_files": 5,
+      "next": "kilometrage",
+      "options": [],
+      "placeholder": "Marque, modèle et année (ex. : Peugeot 208, 2019)",
+      "required": true,
+      "routes": [],
+      "title": "Quel est votre véhicule ?",
+      "type": "text"
+     },
+     {
+      "id": "kilometrage",
+      "max": 999999.0,
+      "max_files": 5,
+      "min": 0.0,
+      "next": "delai",
+      "options": [],
+      "required": false,
+      "routes": [],
+      "title": "Kilométrage approximatif",
+      "type": "number",
+      "unit": "km"
+     },
+     {
+      "id": "delai",
+      "max_files": 5,
+      "next": "photos",
+      "options": [
+       {
+        "icon": "zap",
+        "label": "Au plus vite",
+        "value": "au_plus_vite"
+       },
+       {
+        "icon": "calendar",
+        "label": "Cette semaine",
+        "value": "cette_semaine"
+       },
+       {
+        "icon": "leaf",
+        "label": "Je suis flexible",
+        "value": "flexible"
+       }
+      ],
+      "required": true,
+      "routes": [],
+      "title": "Pour quand ?",
+      "type": "single_choice"
+     },
+     {
+      "help": "Facultatif, mais très utile pour préparer le rendez-vous.",
+      "id": "photos",
+      "max_files": 6,
+      "next": "precisions",
+      "options": [],
+      "required": false,
+      "routes": [],
+      "title": "Avez-vous des photos ou des documents ?",
+      "type": "photos"
+     },
+     {
+      "id": "precisions",
+      "max_files": 5,
+      "options": [],
+      "placeholder": "Accès, contraintes, questions…",
+      "required": false,
+      "routes": [],
+      "title": "Souhaitez-vous ajouter une précision ?",
+      "type": "long_text"
+     }
+    ],
+    "version": 1
+   },
+   "label": "Garage et atelier automobile",
+   "services": [
+    {
+     "description": "Déposez votre véhicule à l'atelier à l'heure convenue.",
+     "duration_min": 60,
+     "key": "rdv_atelier",
+     "max_horizon_days": 30,
+     "meeting_type": "at_location",
+     "min_notice_min": 240,
+     "name": "Rendez-vous atelier"
+    },
+    {
+     "description": "Nous identifions l'origine du problème et vous remettons un devis.",
+     "duration_min": 45,
+     "key": "diagnostic",
+     "max_horizon_days": 21,
+     "meeting_type": "at_location",
+     "min_notice_min": 120,
+     "name": "Diagnostic"
+    },
+    {
+     "description": "Un échange rapide pour vous orienter avant de venir.",
+     "duration_min": 15,
+     "key": "appel_conseil",
+     "max_horizon_days": 14,
+     "meeting_type": "phone",
+     "min_notice_min": 60,
+     "name": "Appel conseil"
+    }
+   ]
+  },
   "generique": {
    "code": "generique",
    "flow": {
@@ -464,6 +672,238 @@
      "meeting_type": "phone",
      "min_notice_min": 120,
      "name": "Appel téléphonique"
+    }
+   ]
+  },
+  "immobilier": {
+   "code": "immobilier",
+   "flow": {
+    "intro": "Bonjour ! Quelques questions sur votre projet immobilier, puis choisissez votre rendez-vous.",
+    "service_rules": [
+     {
+      "service": "appel_conseil",
+      "when": {
+       "field": "delai",
+       "op": "eq",
+       "value": "je_me_renseigne"
+      }
+     },
+     {
+      "service": "estimation",
+      "when": {
+       "field": "projet",
+       "op": "in",
+       "value": [
+        "vendre",
+        "mettre_en_location"
+       ]
+      }
+     },
+     {
+      "service": "rdv_agence"
+     }
+    ],
+    "steps": [
+     {
+      "id": "projet",
+      "max_files": 5,
+      "next": "type_bien",
+      "options": [
+       {
+        "icon": "euro",
+        "label": "Vendre un bien",
+        "value": "vendre"
+       },
+       {
+        "icon": "key-round",
+        "label": "Mettre un bien en location",
+        "value": "mettre_en_location"
+       },
+       {
+        "icon": "house",
+        "label": "Acheter",
+        "value": "acheter"
+       },
+       {
+        "icon": "building",
+        "label": "Louer un logement",
+        "value": "louer"
+       }
+      ],
+      "required": true,
+      "routes": [
+       {
+        "goto": "recherche",
+        "when": {
+         "field": "projet",
+         "op": "in",
+         "value": [
+          "acheter",
+          "louer"
+         ]
+        }
+       }
+      ],
+      "title": "Quel est votre projet ?",
+      "type": "single_choice"
+     },
+     {
+      "id": "type_bien",
+      "max_files": 5,
+      "next": "surface",
+      "options": [
+       {
+        "icon": "building-2",
+        "label": "Appartement",
+        "value": "appartement"
+       },
+       {
+        "icon": "house",
+        "label": "Maison",
+        "value": "maison"
+       },
+       {
+        "icon": "trees",
+        "label": "Terrain",
+        "value": "terrain"
+       },
+       {
+        "icon": "store",
+        "label": "Local professionnel",
+        "value": "local"
+       }
+      ],
+      "required": true,
+      "routes": [],
+      "title": "De quel type de bien s'agit-il ?",
+      "type": "single_choice"
+     },
+     {
+      "id": "surface",
+      "max": 500.0,
+      "max_files": 5,
+      "min": 10.0,
+      "next": "pieces",
+      "options": [],
+      "required": true,
+      "routes": [],
+      "step": 5.0,
+      "title": "Quelle est sa surface approximative ?",
+      "type": "slider",
+      "unit": "m²"
+     },
+     {
+      "id": "pieces",
+      "max": 20.0,
+      "max_files": 5,
+      "min": 1.0,
+      "next": "delai",
+      "options": [],
+      "required": false,
+      "routes": [],
+      "title": "Combien de pièces ?",
+      "type": "number"
+     },
+     {
+      "id": "recherche",
+      "max_files": 5,
+      "next": "delai",
+      "options": [],
+      "placeholder": "Secteur, type de bien, surface, budget…",
+      "required": true,
+      "routes": [],
+      "title": "Décrivez le bien que vous recherchez",
+      "type": "long_text"
+     },
+     {
+      "id": "delai",
+      "max_files": 5,
+      "next": "photos",
+      "options": [
+       {
+        "icon": "zap",
+        "label": "Au plus vite",
+        "value": "au_plus_vite"
+       },
+       {
+        "icon": "calendar",
+        "label": "Dans les 3 mois",
+        "value": "moins_3_mois"
+       },
+       {
+        "icon": "calendar-range",
+        "label": "Dans 3 à 6 mois",
+        "value": "trois_six_mois"
+       },
+       {
+        "icon": "hourglass",
+        "label": "Plus tard",
+        "value": "plus_6_mois"
+       },
+       {
+        "icon": "lightbulb",
+        "label": "Je me renseigne",
+        "value": "je_me_renseigne"
+       }
+      ],
+      "required": true,
+      "routes": [],
+      "title": "Dans quel délai ?",
+      "type": "single_choice"
+     },
+     {
+      "help": "Facultatif, mais très utile pour préparer le rendez-vous.",
+      "id": "photos",
+      "max_files": 6,
+      "next": "precisions",
+      "options": [],
+      "required": false,
+      "routes": [],
+      "title": "Avez-vous des photos ou des documents ?",
+      "type": "photos"
+     },
+     {
+      "id": "precisions",
+      "max_files": 5,
+      "options": [],
+      "placeholder": "Accès, contraintes, questions…",
+      "required": false,
+      "routes": [],
+      "title": "Souhaitez-vous ajouter une précision ?",
+      "type": "long_text"
+     }
+    ],
+    "version": 1
+   },
+   "label": "Agence immobilière",
+   "services": [
+    {
+     "buffer_after_min": 30,
+     "description": "Un conseiller visite votre bien et vous remet une estimation argumentée.",
+     "duration_min": 60,
+     "key": "estimation",
+     "max_horizon_days": 30,
+     "meeting_type": "on_site",
+     "min_notice_min": 1440,
+     "name": "Estimation sur place"
+    },
+    {
+     "description": "Un échange en agence pour préparer votre projet.",
+     "duration_min": 45,
+     "key": "rdv_agence",
+     "max_horizon_days": 30,
+     "meeting_type": "at_location",
+     "min_notice_min": 240,
+     "name": "Rendez-vous en agence"
+    },
+    {
+     "description": "Un premier échange téléphonique.",
+     "duration_min": 20,
+     "key": "appel_conseil",
+     "max_horizon_days": 21,
+     "meeting_type": "phone",
+     "min_notice_min": 120,
+     "name": "Appel avec un conseiller"
     }
    ]
   },
