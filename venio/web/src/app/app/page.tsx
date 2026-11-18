@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useMe } from "@/components/AppShell";
-import { Alert, Button, Card, Spinner } from "@/components/ui";
+import { Alert, Button, Card, Kpi, Spinner } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { pct } from "@/lib/format";
 import { caseFilePath, publicPagePath, withBase } from "@/lib/routes";
@@ -31,7 +31,7 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight">Bonjour {me.user.full_name.split(" ")[0]}</h1>
         <div className="flex items-center gap-2">
-          <code className="hidden rounded bg-white px-2 py-1 text-xs text-ink-soft sm:block">{me.public_url}</code>
+          <code className="hidden rounded bg-surface px-2 py-1 text-xs text-ink-muted sm:block">{me.public_url}</code>
           <Button variant="secondary" onClick={async () => { await navigator.clipboard.writeText(me.public_url); setCopied(true); }}>
             {copied ? "Lien copié ✓" : "Copier mon lien de réservation"}
           </Button>
@@ -58,19 +58,19 @@ export default function DashboardPage() {
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
               <h2 className="mb-3 font-semibold">Aujourd&apos;hui</h2>
-              {d.today.length === 0 ? <p className="text-sm text-ink-soft">Aucun rendez-vous aujourd&apos;hui.</p> : (
+              {d.today.length === 0 ? <p className="text-sm text-ink-muted">Aucun rendez-vous aujourd&apos;hui.</p> : (
                 <ul className="divide-y divide-line">{d.today.map((b) => <BookingRow key={b.id} b={b} tz={tz} timeOnly />)}</ul>
               )}
             </Card>
             <Card>
               <h2 className="mb-3 font-semibold">Nouvelles demandes</h2>
-              {d.new_cases.length === 0 ? <p className="text-sm text-ink-soft">Rien de nouveau. Partagez votre lien pour recevoir des demandes.</p> : (
+              {d.new_cases.length === 0 ? <p className="text-sm text-ink-muted">Rien de nouveau. Partagez votre lien pour recevoir des demandes.</p> : (
                 <ul className="divide-y divide-line">
                   {d.new_cases.map((c) => (
                     <li key={c.id} className="py-2.5">
                       <Link href={caseFilePath(c.id)} className="block hover:underline">
-                        <span className="font-medium">{c.first_name} {c.last_name}</span> <span className="text-sm text-ink-soft">· {c.service_name}</span>
-                        <span className="line-clamp-1 text-sm text-ink-soft">{c.summary}</span>
+                        <span className="font-medium">{c.first_name} {c.last_name}</span> <span className="text-sm text-ink-muted">· {c.service_name}</span>
+                        <span className="line-clamp-1 text-sm text-ink-muted">{c.summary}</span>
                       </Link>
                     </li>
                   ))}
@@ -81,7 +81,7 @@ export default function DashboardPage() {
 
           <Card>
             <h2 className="mb-3 font-semibold">Prochains rendez-vous</h2>
-            {d.upcoming.length === 0 ? <p className="text-sm text-ink-soft">Aucun rendez-vous à venir.</p> : (
+            {d.upcoming.length === 0 ? <p className="text-sm text-ink-muted">Aucun rendez-vous à venir.</p> : (
               <ul className="divide-y divide-line">{d.upcoming.map((b) => <BookingRow key={b.id} b={b} tz={tz} />)}</ul>
             )}
           </Card>
@@ -89,11 +89,11 @@ export default function DashboardPage() {
           <Card>
             <h2 className="font-semibold">Conversion sur 30 jours</h2>
             <div className="mt-3 grid grid-cols-3 gap-3 text-center">
-              <div><p className="text-2xl font-semibold">{pct(d.rates_30d.conversion)}</p><p className="text-xs text-ink-soft">démarrages → rendez-vous</p></div>
-              <div><p className="text-2xl font-semibold">{pct(d.rates_30d.abandon)}</p><p className="text-xs text-ink-soft">abandons</p></div>
-              <div><p className="text-2xl font-semibold">{pct(d.rates_30d.no_show)}</p><p className="text-xs text-ink-soft">absences</p></div>
+              <div><p className="tabular text-2xl font-semibold">{pct(d.rates_30d.conversion)}</p><p className="text-xs text-ink-muted">démarrages → rendez-vous</p></div>
+              <div><p className="tabular text-2xl font-semibold">{pct(d.rates_30d.abandon)}</p><p className="text-xs text-ink-muted">abandons</p></div>
+              <div><p className="tabular text-2xl font-semibold">{pct(d.rates_30d.no_show)}</p><p className="text-xs text-ink-muted">absences</p></div>
             </div>
-            <p className="mt-3 text-xs text-ink-soft">
+            <p className="mt-3 text-xs text-ink-muted">
               {d.rates_30d.reliable ? `Calculé sur ${d.rates_30d.sample_size} parcours démarrés.` :
                 `Seulement ${d.rates_30d.sample_size} parcours démarrés : ces taux sont indicatifs, pas encore significatifs.`}
               {" "}<Link href="/app/parcours" className="underline">Détail par question</Link>
@@ -106,6 +106,6 @@ export default function DashboardPage() {
 }
 
 function Stat({ label, value, href }: { label: string; value: number; href?: string }) {
-  const body = <><p className="text-3xl font-semibold">{value}</p><p className="text-sm text-ink-soft">{label}</p></>;
-  return href ? <Link href={href}><Card className="hover:border-ink/40">{body}</Card></Link> : <Card>{body}</Card>;
+  const body = <Kpi label={label} value={value} />;
+  return href ? <Link href={href} className="block rounded-card"><Card className="h-full transition-colors hover:border-ink/40">{body}</Card></Link> : <Card className="h-full">{body}</Card>;
 }

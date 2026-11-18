@@ -35,7 +35,8 @@ peut réserver. Pour montrer le produit, pas pour de vrais clients. Construction
 | SMS | ❌ Pas encore : le consentement est recueilli, l'envoi viendra avec le choix du fournisseur |
 | Abonnements Stripe, quotas appliqués, back-office interne | ❌ Prochaine étape (offres et quotas déjà en base ; essai Pro de 14 jours créé à l'inscription, non bloquant) |
 | Synchronisation Google / Outlook, messagerie client, invitations de collaborateurs | ❌ À venir |
-| Récupération des appels manqués, vitrine commerciale, démonstration interactive, nouveau design system | 📐 Conçus, non développés — [05-extension-acquisition.md](../plateforme-rdv/05-extension-acquisition.md) |
+| Design system « le fil » : jetons de couleur à contraste vérifié, polices auto-hébergées (Fraunces, Inter, JetBrains Mono), composants et états partagés, catalogue sur `/design-system`, couleur d'entreprise corrigée automatiquement pour rester lisible | ✅ Audit axe WCAG 2.1 AA : 0 violation sur 11 pages |
+| Récupération des appels manqués, vitrine commerciale, démonstration interactive | 📐 Conçus, non développés — [05-extension-acquisition.md](../plateforme-rdv/05-extension-acquisition.md) |
 
 ## Lancer en local
 

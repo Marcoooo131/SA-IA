@@ -13,7 +13,7 @@ fs.mkdirSync(`${SP}/shots`, { recursive: true });
   ctx.on('page', p => { p.on('pageerror', e => errors.push(e.message)); p.on('console', m => { if (m.type() === 'error') errors.push(m.text()); }); });
   const p = await ctx.newPage();
   await p.goto(`${BASE}/`);
-  await p.waitForSelector('text=Version de démonstration');
+  await p.waitForSelector('text=Démonstration : données fictives');
   await p.click('text=Essai gratuit');
   await p.click("text=Rénovation de l'habitat");
   await p.fill('input[autocomplete=organization]', 'Rénov Habitat Démo');
@@ -28,7 +28,7 @@ fs.mkdirSync(`${SP}/shots`, { recursive: true });
   await p.fill('input[placeholder^="Débuts"], input >> nth=8', '').catch(() => {});
   await p.click('button:has-text("Enregistrer")');
   await p.waitForSelector('text=Enregistré.');
-  const pubHref = await p.getAttribute('a:has-text("Voir ma page publique")', 'href');
+  const pubHref = await p.getAttribute('a:has-text("Ma page de réservation")', 'href');
   console.log('public', pubHref);
 
   const c = await ctx.newPage();

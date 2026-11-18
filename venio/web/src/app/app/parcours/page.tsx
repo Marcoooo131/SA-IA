@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { useMe } from "@/components/AppShell";
-import { Alert, Badge, Button, Card, Field, Input, Spinner } from "@/components/ui";
+import { Alert, Badge, Button, Card, Checkbox, Field, Input, Spinner } from "@/components/ui";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { pct } from "@/lib/format";
 import type { FlowDefinition } from "@/lib/flow";
@@ -74,7 +74,7 @@ export default function FlowPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Parcours de réservation</h1>
-          <p className="text-sm text-ink-soft">Version publiée : {info.published?.version}{info.draft && <> · <Badge tone="accent">brouillon v{info.draft.version} en cours</Badge></>}</p>
+          <p className="text-sm text-ink-muted">Version publiée : {info.published?.version}{info.draft && <> · <Badge tone="accent">brouillon v{info.draft.version} en cours</Badge></>}</p>
         </div>
         {canEdit && (
           <div className="flex gap-2">
@@ -89,7 +89,7 @@ export default function FlowPage() {
         <Card>
           <h2 className="font-semibold">30 derniers jours</h2>
           <p className="mt-1 text-sm">{funnel.totals.starts} parcours démarrés → {funnel.totals.slots} ont vu les créneaux → {funnel.totals.bookings} rendez-vous</p>
-          <p className="mt-1 text-xs text-ink-soft">{funnel.reliable ? funnel.note : `Volume encore faible (${funnel.totals.starts} parcours) : les chiffres par question sont des tendances, pas des conclusions.`}</p>
+          <p className="mt-1 text-xs text-ink-muted">{funnel.reliable ? funnel.note : `Volume encore faible (${funnel.totals.starts} parcours) : les chiffres par question sont des tendances, pas des conclusions.`}</p>
         </Card>
       )}
 
@@ -101,7 +101,7 @@ export default function FlowPage() {
         const s = stats[step.id];
         return (
           <Card key={step.id} className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-soft">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-ink-muted">
               <span>Question {i + 1} · {TYPE_LABELS[step.type]}{step.routes?.length ? " · avec conditions" : ""}</span>
               {s && s.viewed > 0 && <span>vue par {s.viewed} · répondue par {s.answered} · abandon {pct(s.drop_rate)}</span>}
             </div>
@@ -117,14 +117,12 @@ export default function FlowPage() {
                 ))}
               </div>
             )}
-            <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" disabled={!canEdit} checked={step.required} onChange={(e) => edit((d) => { d.steps[i].required = e.target.checked; })} />
-              Réponse obligatoire
-            </label>
+            <Checkbox disabled={!canEdit} checked={step.required} onChange={(e) => edit((d) => { d.steps[i].required = e.target.checked; })}
+              label="Réponse obligatoire" />
           </Card>
         );
       })}
-      <p className="text-xs text-ink-soft">Cet éditeur modifie les textes, les icônes et le caractère obligatoire des questions. L&apos;ajout de questions et de conditions depuis l&apos;interface arrive dans la prochaine version ; en attendant, nous les configurons pour vous.</p>
+      <p className="text-xs text-ink-muted">Cet éditeur modifie les textes, les icônes et le caractère obligatoire des questions. L&apos;ajout de questions et de conditions depuis l&apos;interface arrive dans la prochaine version ; en attendant, nous les configurons pour vous.</p>
     </div>
   );
 }

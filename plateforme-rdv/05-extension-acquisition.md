@@ -10,6 +10,7 @@
 
 ## Décisions prises (18/11/2026)
 
+- **Direction artistique validée : « le fil », Fraunces pour les titres** (étape 1 livrée, catalogue sur `/design-system`).
 - **Brevo pour tous les envois** : emails (déjà en production) **et SMS** (adaptateur SMS Brevo en premier).
 - **Stripe validé** pour les abonnements et les packs de SMS.
 - **Aucun envoi facturé pour l'instant.** Concrètement :
@@ -600,7 +601,7 @@ juridiques ; elles se chevauchent en partie.
 
 | # | Étape | Contenu | Durée | Critère de passage | Dépend de |
 |---|---|---|---|---|---|
-| **1** | **Direction artistique et design system** | Logo « le fil », jetons, composants et états, page `/design-system`, restylage de l'existant (application + réservation) | 2 sem. | Vous validez la page `/design-system` ; AA vérifié | Décision 6 |
+| **1** ✅ | **Direction artistique et design system** — *livré le 18/11/2026* | Logo « le fil », jetons, composants et états, page `/design-system`, restylage de l'existant (application + réservation) | 2 sem. | Vous validez la page `/design-system` ; AA vérifié | Décision 6 |
 | **2** | **Appels manqués — cœur** | Tables, adaptateur `simulator`, machine d'états, moteur de règles, SMS (adaptateur Brevo, bloqué par l'interrupteur des envois payants), liens suivis, page Appels manqués, paramètres, statistiques, quotas | 3–4 sem. | Tous les tests de la stratégie verts avec le simulateur | Étape 1 (interfaces) ; décisions 1–2 |
 | **3** | **Appels manqués — premier fournisseur réel** | Adaptateur téléphonie (mode 1 puis 2), assistant de renvoi, appel de test, hébergement toujours actif | 1–2 sem. | Un vrai appel manqué → SMS reçu en < 2 min | Décisions 1, 3 ; comptes fournisseurs |
 | **4** | **Stripe** | Offres, Checkout, portail, webhooks, essais, packs de SMS, impayés, assistant de configuration | 2–3 sem. | Scénarios Stripe CLI verts ; inscription → page publiée < 10 min | Décision 4 ; compte Stripe |

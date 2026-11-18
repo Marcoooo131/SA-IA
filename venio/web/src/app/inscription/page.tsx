@@ -35,18 +35,18 @@ export default function Signup() {
   return (
     <main className="mx-auto max-w-xl px-5 py-10">
       <Link href="/"><Logo className="text-lg" /></Link>
-      <h1 className="mt-8 text-3xl font-semibold tracking-tight">Créez votre page de réservation</h1>
-      <p className="mt-2 text-ink-soft">Elle sera prête en quelques minutes. Tout reste modifiable ensuite.</p>
+      <h1 className="mt-10 font-display text-4xl font-semibold">Créez votre page de réservation</h1>
+      <p className="mt-2 text-ink-muted">Elle sera prête en quelques minutes. Tout reste modifiable ensuite.</p>
       <form onSubmit={submit} className="mt-8 space-y-5">
         <fieldset>
           <legend className="mb-2 text-sm font-medium">Votre activité</legend>
           <div className="grid gap-2">
             {VERTICALS.map((v) => (
               <button type="button" key={v.code} onClick={() => setVertical(v.code)} aria-pressed={vertical === v.code}
-                className={cx("flex items-center gap-3 rounded-xl border bg-white p-3 text-left transition",
+                className={cx("flex items-center gap-3 rounded-card border bg-surface p-3 text-left transition",
                   vertical === v.code ? "border-ink ring-1 ring-ink" : "border-line hover:border-ink/40")}>
                 <span className="text-2xl">{v.icon}</span>
-                <span><span className="block font-medium">{v.label}</span><span className="text-sm text-ink-soft">{v.hint}</span></span>
+                <span><span className="block font-medium">{v.label}</span><span className="text-sm text-ink-muted">{v.hint}</span></span>
               </button>
             ))}
           </div>
@@ -56,8 +56,8 @@ export default function Signup() {
         <Field label="Email professionnel"><Input required type="email" value={form.email} onChange={set("email")} autoComplete="email" /></Field>
         <Field label="Mot de passe" hint="10 caractères minimum."><Input required type="password" minLength={10} value={form.password} onChange={set("password")} autoComplete="new-password" /></Field>
         {error && <Alert>{error}</Alert>}
-        <Button type="submit" loading={loading} className="w-full py-3">Créer mon espace</Button>
-        <p className="text-center text-sm text-ink-soft">Déjà inscrit ? <Link className="underline" href="/connexion">Se connecter</Link></p>
+        <Button type="submit" loading={loading} size="lg" className="w-full">Créer mon espace</Button>
+        <p className="text-center text-sm text-ink-muted">Déjà inscrit ? <Link className="font-medium text-signal-strong underline underline-offset-2" href="/connexion">Se connecter</Link></p>
       </form>
     </main>
   );

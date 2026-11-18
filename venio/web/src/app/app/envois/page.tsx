@@ -18,18 +18,18 @@ export default function SentPage() {
       <h1 className="text-2xl font-semibold tracking-tight">Historique des envois</h1>
       {testMode && <Alert kind="info">Mode test : les emails marqués « Non envoyé » ont été préparés mais pas expédiés. L&apos;envoi réel s&apos;active quand le serveur d&apos;emails est configuré.</Alert>}
       {error && <Alert>{error}</Alert>}
-      {!rows ? <Spinner /> : rows.length === 0 ? <Card><p className="text-sm text-ink-soft">Aucun message pour l&apos;instant.</p></Card> : (
+      {!rows ? <Spinner /> : rows.length === 0 ? <Card><p className="text-sm text-ink-muted">Aucun message pour l&apos;instant.</p></Card> : (
         <Card className="overflow-x-auto p-0">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-line text-xs text-ink-soft"><tr><th className="px-4 py-2">Message</th><th className="px-4 py-2">Destinataire</th><th className="px-4 py-2">Prévu le</th><th className="px-4 py-2">Statut</th></tr></thead>
+            <thead className="border-b border-line text-xs text-ink-muted"><tr><th className="px-4 py-2">Message</th><th className="px-4 py-2">Destinataire</th><th className="px-4 py-2">Prévu le</th><th className="px-4 py-2">Statut</th></tr></thead>
             <tbody className="divide-y divide-line">
               {rows.map((r) => (
                 <tr key={r.id}>
                   <td className="px-4 py-2">{TEMPLATE_LABELS[r.template_key] ?? r.template_key}</td>
-                  <td className="px-4 py-2 text-ink-soft">{r.to_address}</td>
-                  <td className="px-4 py-2 text-ink-soft first-letter:uppercase">{fmtDateTime(r.scheduled_for, me.tenant.timezone)}</td>
+                  <td className="px-4 py-2 text-ink-muted">{r.to_address}</td>
+                  <td className="px-4 py-2 text-ink-muted first-letter:uppercase">{fmtDateTime(r.scheduled_for, me.tenant.timezone)}</td>
                   <td className="px-4 py-2"><Badge tone={r.status === "sent" ? "good" : r.status === "failed" ? "bad" : "neutral"}>{NOTIF_STATUS[r.status] ?? r.status}</Badge>
-                    {r.last_error && <span className="block text-xs text-red-700">{r.last_error}</span>}</td>
+                    {r.last_error && <span className="block text-xs text-danger">{r.last_error}</span>}</td>
                 </tr>
               ))}
             </tbody>

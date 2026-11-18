@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useMe } from "@/components/AppShell";
-import { Alert, Badge, Button, Card, Spinner, Textarea } from "@/components/ui";
+import { Alert, Badge, Button, Card, Select, Spinner, Textarea } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { fileUrl } from "@/lib/routes";
 import { BOOKING_STATUS, CASE_STATUS, MEETING_LABELS, NOTIF_STATUS, TEMPLATE_LABELS, fmtDateTime } from "@/lib/format";
@@ -43,17 +43,17 @@ export function CaseDetail({ id }: { id: string }) {
 
   return (
     <div className="space-y-5">
-      <Link href="/app/dossiers" className="text-sm text-ink-soft hover:underline">← Demandes</Link>
+      <Link href="/app/dossiers" className="text-sm text-ink-muted hover:underline">← Demandes</Link>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">{c.first_name} {c.last_name}</h1>
-          <p className="text-ink-soft">{d.case.service_name} · {MEETING_LABELS[d.case.meeting_type]} · dossier complet à {d.case.completeness} %</p>
+          <p className="text-ink-muted">{d.case.service_name} · {MEETING_LABELS[d.case.meeting_type]} · dossier complet à {d.case.completeness} %</p>
         </div>
-        <select value={d.case.status} disabled={!!busy} aria-label="Statut du dossier"
+        <Select value={d.case.status} disabled={!!busy} aria-label="Statut du dossier"
           onChange={(e) => act("status", () => api(`/case-files/${id}`, { method: "PATCH", body: { status: e.target.value } }))}
-          className="rounded-lg border border-line bg-white px-3 py-2 text-sm">
+          className="w-auto py-2 text-sm">
           {Object.entries(CASE_STATUS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-        </select>
+        </Select>
       </div>
       {error && <Alert>{error}</Alert>}
 
@@ -66,7 +66,7 @@ export function CaseDetail({ id }: { id: string }) {
             <dl className="mt-1 divide-y divide-line">
               {d.case.answers.map((a) => (
                 <div key={a.step} className="grid gap-1 py-2 sm:grid-cols-[1fr_1fr]">
-                  <dt className="text-sm text-ink-soft">{a.question}</dt><dd className="whitespace-pre-line text-sm">{a.display}</dd>
+                  <dt className="text-sm text-ink-muted">{a.question}</dt><dd className="whitespace-pre-line text-sm">{a.display}</dd>
                 </div>
               ))}
             </dl>
@@ -76,7 +76,7 @@ export function CaseDetail({ id }: { id: string }) {
               <h2 className="mb-3 font-semibold">Photos et documents</h2>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {d.files.map((f) => (
-                  <a key={f.id} href={fileUrl(f.id)} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border border-line">
+                  <a key={f.id} href={fileUrl(f.id)} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-control border border-line">
                     {f.mime_type.startsWith("image/")
                       // eslint-disable-next-line @next/next/no-img-element
                       ? <img src={fileUrl(f.id)} alt={f.original_name} className="aspect-square w-full object-cover" />
@@ -93,7 +93,7 @@ export function CaseDetail({ id }: { id: string }) {
               <Button type="submit" variant="secondary" className="mt-2" loading={busy === "note"} disabled={!note.trim()}>Ajouter la note</Button>
             </form>
             <ul className="mt-4 space-y-3">
-              {d.notes.map((n) => <li key={n.id} className="rounded-lg bg-paper p-3 text-sm"><p className="whitespace-pre-line">{n.body}</p><p className="mt-1 text-xs text-ink-soft">{n.author} · {fmtDateTime(n.created_at, tz)}</p></li>)}
+              {d.notes.map((n) => <li key={n.id} className="rounded-control bg-paper p-3 text-sm"><p className="whitespace-pre-line">{n.body}</p><p className="mt-1 text-xs text-ink-muted">{n.author} · {fmtDateTime(n.created_at, tz)}</p></li>)}
             </ul>
           </Card>
         </div>
@@ -106,7 +106,7 @@ export function CaseDetail({ id }: { id: string }) {
               {c.phone && <li><a className="underline" href={`tel:${c.phone}`}>{c.phone}</a></li>}
               {c.address && <li>{c.address.line}, {c.address.postal_code} {c.address.city} · <a className="underline" target="_blank" href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(`${c.address.line} ${c.address.postal_code} ${c.address.city}`)}`}>Carte</a></li>}
             </ul>
-            <p className="mt-2 text-xs text-ink-soft">Rappels SMS : {d.consents.find((x) => x.channel === "sms")?.granted ? "acceptés" : "non acceptés"}</p>
+            <p className="mt-2 text-xs text-ink-muted">Rappels SMS : {d.consents.find((x) => x.channel === "sms")?.granted ? "acceptés" : "non acceptés"}</p>
           </Card>
           <Card>
             <h2 className="mb-2 font-semibold">Rendez-vous</h2>
@@ -114,7 +114,7 @@ export function CaseDetail({ id }: { id: string }) {
               {d.bookings.map((b) => (
                 <li key={b.id} className="text-sm">
                   <p className="font-medium first-letter:uppercase">{fmtDateTime(b.starts_at, tz)}</p>
-                  <p className="text-ink-soft">{b.resource_name} · <Badge tone={b.status === "confirmed" ? "good" : b.status === "cancelled" ? "bad" : "neutral"}>{BOOKING_STATUS[b.status]}</Badge></p>
+                  <p className="text-ink-muted">{b.resource_name} · <Badge tone={b.status === "confirmed" ? "good" : b.status === "cancelled" ? "bad" : "neutral"}>{BOOKING_STATUS[b.status]}</Badge></p>
                 </li>
               ))}
             </ul>
@@ -138,7 +138,7 @@ export function CaseDetail({ id }: { id: string }) {
             <ul className="space-y-1.5 text-xs">
               {d.notifications.map((n, i) => (
                 <li key={i}>{TEMPLATE_LABELS[n.template_key] ?? n.template_key} — {NOTIF_STATUS[n.status] ?? n.status}
-                  <span className="text-ink-soft"> · {fmtDateTime(n.scheduled_for, tz)}</span>{n.last_error && <span className="text-red-700"> · {n.last_error}</span>}</li>
+                  <span className="text-ink-muted"> · {fmtDateTime(n.scheduled_for, tz)}</span>{n.last_error && <span className="text-danger"> · {n.last_error}</span>}</li>
               ))}
             </ul>
           </Card>

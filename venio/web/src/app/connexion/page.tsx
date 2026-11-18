@@ -28,13 +28,13 @@ export default function Login() {
   return (
     <main className="mx-auto max-w-sm px-5 py-16">
       <Link href="/"><Logo className="text-lg" /></Link>
-      <h1 className="mt-8 text-2xl font-semibold">Connexion</h1>
+      <h1 className="mt-10 font-display text-4xl font-semibold">Connexion</h1>
       <form onSubmit={submit} className="mt-6 space-y-4">
         <Field label="Email"><Input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></Field>
         <Field label="Mot de passe"><Input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></Field>
         {error && <Alert>{error}</Alert>}
-        <Button type="submit" loading={loading} className="w-full py-3">Se connecter</Button>
-        <p className="text-center text-sm text-ink-soft">Pas encore de compte ? <Link className="underline" href="/inscription">Essai gratuit</Link></p>
+        <Button type="submit" loading={loading} size="lg" className="w-full">Se connecter</Button>
+        <p className="text-center text-sm text-ink-muted">Pas encore de compte ? <Link className="font-medium text-signal-strong underline underline-offset-2" href="/inscription">Essai gratuit</Link></p>
       </form>
     </main>
   );

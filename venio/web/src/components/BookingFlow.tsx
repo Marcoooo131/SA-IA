@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Alert, Button, Field, Input, Spinner, Textarea, cx } from "@/components/ui";
+import { ArrowLeft, CalendarCheck, CalendarPlus } from "lucide-react";
+import { Alert, Button, Checkbox, buttonClass, Field, Input, Spinner, Textarea, ThreadProgress, cx } from "@/components/ui";
 import { SlotPicker, type SlotsResponse } from "@/components/SlotPicker";
 import { ApiError, api, errorMessage } from "@/lib/api";
 import { MEETING_LABELS, fmtDateTime } from "@/lib/format";
@@ -186,7 +187,7 @@ export function BookingFlow({ slug, tenantName, timezone, services, intro }: {
     }
   }
 
-  if (booting) return <div className="flex justify-center py-16 text-ink-soft"><Spinner /></div>;
+  if (booting) return <div className="flex justify-center py-16 text-ink-muted"><Spinner /></div>;
   if (!definition || !state) return <Alert>{error || "Le parcours de réservation est indisponible."}</Alert>;
 
   const progress = phase === "questions" ? Math.min(state.progress, 95) * 0.7
@@ -197,11 +198,9 @@ export function BookingFlow({ slug, tenantName, timezone, services, intro }: {
       {phase !== "done" && (
         <div className="mb-6 flex items-center gap-3">
           <button onClick={back} disabled={phase === "questions" && (state.visited.length === 0 || shownStepId === state.visited[0])}
-            className="grid h-9 w-9 place-items-center rounded-full border border-line bg-white disabled:invisible" aria-label="Retour">←</button>
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-ink/10" role="progressbar" aria-valuenow={Math.round(progress)} aria-valuemin={0} aria-valuemax={100}>
-            <div className="h-full rounded-full bg-[var(--brand-accent)] transition-all duration-500" style={{ width: `${progress}%` }} />
-          </div>
-          <span className="whitespace-nowrap text-right text-xs text-ink-soft">
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-line bg-surface text-ink-muted transition-colors hover:border-[var(--brand)] hover:text-ink disabled:invisible" aria-label="Retour"><ArrowLeft aria-hidden className="h-4 w-4" /></button>
+          <div className="flex-1"><ThreadProgress value={progress} label="Progression de votre demande" /></div>
+          <span className="whitespace-nowrap text-right text-xs text-ink-muted">
             {phase === "questions" ? `${Math.min((viewStep ? state.visited.indexOf(viewStep) : state.answered) + 1, state.estimated_total)} / ~${state.estimated_total}` :
               phase === "slots" ? "Créneau" : phase === "details" ? "Coordonnées" : "Vérification"}
           </span>
@@ -217,7 +216,7 @@ export function BookingFlow({ slug, tenantName, timezone, services, intro }: {
 
       {phase === "questions" && shownStep && (
         <div key={shownStep.id} className="fade-in">
-          {state.visited.length === 0 && !viewStep && intro && <p className="mb-3 text-ink-soft">{intro}</p>}
+          {state.visited.length === 0 && !viewStep && intro && <p className="mb-3 text-ink-muted">{intro}</p>}
           <StepView step={shownStep} value={answers[shownStep.id]} busy={busy} onAnswer={(v) => answer(shownStep, v)}
             uploadUrl={`${base}/files`} headers={headers} files={files} onFilesChange={setFiles} />
         </div>
@@ -226,9 +225,9 @@ export function BookingFlow({ slug, tenantName, timezone, services, intro }: {
       {phase === "slots" && (
         <div className="fade-in space-y-4">
           <h2 className="text-2xl font-semibold tracking-tight">Choisissez votre rendez-vous</h2>
-          {service && <p className="text-ink-soft">{service.name} · {service.duration_min} min · {MEETING_LABELS[service.meeting_type]}</p>}
+          {service && <p className="text-ink-muted">{service.name} · {service.duration_min} min · {MEETING_LABELS[service.meeting_type]}</p>}
           <SlotPicker load={loadSlots} onPick={pick} busyStart={pickingStart} selected={hold?.starts_at ?? null} />
-          <p className="text-xs text-ink-soft">Seuls les créneaux réellement disponibles sont affichés.</p>
+          <p className="text-xs text-ink-muted">Seuls les créneaux réellement disponibles sont affichés.</p>
         </div>
       )}
 
@@ -242,7 +241,7 @@ export function BookingFlow({ slug, tenantName, timezone, services, intro }: {
           <h2 className="text-2xl font-semibold tracking-tight">Vérifiez votre demande</h2>
           <RecapBlock title="Rendez-vous" onEdit={() => setPhase("slots")}>
             <p className="font-medium first-letter:uppercase">{fmtDateTime(hold.starts_at, timezone)}</p>
-            {service && <p className="text-sm text-ink-soft">{service.name} · {service.duration_min} min · {MEETING_LABELS[service.meeting_type]}</p>}
+            {service && <p className="text-sm text-ink-muted">{service.name} · {service.duration_min} min · {MEETING_LABELS[service.meeting_type]}</p>}
           </RecapBlock>
           <RecapBlock title="Votre projet">
             <dl className="divide-y divide-line">
@@ -250,7 +249,7 @@ export function BookingFlow({ slug, tenantName, timezone, services, intro }: {
                 const st = definition.steps.find((s) => s.id === id)!;
                 return (
                   <div key={id} className="flex items-start justify-between gap-3 py-2">
-                    <div><dt className="text-xs text-ink-soft">{st.title}</dt><dd className="text-sm">{displayValue(st, answers[id])}</dd></div>
+                    <div><dt className="text-xs text-ink-muted">{st.title}</dt><dd className="text-sm">{displayValue(st, answers[id])}</dd></div>
                     <button className="text-xs underline" onClick={() => { setViewStep(id); setPhase("questions"); }}>Modifier</button>
                   </div>
                 );
@@ -259,10 +258,10 @@ export function BookingFlow({ slug, tenantName, timezone, services, intro }: {
           </RecapBlock>
           <RecapBlock title="Vos coordonnées" onEdit={() => setPhase("details")}>
             <p className="text-sm">{contact.first_name} {contact.last_name}</p>
-            <p className="text-sm text-ink-soft">{contact.email}{contact.phone && ` · ${contact.phone}`}</p>
-            {service?.meeting_type === "on_site" && <p className="text-sm text-ink-soft">{contact.address.line}, {contact.address.postal_code} {contact.address.city}</p>}
+            <p className="text-sm text-ink-muted">{contact.email}{contact.phone && ` · ${contact.phone}`}</p>
+            {service?.meeting_type === "on_site" && <p className="text-sm text-ink-muted">{contact.address.line}, {contact.address.postal_code} {contact.address.city}</p>}
           </RecapBlock>
-          <Button onClick={confirm} loading={busy} className="w-full bg-[var(--brand)] py-3.5 text-base">Confirmer le rendez-vous</Button>
+          <Button onClick={confirm} loading={busy} variant="brand" size="lg" className="w-full">Confirmer le rendez-vous</Button>
         </div>
       )}
 
@@ -273,7 +272,7 @@ export function BookingFlow({ slug, tenantName, timezone, services, intro }: {
 
 function RecapBlock({ title, onEdit, children }: { title: string; onEdit?: () => void; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-line bg-white p-4">
+    <section className="rounded-card border border-line bg-surface p-4">
       <div className="mb-1 flex items-center justify-between">
         <h3 className="text-sm font-semibold">{title}</h3>
         {onEdit && <button className="text-xs underline" onClick={onEdit}>Modifier</button>}
@@ -293,26 +292,26 @@ function StepView({ step, value, busy, onAnswer, uploadUrl, headers, files, onFi
   const [uploadError, setUploadError] = useState("");
 
   const skip = !step.required && (
-    <button className="mt-3 w-full py-2 text-sm text-ink-soft underline" disabled={busy} onClick={() => onAnswer(null)}>Passer cette question</button>
+    <button className="mt-3 w-full py-2 text-sm text-ink-muted underline" disabled={busy} onClick={() => onAnswer(null)}>Passer cette question</button>
   );
   const next = (v: unknown, enabled = true) => (
-    <Button className="mt-5 w-full bg-[var(--brand)] py-3 text-base" loading={busy} disabled={!enabled} onClick={() => onAnswer(v)}>Continuer</Button>
+    <Button variant="brand" size="lg" className="mt-5 w-full" loading={busy} disabled={!enabled} onClick={() => onAnswer(v)}>Continuer</Button>
   );
 
   return (
     <div>
       <h2 className="text-2xl font-semibold tracking-tight">{step.title}</h2>
-      {step.help && <p className="mt-1 text-ink-soft">{step.help}</p>}
+      {step.help && <p className="mt-1 text-ink-muted">{step.help}</p>}
       <div className="mt-5">
         {step.type === "single_choice" && (
           <div className="grid grid-cols-2 gap-3">
             {step.options.map((o) => (
               <button key={o.value} disabled={busy} onClick={() => onAnswer(o.value)}
-                className={cx("flex min-h-24 flex-col items-start justify-between rounded-xl border bg-white p-3 text-left transition hover:border-[var(--brand)]",
+                className={cx("flex min-h-24 flex-col items-start justify-between rounded-card border bg-surface p-3 text-left transition hover:border-[var(--brand)]",
                   value === o.value ? "border-[var(--brand)] ring-1 ring-[var(--brand)]" : "border-line")}>
                 {o.icon && <span className="text-2xl">{o.icon}</span>}
                 <span className="font-medium leading-snug">{o.label}</span>
-                {o.description && <span className="text-xs text-ink-soft">{o.description}</span>}
+                {o.description && <span className="text-xs text-ink-muted">{o.description}</span>}
               </button>
             ))}
           </div>
@@ -324,9 +323,9 @@ function StepView({ step, value, busy, onAnswer, uploadUrl, headers, files, onFi
                 const sel = (draft as string[]).includes(o.value);
                 return (
                   <button key={o.value} aria-pressed={sel} onClick={() => setDraft(sel ? (draft as string[]).filter((v) => v !== o.value) : [...(draft as string[]), o.value])}
-                    className={cx("flex min-h-20 items-start gap-2 rounded-xl border bg-white p-3 text-left transition",
+                    className={cx("flex min-h-20 items-start gap-2 rounded-card border bg-surface p-3 text-left transition",
                       sel ? "border-[var(--brand)] ring-1 ring-[var(--brand)]" : "border-line hover:border-ink/40")}>
-                    <span className={cx("mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border text-xs", sel ? "border-[var(--brand)] bg-[var(--brand)] text-white" : "border-line")}>{sel && "✓"}</span>
+                    <span className={cx("mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded border text-xs", sel ? "border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-fg)]" : "border-line")}>{sel && "✓"}</span>
                     <span>{o.icon && <span className="mr-1">{o.icon}</span>}<span className="font-medium">{o.label}</span></span>
                   </button>
                 );
@@ -339,7 +338,7 @@ function StepView({ step, value, busy, onAnswer, uploadUrl, headers, files, onFi
           <div className="grid grid-cols-2 gap-3">
             {[true, false].map((v) => (
               <button key={String(v)} disabled={busy} onClick={() => onAnswer(v)}
-                className={cx("rounded-xl border bg-white py-5 text-lg font-medium transition hover:border-[var(--brand)]", value === v ? "border-[var(--brand)] ring-1 ring-[var(--brand)]" : "border-line")}>
+                className={cx("rounded-card border bg-surface py-5 text-lg font-medium transition hover:border-[var(--brand)]", value === v ? "border-[var(--brand)] ring-1 ring-[var(--brand)]" : "border-line")}>
                 {v ? "Oui" : "Non"}
               </button>
             ))}
@@ -350,7 +349,7 @@ function StepView({ step, value, busy, onAnswer, uploadUrl, headers, files, onFi
             {step.type === "text"
               ? <Input autoFocus value={draft as string} placeholder={step.placeholder} maxLength={200} onChange={(e) => setDraft(e.target.value)} />
               : <Textarea autoFocus value={draft as string} placeholder={step.placeholder} maxLength={2000} rows={4} onChange={(e) => setDraft(e.target.value)} />}
-            <Button type="submit" className="mt-5 w-full bg-[var(--brand)] py-3 text-base" loading={busy} disabled={step.required && !(draft as string).trim()}>Continuer</Button>
+            <Button type="submit" variant="brand" size="lg" className="mt-5 w-full" loading={busy} disabled={step.required && !(draft as string).trim()}>Continuer</Button>
           </form>
         )}
         {step.type === "number" && (
@@ -358,32 +357,32 @@ function StepView({ step, value, busy, onAnswer, uploadUrl, headers, files, onFi
             <div className="flex items-center gap-3">
               <Input autoFocus type="number" inputMode="decimal" min={step.min} max={step.max} step={step.step ?? "any"} value={draft as string}
                 onChange={(e) => setDraft(e.target.value)} className="max-w-40 text-lg" />
-              {step.unit && <span className="text-ink-soft">{step.unit}</span>}
+              {step.unit && <span className="text-ink-muted">{step.unit}</span>}
             </div>
-            <Button type="submit" className="mt-5 w-full bg-[var(--brand)] py-3 text-base" loading={busy} disabled={step.required && draft === ""}>Continuer</Button>
+            <Button type="submit" variant="brand" size="lg" className="mt-5 w-full" loading={busy} disabled={step.required && draft === ""}>Continuer</Button>
           </form>
         )}
         {step.type === "slider" && (
           <div>
-            <p className="text-center text-4xl font-semibold">{String(draft)} <span className="text-lg font-normal text-ink-soft">{step.unit}</span></p>
+            <p className="text-center text-4xl font-semibold">{String(draft)} <span className="text-lg font-normal text-ink-muted">{step.unit}</span></p>
             <input type="range" className="mt-4 w-full accent-[var(--brand)]" min={step.min} max={step.max} step={step.step ?? 1}
               value={Number(draft)} onChange={(e) => setDraft(Number(e.target.value))} aria-label={step.title} />
-            <div className="flex justify-between text-xs text-ink-soft"><span>{step.min} {step.unit}</span><span>{step.max} {step.unit}</span></div>
+            <div className="flex justify-between text-xs text-ink-muted"><span>{step.min} {step.unit}</span><span>{step.max} {step.unit}</span></div>
             {next(draft)}
           </div>
         )}
         {step.type === "date" && (
           <form onSubmit={(e) => { e.preventDefault(); onAnswer(draft); }}>
             <Input autoFocus type="date" value={draft as string} min={new Date().toISOString().slice(0, 10)} onChange={(e) => setDraft(e.target.value)} />
-            <Button type="submit" className="mt-5 w-full bg-[var(--brand)] py-3 text-base" loading={busy} disabled={step.required && !draft}>Continuer</Button>
+            <Button type="submit" variant="brand" size="lg" className="mt-5 w-full" loading={busy} disabled={step.required && !draft}>Continuer</Button>
           </form>
         )}
         {step.type === "photos" && (
           <div>
-            <label className={cx("flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-dashed border-line bg-white p-6 text-center hover:border-[var(--brand)]", uploading && "opacity-60")}>
+            <label className={cx("flex cursor-pointer flex-col items-center gap-2 rounded-card border-2 border-dashed border-line bg-surface p-6 text-center hover:border-[var(--brand)]", uploading && "opacity-60")}>
               <span className="text-3xl">📷</span>
               <span className="font-medium">Ajouter des photos ou un document</span>
-              <span className="text-xs text-ink-soft">JPEG, PNG, WebP ou PDF · 10 Mo maximum · {step.max_files} fichiers maximum</span>
+              <span className="text-xs text-ink-muted">JPEG, PNG, WebP ou PDF · 10 Mo maximum · {step.max_files} fichiers maximum</span>
               <input type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" className="sr-only" disabled={uploading}
                 onChange={async (e) => {
                   const list = Array.from(e.target.files ?? []);
@@ -407,11 +406,11 @@ function StepView({ step, value, busy, onAnswer, uploadUrl, headers, files, onFi
                   setUploading(false);
                 }} />
             </label>
-            {uploading && <p className="mt-2 flex items-center gap-2 text-sm text-ink-soft"><Spinner /> Envoi en cours…</p>}
+            {uploading && <p className="mt-2 flex items-center gap-2 text-sm text-ink-muted"><Spinner /> Envoi en cours…</p>}
             {uploadError && <div className="mt-2"><Alert>{uploadError}</Alert></div>}
             <ul className="mt-3 space-y-1">
               {(draft as string[]).map((id) => (
-                <li key={id} className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm">
+                <li key={id} className="flex items-center justify-between rounded-control bg-surface px-3 py-2 text-sm">
                   <span>📎 {files.find((f) => f.id === id)?.original_name ?? "Fichier"}</span>
                   <button className="text-xs underline" onClick={() => setDraft((draft as string[]).filter((x) => x !== id))}>Retirer</button>
                 </li>
@@ -440,7 +439,7 @@ function ContactForm({ contact, setContact, meetingType, tenantName, hold, timez
   return (
     <form className="fade-in space-y-4" onSubmit={(e) => { e.preventDefault(); onNext(); }}>
       <h2 className="text-2xl font-semibold tracking-tight">Vos coordonnées</h2>
-      <p className="text-sm text-ink-soft">
+      <p className="text-sm text-ink-muted">
         Créneau réservé pour vous : <strong className="text-ink">{fmtDateTime(hold.starts_at, timezone)}</strong>
         {minutesLeft > 0 && ` (pendant encore ${minutesLeft} min)`}.
       </p>
@@ -464,16 +463,14 @@ function ContactForm({ contact, setContact, meetingType, tenantName, hold, timez
         </>
       )}
       {contact.phone && (
-        <label className="flex items-start gap-2 text-sm">
-          <input type="checkbox" className="mt-1" checked={contact.consent_sms_reminders} onChange={(e) => setContact({ ...contact, consent_sms_reminders: e.target.checked })} />
-          <span>J&apos;accepte de recevoir un rappel de rendez-vous par SMS.</span>
-        </label>
+        <Checkbox style={{ "--check": "var(--brand)" } as React.CSSProperties} checked={contact.consent_sms_reminders}
+          onChange={(e) => setContact({ ...contact, consent_sms_reminders: e.target.checked })}
+          label="J'accepte de recevoir un rappel de rendez-vous par SMS." />
       )}
-      <label className="flex items-start gap-2 text-sm">
-        <input type="checkbox" className="mt-1" required checked={contact.accept_privacy} onChange={(e) => setContact({ ...contact, accept_privacy: e.target.checked })} />
-        <span>J&apos;accepte que {tenantName} utilise ces informations pour organiser ce rendez-vous et me recontacter à son sujet. Elles ne sont ni revendues ni partagées avec d&apos;autres entreprises.</span>
-      </label>
-      <Button type="submit" className="w-full bg-[var(--brand)] py-3 text-base">Vérifier ma demande</Button>
+      <Checkbox style={{ "--check": "var(--brand)" } as React.CSSProperties} required checked={contact.accept_privacy}
+        onChange={(e) => setContact({ ...contact, accept_privacy: e.target.checked })}
+        label={<>J&apos;accepte que {tenantName} utilise ces informations pour organiser ce rendez-vous et me recontacter à son sujet. Elles ne sont ni revendues ni partagées avec d&apos;autres entreprises.</>} />
+      <Button type="submit" variant="brand" size="lg" className="w-full">Vérifier ma demande</Button>
     </form>
   );
 }
@@ -491,14 +488,14 @@ function icsFile(done: Done, tenantName: string): string {
 function Success({ done, tenantName, timezone }: { done: Done; tenantName: string; timezone: string }) {
   return (
     <div className="fade-in space-y-5 text-center">
-      <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-100 text-3xl">✓</div>
+      <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-success-soft text-success"><CalendarCheck aria-hidden className="h-7 w-7" /></div>
       <h2 className="text-2xl font-semibold tracking-tight">Rendez-vous confirmé</h2>
       <p className="text-lg first-letter:uppercase">{fmtDateTime(done.booking.starts_at, timezone)}</p>
-      <p className="text-ink-soft">{done.booking.service_name} · {MEETING_LABELS[done.booking.meeting_type]}</p>
-      <p className="text-sm text-ink-soft">{DEMO ? "Démonstration : aucun email n'est envoyé." : "Un email de confirmation vous est envoyé."} {tenantName} a bien reçu votre demande.</p>
+      <p className="text-ink-muted">{done.booking.service_name} · {MEETING_LABELS[done.booking.meeting_type]}</p>
+      <p className="text-sm text-ink-muted">{DEMO ? "Démonstration : aucun email n'est envoyé." : "Un email de confirmation vous est envoyé."} {tenantName} a bien reçu votre demande.</p>
       <div className="flex flex-col gap-2">
-        <a href={icsFile(done, tenantName)} download="rendez-vous.ics" className="rounded-lg border border-line bg-white py-3 font-medium">Ajouter à mon agenda</a>
-        <a href={done.manage_url} className="rounded-lg py-3 text-sm underline">Reporter ou annuler</a>
+        <a href={icsFile(done, tenantName)} download="rendez-vous.ics" className={buttonClass("secondary", "lg", "w-full")}><CalendarPlus aria-hidden className="h-4 w-4" />Ajouter à mon agenda</a>
+        <a href={done.manage_url} className="rounded-control py-3 text-sm underline">Reporter ou annuler</a>
       </div>
     </div>
   );

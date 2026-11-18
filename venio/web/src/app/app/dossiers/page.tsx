@@ -37,22 +37,22 @@ export default function CasesPage() {
       <h1 className="text-2xl font-semibold tracking-tight">Demandes</h1>
       <div className="flex flex-wrap items-center gap-2">
         {FILTERS.map(([v, l]) => (
-          <button key={v} onClick={() => setStatus(v)} className={cx("rounded-full px-3 py-1.5 text-sm", status === v ? "bg-ink text-white" : "bg-white hover:bg-ink/5")}>{l}</button>
+          <button key={v} onClick={() => setStatus(v)} className={cx("rounded-full px-3 py-1.5 text-sm", status === v ? "bg-ink text-white" : "bg-surface hover:bg-ink/5")}>{l}</button>
         ))}
         <Input placeholder="Rechercher (nom, email, téléphone, projet)" value={q} onChange={(e) => setQ(e.target.value)} className="ml-auto max-w-xs" />
       </div>
       {error && <Alert>{error}</Alert>}
-      {!rows ? <Spinner /> : rows.length === 0 ? <Card><p className="text-sm text-ink-soft">Aucune demande pour ce filtre.</p></Card> : (
+      {!rows ? <Spinner /> : rows.length === 0 ? <Card><p className="text-sm text-ink-muted">Aucune demande pour ce filtre.</p></Card> : (
         <Card className="p-0">
           <ul className="divide-y divide-line">
             {rows.map((r) => (
               <li key={r.id}>
                 <Link href={caseFilePath(r.id)} className="grid gap-1 px-5 py-3 hover:bg-ink/[0.02] md:grid-cols-[1fr_auto] md:items-center">
                   <div className="min-w-0">
-                    <p className="font-medium">{r.first_name} {r.last_name} <span className="text-sm font-normal text-ink-soft">· {r.service_name}</span></p>
-                    <p className="line-clamp-1 text-sm text-ink-soft">{r.summary}</p>
+                    <p className="font-medium">{r.first_name} {r.last_name} <span className="text-sm font-normal text-ink-muted">· {r.service_name}</span></p>
+                    <p className="line-clamp-1 text-sm text-ink-muted">{r.summary}</p>
                   </div>
-                  <div className="flex items-center gap-3 text-xs text-ink-soft">
+                  <div className="flex items-center gap-3 text-xs text-ink-muted">
                     {r.next_booking && <span className="first-letter:uppercase">RDV {fmtDateTime(r.next_booking, me.tenant.timezone)}</span>}
                     <span>reçue {fmtDate(r.created_at, me.tenant.timezone)}</span>
                     <Badge tone={r.status === "new" ? "accent" : r.status === "cancelled" || r.status === "no_show" ? "bad" : "neutral"}>{CASE_STATUS[r.status]}</Badge>

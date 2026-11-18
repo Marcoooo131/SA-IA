@@ -1,27 +1,78 @@
 @import "tailwindcss";
 
+/*
+ * Design system Venio — jetons (voir plateforme-rdv/05-extension-acquisition.md §D).
+ * Une seule source de vérité pour la vitrine, l'espace entreprise et les pages de réservation.
+ * Contrastes vérifiés (WCAG AA, texte ≥ 4,5:1) : ne pas ajouter de couleur sans la vérifier.
+ */
 @theme {
-  --color-ink: #14213d;
-  --color-ink-soft: #3a4560;
-  --color-accent: #f28c28;
-  --color-accent-dark: #d97414;
-  --color-paper: #f7f6f3;
-  --color-line: #e4e2dc;
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Texte et fonds */
+  --color-ink: #14213d;          /* texte principal, bouton principal — 15,2:1 sur paper */
+  --color-ink-muted: #4a5468;    /* texte secondaire — 7,2:1 */
+  --color-ink-subtle: #6b7385;   /* légendes ≥ 14 px — 4,5:1 */
+  --color-paper: #faf9f6;        /* fond général, blanc chaud */
+  --color-surface: #ffffff;      /* cartes, tableaux, champs */
+  --color-sunken: #f1efea;       /* survol, zones en retrait */
+  --color-line: #e6e3dc;         /* séparateurs décoratifs */
+  --color-line-strong: #cfcbc1;  /* bordures de champs, survol */
+
+  /* Accent « signal » : jamais en fond avec du texte blanc (2,5:1) */
+  --color-signal: #f28c28;       /* pastilles, le fil, graphiques ; texte dessus en ink (6,5:1) */
+  --color-signal-strong: #a6470a;/* liens, texte accentué, bouton accent avec texte blanc (6,0:1) */
+  --color-signal-soft: #fdebd8;  /* fond d'accent léger, texte signal-strong (5,1:1) */
+
+  /* États */
+  --color-success: #1f7a4d;  --color-success-soft: #e8f3ec;
+  --color-warning: #8a5a00;  --color-warning-soft: #fbf1dc;
+  --color-danger: #b42318;   --color-danger-soft: #fcedeb;
+  --color-info: #1f4e8c;     --color-info-soft: #eaf0f8;
+
+  /* Typographies auto-hébergées (aucun appel à un serveur tiers) */
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Fraunces Variable", ui-serif, Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Formes */
+  --radius-control: 6px;
+  --radius-card: 10px;
+  --radius-frame: 16px;
+  --shadow-float: 0 1px 2px rgb(20 33 61 / 0.06), 0 8px 24px rgb(20 33 61 / 0.08);
+
+  /* Mouvement */
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Couleurs de l'entreprise cliente sur ses pages publiques (surchargées en ligne). */
+/*
+ * Couleurs de l'entreprise cliente sur ses pages publiques (surchargées en ligne par PublicPage).
+ * --brand-fg est calculé pour garantir 4,5:1 avec --brand (voir src/lib/color.ts).
+ */
 :root {
   --brand: #14213d;
+  --brand-fg: #ffffff;
   --brand-accent: #f28c28;
 }
 
 html { -webkit-text-size-adjust: 100%; }
-body { @apply bg-paper text-ink antialiased; }
-
-@media (prefers-reduced-motion: no-preference) {
-  .fade-in { animation: fade-in 200ms ease-out; }
-  @keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+body {
+  @apply bg-paper text-ink antialiased;
+  font-feature-settings: "cv11", "ss01";
 }
 
-:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 2px; }
+/* Titres de la vitrine en Fraunces : la graisse et l'optique varient avec la taille. */
+.font-display { font-optical-sizing: auto; letter-spacing: -0.015em; }
+
+/* Chiffres alignés dans les tableaux, horaires et indicateurs. */
+.tabular { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .fade-in { animation: fade-in 200ms var(--ease-out-soft); }
+  @keyframes fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  /* Le fil se dessine une seule fois, jamais en boucle. */
+  .draw-thread { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw-thread 900ms var(--ease-out-soft) forwards; }
+  @keyframes draw-thread { to { stroke-dashoffset: 0; } }
+}
+
+:focus-visible { outline: 2px solid var(--color-signal-strong); outline-offset: 2px; }
+.brand-scope :focus-visible { outline-color: var(--brand); }
+
+::selection { background: var(--color-signal-soft); color: var(--color-ink); }

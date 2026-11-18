@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { useMe } from "@/components/AppShell";
-import { Alert, Button, Card, Field, Input, Spinner, Textarea, cx } from "@/components/ui";
+import { Alert, Button, Card, Checkbox, Field, Input, Select, Spinner, Textarea, cx } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { MEETING_LABELS, fmtDateTime } from "@/lib/format";
 
@@ -14,7 +14,7 @@ export default function SettingsPage() {
     <div className="space-y-5">
       <h1 className="text-2xl font-semibold tracking-tight">Paramètres</h1>
       <div className="flex flex-wrap gap-2">
-        {TABS.map(([k, l]) => <button key={k} onClick={() => setTab(k)} className={cx("rounded-full px-3 py-1.5 text-sm", tab === k ? "bg-ink text-white" : "bg-white hover:bg-ink/5")}>{l}</button>)}
+        {TABS.map(([k, l]) => <button key={k} onClick={() => setTab(k)} className={cx("rounded-full px-3 py-1.5 text-sm", tab === k ? "bg-ink text-white" : "bg-surface hover:bg-ink/5")}>{l}</button>)}
       </div>
       {tab === "page" && <ProfileTab />}
       {tab === "horaires" && <HoursTab />}
@@ -90,10 +90,8 @@ function ProfileTab() {
           <Field label="Couleur principale"><Input type="color" className="h-11 p-1" value={p.branding.primary_color} onChange={(e) => setP({ ...p, branding: { ...p.branding, primary_color: e.target.value } })} /></Field>
           <Field label="Couleur d'accent"><Input type="color" className="h-11 p-1" value={p.branding.accent_color} onChange={(e) => setP({ ...p, branding: { ...p.branding, accent_color: e.target.value } })} /></Field>
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={p.holidays_country === "FR"} onChange={(e) => setP({ ...p, holidays_country: e.target.checked ? "FR" : null })} />
-          Fermé les jours fériés (France)
-        </label>
+        <Checkbox checked={p.holidays_country === "FR"} onChange={(e) => setP({ ...p, holidays_country: e.target.checked ? "FR" : null })}
+          label="Fermé les jours fériés (France)" />
       </Card>
       <div className="space-y-3 lg:col-span-2">{feedback}<Button type="submit" loading={busy}>Enregistrer</Button></div>
     </form>
@@ -124,7 +122,7 @@ function HoursTab() {
               <div key={wd} className="grid items-start gap-2 border-t border-line pt-3 sm:grid-cols-[120px_1fr]">
                 <span className="pt-2 text-sm font-medium">{label}</span>
                 <div className="space-y-2">
-                  {dayRules.length === 0 && <p className="pt-2 text-sm text-ink-soft">Fermé</p>}
+                  {dayRules.length === 0 && <p className="pt-2 text-sm text-ink-muted">Fermé</p>}
                   {dayRules.map((rule, j) => (
                     <div key={j} className="flex items-center gap-2">
                       <Input type="time" className="max-w-32" value={rule.start_time} onChange={(e) => update(r.id, r.rules.map((x) => (x === rule ? { ...x, start_time: e.target.value } : x)))} />
@@ -164,14 +162,14 @@ function ServicesTab() {
         <Card key={s.id} className="space-y-4">
           <div className="flex items-center justify-between gap-3">
             <Input className="max-w-md font-semibold" value={s.name} onChange={(e) => set(s.id, { name: e.target.value })} />
-            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={s.is_active} onChange={(e) => set(s.id, { is_active: e.target.checked })} /> Active</label>
+            <Checkbox checked={s.is_active} onChange={(e) => set(s.id, { is_active: e.target.checked })} label="Active" />
           </div>
           <Field label="Description"><Input value={s.description ?? ""} onChange={(e) => set(s.id, { description: e.target.value })} /></Field>
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <Field label="Type">
-              <select className="w-full rounded-lg border border-line bg-white px-3 py-2.5" value={s.meeting_type} onChange={(e) => set(s.id, { meeting_type: e.target.value })}>
+              <Select value={s.meeting_type} onChange={(e) => set(s.id, { meeting_type: e.target.value })}>
                 {Object.entries(MEETING_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
-              </select>
+              </Select>
             </Field>
             <Field label="Durée (min)"><Input type="number" min={5} max={600} value={s.duration_min} onChange={num(s.id, "duration_min")} /></Field>
             <Field label="Battement après (min)" hint="Trajet, rangement…"><Input type="number" min={0} max={240} value={s.buffer_after_min} onChange={num(s.id, "buffer_after_min")} /></Field>
@@ -219,11 +217,11 @@ function TimeOffTab() {
       </Card>
       <Card>
         <h2 className="mb-3 font-semibold">Périodes à venir</h2>
-        {!rows ? <Spinner /> : rows.length === 0 ? <p className="text-sm text-ink-soft">Aucune.</p> : (
+        {!rows ? <Spinner /> : rows.length === 0 ? <p className="text-sm text-ink-muted">Aucune.</p> : (
           <ul className="divide-y divide-line">
             {rows.map((r) => (
               <li key={r.id} className="flex items-center justify-between gap-2 py-2 text-sm">
-                <span><span className="first-letter:uppercase">{fmtDateTime(r.starts_at, me.tenant.timezone)}</span> → {fmtDateTime(r.ends_at, me.tenant.timezone)}{r.reason && <span className="text-ink-soft"> · {r.reason}</span>}</span>
+                <span><span className="first-letter:uppercase">{fmtDateTime(r.starts_at, me.tenant.timezone)}</span> → {fmtDateTime(r.ends_at, me.tenant.timezone)}{r.reason && <span className="text-ink-muted"> · {r.reason}</span>}</span>
                 <Button variant="ghost" onClick={() => run(async () => { await api(`/settings/time-off/${r.id}`, { method: "DELETE" }); await load(); }, "Période supprimée.")}>Supprimer</Button>
               </li>
             ))}

@@ -45,14 +45,14 @@ export default function AgendaPage() {
             return (
               <Card key={day} className="py-3">
                 <h2 className="text-sm font-semibold capitalize">{l.weekday} {l.day} {l.month}{day === todayIso() && " · aujourd'hui"}</h2>
-                {items.length === 0 ? <p className="py-1 text-sm text-ink-soft">—</p> :
+                {items.length === 0 ? <p className="py-1 text-sm text-ink-muted">—</p> :
                   <ul className="divide-y divide-line">{items.map((b) => <BookingRow key={b.id} b={b} tz={me.tenant.timezone} timeOnly />)}</ul>}
               </Card>
             );
           })}
         </div>
       )}
-      <p className="text-xs text-ink-soft">Pour bloquer une période (chantier, congés), rendez-vous dans Paramètres → Absences.</p>
+      <p className="text-xs text-ink-muted">Pour bloquer une période (chantier, congés), rendez-vous dans Paramètres → Absences.</p>
     </div>
   );
 }

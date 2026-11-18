@@ -47,16 +47,16 @@ export function SlotPicker({ load, onPick, busyStart, selected }: {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <Button variant="ghost" disabled={!canPrev || loading} onClick={() => setFrom(addDays(from, -WINDOW))} aria-label="Semaine précédente">←</Button>
-        <span className="text-sm text-ink-soft">
+        <span className="text-sm text-ink-muted">
           {data ? `${fmtDayLabel(data.from).day} ${fmtDayLabel(data.from).month} – ${fmtDayLabel(data.to).day} ${fmtDayLabel(data.to).month}` : " "}
         </span>
         <Button variant="ghost" disabled={!data?.has_more || loading} onClick={() => setFrom(addDays(from, WINDOW))} aria-label="Semaine suivante">→</Button>
       </div>
       {error && <Alert>{error}</Alert>}
       {loading ? (
-        <div className="flex justify-center py-10 text-ink-soft"><Spinner /></div>
+        <div className="flex justify-center py-10 text-ink-muted"><Spinner /></div>
       ) : data && data.days.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-line p-6 text-center text-ink-soft">
+        <div className="rounded-card border border-dashed border-line p-6 text-center text-ink-muted">
           Aucun créneau disponible sur cette période.
           {data.has_more && <div className="mt-3"><Button variant="secondary" onClick={() => setFrom(addDays(from, WINDOW))}>Voir la semaine suivante</Button></div>}
         </div>
@@ -67,8 +67,8 @@ export function SlotPicker({ load, onPick, busyStart, selected }: {
               const l = fmtDayLabel(d.date);
               return (
                 <button key={d.date} role="tab" aria-selected={day === d.date} onClick={() => setDay(d.date)}
-                  className={cx("min-w-16 rounded-xl border px-3 py-2 text-center transition",
-                    day === d.date ? "border-[var(--brand)] bg-[var(--brand)] text-white" : "border-line bg-white hover:border-ink/40")}>
+                  className={cx("min-w-16 rounded-card border px-3 py-2 text-center transition",
+                    day === d.date ? "border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-fg)]" : "border-line bg-surface hover:border-ink/40")}>
                   <span className="block text-xs capitalize opacity-80">{l.weekday}</span>
                   <span className="block text-lg font-semibold leading-tight">{l.day}</span>
                   <span className="block text-xs opacity-80">{l.month}</span>
@@ -79,8 +79,8 @@ export function SlotPicker({ load, onPick, busyStart, selected }: {
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
             {current?.slots.map((s) => (
               <button key={s.start} onClick={() => onPick(s.start)} disabled={!!busyStart}
-                className={cx("rounded-lg border py-3 text-[15px] font-medium transition disabled:opacity-60",
-                  selected === s.start ? "border-[var(--brand)] bg-[var(--brand)] text-white" : "border-line bg-white hover:border-[var(--brand)]")}>
+                className={cx("rounded-control border py-3 text-[15px] font-medium transition disabled:opacity-60",
+                  selected === s.start ? "border-[var(--brand)] bg-[var(--brand)] text-[var(--brand-fg)]" : "border-line bg-surface hover:border-[var(--brand)]")}>
                 {busyStart === s.start ? <Spinner /> : s.time}
               </button>
             ))}
