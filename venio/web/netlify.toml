@@ -7,3 +7,8 @@
 [build.environment]
   NEXT_TELEMETRY_DISABLED = "1"
   NODE_VERSION = "22"
+
+# Adaptateur Next.js (pages serveur, réécriture /api vers Render).
+# Obligatoire quand le projet Netlify n'a pas été créé depuis l'interface.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
