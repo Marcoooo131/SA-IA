@@ -46,6 +46,8 @@ bucket privé `venio-files` sont en place sur le projet **venio** (`ycmtyvcftzmn
 > Venio envoie donc par l'API web de Brevo (`VENIO_EMAIL_PROVIDER=brevo`). Le SMTP (`smtp`) reste possible
 > sur une offre Render payante ou chez un autre hébergeur.
 
+Les SMS restent bloqués tant que `VENIO_PAID_SENDING_ENABLED` n'est pas à `true` (désactivé par défaut : aucun envoi facturé).
+
 Tant que cette étape n'est pas faite, laissez `VENIO_EMAIL_PROVIDER=log` : rien n'est envoyé et l'interface
 affiche « Non envoyé (mode test) ».
 

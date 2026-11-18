@@ -8,6 +8,24 @@
 > Les prix fournisseurs viennent de pages publiques ou de comparatifs tiers relevés en novembre 2026 (sources en fin
 > de document) : **à revérifier sur les grilles officielles avant toute décision tarifaire**.
 
+## Décisions prises (18/11/2026)
+
+- **Brevo pour tous les envois** : emails (déjà en production) **et SMS** (adaptateur SMS Brevo en premier).
+- **Stripe validé** pour les abonnements et les packs de SMS.
+- **Aucun envoi facturé pour l'instant.** Concrètement :
+  - un interrupteur général `VENIO_PAID_SENDING_ENABLED`, **désactivé par défaut**, bloque tout SMS côté serveur
+    quel que soit le fournisseur configuré : le message est enregistré « Non envoyé », rien ne part
+    (**en place et testé** depuis le 18/11/2026) ;
+  - les futurs adaptateurs de téléphonie et de SMS passeront tous par cet interrupteur ;
+  - Stripe sera développé et testé **en mode test uniquement** : l'API refusera de démarrer avec une clé réelle
+    (`sk_live_…`) tant que vous n'aurez pas donné votre accord explicite pour passer en réel ;
+  - les emails ne sont pas concernés : l'offre gratuite de Brevo (300 emails par jour) refuse les envois au-delà
+    au lieu de les facturer.
+- **Téléphonie : encore ouverte.** Brevo propose une téléphonie (numéros, portabilité) dans ses offres payantes,
+  mais je n'ai trouvé **aucune API documentée qui signale les appels manqués**. En attendant, le module A est développé
+  avec le fournisseur simulé ; le choix du fournisseur réel se fera avant l'étape 3, en interrogeant d'abord le support
+  Brevo.
+
 ## Sommaire
 
 - [E. Nouvelle proposition de valeur](#e-nouvelle-proposition-de-valeur-trois-piliers)
@@ -253,6 +271,12 @@ Dans **Paramètres → Appels manqués** :
   8 h–21 h 30, dimanches et fériés tolérés mais déconseillés) ; c'est une norme professionnelle, pas une loi, et les
   sources divergent. Valeur par défaut retenue : **lundi–samedi 8 h–20 h hors fériés** ; l'entreprise ne pourra pas
   sortir de 8 h–21 h 30.
+- **Avec Brevo :** l'API distingue les SMS « transactionnels » et « marketing ». D'après sa documentation, un SMS est
+  envoyé comme transactionnel s'il ne contient pas de mention STOP ; les SMS marketing vers la France sont bloqués par
+  Brevo de 22 h à 8 h, le dimanche et les jours fériés. Le choix « transactionnel sans STOP » ou « marketing avec STOP »
+  dépend de la qualification juridique ci-dessus : **à trancher avec l'avocat avant d'activer les envois réels**.
+  Les comptes Brevo récents doivent enregistrer un nom d'expéditeur par pays (11 caractères maximum, lettres et
+  chiffres, noms génériques comme INFO ou SMS interdits).
 - **Expéditeur :** en France, les SMS automatisés partent en général avec un **nom d'expéditeur alphanumérique**
   (ex. `BRIAND`) ; le prospect ne peut pas répondre par SMS, d'où la mention « STOP au {numéro court du fournisseur} »
   et le lien comme canal de réponse. Les SMS envoyés depuis un numéro mobile classique vers la France sont fortement
@@ -345,6 +369,9 @@ de payer, pas à l'inscription.
 | `customer.subscription.trial_will_end` | Email « votre essai se termine dans 3 jours » |
 | `invoice.paid` | Réinitialiser les alertes d'impayé |
 | `invoice.payment_failed` / `invoice.payment_action_required` | Bandeau et emails d'impayé |
+
+**Mode test uniquement jusqu'à votre accord** (décision du 18/11/2026) : clés `sk_test_…`, cartes de test Stripe ; au
+démarrage, l'API refuse une clé `sk_live_…` si `VENIO_STRIPE_LIVE_ENABLED` n'est pas explicitement activé.
 
 Règles : signature vérifiée (`Stripe-Signature`) ; **table `stripe_event` avec unicité de l'identifiant d'événement**
 (idempotence) ; traitement dans la file de tâches (réponse 200 immédiate) ; **l'état local se recalcule depuis l'objet
@@ -574,7 +601,7 @@ juridiques ; elles se chevauchent en partie.
 | # | Étape | Contenu | Durée | Critère de passage | Dépend de |
 |---|---|---|---|---|---|
 | **1** | **Direction artistique et design system** | Logo « le fil », jetons, composants et états, page `/design-system`, restylage de l'existant (application + réservation) | 2 sem. | Vous validez la page `/design-system` ; AA vérifié | Décision 6 |
-| **2** | **Appels manqués — cœur** | Tables, adaptateur `simulator`, machine d'états, moteur de règles, SMS (adaptateur Brevo ou autre), liens suivis, page Appels manqués, paramètres, statistiques, quotas | 3–4 sem. | Tous les tests de la stratégie verts avec le simulateur | Étape 1 (interfaces) ; décisions 1–2 |
+| **2** | **Appels manqués — cœur** | Tables, adaptateur `simulator`, machine d'états, moteur de règles, SMS (adaptateur Brevo, bloqué par l'interrupteur des envois payants), liens suivis, page Appels manqués, paramètres, statistiques, quotas | 3–4 sem. | Tous les tests de la stratégie verts avec le simulateur | Étape 1 (interfaces) ; décisions 1–2 |
 | **3** | **Appels manqués — premier fournisseur réel** | Adaptateur téléphonie (mode 1 puis 2), assistant de renvoi, appel de test, hébergement toujours actif | 1–2 sem. | Un vrai appel manqué → SMS reçu en < 2 min | Décisions 1, 3 ; comptes fournisseurs |
 | **4** | **Stripe** | Offres, Checkout, portail, webhooks, essais, packs de SMS, impayés, assistant de configuration | 2–3 sem. | Scénarios Stripe CLI verts ; inscription → page publiée < 10 min | Décision 4 ; compte Stripe |
 | **5** | **Vitrine** | Toutes les pages B.2, captures automatiques, SEO, mesure d'audience sans cookie, pages légales | 3 sem. | Lighthouse ≥ 90, contenus relus par vous | Étapes 1 et 4 ; décisions 7–8 |
@@ -589,11 +616,13 @@ collaborateurs, éditeur de parcours complet, mode sombre de l'application.
 
 ## Décisions attendues de votre part
 
-1. **Fournisseur de téléphonie** pour le premier adaptateur réel : Twilio, Telnyx ou autre (je recommande de comparer
-   les deux sur un essai réel avant de choisir) — c'est vous qui ouvrez le compte.
-2. **Fournisseur SMS** : Brevo (compte déjà ouvert, ≈ 0,045 €/SMS) ou le même que la téléphonie.
+1. **Fournisseur de téléphonie** pour le premier adaptateur réel : Brevo si son support confirme un moyen d'être
+   prévenu des appels manqués, sinon Twilio ou Telnyx — à décider avant l'étape 3.
+2. ~~Fournisseur SMS~~ → **Brevo** (décidé le 18/11/2026).
 3. **Hébergement de l'API** : passage à une offre toujours active (≈ 7 $/mois chez Render) au moment de l'étape 3.
-4. **Stripe** : ouverture du compte, essai avec ou sans carte, TVA (Stripe Tax ou non).
+4. **Stripe** : ✅ validé (mode test seulement pour l'instant). Restent : essai avec ou sans carte, TVA (Stripe Tax ou non).
+9. **Passage aux envois réels** (SMS, Stripe en réel) : uniquement sur votre accord explicite, après validation
+   juridique des SMS (A.9).
 5. **Offres** : module appels manqués dans toutes les offres et crédits SMS proposés ci-dessus — d'accord ?
 6. **Direction artistique** : « le fil », bleu nuit + orange signal, Fraunces pour les titres de la vitrine — ou
    variante tout Inter ?
@@ -612,6 +641,10 @@ collaborateurs, éditeur de parcours complet, mode sombre de l'application.
 - Telnyx, numéros français : <https://telnyx.com/phone-numbers/france>
 - Comparatif européen des prix SMS (Brevo, Twilio, Sweego) : <https://www.sweego.io/pricing/european-sms-price-comparison>
 - Prix des SMS Brevo (comparatif tiers) : <https://getkanal.com/fr/blog/brevo-sms>
+- Brevo, API d'envoi de SMS transactionnels : <https://developers.brevo.com/docs/transactional-sms-endpoints>
+- Brevo, règles par pays (France : expéditeur alphanumérique, horaires marketing) : <https://help.brevo.com/hc/en-us/articles/11884482521234>
+- Brevo, enregistrement du nom d'expéditeur : <https://help.brevo.com/hc/fr/articles/28255350696466>
+- Brevo, fonction de téléphonie (formation tierce) : <https://www.elephorm.com/formation/maitriser-brevo-pour-creer-des-campagnes-emailing-impactantes/brevo-gerer-les-appels-telephoniques-dans-votre-prospection>
 - Assouplissement af2m des horaires de SMS promotionnels (2026) : <https://fr.themedialeader.com/laf2m-assouplit-lenvoi-des-sms-promotionnels-le-dimanche-et-les-jours-feries/>
 - Règles de prospection par SMS (consentement, STOP) : <https://skipcall.io/blog/regles-sms-prospection>
 - Frais Stripe en France (cartes européennes) : <https://www.indy.fr/guide/comptabilite-en-ligne/commerce/stripe-comptabilite/frais-stripe/>

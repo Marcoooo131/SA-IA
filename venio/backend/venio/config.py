@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     smtp_password: str = ""
     smtp_starttls: bool = True
     brevo_api_key: str = ""
+    # Interrupteur général des envois facturés à l'unité (SMS, et plus tard appels). Désactivé par défaut :
+    # tant qu'il vaut False, aucun SMS ne part, quel que soit le fournisseur configuré. Les emails ne sont
+    # pas concernés (offre gratuite Brevo : 300 par jour, sans facturation au-delà, les envois sont refusés).
+    paid_sending_enabled: bool = False
 
     # Envoi des notifications dans le processus de l'API (une seule instance, ex. offre gratuite).
     run_worker: bool = False

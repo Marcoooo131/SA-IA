@@ -8,6 +8,9 @@ Fournisseur "log" (par défaut) : le message est rendu et enregistré avec le st
 il n'est PAS envoyé. Fournisseur "smtp" : envoi réel (Brevo, Scaleway TEM, Postmark… via SMTP).
 Fournisseur "brevo" : envoi réel par l'API web de Brevo (HTTPS). À utiliser chez les hébergeurs qui
 bloquent le SMTP sortant, comme l'offre gratuite de Render.
+
+Les SMS sont facturés à l'unité : ils ne partent jamais tant que VENIO_PAID_SENDING_ENABLED vaut false
+(valeur par défaut). Ils sont alors enregistrés avec le statut « logged », comme en mode test.
 """
 from __future__ import annotations
 
@@ -218,7 +221,20 @@ async def deliver(conn: AsyncConnection, notification_id: UUID) -> str:
         await execute(conn, "UPDATE notification SET status = 'skipped' WHERE id = :n", n=notification_id)
         return "skipped"
     subject, body = render(notif["template_key"], ctx)
-    provider = get_settings().email_provider
+    settings = get_settings()
+    if notif["channel"] != "email":
+        if not settings.paid_sending_enabled:
+            log.info("[%s non envoyé — envois payants désactivés] à %s : %s", notif["channel"], notif["to_address"], subject)
+            await execute(
+                conn,
+                "UPDATE notification SET status = 'logged', provider = 'envoi-payant-desactive', sent_at = now(),"
+                " attempts = attempts + 1, last_error = NULL WHERE id = :n",
+                n=notification_id,
+            )
+            return "logged"
+        # Jamais de repli silencieux sur le fournisseur d'emails pour un SMS.
+        raise RuntimeError(f"Envoi par {notif['channel']} pas encore disponible.")
+    provider = settings.email_provider
     if provider == "smtp":
         msg_id = await asyncio.to_thread(_send_smtp, notif["to_address"], subject, body)
         status = "sent"
