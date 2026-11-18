@@ -28,7 +28,7 @@ export default function SentPage() {
                   <td className="px-4 py-2">{TEMPLATE_LABELS[r.template_key] ?? r.template_key}</td>
                   <td className="px-4 py-2 text-ink-muted">{r.to_address}</td>
                   <td className="px-4 py-2 text-ink-muted first-letter:uppercase">{fmtDateTime(r.scheduled_for, me.tenant.timezone)}</td>
-                  <td className="px-4 py-2"><Badge tone={r.status === "sent" ? "good" : r.status === "failed" ? "bad" : "neutral"}>{NOTIF_STATUS[r.status] ?? r.status}</Badge>
+                  <td className="px-4 py-2"><Badge tone={r.status === "sent" ? "good" : r.status === "failed" ? "bad" : "neutral"}>{r.status === "logged" && r.provider === "demonstration" ? "Simulé (démonstration)" : NOTIF_STATUS[r.status] ?? r.status}</Badge>
                     {r.last_error && <span className="block text-xs text-danger">{r.last_error}</span>}</td>
                 </tr>
               ))}

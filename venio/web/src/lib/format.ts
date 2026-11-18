@@ -47,4 +47,5 @@ export const NOTIF_STATUS: Record<string, string> = {
 export const TEMPLATE_LABELS: Record<string, string> = {
   client_confirmation: "Confirmation au client", client_reminder: "Rappel J-1 au client", client_cancellation: "Annulation au client",
   client_rescheduled: "Report au client", business_new_booking: "Alerte nouvelle demande", business_cancellation: "Alerte annulation", business_rescheduled: "Alerte report",
+  missed_call_sms: "SMS après appel manqué",
 };

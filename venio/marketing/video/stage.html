@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<style>
+@font-face{font-family:Fraunces;src:url(fonts/fraunces-latin-opsz-normal.woff2) format("woff2");font-weight:100 900;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215}
+@font-face{font-family:Fraunces;src:url(fonts/fraunces-latin-ext-opsz-normal.woff2) format("woff2");font-weight:100 900;unicode-range:U+0100-024F,U+1E00-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
+@font-face{font-family:Inter;src:url(fonts/inter-latin-wght-normal.woff2) format("woff2");font-weight:100 900;unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215}
+@font-face{font-family:Inter;src:url(fonts/inter-latin-ext-wght-normal.woff2) format("woff2");font-weight:100 900;unicode-range:U+0100-024F,U+1E00-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113}
+@font-face{font-family:JBM;src:url(fonts/jetbrains-mono-latin-400-normal.woff2) format("woff2")}
+:root{--ink:#14213d;--night:#0a1124;--paper:#faf9f6;--surface:#fff;--line:#e6e3dc;--muted:#4a5468;--subtle:#6b7385;--signal:#f28c28;--signal-strong:#a6470a;--success:#1f7a4d;--success-soft:#e8f3ec}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#000;overflow:hidden}
+#stage{position:relative;overflow:hidden;font-family:Inter,sans-serif;color:var(--ink);background:var(--night)}
+.abs{position:absolute;left:0;top:0;will-change:transform,opacity}
+.disp{font-family:Fraunces,serif;font-weight:560;letter-spacing:-.012em;line-height:1.08}
+.mono{font-family:JBM,monospace;letter-spacing:.02em}
+.line{display:block;overflow:hidden;padding-bottom:.08em}
+.line>span{display:inline-block;will-change:transform}
+/* téléphone */
+.phone{position:absolute;left:0;top:0;border-radius:var(--r);background:#0d1424;padding:var(--b);box-shadow:0 0 0 1.5px #2a3550 inset,0 40px 80px -20px rgba(10,17,36,.45),0 18px 36px -18px rgba(10,17,36,.5)}
+.phone .scr{position:relative;width:100%;height:100%;border-radius:calc(var(--r) - var(--b));overflow:hidden;background:var(--paper)}
+.phone .notch{position:absolute;left:50%;top:calc(var(--b) + 10px);width:30%;height:26px;margin-left:-15%;border-radius:20px;background:#0d1424;z-index:5}
+.scr img{position:absolute;left:0;top:0;width:100%;height:auto;will-change:transform,opacity}
+.tap{position:absolute;width:56px;height:56px;margin:-28px 0 0 -28px;border-radius:50%;background:rgba(20,33,61,.18);border:2px solid rgba(20,33,61,.35);z-index:6;opacity:0}
+/* fenêtre */
+.win{position:absolute;left:0;top:0;border-radius:14px;overflow:hidden;background:#fff;box-shadow:0 0 0 1px rgba(20,33,61,.08),0 50px 100px -30px rgba(20,33,61,.35),0 20px 40px -20px rgba(20,33,61,.25)}
+.win .bar{height:40px;background:#f4f2ee;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;padding:0 16px}
+.win .bar i{width:11px;height:11px;border-radius:50%;background:#d6d2c9;display:block}
+.win .bar .url{margin-left:18px;font:13px JBM,monospace;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:7px;padding:4px 12px}
+.win .view{position:relative;overflow:hidden}
+.win .view img{position:absolute;left:0;top:0;width:1440px;height:900px;transform-origin:0 0;will-change:transform,opacity}
+.hl{position:absolute;border:3px solid var(--signal);border-radius:12px;box-shadow:0 0 0 6px rgba(242,140,40,.18);opacity:0;transform-origin:0 0}
+.card{position:absolute;left:0;top:0;width:560px;display:flex;gap:18px;align-items:center;background:#fff;border-radius:18px;padding:20px 24px;box-shadow:0 0 0 1px rgba(20,33,61,.07),0 24px 48px -24px rgba(20,33,61,.35)}
+.card .ic{flex:none;width:52px;height:52px;border-radius:14px;display:grid;place-items:center;background:#f1efea;color:var(--ink)}
+.card .ic svg{width:26px;height:26px}
+.card b{display:block;font-size:22px;font-weight:600}
+.card span{display:block;font-size:17px;color:var(--muted);margin-top:3px}
+.card .ok{margin-left:auto;color:var(--success)}
+.chip{font:600 20px Inter;color:var(--ink);background:#fff;border:1px solid var(--line);border-radius:999px;padding:8px 18px;white-space:nowrap}
+.tag{font:15px JBM,monospace;color:var(--subtle)}
+svg.i{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+</style></head>
+<body>
+<div id="stage">
+  <!-- fonds -->
+  <div id="bgPaper" class="abs" style="background:var(--paper)"></div>
+  <div id="spot" class="abs"></div>
+
+  <!-- Scène 1 -->
+  <div id="clock" class="abs mono" style="color:#8f98ad;font-size:22px">10:42 · Chantier en cours, Boulogne-Billancourt</div>
+  <div id="t1" class="abs disp" style="color:#fff"></div>
+  <div id="t1b" class="abs disp" style="color:#fff;text-align:center"></div>
+
+  <!-- téléphone principal -->
+  <div id="phone" class="phone"><div class="notch"></div><div class="scr" id="scr">
+    <div id="lock" class="abs" style="width:100%;height:100%;background:radial-gradient(120% 80% at 50% 0%,#1d2a4a 0%,#0b1226 70%);color:#fff;text-align:center">
+      <div id="lockTime" style="margin-top:90px;font-size:86px;font-weight:300;letter-spacing:-.02em">10:42</div>
+      <div style="font-size:19px;color:#b9c1d4">mercredi 18 novembre</div>
+      <div id="notifs" style="position:absolute;left:14px;right:14px;top:300px"></div>
+    </div>
+    <div id="call" class="abs" style="width:100%;height:100%;background:linear-gradient(#18233f,#0b1226);color:#fff;text-align:center;opacity:0">
+      <div style="margin-top:130px;font-size:19px;color:#b9c1d4">Appel entrant…</div>
+      <div style="margin-top:14px;font-size:38px;font-weight:500;letter-spacing:-.01em">06 39 98 41 27</div>
+      <div style="margin-top:6px;font-size:18px;color:#b9c1d4">Mobile · France</div>
+      <div id="callBtns" style="position:absolute;left:0;right:0;bottom:110px;display:flex;justify-content:space-around">
+        <div style="text-align:center"><div style="width:76px;height:76px;border-radius:50%;background:#d23c32;display:grid;place-items:center;margin:auto"><svg class="i" viewBox="0 0 24 24" style="width:34px;height:34px" id="icOff"></svg></div><div style="margin-top:10px;font-size:16px;color:#b9c1d4">Refuser</div></div>
+        <div style="text-align:center"><div id="accept" style="width:76px;height:76px;border-radius:50%;background:#2e9d5b;display:grid;place-items:center;margin:auto"><svg class="i" viewBox="0 0 24 24" style="width:34px;height:34px" id="icOn"></svg></div><div style="margin-top:10px;font-size:16px;color:#b9c1d4">Accepter</div></div>
+      </div>
+    </div>
+    <div id="sms" class="abs" style="width:100%;height:100%;background:#fff;opacity:0">
+      <div style="padding:70px 18px 14px;border-bottom:1px solid #eceae5;text-align:center">
+        <div style="width:54px;height:54px;border-radius:50%;background:#e9e6df;margin:auto;display:grid;place-items:center;font-weight:600;font-size:22px;color:var(--ink)">R</div>
+        <div style="margin-top:8px;font-size:15px;font-weight:600">RENOEXEMPLE</div>
+      </div>
+      <div style="padding:16px 16px 0">
+        <div style="text-align:center;font-size:13px;color:#8a8f9c;margin:6px 0 14px">Aujourd'hui 10:44</div>
+        <div style="text-align:center;font-size:13px;color:#8a8f9c;margin:0 0 14px;display:flex;align-items:center;justify-content:center;gap:6px"><svg class="i" viewBox="0 0 24 24" style="width:14px;height:14px" id="icMiss"></svg>Appel manqué · 10:42</div>
+        <div id="bubble" style="max-width:86%;background:#eeece7;border-radius:20px 20px 20px 6px;padding:13px 16px;font-size:18px;line-height:1.38;color:#1b2333;transform-origin:0 100%"></div>
+      </div>
+    </div>
+    <div id="app" class="abs" style="width:100%;height:100%;opacity:0;background:var(--paper)"></div>
+    <div id="tap" class="tap"></div>
+  </div></div>
+
+  <!-- Scène 2 -->
+  <div id="t2" class="abs disp"></div>
+  <div id="t2tag" class="abs mono" style="font-size:19px;color:var(--signal-strong)"></div>
+
+  <!-- Scène 3 : fil d'étapes -->
+  <div id="steps" class="abs"></div>
+
+  <!-- Scène 4 : fenêtre -->
+  <div id="win" class="win"><div class="bar"><i></i><i></i><i></i><div class="url" id="url">venio — tableau de bord</div></div><div class="view" id="view"></div></div>
+  <div id="t4" class="abs disp"></div>
+
+  <!-- Scène 5 -->
+  <div id="t5" class="abs disp"></div>
+  <div id="cards" class="abs"></div>
+
+  <!-- Scène 6 -->
+  <div id="row" class="abs"></div>
+  <div id="t6" class="abs disp" style="text-align:center"></div>
+
+  <!-- Scène 7 -->
+  <div id="night" class="abs" style="background:var(--night)"></div>
+  <div id="logo" class="abs" style="display:flex;align-items:center;gap:34px">
+    <svg id="mark" viewBox="0 0 32 32" fill="none" style="width:150px;height:150px;overflow:visible">
+      <path id="mPath" d="M6.5 23.5C13.5 23.5 12 10 19.6 10" stroke="#fff" stroke-width="2.4" stroke-linecap="round" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"/>
+      <circle id="mRing" cx="24.1" cy="10" r="4.5" stroke="#fff" stroke-width="2.4" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" transform="rotate(-90 24.1 10)"/>
+      <circle id="mDot" cx="6.5" cy="23.5" r="3" fill="#f28c28"/>
+    </svg>
+    <div id="word" class="disp" style="color:#fff;font-size:150px;font-weight:600;letter-spacing:-.03em">Venio</div>
+  </div>
+  <div id="t7" class="abs disp" style="color:#fff;text-align:center"></div>
+  <div id="cta" class="abs" style="text-align:center;color:#c9cfdc"></div>
+  <div id="fine" class="abs mono" style="font-size:15px;color:#7d869b;text-align:center"></div>
+
+  <div id="demoTag" class="abs tag">Interface réelle · données de démonstration fictives</div>
+  <div id="fade" class="abs" style="background:#000"></div>
+</div>
+<script src="data.js"></script>
+<script>
+const V = location.hash.includes('v');
+const W = V ? 1080 : 1920, H = V ? 1920 : 1080;
+const $ = (id) => document.getElementById(id);
+const st = $('stage'); st.style.width = W + 'px'; st.style.height = H + 'px';
+for (const id of ['bgPaper', 'spot', 'night', 'fade']) { $(id).style.width = W + 'px'; $(id).style.height = H + 'px'; }
+const L = (h, v) => (V ? v : h);
+const icon = (n, cls = 'i') => `<svg class="${cls}" viewBox="0 0 24 24">${ICONS[n]}</svg>`;
+$('icOff').innerHTML = ICONS['phone-off']; $('icOn').innerHTML = ICONS['phone']; $('icMiss').innerHTML = ICONS['phone-missed'];
+$('bubble').innerHTML = SMS.replace(/(venio-rdv\.netlify\.app\/c\/\w+)/, '<span id="lnk" style="color:#1f4e8c;text-decoration:underline">$1</span>');
+
+// ---------- outils ----------
+const cl = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (t, a, b) => cl((t - a) / (b - a));
+const eo = (x) => 1 - Math.pow(1 - x, 3);
+const eo5 = (x) => 1 - Math.pow(1 - x, 5);
+const eio = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const lerp = (a, b, x) => a + (b - a) * x;
+const set = (el, o) => { if (typeof el === 'string') el = $(el); for (const k in o) { if (k === 'tf') el.style.transform = o[k]; else if (k === 'op') el.style.opacity = o[k]; else el.style[k] = o[k]; } };
+const show = (t, a, b, fi = 0.5, fo = 0.5) => Math.min(eo(seg(t, a, a + fi)), 1 - seg(t, b - fo, b));
+/** Texte en lignes révélées par masque. */
+function lines(id, arr, size, extra = {}) {
+  const el = $(id); el.innerHTML = arr.map((l) => `<span class="line"><span>${l}</span></span>`).join('');
+  el.style.fontSize = size + 'px'; Object.assign(el.style, extra); return el;
+}
+function reveal(el, t, a, b, stagger = 0.12, dur = 0.8) {
+  const ls = el.querySelectorAll('.line>span');
+  let vis = 0;
+  ls.forEach((s, i) => {
+    const p = eo5(seg(t, a + i * stagger, a + i * stagger + dur));
+    const q = eio(seg(t, b - 0.5, b));
+    s.style.transform = `translateY(${(1 - p) * 110 - q * 30}%)`;
+    s.style.opacity = 1 - q;
+    vis = Math.max(vis, p);
+  });
+  el.style.opacity = t < a || t > b ? 0 : 1;
+}
+
+// ---------- éléments ----------
+const PH = L({ h: 840 }, { h: 1060 }).h, PB = 14;
+const PW = Math.round((PH - 2 * PB) * 390 / 844) + 2 * PB;
+const K = (PH - 2 * PB) / 844; // px écran → px stage
+set('phone', { width: PW + 'px', height: PH + 'px', '--r': Math.round(PW * 0.15) + 'px', '--b': PB + 'px' });
+$('phone').style.setProperty('--r', Math.round(PW * 0.15) + 'px'); $('phone').style.setProperty('--b', PB + 'px');
+// le contenu des écrans « système » est dessiné pour une largeur de 390 px
+for (const id of ['lock', 'call', 'sms']) { const e = $(id); e.style.width = '390px'; e.style.height = '844px'; e.style.transformOrigin = '0 0'; e.style.transform = `scale(${K})`; }
+const SHOTS = ['m01-accueil', 'm02-q-projet', 'm03-salle-de-bain', 'm04-douche', 'm05-renovation', 'm06-surface', 'm07-logement', 'm08-anciennete', 'm09-delai', 'm10-budget', 'm11-photos', 'm12-creneaux', 'm13-creneaux-vu', 'm14-coordonnees-vide', 'm15-coordonnees', 'm16-recap', 'm17-confirme', 'm18-confirme-section'];
+const imgs = {};
+for (const s of SHOTS) { const i = new Image(); i.src = `caps/${s}.png`; i.style.opacity = 0; $('app').appendChild(i); imgs[s] = i; }
+
+// Parcours : [début, capture, type d'entrée, tap (index dans TAPS) ou null]
+const FLOW = [
+  [19.2, 'm01-accueil', 'load'], [20.8, 'm02-q-projet', 'up'],
+  [23.0, 'm03-salle-de-bain', 'push', 0], [24.2, 'm04-douche', 'none', 1], [24.9, 'm05-renovation', 'none', 2],
+  [25.6, 'm06-surface', 'push', 3], [26.5, 'm07-logement', 'push', 4], [27.3, 'm08-anciennete', 'push', 5],
+  [28.1, 'm09-delai', 'push', 6], [28.9, 'm10-budget', 'push', 7], [29.7, 'm11-photos', 'push', 8],
+  [30.6, 'm12-creneaux', 'push', 9], [32.0, 'm13-creneaux-vu', 'up'], [33.4, 'm14-coordonnees-vide', 'push', 11],
+  [34.3, 'm15-coordonnees', 'none'], [35.6, 'm16-recap', 'push'], [36.8, 'm17-confirme', 'push'],
+];
+// tap affiché juste avant chaque changement d'écran (sur l'écran précédent)
+const TAPAT = FLOW.filter((f) => f[3] !== undefined).map((f) => ({ t: f[0] - 0.32, tap: TAPS[f[3]] }));
+
+const STEPS = [['Il décrit son besoin', 20.8], ['Une question à la fois', 25.6], ['Il choisit un créneau libre', 30.6], ['Il confirme, en autonomie', 35.6]];
+$('steps').innerHTML = STEPS.map(([s], i) => `<div class="st" style="position:relative;display:flex;align-items:center;gap:22px;height:${L(96, 0)}px"><i style="width:22px;height:22px;border-radius:50%;border:2.5px solid #cfcbc1;background:var(--paper);display:block;position:relative;z-index:2"></i><span style="font:600 ${L(32, 0)}px Inter;color:#9aa1b0">${s}</span></div>`).join('') + `<div id="stLine" style="position:absolute;left:10px;top:48px;width:2.5px;background:var(--signal);height:0;z-index:1"></div><div style="position:absolute;left:10px;top:48px;width:2.5px;background:#e6e3dc;height:${96 * 3}px;z-index:0"></div>`;
+
+// Fenêtre bureau
+const WW = L(1120, 1000), WH = V ? 1080 : Math.round(WW * 900 / 1440) + 40, VS = WW / 1440;
+set('win', { width: WW + 'px', height: WH + 'px' }); set('view', { width: WW + 'px', height: (WH - 40) + 'px' });
+const DESK = ['d-tableau', 'd-appels', 'd-agenda', 'd-dossier', 'd-envois'];
+const dimg = {};
+for (const d of DESK) { const i = new Image(); i.src = `caps/${d}.png`; i.style.opacity = 0; $('view').appendChild(i); dimg[d] = i; }
+const hl = document.createElement('div'); hl.className = 'hl'; hl.style.zIndex = 10; $('view').appendChild(hl);
+// [début, capture, caméra (cx, cy, échelle) au début → à la fin, surlignage]
+const DCAM = [
+  [40.2, 'd-tableau', [720, 450, 1], [1000, 330, L(1.25, 1.45)], [852, 236, 548, 222]],
+  [43.4, 'd-appels', [720, 450, 1], [L(840, 700), L(330, 420), L(1.3, 1.6)], [272, 220, 1148, 140]],
+  [46.4, 'd-agenda', [720, 450, 1.05], [L(760, 600), 480, L(1.45, 1.9)], [276, 446, 1120, 74]],
+  [48.8, 'd-dossier', [720, 450, 1.05], [L(520, 480), 380, L(1.35, 1.7)], [272, 248, 760, 230]],
+];
+const T4 = [[40.2, 43.2, ['Tout arrive', 'au même endroit.']], [43.4, 46.2, V ? ['Chaque appel manqué,', 'suivi jusqu\'au rendez-vous.'] : ['Chaque appel', 'manqué, suivi', 'jusqu\'au rendez-vous.']], [46.4, 48.6, ['Votre agenda', 'se remplit.']], [48.8, 51.4, ['Un dossier complet', 'avant de vous déplacer.']]];
+
+// Automatisations (contenu des vrais modèles de messages de Venio)
+const CARDS = [
+  ['mail', 'Confirmation envoyée', 'À Léa, avec le lien pour reporter ou annuler'],
+  ['bell-ring', 'Rappel programmé', 'Jeudi 19 novembre à 09:30, la veille'],
+  ['inbox', 'Nouvelle demande', 'Alerte envoyée à Rénovation Exemple'],
+  ['file-check', 'Dossier mis à jour', 'Réponses, adresse et créneau réunis'],
+  ['calendar-check', 'Rendez-vous récupéré', 'Rattaché à l\'appel manqué de 10:42'],
+];
+$('cards').innerHTML = CARDS.map(([ic, b, s]) => `<div class="card"><div class="ic">${icon(ic)}</div><div><b>${b}</b><span>${s}</span></div><div class="ok">${icon('check')}</div></div>`).join('');
+const CT = [51.9, 52.8, 53.7, 54.6, 55.5];
+
+// Secteurs
+const SECT = [['s-renovation', 'Artisans du bâtiment'], ['s-garage', 'Garages'], ['s-immobilier', 'Immobilier'], ['s-demenagement', 'Déménagement'], ['s-generique', 'Instituts et services']];
+const SPH = L(640, 760), SPW = Math.round((SPH - 20) * 390 / 844) + 20, SGAP = L(64, 56);
+$('row').innerHTML = SECT.map(([s, l]) => `<div class="sp" style="position:absolute;top:0;width:${SPW}px"><div class="phone" style="position:relative;width:${SPW}px;height:${SPH}px;--r:${Math.round(SPW * .15)}px;--b:10px"><div class="scr"><img src="caps/${s}.png"></div></div><div style="margin-top:26px;text-align:center"><span class="chip">${l}</span></div></div>`).join('');
+const sps = [...document.querySelectorAll('.sp')];
+
+// Notifications de l'écran verrouillé
+const NOTIFS = [['06 39 98 41 27', '10:42'], ['06 39 98 12 58', '11:17'], ['06 39 98 77 03', '14:05'], ['06 39 98 25 90', '16:48']];
+$('notifs').innerHTML = NOTIFS.map(([n, h]) => `<div class="nt" style="display:flex;gap:12px;align-items:center;text-align:left;background:rgba(255,255,255,.12);border-radius:18px;padding:13px 14px;margin-bottom:9px;opacity:0"><div style="width:38px;height:38px;border-radius:10px;background:rgba(242,140,40,.95);display:grid;place-items:center;color:#14213d;flex:none"><svg class="i" viewBox="0 0 24 24" style="width:20px;height:20px">${ICONS['phone-missed']}</svg></div><div style="flex:1"><div style="font-size:15px;font-weight:600">Appel manqué</div><div style="font-size:14px;color:#c4cad8">${n}</div></div><div style="font-size:13px;color:#aab2c5;align-self:flex-start">${h}</div></div>`).join('');
+const nts = [...document.querySelectorAll('.nt')];
+
+// Textes
+const t1 = lines('t1', ['Vous êtes avec un client.', 'Le téléphone sonne.', 'Vous ne pouvez pas répondre.'], L(64, 62), { width: L(900, 960) + 'px' });
+const t1b = lines('t1b', V ? ['Chaque jour,', 'des entreprises', 'perdent des clients', 'sans même le savoir.'] : ['Chaque jour, des entreprises perdent', 'des clients sans même le savoir.'], L(76, 78), { width: W + 'px' });
+const t2 = lines('t2', V ? ['Et si chaque', 'appel manqué', 'devenait une nouvelle', 'opportunité ?'] : ['Et si chaque', 'appel manqué', 'devenait une', 'nouvelle opportunité ?'], L(80, 76), { width: L(860, 1000) + 'px' });
+const t5a = lines('t5', ['Confirmations,', 'rappels, suivi.', '<span style="color:var(--signal-strong)">Sans y penser.</span>'], L(84, 80), { width: L(700, 1000) + 'px' });
+const t7 = lines('t7', ['Chaque opportunité', 'mérite une réponse.'], L(88, 84), { width: W + 'px' });
+$('cta').innerHTML = `<div style="font:500 ${L(30, 34)}px Inter;color:#dfe3ec">Découvrez une nouvelle façon de gérer vos rendez-vous.</div><div class="mono" style="margin-top:22px;font-size:${L(26, 30)}px;color:#fff"><span style="border-bottom:2px solid var(--signal);padding-bottom:4px">venio-rdv.netlify.app</span></div>`;
+set('cta', { width: W + 'px' });
+$('fine').innerHTML = 'Récupération des appels manqués : version pilote. Démonstrations réalisées avec des données fictives.';
+set('fine', { width: W + 'px' });
+const T6 = [['Moins d\'opportunités perdues.', 62.4], ['Plus de rendez-vous.', 64.2], ['Moins d\'administratif.', 66.0]];
+$('t6').innerHTML = T6.map(([s], i) => `<span class="line" style="display:${V ? 'block' : 'inline-block'};margin:0 ${V ? 0 : 18}px"><span>${s}</span></span>`).join('');
+set('t6', { width: W + 'px', fontSize: L(50, 66) + 'px' });
+
+// ---------- événements sonores (lus par le générateur de musique) ----------
+window.EVENTS = {
+  ring: [[2.4, 3.6], [4.2, 5.4], [6.0, 7.2]],
+  missed: [7.5], notif: [8.6, 9.2, 9.8, 10.4], whoosh: [13.0, 39.9, 51.5, 61.6, 70.4], sms: [17.0],
+  tap: [18.7, ...TAPAT.map((x) => x.t)], success: [36.9], card: CT, impact: [62.4, 64.2, 66.0, 71.2], logo: [72.0],
+  bpm: 100, end: 80,
+};
+
+// ---------- rendu ----------
+function render(t) {
+  // fonds : nuit (0-13.4), papier ensuite, nuit à la fin
+  const paper = eio(seg(t, 13.1, 14.3));
+  const r = paper * Math.hypot(W, H) * 1.05;
+  const ox = L(1310, 540), oy = L(560, 1180);
+  set('bgPaper', { clipPath: `circle(${r}px at ${ox}px ${oy}px)` });
+  set('spot', { background: `radial-gradient(${L(900, 800)}px ${L(700, 900)}px at ${ox}px ${oy}px, rgba(120,140,190,.20), rgba(10,17,36,0) 70%)`, op: 1 - paper });
+  const night = eio(seg(t, 69.8, 70.9));
+  set('night', { clipPath: `circle(${night * Math.hypot(W, H)}px at ${W / 2}px ${H / 2}px)` });
+
+  // --- Scène 1 ---
+  set('clock', { op: show(t, 0.6, 7.6, 0.9, 0.6), tf: `translate(${L(160, 90)}px, ${L(300, 360)}px)` });
+  reveal(t1, t, 2.5, 8.0, 1.85, 0.9);
+  set('t1', { tf: `translate(${L(160, 90)}px, ${L(360, 420)}px)` });
+  reveal(t1b, t, 9.4, 13.2, 0.18, 1.0);
+  set('t1b', { tf: `translate(0px, ${L(H / 2 - 90, 330)}px)` });
+
+  // Téléphone : posé sur la table (scène 1), se relève (scène 2), joue le parcours (scène 3), part (scène 4)
+  let px, py, rx = 0, rz = 0, s = 1, op = 1, ry = 0;
+  const up = eio(seg(t, 13.0, 14.6));
+  const lieX = L(1310, 540), lieY = L(560, 1180);
+  const s2X = L(1330, 540), s2Y = L(540, 1240);
+  const s3X = L(1260, 540), s3Y = L(540, 1180);
+  const intro = eo(seg(t, 0.8, 3.0));
+  px = lerp(lieX, s2X, up); py = lerp(lieY + (1 - intro) * 60, s2Y, up);
+  rx = lerp(46, 0, up); rz = lerp(-16, 0, up); s = lerp(lerp(0.86, 0.9, intro) * L(1, 1.12), 1, up);
+  if (V) s *= lerp(1, 1, up);
+  const toS3 = eio(seg(t, 20.0, 21.4)); px = lerp(px, s3X, toS3); py = lerp(py, s3Y, toS3);
+  ry = lerp(0, -8, eio(seg(t, 22, 30))) + lerp(0, 8, eio(seg(t, 30, 38)));
+  op = t < 0.8 ? 0 : Math.min(intro, 1);
+  const back = eio(seg(t, 8.9, 10.0)) * (1 - eio(seg(t, 13.0, 13.7)));
+  px += back * L(260, 0); py += back * L(40, 420); s *= lerp(1, L(0.82, 0.8), back); op *= lerp(1, L(0.14, 0.5), back);
+  // vibration pendant la sonnerie
+  let jx = 0, jy = 0;
+  for (const [a, b] of EVENTS.ring) if (t >= a && t <= b) { const k = Math.sin((t - a) * 150) * 2.6 * (t - a < 0.9 ? 1 : 0); jx = k; jy = -k * 0.6; }
+  // départ vers la fenêtre (scène 4)
+  const out = eio(seg(t, 39.6, 40.8));
+  const outX = L(-PW, -PW), outY = py;
+  px = lerp(px, outX, out); s *= lerp(1, 0.7, out); ry += lerp(0, 30, out);
+  op *= 1 - seg(t, 40.4, 40.9);
+  set('phone', { op, tf: `translate(${px - PW / 2 + jx}px, ${py - PH / 2 + jy}px) perspective(2200px) rotateX(${rx}deg) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${s})`, boxShadow: `0 0 0 1.5px #2a3550 inset, 0 ${lerp(60, 40, up)}px ${lerp(120, 80, up)}px -20px rgba(${paper > 0.5 ? '10,17,36,.35' : '0,0,0,.75'})` });
+
+  // écrans du téléphone
+  const callOn = t >= 2.4 && t < 7.5 ? 1 : 0;
+  set('call', { op: callOn * eo(seg(t, 2.4, 2.6)) });
+  set('lock', { op: t < 16.2 ? 1 : 0 }); set('call', { display: t < 7.6 ? 'block' : 'none' });
+  const lockLight = t < 1.4 ? 0.25 : 1;
+  set('lockTime', { op: lockLight });
+  set('accept', { tf: `scale(${1 + 0.06 * Math.sin(t * 8)})` });
+  nts.forEach((n, i) => { const a = [7.6, 8.6, 9.2, 9.8][i]; const p = eo5(seg(t, a, a + 0.45)); const fade = 1 - 0.6 * seg(t, 11.2, 12.8); n.style.opacity = p * fade; n.style.transform = `translateY(${(1 - p) * -24}px) scale(${lerp(0.96, 1, p)})`; n.style.filter = `grayscale(${seg(t, 11.2, 12.8)})`; });
+  set('notifs', { tf: `translateY(${-seg(t, 9.0, 11.0) * 0}px)` });
+  // SMS
+  const smsOn = eo(seg(t, 15.6, 16.1));
+  set('sms', { op: t < 19.2 ? smsOn : 1 - seg(t, 19.2, 19.5) });
+  const bub = eo5(seg(t, 17.0, 17.45));
+  set('bubble', { op: bub, tf: `scale(${lerp(0.6, 1, bub)})` });
+  const lnk = $('lnk'); if (lnk) lnk.style.background = t > 18.6 && t < 19.3 ? 'rgba(31,78,140,.14)' : 'transparent';
+  // Parcours
+  const appOn = t >= 19.2 ? eo(seg(t, 19.2, 19.6)) : 0;
+  set('app', { op: appOn });
+  let cur = -1; for (let i = 0; i < FLOW.length; i++) if (t >= FLOW[i][0]) cur = i;
+  SHOTS.forEach((sname) => { imgs[sname].style.opacity = 0; });
+  if (cur >= 0) {
+    const [ta, name, kind] = FLOW[cur];
+    const p = eo(seg(t, ta, ta + (kind === 'push' ? 0.34 : kind === 'up' ? 0.6 : 0.2)));
+    const im = imgs[name];
+    const sw = PW - 2 * PB;
+    let tf = '';
+    if (kind === 'push') tf = `translateX(${(1 - p) * 40}px)`;
+    if (kind === 'up') tf = `translateY(${(1 - p) * 120}px)`;
+    if (kind === 'load') tf = `scale(${lerp(1.04, 1, p)})`;
+    im.style.opacity = kind === 'none' ? 1 : p; im.style.transform = tf; im.style.width = sw + 'px';
+    if (cur > 0 && p < 1) { const prev = imgs[FLOW[cur - 1][1]]; prev.style.width = sw + 'px'; prev.style.opacity = kind === 'none' ? 1 : 1 - p; prev.style.transform = kind === 'up' ? `translateY(${-p * 120}px)` : kind === 'push' ? `translateX(${-p * 30}px)` : ''; if (kind === 'none') { prev.style.opacity = 1; im.style.opacity = p; } }
+  }
+  // tap
+  let tp = null;
+  for (const x of [{ t: 18.7, tap: { x: 120, y: 330, w: 230, h: 30 }, sms: true }, ...TAPAT]) if (t >= x.t && t < x.t + 0.45) tp = x;
+  if (tp) {
+    const q = seg(t, tp.t, tp.t + 0.45);
+    const cx = (tp.tap.x + tp.tap.w / 2) * K + PB, cy = (tp.tap.y + tp.tap.h / 2) * K + PB;
+    set('tap', { left: cx + 'px', top: cy + 'px', op: Math.sin(q * Math.PI) * 1, tf: `scale(${lerp(0.6, 1.25, eo(q))})` });
+  } else set('tap', { op: 0 });
+
+  // --- Scène 2 ---
+  reveal(t2, t, 14.0, 20.0, 0.14, 0.9);
+  set('t2', { tf: `translate(${L(160, 90)}px, ${L(300, 230)}px)`, color: 'var(--ink)' });
+  $('t2tag').textContent = 'SMS envoyé automatiquement après l\'appel manqué';
+  set('t2tag', { op: show(t, 17.3, 20.0, 0.6, 0.5), tf: `translate(${L(160, 90)}px, ${L(720, 640)}px)` });
+
+  // --- Scène 3 : étapes ---
+  const stOp = show(t, 20.6, 39.6, 0.6, 0.6);
+  set('steps', { op: V ? 0 : stOp, tf: `translate(160px, 330px)` });
+  const sts = document.querySelectorAll('.st');
+  let lineH = 0;
+  STEPS.forEach(([, a], i) => {
+    const on = t >= a; const nxt = STEPS[i + 1] ? t >= STEPS[i + 1][1] : false;
+    const dot = sts[i].querySelector('i'), lab = sts[i].querySelector('span');
+    const p = eo(seg(t, a, a + 0.4));
+    dot.style.borderColor = on ? '#f28c28' : '#cfcbc1'; dot.style.background = on ? (nxt || t > 37 ? '#f28c28' : 'var(--paper)') : 'var(--paper)';
+    lab.style.color = on ? (nxt ? '#6b7385' : '#14213d') : '#b4b9c4';
+    lab.style.transform = `translateX(${(1 - p) * 0}px)`;
+    if (on && i > 0) lineH = Math.max(lineH, (i - 1) * 96 + 96 * p);
+  });
+  $('stLine').style.height = lineH + 'px';
+  // vertical : légende unique au-dessus du téléphone
+  if (V) {
+    let idx = -1; STEPS.forEach(([, a], i) => { if (t >= a) idx = i; });
+    set('t4', {});
+  }
+
+  // --- Scène 4 : fenêtre ---
+  const winIn = eo5(seg(t, 39.9, 41.0)), winOut = eio(seg(t, 51.2, 52.2));
+  const wx = L(W - WW - 110, (W - WW) / 2), wy = L((H - WH) / 2 + 10, 640);
+  const wOp = t < 39.9 ? 0 : Math.min(1, winIn) * (1 - seg(t, 51.2, 52.0));
+  const blur = winOut * 6;
+  set('win', { op: wOp, filter: blur > 0.05 ? `blur(${blur}px)` : 'none', tf: `translate(${wx + (1 - winIn) * 80 - winOut * L(380, 0)}px, ${wy + (1 - winIn) * 120 + winOut * L(0, 120)}px) perspective(2400px) rotateX(${(1 - winIn) * 14}deg) rotateY(${winOut * L(18, 0)}deg) scale(${lerp(0.94, 1, winIn) * lerp(1, 0.86, winOut)})` });
+  let dc = -1; for (let i = 0; i < DCAM.length; i++) if (t >= DCAM[i][0]) dc = i;
+  DESK.forEach((d) => (dimg[d].style.opacity = 0));
+  hl.style.opacity = 0;
+  if (dc >= 0) {
+    const [a, name, c0, c1, h] = DCAM[dc];
+    const b = DCAM[dc + 1] ? DCAM[dc + 1][0] : 51.2;
+    const p = eio(seg(t, a + 0.3, b));
+    const cs = lerp(c0[2], c1[2], p), cx = lerp(c0[0], c1[0], p), cy = lerp(c0[1], c1[1], p);
+    const vw = WW, vh = WH - 40, sc = Math.max(cs * VS, vh / 900, vw / 1440);
+    const ccx = cl(cx, vw / 2 / sc, 1440 - vw / 2 / sc), ccy = cl(cy, vh / 2 / sc, 900 - vh / 2 / sc);
+    const tf = `translate(${vw / 2 - ccx * sc}px, ${vh / 2 - ccy * sc}px) scale(${sc})`;
+    const fin = eo(seg(t, a, a + 0.45));
+    dimg[name].style.opacity = fin; dimg[name].style.transform = tf;
+    if (dc > 0 && fin < 1) { const pn = DCAM[dc - 1][1]; dimg[pn].style.opacity = 1; dimg[name].style.zIndex = 2; dimg[pn].style.zIndex = 1; }
+    const hp = show(t, a + 1.0, b - 0.15, 0.5, 0.3);
+    hl.style.opacity = hp; hl.style.left = h[0] + 'px'; hl.style.top = h[1] + 'px'; hl.style.width = h[2] + 'px'; hl.style.height = h[3] + 'px';
+    hl.style.transform = `${tf} `; hl.style.transformOrigin = '0 0';
+    // le cadre suit la caméra : on applique la même transformation au cadre positionné dans l'espace image
+    hl.style.left = '0px'; hl.style.top = '0px';
+    hl.style.transform = `${tf} translate(${h[0]}px, ${h[1]}px)`; hl.style.width = h[2] + 'px'; hl.style.height = h[3] + 'px'; hl.style.borderWidth = 3 / sc + 'px'; hl.style.borderRadius = 12 / sc + 'px'; hl.style.boxShadow = `0 0 0 ${6 / sc}px rgba(242,140,40,.18)`;
+    $('url').textContent = { 'd-tableau': 'venio — tableau de bord', 'd-appels': 'venio — appels manqués', 'd-agenda': 'venio — agenda', 'd-dossier': 'venio — dossier de Léa Durand' }[name];
+  }
+  // légendes scène 4
+  let t4 = null; for (const x of T4) if (t >= x[0] && t < x[1] + 0.01) t4 = x;
+  const t4el = $('t4');
+  if (t4) {
+    if (t4el.dataset.k !== String(t4[0])) { lines('t4', t4[2], L(52, 60), { width: L(560, 960) + 'px' }); t4el.dataset.k = String(t4[0]); }
+    reveal(t4el, t, t4[0] + 0.15, t4[1], 0.1, 0.7);
+    set('t4', { tf: `translate(${L(140, 90)}px, ${L(430, 330)}px)`, op: 1 });
+  } else set('t4', { op: 0 });
+  if (V && t >= 20.6 && t < 39.6) {
+    let idx = 0; STEPS.forEach(([, a], i) => { if (t >= a) idx = i; });
+    const k = 'st' + idx;
+    if (t4el.dataset.k !== k) { lines('t4', [STEPS[idx][0] + '.'], 64, { width: '960px', textAlign: 'center' }); t4el.dataset.k = k; }
+    reveal(t4el, t, STEPS[idx][1] + 0.1, STEPS[idx + 1] ? STEPS[idx + 1][1] : 39.6, 0.1, 0.6);
+    set('t4', { tf: `translate(60px, 300px)`, op: 1 });
+  }
+  // vertical, scène 4 : texte centré
+  if (V && t4) t4el.style.textAlign = 'left';
+
+  // --- Scène 5 ---
+  reveal(t5a, t, 51.7, 61.0, 0.16, 0.9);
+  set('t5', { tf: `translate(${L(160, 90)}px, ${L(330, 300)}px)` });
+  const cards = [...document.querySelectorAll('.card')];
+  const cxp = L(1180, 176), cyp = L(220, 760), gap = L(124, 160);
+  cards.forEach((c, i) => {
+    const a = CT[i]; const p = eo5(seg(t, a, a + 0.55)); const o = 1 - seg(t, 60.4, 61.2);
+    c.style.opacity = p * o; c.style.transformOrigin = '0 0'; c.style.transform = `translate(${cxp + (1 - p) * 60}px, ${cyp + i * gap + (1 - p) * 30}px) scale(${lerp(0.96, 1, p) * L(1, 1.3)})`;
+    c.querySelector('.ok').style.opacity = seg(t, a + 0.45, a + 0.7);
+  });
+
+  // --- Scène 6 ---
+  const rowIn = eo5(seg(t, 61.2, 62.4)), rowOut = eio(seg(t, 69.4, 70.6));
+  const span = SECT.length * SPW + (SECT.length - 1) * SGAP;
+  const drift = lerp(L(140, 520), L(-140, -520), seg(t, 61.2, 70.6));
+  set('row', { op: (t < 61.2 ? 0 : rowIn) * (1 - rowOut), tf: `translate(${(W - span) / 2 + drift}px, ${L(300, 720) + (1 - rowIn) * 80}px)` });
+  sps.forEach((e, i) => { const a = 61.3 + i * 0.12; const p = eo5(seg(t, a, a + 0.8)); e.style.left = i * (SPW + SGAP) + 'px'; e.style.transform = `translateY(${(1 - p) * 60 + Math.sin(t * 0.9 + i) * 6}px)`; e.style.opacity = p; });
+  const t6s = $('t6').querySelectorAll('.line>span');
+  T6.forEach(([, a], i) => { const p = eo5(seg(t, a, a + 0.7)); const q = eio(seg(t, 69.6, 70.4)); t6s[i].style.transform = `translateY(${(1 - p) * 110}%)`; t6s[i].style.opacity = 1 - q; t6s[i].style.color = i === 0 ? 'var(--signal-strong)' : 'var(--ink)'; });
+  set('t6', { op: t > 61.5 && t < 70.6 ? 1 : 0, tf: `translate(0px, ${L(120, 250)}px)` });
+
+  // --- Scène 7 ---
+  const lp = eio(seg(t, 71.0, 72.1)), lr = eio(seg(t, 71.6, 72.5)), ld = eo5(seg(t, 70.9, 71.3));
+  $('mPath').setAttribute('stroke-dashoffset', 1 - lp); $('mRing').setAttribute('stroke-dashoffset', 1 - lr);
+  $('mDot').setAttribute('r', 3 * ld + Math.max(0, Math.sin(seg(t, 70.9, 71.5) * Math.PI)) * 1.2);
+  const wp = eo5(seg(t, 72.0, 72.9));
+  set('word', { op: wp, tf: `translateX(${(1 - wp) * -30}px)`, fontSize: L(150, 120) + 'px' });
+  const lg = $('logo'); const lgW = lg.offsetWidth, lgH = lg.offsetHeight;
+  const lift = eio(seg(t, 73.6, 74.6));
+  const ls = V ? 0.8 : 1;
+  set('logo', { op: t > 70.8 ? 1 - seg(t, 79.0, 79.8) : 0, tf: `translate(${(W - lgW) / 2}px, ${H / 2 - lgH / 2 - lift * L(170, 260)}px) scale(${lerp(1, 0.62, lift) * ls})`, transformOrigin: '50% 50%' });
+  reveal(t7, t, 73.9, 79.6, 0.14, 0.9);
+  set('t7', { tf: `translate(0px, ${H / 2 - L(40, 60)}px)` });
+  const ctp = eo(seg(t, 75.8, 76.6));
+  set('cta', { op: ctp * (1 - seg(t, 79.0, 79.6)), tf: `translate(0px, ${H / 2 + L(170, 230) + (1 - ctp) * 20}px)` });
+  set('fine', { op: show(t, 76.4, 79.6, 0.6, 0.5), tf: `translate(0px, ${H - L(70, 120)}px)` });
+
+  // mention de démonstration pendant les écrans du produit
+  set('demoTag', { op: show(t, 15.8, 61.0, 0.6, 0.5) * 0.9, tf: `translate(${L(160, 90)}px, ${H - L(70, 110)}px)` });
+  set('fade', { op: Math.max(1 - seg(t, 0, 0.6), seg(t, 79.4, 80)) });
+}
+window.render = render;
+window.ready = () => Promise.all([...document.images].map((i) => (i.complete ? 1 : new Promise((r) => (i.onload = r))))).then(() => document.fonts.ready);
+render(0);
+</script>
+</body></html>
