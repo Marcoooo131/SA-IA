@@ -92,6 +92,10 @@ jobs:
       - name: Benchmark concurrentiel
         run: |
           mkdir -p dist/benchmark && cp -r benchmark-telesurveillance/. dist/benchmark/ && rm -f dist/benchmark/README.md
+      # Workshop « Sector Alarm face à la concurrence » (…/workshop-concurrence/) : statique, utilise workshop-commun/
+      - name: Workshop concurrence
+        run: |
+          mkdir -p dist/workshop-concurrence && cp -r workshop-concurrence/. dist/workshop-concurrence/ && rm -f dist/workshop-concurrence/README.md
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
