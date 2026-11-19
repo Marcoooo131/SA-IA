@@ -11,6 +11,8 @@
 | Phase actuelle | **Phase 1 — Fondations** |
 | Étape actuelle | **1.1 — Vérifier le nom « Venio » (marque et domaines)** |
 | Étapes validées | **0 / 37 (0 %)** — seules les étapes validées avec preuve comptent |
+| Mode de financement | **Progressif par paliers (décision D0 du 19/11/2026)** : gratuit jusqu'à 10 clients, puis investissements financés par les revenus |
+| Budget de départ (palier 0) | **≈ 30 à 45 € HT**, puis ≈ 2 à 5 €/mois |
 | Budget engagé à ce jour | **0 €** (tout fonctionne sur des offres gratuites) |
 
 ---
@@ -55,17 +57,32 @@ oublié ni de vérification email · pas de back-office · SMS et téléphonie j
 
 ---
 
-## 2. Feuille de route : 9 phases, 37 étapes
+## 2. Financement progressif par paliers (décision D0)
+
+| Palier | Déclenchement | Contenu | Coût estimé (HT) |
+|---|---|---|---|
+| **0** | De 0 à 10 clients | Micro-entreprise (création gratuite), hébergement gratuit + sauvegardes chiffrées gratuites, documents juridiques à partir des modèles officiels (Commission européenne, CNIL), SMS uniquement sur demande explicite (serveur vocal), audit de sécurité automatisé, pilotes | ≈ 30–45 € au départ (domaine, tests SMS), ≈ 2–5 €/mois |
+| **1** | Dès 10 clients payants | Passage en SAS, dépôt de la marque, Supabase Pro + Render payant | ≈ 600–1 000 € + ≈ 30 €/mois |
+| **2** | Vers 30 à 50 clients | Avocat (CGV, RGPD, SMS), assurance RC Pro + cyber, expert-comptable, test d'intrusion | ≈ 3 000–8 000 € + ≈ 250–400 €/mois |
+
+**Risques acceptés au palier 0 :** nom non protégé par une marque ; documents non relus par un avocat ; pas
+d'assurance (le patrimoine personnel d'un entrepreneur individuel est séparé du patrimoine professionnel par défaut
+depuis 2022) ; hébergement gratuit limité (≈ 20 à 30 clients au maximum) ; **un seul titulaire** pour la
+micro-entreprise alors que vous êtes deux associés, d'où un accord écrit indispensable (étape 1.4).
+**Non négociable même au palier 0 :** sauvegardes, mot de passe oublié, paiements testés, page Tarifs conforme,
+SMS uniquement sur demande explicite, audit de sécurité sans faille critique ouverte.
+
+## 2 bis. Feuille de route : 9 phases, 37 étapes
 
 L'ordre suit les dépendances réelles. Une étape n'est validée qu'avec sa preuve. Les phases 2 (finances) et 5
 (prix) avancent **en continu** : le tableau financier (§ 3) est mis à jour à chaque étape.
 
 | Phase | Étapes |
 |---|---|
-| **1. Fondations** | 1.1 Vérifier le nom (marque, domaines) · 1.2 Positionnement, concurrence et secteurs cibles · 1.3 Valider la proposition de valeur (entretiens) · 1.4 Structure juridique et accord entre associés · 1.5 Créer la société et ouvrir le compte bancaire · 1.6 Déposer la marque, acheter les domaines, adresses email pro |
-| **2. Finances** | 2.1 Budget de création et trésorerie de sécurité · 2.2 Modèle financier à trois scénarios (version validée) · 2.3 Devis réels : comptable, assurance, avocat, test d'intrusion |
-| **3. Produit et technique** | 3.1 Corrections commerciales urgentes (page Tarifs) · 3.2 Infrastructure payante, sauvegardes, restauration testée · 3.3 Comptes : mot de passe oublié, vérification email, sessions, rôles et invitations · 3.4 Back-office et gestion des quotas · 3.5 Téléphonie et SMS réels, tests multi-opérateurs · 3.6 Filtrage des appels (niveau 1) et garde-fous SMS · 3.7 RGPD technique : suppression, export, conservation, journal d'accès · 3.8 Stripe réel : paiements, impayés, résiliations, factures · 3.9 Sécurité et robustesse : test RLS automatique, test d'intrusion, charge, appareils |
-| **4. Juridique** | 4.1 Mentions légales, CGV, CGU · 4.2 RGPD : sous-traitance, registre, confidentialité, conservation, violations · 4.3 Validation du SMS et des règles téléphoniques par un avocat · 4.4 Assurance RC Pro + cyber |
+| **1. Fondations** | 1.1 Vérifier le nom (marque, domaines) · 1.2 Positionnement, concurrence et secteurs cibles · 1.3 Valider la proposition de valeur (entretiens) · 1.4 Statut de départ (micro-entreprise) et accord écrit entre associés · 1.5 Créer la micro-entreprise et ouvrir un compte dédié · 1.6 Acheter le domaine, adresses email (marque au palier 1) |
+| **2. Finances** | 2.1 Budget par paliers et seuils de déclenchement · 2.2 Modèle financier à trois scénarios (version validée) · 2.3 Devis réels préparés pour les paliers 1 et 2 |
+| **3. Produit et technique** | 3.1 Corrections commerciales urgentes (page Tarifs) · 3.2 Sauvegardes chiffrées gratuites et restauration testée · 3.3 Comptes : mot de passe oublié, vérification email, sessions, rôles et invitations · 3.4 Back-office et gestion des quotas · 3.5 Téléphonie et SMS réels, tests multi-opérateurs · 3.6 Filtrage des appels (niveau 1) et garde-fous SMS · 3.7 RGPD technique : suppression, export, conservation, journal d'accès · 3.8 Stripe réel : paiements, impayés, résiliations, factures · 3.9 Audit de sécurité automatisé gratuit : code, dépendances, RLS, configuration, charge, appareils |
+| **4. Juridique** | 4.1 Mentions légales, CGV, CGU (modèles ; relecture avocat au palier 2) · 4.2 RGPD à partir des modèles officiels · 4.3 SMS sur demande explicite (serveur vocal) et vérification juridique documentée · 4.4 Assurance : report documenté jusqu'au palier 2 |
 | **5. Tarification** | 5.1 Étude concurrentielle complète · 5.2 Grille Starter / Professional / Enterprise chiffrée (HT, TTC, coûts, marges) · 5.3 Validation des prix par les entretiens et les pilotes, configuration Stripe |
 | **6. Site et marque** | 6.1 Identité visuelle (ajustée si le nom change) · 6.2 Site définitif : contenus, SEO, contact, domaine · 6.3 Parcours inscription → paiement → configuration vérifié · 6.4 Aide en ligne et organisation du support |
 | **7. Commercial** | 7.1 Clients idéaux, argumentaire, supports · 7.2 Pilotes (3 à 5 entreprises) · 7.3 Retours et corrections · 7.4 Offre de lancement et plan d'acquisition sans publicité payante |
@@ -112,7 +129,7 @@ L'assurance n'est pas soumise à la TVA mais à une taxe sur les conventions d'a
 
 **Dépenses réellement engagées : 0 €.**
 
-### 3.2 Budget de création (ponctuel, € HT)
+### 3.2 Budget complet (ponctuel, € HT) — désormais réparti entre les paliers 1 et 2
 
 | Poste | Bas | Haut | Nature |
 |---|---|---|---|
@@ -205,10 +222,11 @@ estimé ≈ 87 300 € avec un dirigeant rémunéré → IS ≈ 17 600 €.
 
 | # | Décision | Quand | Statut |
 |---|---|---|---|
+| D0 | Mode de financement | — | **Décidé le 19/11/2026 : progressif par paliers** |
 | D1 | Garder « Venio » ou changer de nom | Étape 1.1 | **En attente** |
-| D2 | Structure (SAS à deux associés ?), répartition du capital, rôles, temps consacré, rémunération | Étape 1.4 | En attente |
+| D2 | Titulaire de la micro-entreprise, partage entre associés, rôles, temps consacré (accord écrit) | Étape 1.4 | En attente |
 | D3 | Un ou deux secteurs de départ (rénovation ? garages ?) | Étape 1.2 | En attente |
-| D4 | Apport de départ de chaque associé, recours à un prêt d'honneur | Étape 2.1 | En attente |
+| D4 | Seuils exacts de passage aux paliers 1 et 2 | Étape 2.1 | En attente |
 | D5 | Fournisseur de téléphonie et de SMS | Étape 3.5 | En attente |
 | D6 | Développer invitations et messagerie, ou les retirer de l'offre | Étape 3.1 | En attente |
 | D7 | Avenir de l'offre Starter (prix, support) | Étape 5.2 | En attente |
@@ -223,12 +241,14 @@ estimé ≈ 87 300 € avec un dirigeant rémunéré → IS ≈ 17 600 €.
 | 18/11/2026 | Direction artistique « le fil », police Fraunces | Associés |
 | 18/11/2026 | Stripe en mode test uniquement | Associés |
 | 19/11/2026 | Pas d'accès à Hugging Face (voix off) ; pas de connexion Stripe via formulaire | Associés |
+| 19/11/2026 | **D0 : lancement progressif, gratuit jusqu'à 10 clients puis investissements par paliers** | Associés |
 
 ## 7. Journal du budget
 
 | Date | Mouvement | Montant | Cumul engagé |
 |---|---|---|---|
 | 19/11/2026 | Ouverture du programme | 0 € | 0 € |
+| 19/11/2026 | Budget de départ ramené à ≈ 30–45 € HT (palier 0) ; les §3.2 et §3.3 deviennent les budgets des paliers 1 et 2 | — | 0 € |
 
 ---
 
