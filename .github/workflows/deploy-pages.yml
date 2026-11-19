@@ -88,6 +88,10 @@ jobs:
           for w in workshop-commun workshop-decouverte workshop-brise-glace workshop-humour workshop-humour-diplomatie; do
             mkdir -p dist/$w && cp -r $w/. dist/$w/ && rm -f dist/$w/README.md
           done
+      # Benchmark concurrentiel télésurveillance (…/benchmark/) : slide unique statique + captures sources
+      - name: Benchmark concurrentiel
+        run: |
+          mkdir -p dist/benchmark && cp -r benchmark-telesurveillance/. dist/benchmark/ && rm -f dist/benchmark/README.md
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
