@@ -54,6 +54,7 @@ met à jour (grille d'offres §11.4, direction artistique, feuille de route §19
 | — | Feuille de route mise à jour (18/11/2026) | [05 — Feuille de route](05-extension-acquisition.md#feuille-de-route-mise-à-jour) |
 | — | Kit pilotes appels manqués (étape 7) | [06-pilotes.md](06-pilotes.md) |
 | — | Liste de contrôle du lancement (étape 8) | [07-lancement.md](07-lancement.md) |
+| — | Filtrage des appels, protection des données, quotas SMS, plan 30 jours, simulation économique | [08-securisation-lancement.md](08-securisation-lancement.md) |
 
 ## En une page
 

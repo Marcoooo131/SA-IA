@@ -1,6 +1,6 @@
 # 07 — Préparation du lancement commercial (étape 8)
 
-> Statut au 18/11/2026 : **préparé, non lancé.** Le produit fonctionne en ligne en mode test (aucun envoi payant, Stripe en mode test). Le lancement payant demande des décisions et des validations extérieures listées ci-dessous. Rien de cette liste ne peut être coché par le code seul.
+> **Remplacé par le tableau de contrôle du [08 §6](08-securisation-lancement.md#6-tableau-de-contrôle-du-lancement-12-points) (19/11/2026).** Statut au 18/11/2026 : **préparé, non lancé.** Le produit fonctionne en ligne en mode test (aucun envoi payant, Stripe en mode test). Le lancement payant demande des décisions et des validations extérieures listées ci-dessous. Rien de cette liste ne peut être coché par le code seul.
 
 Légende : ✅ fait · 🟡 prêt côté produit, action de votre part · ⛔ bloquant, pas commencé
 
