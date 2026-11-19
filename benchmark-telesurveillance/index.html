@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Benchmark concurrentiel – Télésurveillance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&family=Space+Grotesk:wght@400..700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #2A2C30; }
+body { overflow: hidden; font-family: "Inter", sans-serif; }
+
+/* Scène : la slide 1920×1080 est mise à l'échelle pour tenir dans l'écran */
+.stage { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+.frame { width: 1920px; height: 1080px; transform-origin: center center; box-shadow: 0 20px 60px rgba(0,0,0,.35); flex: none; }
+.slide { width: 1920px; height: 1080px; position: relative; overflow: hidden; }
+.slide h1, .slide h2, .slide h3, .slide p { margin: 0; }
+
+/* Barre d'outils */
+.toolbar { position: fixed; right: 16px; bottom: 16px; display: flex; gap: 8px; z-index: 10; opacity: .25; transition: opacity .2s; }
+.toolbar:hover, .toolbar:focus-within { opacity: 1; }
+.toolbar button { font: 600 14px "Inter", sans-serif; background: #FFFFFF; color: #1D1F22; border: none; border-radius: 6px; padding: 10px 14px; cursor: pointer; }
+.toolbar button.primary { background: #C8102E; color: #FFFFFF; }
+
+/* Fenêtre des sources */
+.sources { position: fixed; inset: 0; background: rgba(20,21,23,.92); z-index: 20; display: none; overflow: auto; padding: 40px; }
+.sources.open { display: block; }
+.sources-inner { max-width: 1100px; margin: 0 auto; color: #F5F5F3; }
+.sources-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.sources-head h2 { font: 700 28px "Space Grotesk", sans-serif; margin: 0; }
+.sources-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 24px; }
+.sources figure { margin: 0; background: #FFFFFF; border-radius: 8px; padding: 12px; }
+.sources img { width: 100%; height: auto; display: block; }
+.sources figcaption { color: #1D1F22; font: 600 15px "Inter", sans-serif; padding-top: 8px; }
+
+/* Impression / export PDF : une page 16:9 */
+@page { size: 1920px 1080px; margin: 0; }
+@media print {
+  html, body { background: none; width: 1920px; height: 1080px; overflow: hidden; }
+  .stage { position: static; display: block; }
+  .frame { transform: none !important; box-shadow: none; }
+  .toolbar, .sources { display: none !important; }
+  .slide * { animation: none !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+@media (prefers-reduced-motion: reduce) { .slide * { animation: none !important; } }
+
+/* ---------- Styles de la slide ---------- */
+:root {
+  --bg: #F5F5F3;
+  --card: #FFFFFF;
+  --ink: #1D1F22;
+  --muted: #5B6068;
+  --line: #E2E2DE;
+  --red: #C8102E;
+  --soft: #EFEFEC;
+}
+
+.slide {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Inter", sans-serif;
+  padding: 30px 96px 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ---------- Header ---------- */
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.head-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-left: 8px solid var(--red);
+  padding-left: 26px;
+}
+.head h1 {
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: 56px;
+  line-height: 1;
+  letter-spacing: -1px;
+  white-space: nowrap;
+  margin: 0;
+}
+.head .sub {
+  font-size: 28px;
+  color: var(--muted);
+  margin: 0;
+}
+.head .key {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 6px 32px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px 22px;
+}
+.head .key p { font-size: 24px; color: var(--muted); margin: 0; }
+
+/* ---------- Cards ---------- */
+.cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+}
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-top: 6px solid var(--ink);
+  border-radius: 6px;
+  padding: 12px 24px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* comparison tables */
+.cmp {
+  width: 100%;
+  border-collapse: collapse;
+}
+.cmp th {
+  text-align: left;
+  vertical-align: bottom;
+  padding: 0 10px 8px 0;
+  border-bottom: 2px solid var(--ink);
+}
+.cmp th.brand { width: 38%; }
+.cmp th.brand.wide { width: 44%; }
+
+.cmp .bname {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+  margin: 0;
+}
+.cmp .bnum {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--red);
+  margin: 0;
+}
+.cmp .fname {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+}
+.cmp .fprice {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+  margin: 0;
+}
+.cmp .fprice.na { color: var(--muted); font-weight: 500; font-size: 24px; }
+.cmp .fprice.quote { color: var(--red); }
+.pre { font-family: "Inter", sans-serif; font-size: 24px; font-weight: 500; color: var(--muted); }
+
+.cmp td {
+  font-size: 24px;
+  line-height: 1.2;
+  padding: 5px 10px 5px 0;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+.cmp tr:last-child td { border-bottom: none; }
+
+/* status marks */
+.ok { font-weight: 700; color: var(--ink); }
+.opt {
+  color: var(--muted);
+  font-weight: 600;
+  background: var(--soft);
+  border-radius: 4px;
+  padding: 1px 8px;
+}
+.cond { color: var(--red); font-weight: 600; }
+.no { color: var(--muted); }
+
+.common {
+  font-size: 24px;
+  color: var(--muted);
+  margin: 0;
+  padding-top: 6px;
+  border-top: 1px dashed var(--line);
+}
+.common b { color: var(--ink); font-weight: 600; }
+
+/* single-offer card */
+.solo-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--ink);
+}
+.solo-head .left { display: flex; flex-direction: column; }
+.solo-head .bname {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+  margin: 0;
+}
+.solo-head .bnum {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--red);
+  margin: 0;
+}
+.solo-head .chips { display: flex; gap: 12px; }
+.chip {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  background: var(--soft);
+  border-radius: 4px;
+  padding: 4px 14px;
+  margin: 0;
+}
+.chip.red { background: var(--red); color: #FFFFFF; }
+.solo-cols {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: 18px;
+  flex: 1;
+}
+.solo-cols .col { display: flex; flex-direction: column; gap: 4px; }
+.solo-cols h3 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin: 0 0 2px;
+}
+.solo-cols h3.c { color: var(--red); }
+.solo-cols ul { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
+.solo-cols li { font-size: 24px; line-height: 1.2; }
+.solo-cols li::marker { content: "✓  "; color: var(--ink); font-size: 20px; }
+.solo-cols ul.condl li::marker { content: "◆  "; color: var(--red); }
+
+/* ---------- Takeaways ---------- */
+.take {
+  display: flex;
+  align-items: stretch;
+  background: var(--ink);
+  border-radius: 6px;
+}
+.take .label {
+  background: var(--red);
+  border-radius: 6px 0 0 6px;
+  padding: 10px 26px;
+  display: flex;
+  align-items: center;
+  width: 230px;
+}
+.take .label h2 {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 1px;
+  color: #FFFFFF;
+  margin: 0;
+}
+.take .points {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr 1fr 1.35fr;
+  flex: 1;
+}
+.take .pt {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 10px 18px;
+  border-left: 1px solid #3A3D42;
+}
+.take .pt:first-child { border-left: none; }
+.take .pt .n {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  color: #FF5A6E;
+  margin: 0;
+}
+.take .pt p.t {
+  font-size: 24px;
+  line-height: 1.2;
+  color: #E9E9E6;
+  margin: 0;
+}
+.take .pt.key p.t { color: #FFFFFF; font-weight: 700; }
+
+/* ---------- Footnote ---------- */
+.foot {
+  position: absolute;
+  left: 96px;
+  bottom: 6px;
+  width: 1728px;
+  font-size: 24px;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* ---------- Motion ---------- */
+@keyframes rise {
+  from { opacity: 0; transform: translateY(16px); }
+}
+.head { animation: rise .5s ease-out both; }
+.card { animation: rise .5s ease-out both; }
+.card:nth-child(1) { animation-delay: .10s; }
+.card:nth-child(2) { animation-delay: .18s; }
+.card:nth-child(3) { animation-delay: .26s; }
+.card:nth-child(4) { animation-delay: .34s; }
+.take { animation: rise .5s ease-out .48s both; }
+
+/* block 3 rows */
+.solo-rows {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 8px 14px;
+  align-items: start;
+}
+.solo-rows .rl {
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0;
+}
+.solo-rows .rl.c { color: var(--red); }
+.solo-rows .rt {
+  font-size: 24px;
+  line-height: 1.25;
+  margin: 0;
+}
+.solo-rows .rt b { font-weight: 700; }
+
+</style>
+</head>
+<body>
+<div class="stage"><div class="frame" id="frame">
+<div class="slide" id="slide">
+<div class="head">
+<div class="head-left">
+<h1>BENCHMARK CONCURRENTIEL</h1>
+<p class="sub">Les offres et prestations du marché de la télésurveillance</p>
+</div>
+<div class="key">
+<p><span class="ok">✓</span> Inclus</p>
+<p><span class="opt">Option</span> Payant en plus</p>
+<p><span class="cond">◆</span> Sous conditions</p>
+<p><span class="no">✕</span> Non inclus</p>
+</div>
+</div>
+
+<div class="cards">
+<div class="card">
+<table class="cmp">
+<tr><th class="brand wide"><p class="bname"><span class="bnum">01</span> homiris</p></th><th><p class="fname">Confort</p><p class="fprice na">Tarif n.c.</p></th><th><p class="fname">Sérénité</p><p class="fprice na">Tarif n.c.</p></th></tr>
+<tr><td>Détecteur de fumée</td><td><span class="opt">Option</span></td><td><span class="ok">✓ Inclus</span></td></tr>
+<tr><td>Analyse de la situation par un opérateur</td><td><span class="opt">Option</span></td><td><span class="ok">✓ Inclus</span></td></tr>
+<tr><td>Intervention d'un agent de sécurité si nécessaire</td><td><span class="opt">Option temporaire</span></td><td><span class="ok">✓ Incluse</span></td></tr>
+<tr><td>Mesures de sauvegarde (gardiennage ou sécurisation)</td><td><span class="no">✕ Non incluses</span></td><td><span class="ok">✓ Incluses</span></td></tr>
+</table>
+</div>
+
+<div class="card">
+<table class="cmp">
+<tr><th class="brand"><p class="bname"><span class="bnum">02</span> Nexecur</p></th><th><p class="fname">Initiale</p><p class="fprice"><span class="pre">dès </span>21,90 €</p></th><th><p class="fname">Intégrale</p><p class="fprice"><span class="pre">dès </span>32,90 €</p></th></tr>
+<tr><td>Gestion des alertes par le client</td><td><span class="ok">✓</span></td><td><span class="no">✕</span></td></tr>
+<tr><td>Télésurveillance 24/7</td><td><span class="opt">En option / relais</span></td><td><span class="ok">✓</span></td></tr>
+<tr><td>Traitement des alertes par opérateur</td><td><span class="cond">◆ Après 90 s si indisponibilité</span></td><td><span class="ok">✓ À chaque alerte</span></td></tr>
+<tr><td>Vérification audio et vidéo</td><td><span class="cond">◆ Selon service activé</span></td><td><span class="ok">✓</span></td></tr>
+</table>
+<p class="common"><b>Dans les 2 :</b> matériel, installation pro, appli, vidéo en direct</p>
+</div>
+
+<div class="card">
+<div class="solo-head">
+<p class="bname"><span class="bnum">03</span> Offre à 40 €</p>
+<div class="chips"><p class="chip red">40 €/mois</p><p class="chip">Engagement 12 mois</p></div>
+</div>
+<div class="solo-rows">
+<p class="rl">Équipement</p><p class="rt">1 centrale d'alarme · 1 clavier avec sirène intégrée · <b>5&nbsp;détecteurs</b> (mouvement avec images, infrarouges, choc et ouverture) · <b>4 badges d'accès</b></p>
+<p class="rl">✓ Inclus</p><p class="rt">Installation professionnelle · Application mobile · Télésurveillance 24h/24 et 7j/7 · Gestion des alertes · Maintenance · Changement des piles · Matériel mis à disposition</p>
+<p class="rl c">◆ Conditions</p><p class="rt">Visite d'entretien <b>tous les 3&nbsp;ans</b> · Intervention d'un agent <b>selon conditions</b> · Gardiennage <b>jusqu'à&nbsp;15&nbsp;heures</b></p>
+</div>
+</div>
+
+<div class="card">
+<table class="cmp">
+<tr><th class="brand"><p class="bname"><span class="bnum">04</span> IMA Protect</p></th><th><p class="fname">À la carte</p><p class="fprice quote">Sur devis</p></th><th><p class="fname">Tout inclus</p><p class="fprice"><span class="pre">dès </span>37,99 €</p></th></tr>
+<tr><td>Télésurveillance 24/7</td><td><span class="cond">◆ Périodes choisies</span></td><td><span class="ok">✓</span></td></tr>
+<tr><td>Téléinterpellation</td><td><span class="cond">◆ Selon formule</span></td><td><span class="ok">✓</span></td></tr>
+<tr><td>Détecteur de fumée connecté</td><td><span class="opt">En option</span></td><td><span class="ok">✓</span></td></tr>
+<tr><td>Intervention d'un agent</td><td><span class="opt">En option</span></td><td><span class="cond">◆ Selon nécessité</span></td></tr>
+<tr><td>Gardiennage</td><td><span class="opt">En option</span></td><td><span class="cond">◆ Selon nécessité</span></td></tr>
+</table>
+<p class="common"><b>Frais de mise en service :</b> 99 € TTC sur les 2 offres</p>
+</div>
+</div>
+
+<div class="take">
+<div class="label"><h2>LES POINTS<br>À RETENIR</h2></div>
+<div class="points">
+<div class="pt"><p class="n">01</p><p class="t">Des positionnements tarifaires différents</p></div>
+<div class="pt"><p class="n">02</p><p class="t">Des prestations incluses qui varient selon les formules</p></div>
+<div class="pt"><p class="n">03</p><p class="t">Des services parfois proposés en option</p></div>
+<div class="pt key"><p class="n">04</p><p class="t">Comparer le niveau réel de service, pas uniquement le prix mensuel</p></div>
+</div>
+</div>
+</div>
+
+</div></div>
+
+<div class="toolbar" role="toolbar" aria-label="Actions">
+<button type="button" id="btn-sources">Sources</button>
+<button type="button" id="btn-fs">Plein écran</button>
+<button type="button" class="primary" id="btn-pdf">Exporter en PDF</button>
+</div>
+
+<div class="sources" id="sources" role="dialog" aria-modal="true" aria-label="Captures sources">
+<div class="sources-inner">
+<div class="sources-head"><h2>Captures sources</h2><div class="toolbar" style="position:static;opacity:1"><button type="button" id="btn-close">Fermer</button></div></div>
+<div class="sources-grid">
+<figure><img src="assets/capture-1-homiris.png" alt="homiris : comparatif Confort et Sérénité"><figcaption>1 · homiris – Confort / Sérénité</figcaption></figure>
+<figure><img src="assets/capture-2-nexecur.png" alt="Comparatif Nexecur Initiale et Intégrale"><figcaption>2 · Nexecur – Initiale / Intégrale</figcaption></figure>
+<figure><img src="assets/capture-3-offre-40.png" alt="Prestations de l'offre à 40 € par mois"><figcaption>3 · Offre à 40 €/mois</figcaption></figure>
+<figure><img src="assets/capture-4-ima-protect.png" alt="IMA Protect : offre À la carte et Tout inclus"><figcaption>4 · IMA Protect – À la carte / Tout inclus</figcaption></figure>
+</div>
+</div>
+</div>
+
+<script>
+(function () {
+  var frame = document.getElementById('frame');
+  function fit() {
+    var s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    frame.style.transform = 'scale(' + s + ')';
+  }
+  window.addEventListener('resize', fit);
+  fit();
+  document.getElementById('btn-pdf').addEventListener('click', function () { window.print(); });
+  document.getElementById('btn-fs').addEventListener('click', function () {
+    if (!document.fullscreenElement) { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); }
+    else { document.exitFullscreen(); }
+  });
+  var src = document.getElementById('sources');
+  document.getElementById('btn-sources').addEventListener('click', function () { src.classList.add('open'); });
+  document.getElementById('btn-close').addEventListener('click', function () { src.classList.remove('open'); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') src.classList.remove('open'); });
+})();
+</script>
+</body>
+</html>
