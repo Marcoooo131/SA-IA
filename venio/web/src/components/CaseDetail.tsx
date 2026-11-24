@@ -107,7 +107,6 @@ export function CaseDetail({ id }: { id: string }) {
               {c.phone && <li><a className="underline" href={`tel:${c.phone}`}>{c.phone}</a></li>}
               {c.address && <li>{c.address.line}, {c.address.postal_code} {c.address.city} · <a className="underline" target="_blank" href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(`${c.address.line} ${c.address.postal_code} ${c.address.city}`)}`}>Carte</a></li>}
             </ul>
-            <p className="mt-2 text-xs text-ink-muted">Rappels SMS : {d.consents.find((x) => x.channel === "sms")?.granted ? "acceptés" : "non acceptés"}</p>
           </Card>
           <Card>
             <h2 className="mb-2 font-semibold">Rendez-vous</h2>

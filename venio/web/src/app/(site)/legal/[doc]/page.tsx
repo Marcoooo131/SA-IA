@@ -29,7 +29,10 @@ export default async function LegalPage({ params }: Props) {
   return (
     <article className="mx-auto max-w-2xl px-5 pb-24 pt-14">
       <h1 className="font-display text-4xl font-semibold text-ink md:text-5xl">{d.title}</h1>
-      <div className="mt-6"><Alert kind="warning" title="Document provisoire">Modèle en cours de rédaction, à compléter et à faire valider par un avocat avant le lancement commercial.</Alert></div>
+      <p className="mt-3 text-sm text-ink-muted">Version du {d.version}</p>
+      {d.sections.some((s) => s.paragraphs.some((p) => p.includes("[À compléter"))) && (
+        <div className="mt-6"><Alert kind="warning" title="Document en cours de finalisation">Les informations surlignées seront renseignées à la création de l&apos;entreprise.</Alert></div>
+      )}
       {d.sections.map((s) => (
         <section key={s.title} className="mt-10">
           <h2 className="text-xl font-semibold text-ink">{s.title}</h2>

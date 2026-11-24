@@ -6,16 +6,16 @@ import { getPublicPlans } from "@/lib/server";
 
 export const metadata: Metadata = {
   title: "Tarifs",
-  description: "Trois offres par entreprise, sans engagement, avec la récupération des appels manqués et des crédits SMS inclus. Prix hors taxes.",
+  description: "Une seule offre, par entreprise, sans engagement : prise de rendez-vous qualifiés, récupération des appels manqués et SMS inclus. Prix hors taxes.",
 };
 export const revalidate = 600;
 
 const FAQ = [
-  ["Le prix est-il par utilisateur ?", "Non : par entreprise. Chaque offre inclut un nombre d'utilisateurs ; vous ne payez pas chaque collaborateur."],
-  ["Faut-il une carte bancaire pour l'essai ?", "Non. Si vous choisissez une offre pendant l'essai, la carte est enregistrée et le premier prélèvement a lieu à la fin de l'essai."],
-  ["Que se passe-t-il si je ne choisis pas d'offre à la fin de l'essai ?", "Votre page cesse d'accepter de nouvelles réservations, vos données restent consultables. Vous pouvez souscrire à tout moment pour la réactiver."],
-  ["Puis-je changer d'offre ou résilier ?", "Oui, à tout moment depuis votre espace : montée en gamme immédiate au prorata, résiliation effective à la fin de la période payée."],
-  ["Combien coûtent les SMS ?", "Les offres incluent des crédits SMS mensuels. Au-delà, des packs prépayés : jamais de facturation surprise."],
+  ["Le prix est-il par utilisateur ?", "Non : par entreprise. Aujourd'hui, l'espace est accessible à une personne ; l'accès pour vos collaborateurs n'est pas encore disponible."],
+  ["Faut-il une carte bancaire pour l'essai ?", "Non. Si vous vous abonnez pendant l'essai, la carte est enregistrée et le premier prélèvement a lieu à la fin de l'essai."],
+  ["Que se passe-t-il si je ne m'abonne pas à la fin de l'essai ?", "Votre page cesse d'accepter de nouvelles réservations, vos données restent consultables. Vous pouvez souscrire à tout moment pour la réactiver."],
+  ["Puis-je passer à l'annuel ou résilier ?", "Oui, à tout moment depuis votre espace. La résiliation prend effet à la fin de la période déjà payée, sans frais."],
+  ["Combien coûtent les SMS ?", "100 SMS sont inclus chaque mois. Au-delà, des packs prépayés (100 SMS pour 10 € HT, 500 pour 40 € HT) : jamais de facturation surprise."],
   ["Les prix sont-ils TTC ?", "Non, ils sont indiqués hors taxes. La TVA applicable s'ajoute lors du paiement."],
 ];
 

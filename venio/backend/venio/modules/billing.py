@@ -109,7 +109,7 @@ async def _ensure_customer(conn, auth: Auth, sub: dict[str, Any]) -> str:
 
 
 class CheckoutIn(BaseModel):
-    plan: Literal["starter", "pro", "business"]
+    plan: Literal["unique"] = "unique"
     interval: Literal["month", "year"] = "month"
 
 

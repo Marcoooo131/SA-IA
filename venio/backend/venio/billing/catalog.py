@@ -71,10 +71,15 @@ def ensure_prices(plans: list[dict[str, Any]]) -> dict[str, str]:
     return out
 
 
+# Version de la configuration du portail : à incrémenter quand les offres proposées changent. La version 2
+# (offre unique, 24/11/2026) remplace la version 1, qui proposait encore Starter, Pro et Business.
+PORTAL_VERSION = "2"
+
+
 def ensure_portal(plans: list[dict[str, Any]], prices: dict[str, str]) -> str:
-    """Configuration du portail client : factures, carte, changement d'offre, résiliation à échéance."""
+    """Configuration du portail client : factures, carte, passage mensuel / annuel, résiliation à échéance."""
     for c in request("GET", "/billing_portal/configurations", {"active": True, "limit": 100}).get("data", []):
-        if (c.get("metadata") or {}).get("venio") == "1":
+        if (c.get("metadata") or {}).get("venio") == PORTAL_VERSION:
             return c["id"]
     products: dict[str, list[str]] = {}
     for p in plans:
@@ -92,8 +97,8 @@ def ensure_portal(plans: list[dict[str, Any]], prices: dict[str, str]) -> str:
             "subscription_update": {"enabled": True, "default_allowed_updates": ["price"], "proration_behavior": "create_prorations",
                                     "products": [{"product": prod, "prices": ids} for prod, ids in products.items()]},
         },
-        "metadata": {"venio": "1"},
-    }, idempotency_key="venio-portal-config-v1")["id"]
+        "metadata": {"venio": PORTAL_VERSION},
+    }, idempotency_key=f"venio-portal-config-v{PORTAL_VERSION}")["id"]
 
 
 _lock = threading.Lock()

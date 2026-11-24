@@ -32,6 +32,7 @@ export default function Login() {
       <form onSubmit={submit} className="mt-6 space-y-4">
         <Field label="Email"><Input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></Field>
         <Field label="Mot de passe"><Input required type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" /></Field>
+        <p className="-mt-2 text-right text-sm"><Link className="text-ink-muted underline underline-offset-2 hover:text-ink" href="/mot-de-passe-oublie">Mot de passe oublié ?</Link></p>
         {error && <Alert>{error}</Alert>}
         <Button type="submit" loading={loading} size="lg" className="w-full">Se connecter</Button>
         <p className="text-center text-sm text-ink-muted">Pas encore de compte ? <Link className="font-medium text-signal-strong underline underline-offset-2" href="/inscription">Essai gratuit</Link></p>

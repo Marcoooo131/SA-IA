@@ -89,7 +89,7 @@ async def signup(client, vertical: str = "generique", company: str | None = None
     company = company or f"Entreprise {secrets.token_hex(3)}"
     r = await client.post("/api/auth/signup", json={
         "email": f"{secrets.token_hex(5)}@venio-tests.fr", "password": "motdepasse-solide",
-        "full_name": "Camille Martin", "company_name": company, "vertical": vertical,
+        "full_name": "Camille Martin", "company_name": company, "vertical": vertical, "accept_terms": True,
     })
     assert r.status_code == 201, r.text
     return r.json()

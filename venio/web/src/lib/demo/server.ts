@@ -244,7 +244,7 @@ on("GET", "/auth/me", (db) => {
   const { t, u } = auth(db);
   return { user: { id: u.id, email: u.email, full_name: u.full_name }, role: "owner",
     tenant: { id: t.id, slug: t.slug, name: t.name, vertical: t.vertical, timezone: t.timezone },
-    subscription: { status: "trialing", trial_ends_at: isoOf(t.trial_ends_at), plan_name: "Pro", plan_code: "pro" },
+    subscription: { status: "trialing", trial_ends_at: isoOf(t.trial_ends_at), plan_name: "Offre unique", plan_code: "unique" },
     workspaces: [{ id: t.id, name: t.name, slug: t.slug, role: "owner" }],
     public_url: `${location.origin}${BASE_PATH}/r/?slug=${encodeURIComponent(t.slug)}` };
 });

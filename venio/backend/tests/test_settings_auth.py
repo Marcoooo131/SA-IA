@@ -6,13 +6,15 @@ from conftest import next_open_day, qualified_session, signup
 async def test_login_logout_and_errors(client_factory):
     c = client_factory()
     r = await c.post("/api/auth/signup", json={"email": "karim@venio-tests.fr", "password": "motdepasse-solide",
-                                               "full_name": "Karim B", "company_name": "Rénov 92", "vertical": "renovation"})
+                                               "full_name": "Karim B", "company_name": "Rénov 92", "vertical": "renovation",
+                                               "accept_terms": True})
     assert r.status_code == 201 and r.json()["slug"] == "renov-92"
     dup = await client_factory().post("/api/auth/signup", json={"email": "KARIM@venio-tests.fr", "password": "motdepasse-solide",
-                                                                "full_name": "Kim", "company_name": "Autre", "vertical": "generique"})
+                                                                "full_name": "Kim", "company_name": "Autre", "vertical": "generique",
+                                                                "accept_terms": True})
     assert dup.status_code == 409
     me = (await c.get("/api/auth/me")).json()
-    assert me["role"] == "owner" and me["subscription"]["status"] == "trialing" and me["subscription"]["plan_code"] == "pro"
+    assert me["role"] == "owner" and me["subscription"]["status"] == "trialing" and me["subscription"]["plan_code"] == "unique"
     assert me["public_url"].endswith("/r/renov-92")
     assert (await c.post("/api/auth/logout")).status_code == 200
     assert (await c.get("/api/auth/me")).status_code == 401
@@ -21,7 +23,11 @@ async def test_login_logout_and_errors(client_factory):
     assert (await c.post("/api/auth/login", json={"email": "karim@venio-tests.fr", "password": "motdepasse-solide"})).status_code == 200
     assert (await c.get("/api/auth/me")).status_code == 200
     assert (await client_factory().post("/api/auth/signup", json={"email": "x@venio-tests.fr", "password": "court",
-            "full_name": "X", "company_name": "XX", "vertical": "generique"})).status_code == 422
+            "full_name": "X", "company_name": "XX", "vertical": "generique", "accept_terms": True})).status_code == 422
+    # Sans acceptation des conditions générales, pas de compte.
+    refused = await client_factory().post("/api/auth/signup", json={"email": "y@venio-tests.fr", "password": "motdepasse-solide",
+                                          "full_name": "Yann", "company_name": "YY", "vertical": "generique"})
+    assert refused.status_code == 422 and refused.json()["detail"]["code"] == "terms_required"
 
 
 async def test_login_rate_limited(client_factory):

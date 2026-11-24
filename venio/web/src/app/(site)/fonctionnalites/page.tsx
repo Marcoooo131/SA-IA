@@ -16,7 +16,7 @@ type Feature = {
 const FEATURES: Feature[] = [
   {
     id: "appels-manques", tag: "En version pilote", title: "Récupération des appels manqués",
-    what: "Les appels sans réponse sont renvoyés vers Venio. Après un court délai de validation, un SMS d'un seul segment invite l'appelant à décrire son besoin et à réserver. Douze règles évitent les envois inutiles : numéro masqué, fixe ou étranger, appels rapprochés, horaires de nuit, numéro exclu ou en opposition, prospect déjà rappelé.",
+    what: "Les appels sans réponse sont renvoyés vers Venio. Après un court délai de validation, un SMS d'un seul segment invite l'appelant à décrire son besoin et à réserver. Des règles évitent les envois inutiles : numéro masqué, fixe ou étranger, appels rapprochés, horaires de nuit, numéro exclu ou en opposition, prospect déjà rappelé.",
     benefit: "Un appel manqué n'est plus un prospect perdu : il devient une demande, que vous retrouvez rattachée à l'appel.",
     example: "Un artisan sur un chantier ne décroche pas à 10 h 42. À 10 h 44, l'appelant reçoit le SMS ; à 10 h 50, il a réservé une visite technique pour jeudi.",
     capture: { src: "app-appels.jpg", alt: "Historique des appels manqués avec SMS, liens ouverts et rendez-vous récupérés (données de démonstration)" },
@@ -44,7 +44,7 @@ const FEATURES: Feature[] = [
   },
   {
     id: "rappels", title: "Confirmations et rappels automatiques",
-    what: "Email de confirmation avec fichier agenda, rappel la veille, lien personnel pour reporter ou annuler dans le délai que vous fixez. Rappels par SMS avec l'accord du client.",
+    what: "Email de confirmation avec fichier agenda, rappel la veille, lien personnel pour reporter ou annuler dans le délai que vous fixez.",
     benefit: "Moins d'oublis et d'absences, sans relance manuelle.",
     example: "Le client reporte lui-même son rendez-vous de mardi à jeudi : l'agenda et vos notifications sont mis à jour.",
     capture: { src: "app-tableau.jpg", alt: "Tableau de bord de l'espace entreprise (données de démonstration)" },

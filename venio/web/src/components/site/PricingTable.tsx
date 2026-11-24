@@ -1,5 +1,5 @@
 "use client";
-import { Check, Minus } from "lucide-react";
+import { Check } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Badge, buttonClass, cx } from "@/components/ui";
@@ -7,65 +7,58 @@ import type { PublicPlans } from "@/lib/server";
 
 const euros = (cents: number) => new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR", maximumFractionDigits: cents % 100 ? 2 : 0 }).format(cents / 100);
 
-const ROWS: [string, string, (v: unknown) => string | boolean][] = [
-  ["feature.missed_calls", "Récupération des appels manqués (pilote)", (v) => v === true],
-  ["limit.phone_lines", "Lignes téléphoniques suivies", (v) => String(v ?? "—")],
-  ["limit.sms_credits_per_month", "Crédits SMS inclus par mois", (v) => String(v ?? 0)],
-  ["limit.members", "Utilisateurs", (v) => String(v ?? "—")],
-  ["limit.bookings_per_month", "Rendez-vous par mois", (v) => (v === null ? "Illimités" : String(v))],
-  ["limit.flows", "Parcours publiés", (v) => (v === null ? "Illimités" : String(v))],
-  ["feature.messaging", "Messagerie client", (v) => v === true],
-];
-const ALWAYS = ["Page de réservation et parcours par métier", "Créneaux réels et anti-double réservation", "Confirmations et rappels par email", "Dossier client et statistiques"];
+/** Uniquement ce que le produit fait réellement aujourd'hui (vérifié dans le code). */
+function included(e: Record<string, unknown>): string[] {
+  const sms = Number(e["limit.sms_credits_per_month"] ?? 0);
+  const lines = Number(e["limit.phone_lines"] ?? 1);
+  return [
+    "Page de réservation à votre nom, avec un parcours de questions adapté à votre métier",
+    "Créneaux réellement libres, calculés sur vos horaires, vos absences et vos trajets",
+    "Confirmation, rappel la veille et lien pour reporter ou annuler, par email",
+    "Dossier complet pour chaque demande : réponses, photos, adresse, historique",
+    `Récupération des appels manqués : ${lines} ligne suivie et ${sms} SMS inclus par mois (version pilote)`,
+    "Rendez-vous et parcours illimités, statistiques de conversion",
+  ];
+}
 
 export function PricingTable({ data }: { data: PublicPlans }) {
   const [interval, setInterval_] = useState<"month" | "year">("month");
+  const p = data.plans[0];
+  if (!p) return null;
+  const monthly = interval === "month" ? p.monthly_cents : Math.round(p.yearly_cents / 12);
   return (
-    <div>
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <p className="text-sm text-ink-muted">Prix par entreprise, hors taxes. {data.trial_days} jours d&apos;essai sans carte bancaire.</p>
-        <div role="radiogroup" aria-label="Période de facturation" className="inline-flex rounded-control border border-line bg-surface p-0.5 text-sm">
-          {([["month", "Mensuel"], ["year", "Annuel · 2 mois offerts"]] as const).map(([v, l]) => (
-            <button key={v} type="button" role="radio" aria-checked={interval === v} onClick={() => setInterval_(v)}
-              className={cx("rounded-[5px] px-3 py-1.5 font-medium transition-colors", interval === v ? "bg-ink text-white" : "text-ink-muted hover:text-ink")}>{l}</button>
-          ))}
+    <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
+      <div className="flex flex-col rounded-frame border border-ink bg-surface p-7 shadow-float md:p-9">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className="text-xl font-semibold text-ink">{p.name}</h3>
+          <div role="radiogroup" aria-label="Période de facturation" className="inline-flex rounded-control border border-line bg-paper p-0.5 text-sm">
+            {([["month", "Mensuel"], ["year", "Annuel · 2 mois offerts"]] as const).map(([v, l]) => (
+              <button key={v} type="button" role="radio" aria-checked={interval === v} onClick={() => setInterval_(v)}
+                className={cx("rounded-[5px] px-3 py-1.5 font-medium transition-colors", interval === v ? "bg-ink text-white" : "text-ink-muted hover:text-ink")}>{l}</button>
+            ))}
+          </div>
         </div>
+        <p className="mt-6"><span className="tabular text-6xl font-semibold tracking-tight text-ink">{euros(monthly)}</span><span className="text-ink-muted"> HT / mois</span></p>
+        <p className="mt-1 text-sm text-ink-muted">
+          {interval === "year" ? `${euros(p.yearly_cents)} HT facturés une fois par an` : "Sans engagement, résiliable à tout moment"} · par entreprise
+        </p>
+        <ul className="mt-7 flex-1 space-y-3">
+          {included(p.entitlements).map((t) => <li key={t} className="flex gap-2.5 text-ink"><Check aria-hidden className="mt-1 h-4 w-4 shrink-0 text-success" />{t}</li>)}
+        </ul>
+        <Link href={`/inscription?periode=${interval}`} className={cx(buttonClass("primary", "lg"), "mt-8 w-full")}>Commencer l&apos;essai gratuit</Link>
+        <p className="mt-3 text-center text-sm text-ink-muted">{data.trial_days} jours d&apos;essai, sans carte bancaire.</p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        {data.plans.map((p) => {
-          const featured = p.code === "pro";
-          return (
-            <div key={p.code} className={cx("flex flex-col rounded-frame border bg-surface p-7", featured ? "border-ink shadow-float" : "border-line")}>
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-ink">{p.name}</h3>
-                {featured && <Badge tone="accent">Recommandé</Badge>}
-              </div>
-              <p className="mt-5"><span className="tabular text-5xl font-semibold tracking-tight text-ink">{euros(interval === "month" ? p.monthly_cents : Math.round(p.yearly_cents / 12))}</span><span className="text-ink-muted"> HT / mois</span></p>
-              <p className="mt-1 text-sm text-ink-muted">{interval === "year" ? `${euros(p.yearly_cents)} HT facturés par an` : "Sans engagement, résiliable à tout moment"}</p>
-              <ul className="mt-6 flex-1 space-y-2.5 text-sm">
-                {ROWS.map(([key, label, fmt]) => {
-                  const v = fmt(p.entitlements[key]);
-                  if (v === false) return <li key={key} className="flex gap-2 text-ink-subtle"><Minus aria-hidden className="mt-0.5 h-4 w-4 shrink-0" />{label}<span className="sr-only"> : non inclus</span></li>;
-                  return <li key={key} className="flex gap-2 text-ink"><Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-success" />{v === true ? label : <span><span className="tabular font-medium">{v}</span> · {label.toLowerCase()}</span>}</li>;
-                })}
-              </ul>
-              <Link href={`/inscription?offre=${p.code}&periode=${interval}`} className={cx(buttonClass(featured ? "primary" : "secondary", "lg"), "mt-8 w-full")}>Commencer l&apos;essai</Link>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className="mt-10 grid gap-6 rounded-frame border border-line bg-surface p-7 md:grid-cols-2">
-        <div>
-          <h3 className="font-semibold text-ink">Inclus dans toutes les offres</h3>
-          <ul className="mt-3 space-y-2 text-sm">{ALWAYS.map((a) => <li key={a} className="flex gap-2"><Check aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-success" />{a}</li>)}</ul>
+      <div className="space-y-6">
+        <div className="rounded-frame border border-line bg-surface p-7">
+          <h3 className="font-semibold text-ink">Besoin de plus de SMS ?</h3>
+          <p className="mt-2 text-sm text-ink-muted">Au-delà des SMS inclus, des packs prépayés, sans date d&apos;expiration. Jamais de dépassement facturé par surprise : sans crédit, les appels restent enregistrés mais aucun SMS ne part.</p>
+          <ul className="mt-3 space-y-1 text-sm">{data.packs.map((k) => <li key={k.code} className="tabular">{k.credits} SMS · <span className="font-medium">{euros(k.cents)} HT</span></li>)}</ul>
+          <p className="mt-3 text-xs text-ink-subtle">1 crédit = 1 SMS de 160 caractères. Nos modèles de message tiennent en un seul SMS.</p>
         </div>
-        <div>
-          <h3 className="font-semibold text-ink">Crédits SMS supplémentaires</h3>
-          <p className="mt-3 text-sm text-ink-muted">Au-delà des crédits inclus, des packs prépayés, sans expiration. Jamais de dépassement facturé par surprise : à 100 %, les appels restent enregistrés mais aucun SMS ne part.</p>
-          <ul className="mt-3 space-y-1 text-sm">{data.packs.map((k) => <li key={k.code} className="tabular">{k.credits} crédits · <span className="font-medium">{euros(k.cents)} HT</span></li>)}</ul>
-          <p className="mt-3 text-xs text-ink-subtle">1 crédit = 1 SMS facturé de 160 caractères. Nos modèles de message tiennent en un seul SMS.</p>
+        <div className="rounded-frame border border-line bg-surface p-7">
+          <div className="flex flex-wrap items-center gap-2"><h3 className="font-semibold text-ink">Ce qui arrive ensuite</h3><Badge tone="neutral">Pas encore disponible</Badge></div>
+          <p className="mt-2 text-sm text-ink-muted">Accès pour vos collaborateurs, rappels par SMS, messagerie avec vos clients. Ils ne sont pas inclus aujourd&apos;hui : nous l&apos;annoncerons quand ils le seront.</p>
         </div>
       </div>
     </div>

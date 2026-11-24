@@ -28,7 +28,6 @@ const ROWS: [string, string, (v: unknown) => string | boolean][] = [
   ["limit.members", "Utilisateurs", (v) => String(v ?? "—")],
   ["limit.bookings_per_month", "Rendez-vous / mois", (v) => (v === null ? "Illimités" : String(v))],
   ["limit.flows", "Parcours publiés", (v) => (v === null ? "Illimités" : String(v))],
-  ["feature.messaging", "Messagerie client", (v) => v === true],
 ];
 
 const STATUS: Record<string, { label: string; tone: "good" | "bad" | "warning" | "info" | "neutral" }> = {

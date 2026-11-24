@@ -8,9 +8,9 @@ import { ApiError, api } from "@/lib/api";
 import { DEMO, publicPagePath, withBase } from "@/lib/routes";
 
 export type Me = {
-  user: { id: string; email: string; full_name: string };
+  user: { id: string; email: string; full_name: string; email_verified?: boolean };
   role: "owner" | "admin" | "member";
-  tenant: { id: string; slug: string; name: string; vertical: string; timezone: string };
+  tenant: { id: string; slug: string; name: string; vertical: string; timezone: string; is_demo?: boolean };
   subscription: { status: string; trial_ends_at: string | null; plan_name: string } | null;
   access?: { state: string; public_blocked: boolean; days_left: number | null; grace_ends_at: string | null };
   public_url: string;
@@ -88,6 +88,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </aside>
           <main className="min-w-0 px-4 py-6 md:px-10 md:py-8">
             <div className="mx-auto max-w-6xl">
+              <EmailBanner me={me} />
               <AccessBanner me={me} />
               {children}
             </div>
@@ -95,6 +96,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </ToastProvider>
     </MeContext.Provider>
+  );
+}
+
+/** Adresse email non confirmée : rappel discret, avec renvoi du lien (jamais pour un espace de démonstration). */
+function EmailBanner({ me }: { me: Me }) {
+  const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  if (me.user.email_verified !== false || me.tenant.is_demo) return null;
+  const resend = async () => {
+    setState("sending");
+    try { await api("/auth/email/resend", { method: "POST" }); setState("sent"); } catch { setState("error"); }
+  };
+  return (
+    <div className="mb-6"><Alert kind="info">
+      Confirmez votre adresse email : un lien a été envoyé à <strong>{me.user.email}</strong>.{" "}
+      {state === "sent" ? <>Nouveau lien envoyé.</> : state === "error" ? <>Envoi impossible pour le moment, réessayez plus tard.</> : (
+        <button type="button" onClick={resend} disabled={state === "sending"} className="font-semibold underline underline-offset-2">{state === "sending" ? "Envoi…" : "Renvoyer le lien"}</button>
+      )}
+    </Alert></div>
   );
 }
 

@@ -20,6 +20,7 @@ fs.mkdirSync(`${SP}/shots`, { recursive: true });
   await p.fill('input[autocomplete=name]', 'Karim Benali');
   await p.fill('input[type=email]', 'karim@renov-demo.fr');
   await p.fill('input[type=password]', 'motdepasse-solide');
+  await p.check("text=J'accepte les");
   await p.click('button[type=submit]');
   await p.waitForSelector('text=Votre page est en ligne');
   await p.click('nav >> text=Paramètres');

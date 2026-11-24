@@ -3,7 +3,7 @@ import { Car, Hammer, KeyRound, Sparkles, Truck } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Alert, Button, Field, Input, Logo, cx } from "@/components/ui";
+import { Alert, Button, Checkbox, Field, Input, Logo, cx } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 
 const VERTICALS = [
@@ -18,6 +18,7 @@ export default function Signup() {
   const router = useRouter();
   const [vertical, setVertical] = useState("renovation");
   const [form, setForm] = useState({ company_name: "", full_name: "", email: "", password: "" });
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -26,7 +27,7 @@ export default function Signup() {
     setError("");
     setLoading(true);
     try {
-      await api("/auth/signup", { method: "POST", body: { ...form, vertical } });
+      await api("/auth/signup", { method: "POST", body: { ...form, vertical, accept_terms: acceptTerms } });
       router.push("/app?bienvenue=1");
     } catch (err) {
       setError(errorMessage(err));
@@ -58,6 +59,8 @@ export default function Signup() {
         <Field label="Votre nom"><Input required minLength={2} value={form.full_name} onChange={set("full_name")} autoComplete="name" /></Field>
         <Field label="Email professionnel"><Input required type="email" value={form.email} onChange={set("email")} autoComplete="email" /></Field>
         <Field label="Mot de passe" hint="10 caractères minimum."><Input required type="password" minLength={10} value={form.password} onChange={set("password")} autoComplete="new-password" /></Field>
+        <Checkbox required checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)}
+          label={<>J&apos;accepte les <Link className="underline underline-offset-2" href="/legal/cgv" target="_blank">conditions générales de vente</Link>, les <Link className="underline underline-offset-2" href="/legal/cgu" target="_blank">conditions d&apos;utilisation</Link> et le <Link className="underline underline-offset-2" href="/legal/sous-traitance" target="_blank">contrat de sous-traitance des données</Link>.</>} />
         {error && <Alert>{error}</Alert>}
         <Button type="submit" loading={loading} size="lg" className="w-full">Créer mon espace</Button>
         <p className="text-center text-sm text-ink-muted">Déjà inscrit ? <Link className="font-medium text-signal-strong underline underline-offset-2" href="/connexion">Se connecter</Link></p>

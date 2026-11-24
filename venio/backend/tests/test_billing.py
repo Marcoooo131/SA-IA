@@ -23,10 +23,10 @@ class FakeStripe:
         self.customers: dict[str, dict] = {}
         self.subscriptions: dict[str, dict] = {}
         self.prices = {f"venio_{p}_{i}": {"id": f"price_{p}_{i}", "lookup_key": f"venio_{p}_{i}", "product": f"prod_{p}",
-                                          "recurring": {"interval": i}} for p in ("starter", "pro", "business") for i in ("month", "year")}
+                                          "recurring": {"interval": i}} for p in ("unique",) for i in ("month", "year")}
         self.prices |= {f"venio_{c}": {"id": f"price_{c}", "lookup_key": f"venio_{c}", "product": f"prod_{c}"} for c in ("sms_100", "sms_500")}
         self.products: dict[str, dict] = {}
-        self.portals: list[dict] = [{"id": "bpc_venio", "metadata": {"venio": "1"}}]
+        self.portals: list[dict] = [{"id": "bpc_venio_v1", "metadata": {"venio": "1"}}, {"id": "bpc_venio", "metadata": {"venio": "2"}}]
 
     def _resp(self, url, body, status=200):
         return httpx.Response(status, json=body, request=httpx.Request("POST", url))
@@ -79,7 +79,7 @@ class FakeStripe:
             return self._resp(url, next(p for p in self.prices.values() if p["id"] == pid))
         return self._resp(url, {"error": {"message": f"inattendu {path}"}}, 404)
 
-    def subscription(self, sid, tenant_id, status="active", plan="pro", interval="month", **extra):
+    def subscription(self, sid, tenant_id, status="active", plan="unique", interval="month", **extra):
         now = int(time.time())
         self.subscriptions[sid] = {
             "id": sid, "customer": f"cus_{tenant_id[:8]}", "status": status, "metadata": {"tenant_id": tenant_id},
@@ -186,23 +186,26 @@ async def test_billing_without_stripe_configured(client_factory):
     await signup(pro)
     b = (await pro.get("/api/billing")).json()
     assert b["configured"] is False and b["test_mode"] is True
-    assert b["access"]["state"] == "trial" and b["subscription"]["plan_code"] == "pro"
-    assert [p["code"] for p in b["plans"]] == ["starter", "pro", "business"]
-    assert b["plans"][1]["entitlements"]["limit.sms_credits_per_month"] == 200
-    r = await pro.post("/api/billing/checkout", json={"plan": "pro", "interval": "month"})
+    assert b["access"]["state"] == "trial" and b["subscription"]["plan_code"] == "unique"
+    # Offre unique (24/11/2026) : 39 € / 390 € HT, 100 crédits SMS, aucune fonction non livrée annoncée.
+    assert [(p["code"], p["monthly_cents"], p["yearly_cents"]) for p in b["plans"]] == [("unique", 3900, 39000)]
+    ents = b["plans"][0]["entitlements"]
+    assert ents["limit.sms_credits_per_month"] == 100 and ents["limit.members"] == 1
+    assert "feature.messaging" not in ents and "limit.sms_per_month" not in ents
+    r = await pro.post("/api/billing/checkout", json={"plan": "unique", "interval": "month"})
     assert r.status_code == 503 and r.json()["detail"]["code"] == "billing_not_configured"
 
 
 async def test_checkout_keeps_trial_and_creates_customer_once(client_factory, stripe):
     pro = client_factory()
     t = await signup(pro)
-    r1 = await pro.post("/api/billing/checkout", json={"plan": "business", "interval": "year"})
+    r1 = await pro.post("/api/billing/checkout", json={"plan": "unique", "interval": "year"})
     assert r1.status_code == 200 and r1.json()["url"].startswith("https://checkout.stripe.test/")
-    await pro.post("/api/billing/checkout", json={"plan": "pro", "interval": "month"})
+    await pro.post("/api/billing/checkout", json={"plan": "unique", "interval": "month"})
     assert len(stripe.customers) == 1                          # client Stripe créé une seule fois
     sessions = [c[2] for c in stripe.calls if c[1] == "/checkout/sessions"]
     first = sessions[0]
-    assert first["mode"] == "subscription" and first["line_items[0][price]"] == "price_business_year"
+    assert first["mode"] == "subscription" and first["line_items[0][price]"] == "price_unique_year"
     assert first["client_reference_id"] == t["tenant_id"] and first["subscription_data[metadata][tenant_id]"] == t["tenant_id"]
     assert "subscription_data[trial_end]" in first             # l'essai en cours est conservé
     assert first["success_url"].endswith("/app/abonnement?retour=succes")
@@ -213,17 +216,17 @@ async def test_checkout_keeps_trial_and_creates_customer_once(client_factory, st
 async def test_webhook_activates_subscription_idempotently(client_factory, stripe):
     pro, hook = client_factory(), client_factory()
     t = await signup(pro)
-    stripe.subscription("sub_1", t["tenant_id"], plan="business", interval="year")
+    stripe.subscription("sub_1", t["tenant_id"], plan="unique", interval="year")
     evt = _evt("checkout.session.completed", {"id": "cs_1", "mode": "subscription", "subscription": "sub_1",
                                               "client_reference_id": t["tenant_id"]})
     assert (await _webhook(hook, evt, secret="mauvais")).status_code == 400
     assert (await _webhook(hook, evt)).json() == {"result": "subscription_synced"}
     assert (await _webhook(hook, evt)).json() == {"result": "duplicate"}      # Stripe renvoie l'événement
     b = (await pro.get("/api/billing")).json()
-    assert b["subscription"]["status"] == "active" and b["subscription"]["plan_code"] == "business"
+    assert b["subscription"]["status"] == "active" and b["subscription"]["plan_code"] == "unique"
     assert b["subscription"]["billing_interval"] == "year" and b["access"]["state"] == "active"
-    # L'offre Business donne 600 crédits SMS : les droits suivent l'offre payée.
-    assert b["credits"]["monthly_limit"] == 600
+    # Les droits suivent l'offre payée : 100 crédits SMS pour l'offre unique.
+    assert b["credits"]["monthly_limit"] == 100
 
     # Événements dans le désordre : un vieil « updated » arrive après la résiliation.
     stripe.subscriptions["sub_1"]["status"] = "canceled"
@@ -272,7 +275,7 @@ async def test_portal(client_factory, stripe):
     pro = client_factory()
     await signup(pro)
     assert (await pro.post("/api/billing/portal")).status_code == 409   # aucun client Stripe encore
-    await pro.post("/api/billing/checkout", json={"plan": "pro", "interval": "month"})
+    await pro.post("/api/billing/checkout", json={"plan": "unique", "interval": "month"})
     r = await pro.post("/api/billing/portal")
     assert r.status_code == 200 and r.json()["url"] == "https://billing.stripe.test/portal"
     portal_call = next(c for c in stripe.calls if c[1] == "/billing_portal/sessions")
@@ -283,7 +286,7 @@ async def test_member_cannot_pay(client_factory, database, stripe):
     pro = client_factory()
     t = await signup(pro)
     await _admin_sql(database, "UPDATE membership SET role = 'member' WHERE tenant_id = $1", uuid.UUID(t["tenant_id"]))
-    assert (await pro.post("/api/billing/checkout", json={"plan": "pro"})).status_code == 403
+    assert (await pro.post("/api/billing/checkout", json={"plan": "unique"})).status_code == 403
 
 
 # ----------------------------------------------------------------------------- packs de SMS
@@ -329,19 +332,19 @@ async def test_catalog_created_automatically_once(client_factory, stripe):
     stripe.portals.clear()
     pro = client_factory()
     await signup(pro)
-    assert (await pro.post("/api/billing/checkout", json={"plan": "pro", "interval": "year"})).status_code == 200
+    assert (await pro.post("/api/billing/checkout", json={"plan": "unique", "interval": "year"})).status_code == 200
     created = {k: v for k, v in stripe.prices.items()}
-    assert set(created) == {f"venio_{p}_{i}" for p in ("starter", "pro", "business") for i in ("month", "year")} | {"venio_sms_100", "venio_sms_500"}
-    assert created["venio_pro_month"]["unit_amount"] == 6900 and created["venio_pro_year"]["unit_amount"] == 68400
-    assert created["venio_pro_year"]["recurring"] == {"interval": "year"} and "recurring" not in created["venio_sms_100"]
-    assert len(stripe.products) == 5 and len(stripe.portals) == 1
+    assert set(created) == {f"venio_unique_{i}" for i in ("month", "year")} | {"venio_sms_100", "venio_sms_500"}
+    assert created["venio_unique_month"]["unit_amount"] == 3900 and created["venio_unique_year"]["unit_amount"] == 39000
+    assert created["venio_unique_year"]["recurring"] == {"interval": "year"} and "recurring" not in created["venio_sms_100"]
+    assert len(stripe.products) == 3 and len(stripe.portals) == 1
     session = [c[2] for c in stripe.calls if c[1] == "/checkout/sessions"][-1]
-    assert session["line_items[0][price]"] == "price_new_venio_pro_year"
+    assert session["line_items[0][price]"] == "price_new_venio_unique_year"
     # Autres achats, puis redémarrage du serveur (cache vidé) : jamais de doublon chez Stripe.
     assert (await pro.post("/api/billing/sms-pack", json={"pack": "sms_500"})).status_code == 200
     catalog.reset_cache()
     assert (await pro.post("/api/billing/portal")).status_code == 200
-    assert len(stripe.products) == 5 and len(stripe.portals) == 1 and len(stripe.prices) == 8
+    assert len(stripe.products) == 3 and len(stripe.portals) == 1 and len(stripe.prices) == 4
     # Un abonnement payé avec ces prix est rattaché à la bonne offre grâce à la lookup key.
     from venio.billing.catalog import plan_from_lookup
     assert plan_from_lookup("venio_business_month") == "business" and plan_from_lookup("venio_sms_100") is None

@@ -70,6 +70,7 @@ async def test_sms_does_not_fall_back_to_email_when_enabled(client_factory, data
     monkeypatch.setattr(notifications.httpx, "post", record)
 
     notif_id, tenant_id = await _booking_with_sms(client_factory, database["admin_url"])
+    urls.clear()   # l'inscription envoie l'email de vérification du compte : seul l'envoi du SMS est observé ici
     with pytest.raises(RuntimeError, match="réseau coupé"):
         async with tx(tenant_id=tenant_id) as conn:
             await notifications.deliver(conn, notif_id)

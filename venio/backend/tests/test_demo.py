@@ -72,7 +72,7 @@ async def test_demo_full_scenario_never_sends(client_factory, database, real_pro
 async def test_demo_cannot_pay(client_factory):
     visitor = client_factory()
     await visitor.post("/api/demo/start")
-    r = await visitor.post("/api/billing/checkout", json={"plan": "pro"})
+    r = await visitor.post("/api/billing/checkout", json={"plan": "unique"})
     assert r.status_code == 403 and r.json()["detail"]["code"] == "demo"
     assert (await visitor.post("/api/billing/sms-pack", json={"pack": "sms_100"})).status_code == 403
 

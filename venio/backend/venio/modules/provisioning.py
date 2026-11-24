@@ -50,7 +50,7 @@ async def create_tenant(
     slug = await _insert_tenant(conn, tid, name, vertical, owner_email)
     await execute(conn, "INSERT INTO membership (tenant_id, user_id, role) VALUES (:t, :u, 'owner')", t=tid, u=owner_id)
 
-    plan = await fetch_one(conn, "SELECT id FROM plan WHERE code = 'pro'")
+    plan = await fetch_one(conn, "SELECT id FROM plan WHERE code = 'unique'")
     await execute(
         conn,
         "INSERT INTO subscription (tenant_id, plan_id, status, trial_ends_at)"

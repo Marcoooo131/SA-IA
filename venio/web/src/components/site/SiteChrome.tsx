@@ -47,6 +47,7 @@ const LEGAL = [
   { href: "/legal/cgv", label: "CGV" },
   { href: "/legal/cgu", label: "CGU" },
   { href: "/legal/confidentialite", label: "Confidentialité" },
+  { href: "/legal/sous-traitance", label: "Sous-traitance des données" },
   { href: "/legal/cookies", label: "Cookies" },
 ];
 

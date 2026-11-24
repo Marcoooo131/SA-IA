@@ -9,6 +9,9 @@ import { MEETING_LABELS, fmtDateTime } from "@/lib/format";
 import { DEMO } from "@/lib/routes";
 import { type Answers, type FlowDefinition, type FlowState, type Step, displayValue } from "@/lib/flow";
 
+/** Les rappels par SMS ne sont pas encore envoyés : on ne recueille pas un consentement sans finalité réelle. */
+const SMS_REMINDERS_AVAILABLE = false;
+
 type Hold = { id: string; starts_at: string; ends_at: string; hold_expires_at: string } | null;
 type Service = { key: string; name: string; meeting_type: string; duration_min: number };
 type Phase = "questions" | "slots" | "details" | "recap" | "done";
@@ -465,7 +468,7 @@ function ContactForm({ contact, setContact, meetingType, tenantName, hold, timez
           </div>
         </>
       )}
-      {contact.phone && (
+      {SMS_REMINDERS_AVAILABLE && contact.phone && (
         <Checkbox style={{ "--check": "var(--brand)" } as React.CSSProperties} checked={contact.consent_sms_reminders}
           onChange={(e) => setContact({ ...contact, consent_sms_reminders: e.target.checked })}
           label="J'accepte de recevoir un rappel de rendez-vous par SMS." />
