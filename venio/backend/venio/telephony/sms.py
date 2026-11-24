@@ -14,7 +14,7 @@ GSM7_EXTENDED = set("^{}\\[~]|€\f")   # comptent pour 2 caractères
 MAX_SEGMENTS = 3                       # au-delà, le modèle est refusé (coût)
 
 TEMPLATES: dict[str, dict[str, str]] = {
-    "professionnel": {"label": "Professionnel", "text": "{entreprise} : nous n'avons pas pu prendre votre appel. Décrivez votre besoin et réservez votre rendez-vous ici : {lien}{stop}"},
+    "professionnel": {"label": "Professionnel", "text": "{entreprise} : nous n'avons pas pu prendre votre appel. Pour réserver un créneau ou demander un rappel : {lien}{stop}"},
     "chaleureux": {"label": "Chaleureux", "text": "Bonjour, ici {entreprise} ! Désolés d'avoir manqué votre appel. Dites-nous tout et choisissez votre créneau : {lien}{stop}"},
     "commercial": {"label": "Commercial", "text": "{entreprise} : votre projet nous intéresse ! Décrivez-le en 2 min et réservez un RDV gratuit : {lien}{stop}"},
     "court": {"label": "Très court", "text": "{entreprise} : appel manqué, réservez ici {lien}{stop}"},

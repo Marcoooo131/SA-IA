@@ -207,6 +207,23 @@ async def evaluate(conn: AsyncConnection, recovery_id: UUID) -> str:
             " WHERE cf.created_at > :s AND c.phone IS NOT NULL",
             s=now - timedelta(days=cfg.recent_request_days))
         recent_request = any(phone.normalize(r["phone"]) == number for r in rows)
+    upcoming_booking = known_contact = False
+    if number:
+        # Clients enregistrés avec ce numéro (comparaison sur les 9 derniers chiffres, puis normalisation exacte).
+        matches = await fetch_all(
+            conn,
+            "SELECT c.phone, EXISTS (SELECT 1 FROM case_file cf JOIN booking b ON b.case_file_id = cf.id"
+            " WHERE cf.contact_id = c.id AND b.status = 'confirmed' AND b.starts_at > now()) AS upcoming"
+            " FROM contact c WHERE c.phone IS NOT NULL AND right(regexp_replace(c.phone, '[^0-9]', '', 'g'), 9) = :d",
+            d=number[-9:])
+        matches = [m for m in matches if phone.normalize(m["phone"]) == number]
+        known_contact = bool(matches)
+        upcoming_booking = any(m["upcoming"] for m in matches)
+    # Durée de sonnerie : seulement quand on voit l'appel du début à la fin. Avec un renvoi sur non-réponse, le
+    # téléphone de l'entreprise a déjà sonné avant le renvoi ; la partie vue par Venio peut être très courte.
+    ring_seconds = None
+    if line["mode"] != "forward_no_answer" and call["ended_at"] and call["started_at"]:
+        ring_seconds = (call["ended_at"] - call["started_at"]).total_seconds()
     from ..modules.booking_core import load_default_flow
     has_page = tenant["status"] == "active" and (await load_default_flow(conn)) is not None
     text = sms.render(cfg.template_text(), tenant["name"], link_url("XXXXXXXX"), cfg.stop_mention)
@@ -226,6 +243,8 @@ async def evaluate(conn: AsyncConnection, recovery_id: UUID) -> str:
         local_now=now.astimezone(tz), call_ended_local=ended.astimezone(tz),
         credits_needed=credits_needed, credits_left=sum(await _credit_balances(conn, month_start)),
         sent_today=sent_today, daily_limit=DAILY_SAFETY_LIMIT, config=cfg, ignore_hours=bool(tenant["is_demo"]),
+        telemarketing=phone.is_telemarketing(number), ring_seconds=ring_seconds,
+        upcoming_booking=upcoming_booking, known_contact=known_contact,
     )
     country = tenant["holidays_country"]
     d = decide(facts, lambda day: bool(country) and is_holiday(country, day))

@@ -16,7 +16,7 @@ const [,, BASE = 'http://localhost:3100', OUT = 'web/public/captures'] = process
   // Le prospect réserve sur son téléphone (même stockage : le lien se suffit à lui-même).
   const m = await b.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
   const c = await m.newPage();
-  await c.goto(`${BASE}/c/${code}`); await c.waitForSelector('text=Quel est votre projet ?');
+  await c.goto(`${BASE}/c/${code}`); await c.click('text=Un nouveau projet ou un devis'); await c.waitForSelector('text=Quel est votre projet ?');
   await c.evaluate(() => window.scrollTo(0, document.querySelector('section[aria-label="Prise de rendez-vous"]').offsetTop - 12));
   await c.waitForTimeout(400); await shot(c, 'mobile-parcours.jpg');
   await c.click('button:has-text("Salle de bain")'); await c.click('button:has-text("Douche à l\'italienne")');

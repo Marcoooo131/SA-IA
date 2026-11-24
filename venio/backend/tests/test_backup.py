@@ -1,7 +1,6 @@
 """Sauvegardes du palier 0 : instantané, restauration complète, rotation, isolement vis-à-vis de l'application."""
 import asyncpg
 import pytest
-
 from conftest import qualified_session, signup
 
 

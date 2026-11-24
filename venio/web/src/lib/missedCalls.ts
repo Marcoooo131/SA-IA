@@ -15,6 +15,8 @@ export type McConfig = {
   burst_window_hours: number;
   max_per_number_30d: number;
   recent_request_days: number;
+  min_ring_seconds?: number;
+  known_contacts?: "skip" | "send";
 };
 
 export type SmsPreview = { text: string; length: number; encoding: "GSM-7" | "UCS-2"; segments: number; costly_chars: string[] };
@@ -44,6 +46,8 @@ export type McCall = {
   clicked_at: string | null; click_count: number | null; form_started_at: string | null; booked_at: string | null; handled_at: string | null;
   credits: number | null; sms_status: string | null; sms_provider: string | null; sms_body: string | null; sms_error: string | null;
   number_masked: string; number_display: string; number_tel: string | null;
+  callback_requested_at?: string | null; callback_name?: string | null; callback_note?: string | null;
+  visitor_intent?: "new" | "existing" | "callback" | null;
 };
 
 export type McStats = {

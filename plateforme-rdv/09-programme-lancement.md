@@ -10,7 +10,7 @@
 | Ouvert le | 19/11/2026 |
 | Phase actuelle | **Phase 1 — Fondations** |
 | Étape actuelle | **1.3 — Valider la proposition de valeur (entretiens)** · 1.1 encore ouverte (réservation de vecall.fr, recherche de marques) |
-| Étapes validées | **2 / 37 (5 %)** : 1.2, 3.1 — seules les étapes validées avec preuve comptent |
+| Étapes validées | **8 / 37 (22 %)** : 1.2, 2.2, 3.1, 3.2, 3.6, 3.7, 3.9, 6.4 — seules les étapes validées avec preuve comptent |
 | Mode de financement | **Progressif par paliers (décision D0 du 19/11/2026)** : gratuit jusqu'à 10 clients, puis investissements financés par les revenus |
 | Budget de départ (palier 0) | **≈ 30 à 45 € HT**, puis ≈ 2 à 5 €/mois |
 | Budget engagé à ce jour | **0 €** (tout fonctionne sur des offres gratuites) |
@@ -203,6 +203,27 @@ estimé ≈ 87 300 € avec un dirigeant rémunéré → IS ≈ 17 600 €.
 - La rentabilité dépend bien plus du **coût d'acquisition** et du **désabonnement** que du prix des SMS.
 
 ---
+
+### 3.5 Recalcul avec l'offre unique à 39 € HT (24/11/2026, étape 2.2)
+
+Hypothèses : 39 € HT/mois ou 390 € HT/an ; 100 SMS inclus ; paliers d'investissement de la décision D0 ; même
+répartition des scénarios que ci-dessus (prudent : SMS Twilio, 30 min de support, désabonnement 4 %, CAC 300 € ;
+réaliste : 15 min, 2,5 %, 150 € ; ambitieux : 10 min, 1,5 %, 80 €) ; 10 à 40 % d'abonnements annuels.
+
+| | Prudent | Réaliste | Ambitieux |
+|---|---|---|---|
+| Revenu moyen par client | 38,35 € | 37,38 € | 36,40 € |
+| Coût variable par client | 24,50 € | 13,38 € | 9,27 € |
+| Marge sur coût variable | 36 % | 64 % | 75 % |
+| Valeur vie client | 346 € | 960 € | 1 808 € |
+| LTV / CAC | **1,2 (non rentable en acquisition payante)** | 6,4 | 22,6 |
+| **Clients pour payer 1 dirigeant** (3 600 € chargés) | ≈ 305 | **≈ 180** | ≈ 167 |
+| Résultat à 100 clients, avant rémunération | 761 € | 1 675 € | 1 789 € |
+
+**Pire cas d'un client** (100 SMS au prix Twilio, 30 min de support par mois) : coût ≈ 24,69 € → **la marge reste
+positive (≈ 14 €)**. Aucun client n'est déficitaire grâce au quota de SMS ; le vrai levier est le **temps de support**
+et le **coût d'acquisition** : à 39 €, il faut acquérir les clients par le terrain, le réseau et le bouche-à-oreille,
+pas par la publicité payante (au-delà d'≈ 150 € par client, l'équation ne tient plus dans le scénario réaliste).
 
 ## 4. Risques qui pourraient empêcher le lancement
 

@@ -11,7 +11,7 @@ from datetime import timedelta
 from typing import Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, Response
 from pydantic import BaseModel, Field, ValidationError
 
 from ..config import get_settings
@@ -234,6 +234,7 @@ async def list_calls(auth: Auth = Depends(current_auth), limit_: int = 100) -> l
             "SELECT c.id AS call_id, c.from_number, c.outcome, c.started_at, c.ended_at, l.label AS line_label,"
             " l.provider AS line_provider, r.id AS recovery_id, r.decision, r.reason, r.decided_at, r.clicked_at,"
             " r.click_count, r.form_started_at, r.booked_at, r.booking_id, r.handled_at, r.credits,"
+            " r.callback_requested_at, r.callback_name, r.callback_note, r.visitor_intent,"
             " n.status AS sms_status, n.provider AS sms_provider, n.body AS sms_body, n.last_error AS sms_error,"
             " b.case_file_id"
             " FROM call c JOIN telephony_line l ON l.id = c.line_id"
@@ -246,7 +247,8 @@ async def list_calls(auth: Auth = Depends(current_auth), limit_: int = 100) -> l
         out.append({
             **{k: r[k] for k in ("outcome", "started_at", "ended_at", "line_label", "decision", "decided_at",
                                  "clicked_at", "click_count", "form_started_at", "booked_at", "handled_at", "credits",
-                                 "sms_status", "sms_provider", "sms_body", "sms_error")},
+                                 "sms_status", "sms_provider", "sms_body", "sms_error",
+                                 "callback_requested_at", "callback_name", "callback_note", "visitor_intent")},
             "call_id": str(r["call_id"]), "recovery_id": str(r["recovery_id"]) if r["recovery_id"] else None,
             "case_file_id": str(r["case_file_id"]) if r["case_file_id"] else None,
             "is_test": r["line_provider"] == "simulator",
@@ -364,8 +366,57 @@ async def open_link(code: str) -> dict:
         await execute(
             conn, "UPDATE missed_call_recovery SET clicked_at = COALESCE(clicked_at, now()), click_count = click_count + 1"
             " WHERE id = :r", r=link["recovery_id"])
-        tenant = await fetch_one(conn, "SELECT slug FROM tenant")
-    return {"slug": tenant["slug"], "ref": code}
+        tenant = await fetch_one(conn, "SELECT slug, name FROM tenant")
+    return {"slug": tenant["slug"], "ref": code, "name": tenant["name"]}
+
+
+class IntentIn(BaseModel):
+    intent: Literal["new", "existing", "callback"]
+
+
+class CallbackIn(BaseModel):
+    name: str = Field(min_length=1, max_length=80)
+    note: str | None = Field(default=None, max_length=300)
+
+
+async def _recovery_for(conn, code: str) -> dict:
+    if not code.isalnum() or len(code) > 16:
+        raise api_error(404, "not_found", "Lien introuvable.")
+    link = await fetch_one(conn, "SELECT tenant_id, recovery_id FROM recovery_link WHERE code = :c", c=code)
+    if not link:
+        raise api_error(404, "not_found", "Lien introuvable ou expiré.")
+    return link
+
+
+@public_router.post("/api/public/links/{code}/intent", dependencies=[Depends(limit("mc_intent", 30, 600))])
+async def link_intent(code: str, body: IntentIn) -> dict:
+    """Ce que l'appelant voulait (nouveau besoin, rendez-vous existant, autre) : mesure du filtrage, sans donnée personnelle."""
+    async with tx() as conn:
+        link = await _recovery_for(conn, code)
+    async with tx(tenant_id=link["tenant_id"]) as conn:
+        await execute(conn, "UPDATE missed_call_recovery SET visitor_intent = :i WHERE id = :r", i=body.intent, r=link["recovery_id"])
+    return {"ok": True}
+
+
+@public_router.post("/api/public/links/{code}/callback", status_code=201, dependencies=[Depends(limit("mc_callback", 5, 3600))])
+async def link_callback(code: str, body: CallbackIn, background: BackgroundTasks) -> dict:
+    """Demande de rappel : l'entreprise la voit dans l'historique des appels et reçoit une alerte par email."""
+    async with tx() as conn:
+        link = await _recovery_for(conn, code)
+    async with tx(tenant_id=link["tenant_id"]) as conn:
+        row = await fetch_one(
+            conn, "UPDATE missed_call_recovery SET callback_requested_at = now(), callback_name = :n, callback_note = :o,"
+            " visitor_intent = 'callback' WHERE id = :r AND callback_requested_at IS NULL RETURNING from_number",
+            n=body.name.strip(), o=(body.note or "").strip() or None, r=link["recovery_id"])
+        tenant = await fetch_one(conn, "SELECT name, notification_email, is_demo FROM tenant")
+    if row and tenant["notification_email"] and not tenant["is_demo"]:
+        from . import account_mail
+        note = f"\nMotif : {body.note.strip()}" if body.note and body.note.strip() else ""
+        background.add_task(
+            account_mail.send, tenant["notification_email"], f"Demande de rappel : {body.name.strip()}",
+            f"{body.name.strip()} ({phone.display(row['from_number'])}) vous a appelé sans réussir à vous joindre et demande à "
+            f"être rappelé.{note}\n\nHistorique des appels : {get_settings().public_base_url}/app/appels\n\n— Venio")
+    return {"ok": True, "company": tenant["name"]}
 
 
 @public_router.post("/api/telephony/{provider}/{token}", dependencies=[Depends(limit("telephony_webhook", 600, 60))])

@@ -25,6 +25,10 @@ REASONS: dict[str, str] = {
     "call_answered": "Appel pris en charge",
     "call_uncertain": "Statut de l'appel incertain : pas d'envoi par prudence",
     "masked": "Numéro masqué",
+    "telemarketing": "Numéro de démarchage (préfixe réservé par l'ARCEP)",
+    "too_short": "Appel raccroché aussitôt",
+    "upcoming_booking": "Client avec un rendez-vous à venir",
+    "known_contact": "Client déjà connu : à rappeler vous-même",
     "not_mobile": "Numéro non joignable par SMS (fixe ou étranger)",
     "excluded": "Numéro exclu",
     "opted_out": "Opposition aux SMS (STOP)",
@@ -54,6 +58,9 @@ class MissedCallConfig(BaseModel):
     burst_window_hours: int = Field(default=24, ge=1, le=168)
     max_per_number_30d: int = Field(default=3, ge=1, le=10)
     recent_request_days: int = Field(default=7, ge=0, le=30)
+    # Filtrage des appels (niveau 1, document 08) : sonnerie minimale et traitement des clients déjà connus.
+    min_ring_seconds: int = Field(default=4, ge=0, le=20)
+    known_contacts: Literal["skip", "send"] = "skip"
 
     @field_validator("send_days")
     @classmethod
@@ -119,6 +126,10 @@ class Facts:
     daily_limit: int
     config: MissedCallConfig = field(default_factory=MissedCallConfig)
     ignore_hours: bool = False        # espace de démonstration uniquement (aucun envoi réel n'y est possible)
+    telemarketing: bool = False       # préfixe réservé au démarchage par l'ARCEP
+    ring_seconds: float | None = None # durée entre l'arrivée de l'appel et sa fin
+    upcoming_booking: bool = False    # le numéro correspond à un client qui a un rendez-vous à venir
+    known_contact: bool = False       # le numéro correspond à un client déjà enregistré
 
 
 @dataclass(frozen=True)
@@ -140,12 +151,18 @@ def decide(f: Facts, is_holiday: Callable[[date], bool]) -> Decision:
         return Decision("skip", "call_uncertain")
     if not f.from_number:
         return Decision("skip", "masked")
+    if f.telemarketing:
+        return Decision("skip", "telemarketing")
     if not f.is_mobile:
         return Decision("skip", "not_mobile")
     if f.excluded:
         return Decision("skip", "excluded")
     if f.opted_out:
         return Decision("skip", "opted_out")
+    if f.ring_seconds is not None and f.ring_seconds < cfg.min_ring_seconds:
+        return Decision("skip", "too_short")
+    if f.upcoming_booking:
+        return Decision("skip", "upcoming_booking")
     if f.sent_in_burst_window > 0:
         return Decision("skip", "burst")
     if f.sent_30d >= cfg.max_per_number_30d:
@@ -154,6 +171,8 @@ def decide(f: Facts, is_holiday: Callable[[date], bool]) -> Decision:
         return Decision("skip", "called_back")
     if f.recent_request:
         return Decision("skip", "recent_request")
+    if f.known_contact and cfg.known_contacts == "skip":
+        return Decision("skip", "known_contact")
     if not f.has_page:
         return Decision("skip", "no_page")
     if not f.ignore_hours and not in_window(f.local_now, cfg, is_holiday):

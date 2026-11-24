@@ -6,7 +6,6 @@ from datetime import datetime, timedelta, timezone
 
 import asyncpg
 import pytest
-
 from conftest import GENERIC_ANSWERS, next_open_day, signup
 
 
@@ -72,7 +71,7 @@ async def test_missed_call_to_booking_full_journey(client_factory, no_network):
     code = row["sms_body"].split("/c/")[1].split()[0]
     visitor = client_factory()
     link = (await visitor.get(f"/api/public/links/{code}")).json()
-    assert link == {"slug": tenant["slug"], "ref": code}
+    assert link == {"slug": tenant["slug"], "ref": code, "name": tenant["name"]}
     slug = link["slug"]
     s = (await visitor.post(f"/api/public/{slug}/sessions", json={"source": {"mc": code}})).json()
     h = {"X-Resume-Token": s["resume_token"]}
@@ -96,7 +95,8 @@ async def test_missed_call_to_booking_full_journey(client_factory, no_network):
     await pro.post("/api/missed-calls/simulate", json={"from_number": "+33612345678"})
     await _run_jobs()
     latest = (await _calls(pro))[0]
-    assert latest["decision"] == "not_sent" and latest["reason"] == "burst"
+    # Le prospect a maintenant un rendez-vous à venir : pas de nouveau lien de réservation.
+    assert latest["decision"] == "not_sent" and latest["reason"] == "upcoming_booking"
     assert (await pro.post(f"/api/missed-calls/recoveries/{latest['recovery_id']}/handled")).status_code == 200
 
 
@@ -302,3 +302,29 @@ async def test_quota_exhausted(client_factory, database, no_network):
     await pro.post("/api/missed-calls/simulate", json={})
     await _run_jobs()
     assert (await _calls(pro))[0]["reason"] == "quota"
+
+
+async def test_sms_page_lets_caller_request_a_callback(client_factory, no_network):
+    """Filtrage niveau 1 : l'appelant qui ne veut pas de rendez-vous demande un rappel depuis la page du SMS."""
+    from venio.modules import account_mail
+    account_mail.outbox.clear()
+    pro, tenant, _ = await _tenant(client_factory)
+    await pro.post("/api/missed-calls/simulate", json={"from_number": "06 44 55 66 77"})
+    await _run_jobs()
+    [row] = await _calls(pro)
+    code = row["sms_body"].split("/c/")[1].split()[0]
+    caller = client_factory()
+    link = (await caller.get(f"/api/public/links/{code}")).json()
+    assert link["name"] == tenant["name"]
+    assert (await caller.post(f"/api/public/links/{code}/intent", json={"intent": "other"})).status_code == 422
+    assert (await caller.post(f"/api/public/links/{code}/intent", json={"intent": "existing"})).status_code == 200
+    r = await caller.post(f"/api/public/links/{code}/callback", json={"name": "Paul", "note": "Question sur une facture"})
+    assert r.status_code == 201 and r.json()["company"] == tenant["name"]
+    # Une seconde demande ne remplace pas la première.
+    await caller.post(f"/api/public/links/{code}/callback", json={"name": "Quelqu'un d'autre"})
+    [row] = await _calls(pro)
+    assert row["callback_name"] == "Paul" and row["callback_note"] == "Question sur une facture"
+    assert row["callback_requested_at"] and row["visitor_intent"] == "callback"
+    alerts = [m for m in account_mail.outbox if m["subject"].startswith("Demande de rappel")]
+    assert len(alerts) == 1 and "06 44 55 66 77" in alerts[0]["body"]
+    assert (await caller.post("/api/public/links/inconnu123/callback", json={"name": "X"})).status_code == 404

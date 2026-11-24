@@ -9,7 +9,7 @@ from venio.telephony import phone, sms
 from venio.telephony.rules import Facts, MissedCallConfig, decide, next_window_start
 
 PARIS = ZoneInfo("Europe/Paris")
-NO_HOLIDAY = lambda d: False  # noqa: E731
+NO_HOLIDAY = lambda d: False
 
 
 @pytest.mark.parametrize("raw,expected", [
@@ -69,6 +69,12 @@ def _facts(**kw) -> Facts:
     ({"opted_out": True}, "opted_out"),
     ({"sent_in_burst_window": 1}, "burst"),
     ({"sent_30d": 3}, "cap"),
+    ({"telemarketing": True, "is_mobile": False}, "telemarketing"),
+    ({"ring_seconds": 2.0}, "too_short"),
+    ({"ring_seconds": 6.0}, "sent"),
+    ({"upcoming_booking": True, "known_contact": True}, "upcoming_booking"),
+    ({"known_contact": True}, "known_contact"),
+    ({"known_contact": True, "config": MissedCallConfig(known_contacts="send")}, "sent"),
     ({"called_back": True}, "called_back"),
     ({"recent_request": True}, "recent_request"),
     ({"has_page": False}, "no_page"),
@@ -96,7 +102,7 @@ def test_out_of_hours_defers_to_next_opening_or_skips():
     cfg = MissedCallConfig(out_of_hours="skip")
     assert decide(_facts(local_now=evening, call_ended_local=evening, config=cfg), NO_HOLIDAY).reason == "outside_hours_late"
     # Jour férié : on saute au lendemain.
-    holiday = lambda d: d.isoformat() == "2026-11-19"  # noqa: E731
+    holiday = lambda d: d.isoformat() == "2026-11-19"
     assert next_window_start(evening, MissedCallConfig(), holiday) == datetime(2026, 11, 20, 8, 0, tzinfo=PARIS)
 
 
@@ -112,3 +118,13 @@ def test_config_bounds():
     with pytest.raises(ValueError):
         MissedCallConfig(sender="Trop-long-expediteur")
     assert MissedCallConfig(tone="personnalise", custom_text="Rappel : {lien}").template_text() == "Rappel : {lien}"
+
+
+def test_filtering_level_1_helpers():
+    # Préfixes ARCEP réservés au démarchage : jamais un prospect qui attend un rappel.
+    assert phone.is_telemarketing("+33162123456") and phone.is_telemarketing("+33948123456")
+    assert not phone.is_telemarketing("+33612345678") and not phone.is_telemarketing("+33123456789") and not phone.is_telemarketing(None)
+    # Le texte par défaut, neutre (réserver ou demander un rappel), tient en un seul SMS sans caractère coûteux.
+    text = sms.render(sms.TEMPLATES["professionnel"]["text"], "Rénovation Martin & Fils", "https://venio-rdv.netlify.app/c/Ab3dEf9h", None)
+    seg = sms.segments(text)
+    assert seg["encoding"] == "GSM-7" and seg["segments"] == 1 and "rappel" in text

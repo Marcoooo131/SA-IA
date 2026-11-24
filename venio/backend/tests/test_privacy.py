@@ -4,9 +4,8 @@ import os
 import uuid
 
 import asyncpg
-from PIL import Image
-
 from conftest import GENERIC_ANSWERS, next_open_day, signup
+from PIL import Image
 
 
 async def _book(pro_slug, visitor, phone="06 12 34 56 78", with_photo=True):

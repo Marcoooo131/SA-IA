@@ -60,3 +60,12 @@ def display(e164: str | None) -> str:
         n = "0" + e164[3:]
         return " ".join(n[i:i + 2] for i in range(0, 10, 2))
     return e164
+
+
+# Plages de numéros que l'ARCEP réserve aux appels de démarchage (en vigueur depuis 2023 ; liste à revérifier
+# sur arcep.fr). Un appel venant de ces numéros n'est jamais un prospect qui attend un rappel.
+TELEMARKETING_PREFIXES = {"162", "163", "270", "271", "377", "378", "424", "425", "568", "569", "948", "949"}
+
+
+def is_telemarketing(e164: str | None) -> bool:
+    return bool(e164 and e164.startswith("+33") and e164[3:6] in TELEMARKETING_PREFIXES)

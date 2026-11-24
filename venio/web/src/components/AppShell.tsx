@@ -1,5 +1,5 @@
 "use client";
-import { CalendarDays, CreditCard, ExternalLink, Inbox, LayoutDashboard, LogOut, PhoneMissed, RotateCcw, Send, Settings, Workflow } from "lucide-react";
+import { CalendarDays, CreditCard, ExternalLink, Inbox, LifeBuoy, LayoutDashboard, LogOut, PhoneMissed, RotateCcw, Send, Settings, Workflow } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useState } from "react";
@@ -74,6 +74,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
               <a href={withBase(publicPagePath(me.tenant.slug))} target="_blank" rel="noreferrer" className={linkClass}>
                 <ExternalLink aria-hidden className="h-4 w-4" strokeWidth={1.75} />Ma page de réservation
+              </a>
+              <a href={withBase("/aide")} target="_blank" rel="noreferrer" className={linkClass}>
+                <LifeBuoy aria-hidden className="h-4 w-4" strokeWidth={1.75} />Aide
               </a>
               {DEMO && (
                 <button type="button" className={cx(linkClass, "w-full")} onClick={async () => {

@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, Query, Response
 
 from .. import storage
 from ..db import execute, fetch_all, fetch_one, tx
-from ..deps import Auth, current_auth, require_role
+from ..deps import Auth, require_role
 from ..errors import api_error
 from ..telephony.phone import normalize
 
@@ -46,7 +46,7 @@ def _delete_files(keys: list[str]) -> None:
     for key in keys:
         try:
             storage.delete(key)
-        except Exception:  # noqa: BLE001 — la donnée en base est déjà supprimée ; on journalise l'objet orphelin
+        except Exception:
             log.exception("Fichier non supprimé du stockage : %s", key)
 
 
@@ -101,7 +101,7 @@ async def export(auth: Auth = Depends(owner)) -> Response:
     async with tx(tenant_id=auth.tenant_id, user_id=auth.user_id) as conn:
         for table in EXPORT_TABLES:
             where = "id = :t" if table == "tenant" else "tenant_id = :t"
-            rows = await fetch_all(conn, f"SELECT * FROM {table} WHERE {where}", t=auth.tenant_id)  # noqa: S608 — liste fixe
+            rows = await fetch_all(conn, f"SELECT * FROM {table} WHERE {where}", t=auth.tenant_id)
             out[table] = [{k: _json(v) for k, v in r.items() if k not in SECRET_COLUMNS} for r in rows]
         await audit(conn, auth, "data.export", None, {k: len(v) for k, v in out.items() if isinstance(v, list)})
     body = json.dumps(out, ensure_ascii=False, indent=1, default=str)

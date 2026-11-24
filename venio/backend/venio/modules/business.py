@@ -16,8 +16,8 @@ from ..db import execute, fetch_all, fetch_one, tx
 from ..deps import Auth, current_auth
 from ..errors import api_error
 from . import notifications
-from .privacy import audit
 from .booking_core import SlotUnavailable, log_booking_event, reschedule
+from .privacy import audit
 
 router = APIRouter(prefix="/api", tags=["entreprise"])
 

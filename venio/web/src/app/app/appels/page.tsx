@@ -119,6 +119,12 @@ export default function MissedCallsPage() {
                     </Td>
                     <Td className="text-sm">
                       <Funnel c={c} />
+                      {c.callback_requested_at && (
+                        <span className="mt-1.5 block rounded-control bg-signal-soft px-2 py-1 text-xs text-signal-strong">
+                          <strong>Demande de rappel</strong> · {c.callback_name}{c.callback_note ? ` : ${c.callback_note}` : ""}
+                        </span>
+                      )}
+                      {!c.callback_requested_at && c.visitor_intent === "existing" && <span className="mt-1.5 block text-xs text-ink-muted">Appelait pour un rendez-vous existant</span>}
                     </Td>
                     <Td className="text-right">
                       <div className="flex justify-end gap-1">

@@ -58,6 +58,11 @@ met à jour (grille d'offres §11.4, direction artistique, feuille de route §19
 | — | **Programme de lancement : diagnostic, 37 étapes, budget, scénarios financiers, décisions (document de référence)** | [09-programme-lancement.md](09-programme-lancement.md) |
 | — | Positionnement Vecall pour les artisans de la rénovation (étape 1.2) | [10-positionnement-renovation.md](10-positionnement-renovation.md) |
 | — | Guide d'entretiens artisans et grille de décision (étape 1.3) | [11-guide-entretiens.md](11-guide-entretiens.md) |
+| — | Sauvegardes et procédure de restauration (étape 3.2) | [12-sauvegardes.md](12-sauvegardes.md) |
+| — | Audit de sécurité automatisé (étape 3.9) | [13-audit-securite.md](13-audit-securite.md) |
+| — | Convention de pilote à signer | [14-convention-pilote.md](14-convention-pilote.md) |
+| — | Registre des traitements RGPD | [15-registre-traitements.md](15-registre-traitements.md) |
+| — | Les 14 scénarios critiques et leurs tests (étape 8.1) | [16-scenarios-de-test.md](16-scenarios-de-test.md) |
 
 ## En une page
 

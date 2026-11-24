@@ -141,8 +141,15 @@ export function MissedCallSettings() {
           <Field label="Un seul SMS par numéro sur (h)" hint="Appels rapprochés regroupés."><Input type="number" min={1} max={168} value={cfg.burst_window_hours} onChange={(e) => set({ burst_window_hours: Number(e.target.value) })} /></Field>
           <Field label="SMS maximum par numéro (30 j)"><Input type="number" min={1} max={10} value={cfg.max_per_number_30d} onChange={(e) => set({ max_per_number_30d: Number(e.target.value) })} /></Field>
           <Field label="Pas de SMS si demande récente (jours)"><Input type="number" min={0} max={30} value={cfg.recent_request_days} onChange={(e) => set({ recent_request_days: Number(e.target.value) })} /></Field>
+          <Field label="Sonnerie minimale (s)" hint="En dessous, l'appel est ignoré (robots, erreurs). Sans effet avec un renvoi sur non-réponse."><Input type="number" min={0} max={20} value={cfg.min_ring_seconds ?? 4} onChange={(e) => set({ min_ring_seconds: Number(e.target.value) })} /></Field>
+          <Field label="Clients déjà connus" hint="Numéro déjà enregistré dans vos demandes.">
+            <Select value={cfg.known_contacts ?? "skip"} onChange={(e) => set({ known_contacts: e.target.value as "skip" | "send" })}>
+              <option value="skip">Pas de SMS : je les rappelle moi-même</option>
+              <option value="send">Envoyer le SMS quand même</option>
+            </Select>
+          </Field>
         </div>
-        <p className="mt-4 text-sm text-ink-muted">Toujours exclus : numéros masqués, fixes et étrangers, numéros de l&apos;entreprise, oppositions (STOP), appels rappelés et décrochés entre-temps.</p>
+        <p className="mt-4 text-sm text-ink-muted">Toujours exclus : numéros masqués, fixes et étrangers, numéros de démarchage (préfixes réservés par l&apos;ARCEP), numéros de l&apos;entreprise, oppositions (STOP), clients ayant un rendez-vous à venir, appels rappelés et décrochés entre-temps.</p>
       </Card>
 
       <Exclusions items={excl} reload={load} />

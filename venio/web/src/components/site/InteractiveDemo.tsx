@@ -141,7 +141,7 @@ export function InteractiveDemo() {
               <iframe title="Page de réservation de l'entreprise de démonstration" src={`/c/${code}`} className="-mt-9 h-[calc(100%+2.25rem)] w-full border-0 bg-paper" />
             )}
           </PhoneFrame>
-          {phase === "booking" && <p className="mt-3 text-center text-sm text-ink-muted">Répondez aux questions et choisissez un créneau dans le téléphone.</p>}
+          {phase === "booking" && <p className="mt-3 text-center text-sm text-ink-muted">Choisissez « Un nouveau projet », répondez aux questions et choisissez un créneau dans le téléphone.</p>}
         </div>
 
         <div>
