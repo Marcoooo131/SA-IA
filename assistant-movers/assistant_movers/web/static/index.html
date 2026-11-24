@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assistant Movers</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="dot"></span>Assistant Movers <small>réinstallation · Moving Out</small></div>
+  <div class="top-right">
+    <span id="mode" class="badge"></span>
+    <div class="modes" id="modes" role="radiogroup" aria-label="Mode"></div>
+    <span id="writes" class="muted-inv"></span>
+    <button id="btn-nouveau" class="ghost">Nouveau dossier</button>
+  </div>
+</header>
+<div id="config-banner" class="banner warn"></div>
+<div id="test-banner" class="banner test"></div>
+
+<div class="layout">
+  <nav class="steps" id="steps" aria-label="Étapes"></nav>
+
+  <main>
+    <section class="card" id="card">
+      <div id="blocage"></div>
+      <div id="view"></div>
+    </section>
+    <section class="card sim-card" id="simulees" hidden>
+      <h3>Ce qui aurait été écrit dans le CRM <span class="muted small">(mode Test : rien n'est parti)</span></h3>
+      <ol id="sim-list"></ol>
+    </section>
+  </main>
+
+  <aside class="journal">
+    <h3>Journal de la session</h3>
+    <p class="muted small">Effacé à la fermeture. Téléphones et emails masqués.</p>
+    <ol id="journal"></ol>
+  </aside>
+</div>
+
+<div id="busy" class="busy" hidden><div class="spinner"></div><span id="busy-text">En cours…</span></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

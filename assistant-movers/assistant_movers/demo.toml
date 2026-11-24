@@ -1,0 +1,18 @@
+# Configuration de la démo (CRM fictif). Ne pas utiliser pour le vrai CRM : voir config/assistant.example.toml.
+[connexion]
+kind = "fake"
+
+[[work_order.packs]]
+nom = "Pack Sérénité Home SAS"
+[[work_order.packs]]
+nom = "Maintenance et télésurveillance"
+
+[email.remplacements]
+"[DATE]" = "date"
+"[DEBUT]" = "debut"
+"[FIN]" = "fin"
+"[DUREE]" = "duree"
+"[ELECTRICITE]" = "electricite"
+"[RESEAU]" = "reseau"
+"[TRAVAUX]" = "travaux"
+"[MATERIEL]" = "materiel"
