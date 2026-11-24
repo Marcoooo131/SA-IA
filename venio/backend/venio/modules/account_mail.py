@@ -35,8 +35,8 @@ def verify_message(full_name: str, link: str) -> tuple[str, str]:
 
 def password_changed_message(full_name: str) -> tuple[str, str]:
     return ("Votre mot de passe a été modifié",
-            f"Bonjour {full_name},\n\nLe mot de passe de votre compte Venio vient d'être modifié et toutes vos sessions ont été "
-            f"fermées. Si vous n'êtes pas à l'origine de ce changement, répondez à votre contact Venio ou réinitialisez "
+            f"Bonjour {full_name},\n\nLe mot de passe de votre compte Venio vient d'être modifié. Par sécurité, vos sessions "
+            f"ouvertes sur d'autres appareils ont été fermées. Si vous n'êtes pas à l'origine de ce changement, répondez à votre contact Venio ou réinitialisez "
             f"immédiatement votre mot de passe.{SIGNATURE}")
 
 

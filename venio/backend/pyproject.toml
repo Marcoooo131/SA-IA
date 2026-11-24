@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Venio — plateforme SaaS de prise de rendez-vous qualifiés"
 requires-python = ">=3.12"
 dependencies = [
-  "fastapi>=0.115,<0.116",
+  "fastapi>=0.160,<0.170",
   "uvicorn[standard]>=0.30",
   "sqlalchemy[asyncio]>=2.0,<2.1",
   "asyncpg>=0.29",

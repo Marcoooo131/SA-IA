@@ -2,13 +2,14 @@
 import { X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { useMe } from "@/components/AppShell";
+import { AccountSettings } from "@/components/AccountSettings";
 import { MissedCallSettings } from "@/components/MissedCallSettings";
 import { Alert, Button, Card, Checkbox, Field, Input, Select, Spinner, Textarea, cx } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { MEETING_LABELS, fmtDateTime } from "@/lib/format";
 import { DEMO } from "@/lib/routes";
 
-const TABS = [["page", "Page publique"], ["horaires", "Horaires"], ["prestations", "Prestations"], ["absences", "Absences"], ["appels", "Appels manqués"]] as const;
+const TABS = [["page", "Page publique"], ["horaires", "Horaires"], ["prestations", "Prestations"], ["absences", "Absences"], ["appels", "Appels manqués"], ["compte", "Mon compte"]] as const;
 type Tab = (typeof TABS)[number][0];
 
 export default function SettingsPage() {
@@ -30,6 +31,7 @@ export default function SettingsPage() {
       {tab === "prestations" && <ServicesTab />}
       {tab === "absences" && <TimeOffTab />}
       {tab === "appels" && <MissedCallSettings />}
+      {tab === "compte" && <AccountSettings />}
     </div>
   );
 }

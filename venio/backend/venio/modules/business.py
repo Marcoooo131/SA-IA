@@ -16,6 +16,7 @@ from ..db import execute, fetch_all, fetch_one, tx
 from ..deps import Auth, current_auth
 from ..errors import api_error
 from . import notifications
+from .privacy import audit
 from .booking_core import SlotUnavailable, log_booking_event, reschedule
 
 router = APIRouter(prefix="/api", tags=["entreprise"])
@@ -248,6 +249,7 @@ async def get_case(case_id: UUID, auth: Auth = Depends(current_auth)) -> dict:
             conn, "SELECT channel, purpose, granted, created_at FROM consent WHERE contact_id = :c ORDER BY created_at",
             c=case["contact_id"],
         )
+        await audit(conn, auth, "case_file.view", str(case_id))
     return {"case": _sid([case])[0], "contact": _sid([contact])[0], "bookings": _sid(bookings),
             "notes": _sid(notes), "files": _sid(files), "history": history, "notifications": sent, "consents": consents}
 
@@ -291,6 +293,8 @@ async def add_note(case_id: UUID, body: NoteIn, auth: Auth = Depends(current_aut
 async def download(file_id: UUID, auth: Auth = Depends(current_auth)) -> Response:
     async with tx(tenant_id=auth.tenant_id, user_id=auth.user_id) as conn:
         f = await fetch_one(conn, "SELECT storage_key, mime_type, original_name FROM file_object WHERE id = :f", f=file_id)
+        if f:
+            await audit(conn, auth, "file.download", str(file_id))
     if not f:
         raise api_error(404, "not_found", "Fichier introuvable.")
     data = await asyncio.to_thread(storage.read, f["storage_key"])

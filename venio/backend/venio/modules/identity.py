@@ -53,6 +53,11 @@ class TokenIn(BaseModel):
     token: str = Field(min_length=20, max_length=200)
 
 
+class PasswordChangeIn(BaseModel):
+    current_password: str = Field(max_length=200)
+    new_password: str = Field(min_length=10, max_length=200)
+
+
 TERMS_VERSION = "2026-11-24"   # à changer à chaque nouvelle version des conditions
 RESET_TTL = timedelta(minutes=30)
 VERIFY_TTL = timedelta(hours=48)
@@ -199,6 +204,39 @@ async def email_resend(background: BackgroundTasks, auth: Auth = Depends(current
         token = await _new_account_token(conn, auth.user_id, "email_verify", VERIFY_TTL)
     background.add_task(account_mail.send, user["email"], *account_mail.verify_message(user["full_name"], _verify_link(token)))
     return {"ok": True, "already_verified": False}
+
+
+@router.post("/password/change", dependencies=[Depends(limit("pwd_change", 10, 600))])
+async def password_change(body: PasswordChangeIn, background: BackgroundTasks, auth: Auth = Depends(current_auth)) -> dict:
+    async with tx() as conn:
+        user = await fetch_one(conn, "SELECT email, full_name, password_hash FROM app_user WHERE id = :u", u=auth.user_id)
+        if not verify_password(user["password_hash"], body.current_password):
+            raise api_error(400, "wrong_password", "Le mot de passe actuel est incorrect.")
+        await execute(conn, "UPDATE app_user SET password_hash = :p WHERE id = :u", p=hash_password(body.new_password), u=auth.user_id)
+        # Les autres appareils sont déconnectés ; la session en cours reste ouverte.
+        await execute(conn, "DELETE FROM user_session WHERE user_id = :u AND token_hash <> :h", u=auth.user_id, h=auth.token_hash)
+        await execute(conn, "UPDATE account_token SET used_at = now() WHERE user_id = :u AND kind = 'password_reset' AND used_at IS NULL",
+                      u=auth.user_id)
+    background.add_task(account_mail.send, user["email"], *account_mail.password_changed_message(user["full_name"]))
+    return {"ok": True}
+
+
+@router.get("/sessions")
+async def sessions(auth: Auth = Depends(current_auth)) -> dict:
+    async with tx() as conn:
+        rows = await fetch_all(
+            conn, "SELECT created_at, token_hash = :h AS current FROM user_session WHERE user_id = :u AND expires_at > now()"
+            " ORDER BY created_at DESC", u=auth.user_id, h=auth.token_hash)
+    return {"sessions": [{"created_at": r["created_at"].isoformat(), "current": r["current"]} for r in rows]}
+
+
+@router.post("/sessions/revoke-others")
+async def revoke_other_sessions(auth: Auth = Depends(current_auth)) -> dict:
+    async with tx() as conn:
+        n = await fetch_one(
+            conn, "WITH d AS (DELETE FROM user_session WHERE user_id = :u AND token_hash <> :h RETURNING 1) SELECT count(*) AS n FROM d",
+            u=auth.user_id, h=auth.token_hash)
+    return {"revoked": n["n"]}
 
 
 @router.post("/logout")

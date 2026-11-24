@@ -126,3 +126,33 @@ async def test_terms_acceptance_is_recorded(client_factory, database):
         await conn.close()
     from venio.modules.identity import TERMS_VERSION
     assert row["terms_accepted_at"] is not None and row["terms_version"] == TERMS_VERSION
+
+
+async def test_change_password_keeps_current_session_only(client_factory, outbox):
+    c = client_factory()
+    await signup(c)
+    email = await _email(c)
+    other = client_factory()
+    await other.post("/api/auth/login", json={"email": email, "password": "motdepasse-solide"})
+    assert len((await c.get("/api/auth/sessions")).json()["sessions"]) == 2
+    wrong = await c.post("/api/auth/password/change", json={"current_password": "pas-le-bon-mdp", "new_password": "nouveau-mot-de-passe"})
+    assert wrong.status_code == 400 and wrong.json()["detail"]["code"] == "wrong_password"
+    ok = await c.post("/api/auth/password/change", json={"current_password": "motdepasse-solide", "new_password": "nouveau-mot-de-passe"})
+    assert ok.status_code == 200 and outbox[-1]["subject"] == "Votre mot de passe a été modifié"
+    assert (await c.get("/api/auth/me")).status_code == 200          # cet appareil reste connecté
+    assert (await other.get("/api/auth/me")).status_code == 401      # les autres sont déconnectés
+    assert (await client_factory().post("/api/auth/login", json={"email": email, "password": "nouveau-mot-de-passe"})).status_code == 200
+
+
+async def test_revoke_other_sessions(client_factory):
+    c = client_factory()
+    await signup(c)
+    email = await _email(c)
+    others = [client_factory() for _ in range(2)]
+    for o in others:
+        await o.post("/api/auth/login", json={"email": email, "password": "motdepasse-solide"})
+    sessions = (await c.get("/api/auth/sessions")).json()["sessions"]
+    assert len(sessions) == 3 and sum(s["current"] for s in sessions) == 1
+    assert (await c.post("/api/auth/sessions/revoke-others")).json() == {"revoked": 2}
+    assert (await c.get("/api/auth/me")).status_code == 200
+    assert all([(await o.get("/api/auth/me")).status_code == 401 for o in others])

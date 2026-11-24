@@ -94,3 +94,19 @@ def read(key: str) -> bytes:
     if storage_root().resolve() not in path.parents:
         raise StorageError("Chemin invalide.")
     return path.read_bytes()
+
+
+def delete(key: str) -> None:
+    """Supprime un fichier (absent : rien à faire). Fonction bloquante : l'appeler via asyncio.to_thread."""
+    if ".." in key or key.startswith("/"):
+        raise StorageError("Chemin invalide.")
+    if _backend() == "supabase":
+        base, headers = _supabase()
+        r = httpx.delete(f"{base}/{key}", headers=headers, timeout=30)
+        if r.status_code >= 300 and r.status_code != 404:
+            raise RuntimeError(f"Supabase Storage {r.status_code}")
+        return
+    path = (storage_root() / key).resolve()
+    if storage_root().resolve() not in path.parents:
+        raise StorageError("Chemin invalide.")
+    path.unlink(missing_ok=True)

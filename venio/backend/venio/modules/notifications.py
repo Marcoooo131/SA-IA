@@ -363,6 +363,10 @@ async def worker_loop(interval_s: float = 10.0) -> None:
                 from .demo import purge
                 async with tx() as conn:
                     await purge(conn)
+            if turns % 8640 == 1:  # environ une fois par jour : durées de conservation (politique de confidentialité)
+                from .privacy import purge as purge_retention
+                async with tx() as conn:
+                    await purge_retention(conn)
         except Exception:  # noqa: BLE001
             log.exception("boucle worker")
         await asyncio.sleep(interval_s)

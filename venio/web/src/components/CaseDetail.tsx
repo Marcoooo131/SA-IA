@@ -1,9 +1,10 @@
 "use client";
 import { ArrowLeft, FileText } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useMe } from "@/components/AppShell";
-import { Alert, Badge, Button, Card, Select, Spinner, Textarea } from "@/components/ui";
+import { Alert, Badge, Button, Card, ConfirmDialog, Select, Spinner, Textarea } from "@/components/ui";
 import { api, errorMessage } from "@/lib/api";
 import { fileUrl } from "@/lib/routes";
 import { BOOKING_STATUS, CASE_STATUS, MEETING_LABELS, NOTIF_STATUS, TEMPLATE_LABELS, fmtDateTime } from "@/lib/format";
@@ -11,7 +12,7 @@ import { BOOKING_STATUS, CASE_STATUS, MEETING_LABELS, NOTIF_STATUS, TEMPLATE_LAB
 type Detail = {
   case: { id: string; status: string; summary: string; completeness: number; created_at: string; service_name: string; meeting_type: string; source: Record<string, string>;
     answers: { step: string; question: string; display: string; type: string; value: unknown }[] };
-  contact: { first_name: string; last_name: string | null; email: string; phone: string | null; address: { line: string; postal_code: string; city: string } | null };
+  contact: { id: string; first_name: string; last_name: string | null; email: string; phone: string | null; address: { line: string; postal_code: string; city: string } | null };
   bookings: { id: string; starts_at: string; status: string; resource_name: string }[];
   notes: { id: string; body: string; created_at: string; author: string | null }[];
   files: { id: string; original_name: string; mime_type: string }[];
@@ -29,6 +30,8 @@ export function CaseDetail({ id }: { id: string }) {
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState("");
+  const [askDelete, setAskDelete] = useState(false);
+  const router = useRouter();
 
   const load = useCallback(() => api<Detail>(`/case-files/${id}`).then(setD).catch((e) => setError(errorMessage(e))), [id]);
   useEffect(() => { load(); }, [load]);
@@ -107,7 +110,16 @@ export function CaseDetail({ id }: { id: string }) {
               {c.phone && <li><a className="underline" href={`tel:${c.phone}`}>{c.phone}</a></li>}
               {c.address && <li>{c.address.line}, {c.address.postal_code} {c.address.city} · <a className="underline" target="_blank" href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(`${c.address.line} ${c.address.postal_code} ${c.address.city}`)}`}>Carte</a></li>}
             </ul>
+            {me.role !== "member" && (
+              <button type="button" onClick={() => setAskDelete(true)} className="mt-4 text-sm text-danger underline underline-offset-2">Supprimer ce client et ses données</button>
+            )}
           </Card>
+          <ConfirmDialog open={askDelete} title="Supprimer définitivement ce client ?" confirmLabel="Supprimer définitivement" busy={busy === "delete"}
+            onCancel={() => setAskDelete(false)}
+            onConfirm={() => { setBusy("delete"); api(`/contacts/${c.id}`, { method: "DELETE" }).then(() => router.push("/app/dossiers")).catch((e) => { setError(errorMessage(e)); setBusy(""); setAskDelete(false); }); }}>
+            <p className="text-sm">Toutes les demandes de {c.first_name}, ses réponses, photos, rendez-vous, messages et appels seront effacés. Les rendez-vous à venir ne seront plus visibles et le client ne sera pas prévenu. Cette action est irréversible.</p>
+            <p className="mt-2 text-sm text-ink-muted">À utiliser notamment quand un client demande l&apos;effacement de ses données.</p>
+          </ConfirmDialog>
           <Card>
             <h2 className="mb-2 font-semibold">Rendez-vous</h2>
             <ul className="space-y-2">
