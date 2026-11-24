@@ -13,7 +13,7 @@ DATE = (date.today() + timedelta(days=10)).isoformat()
 
 @pytest.fixture
 def a():
-    return Assistant(cfgmod.load(DEMO), FakeCrm(), demo=True)
+    return Assistant(cfgmod.load(DEMO), FakeCrm(), demo=True, mode="supervise")
 
 
 def jusqu_au_booking(a, numero="10000001"):

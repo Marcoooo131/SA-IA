@@ -30,6 +30,7 @@ function bind() {
     el.addEventListener("change", () => { mem[k] = el.type === "checkbox" ? el.checked : el.value; });
   });
 }
+const L = (sup, test) => (S.mode === "test" ? test : sup);
 const kv = (rows) => `<dl class="kv">${rows.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v || "—")}</dd>`).join("")}</dl>`;
 const fmt = (iso) => iso ? new Date(iso).toLocaleString("fr-FR", {weekday: "short", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit"}) : "—";
 const hh = (iso) => new Date(iso).toLocaleTimeString("fr-FR", {hour: "2-digit", minute: "2-digit"});
@@ -38,9 +39,23 @@ function render() {
   const d = S.dossier;
   $("#mode").textContent = S.demo ? "DÉMO · CRM FICTIF" : "CRM RÉEL";
   $("#mode").className = "badge " + (S.demo ? "demo" : "reel");
+  $("#modes").innerHTML = Object.entries({test: "Test", supervise: "Supervisé"}).map(([k, l]) =>
+    `<button class="${k} ${S.mode === k ? "on" : ""}" data-mode="${k}" role="radio" aria-checked="${S.mode === k}" title="${esc(S.modes[k])}">${l}</button>`).join("");
+  $("#modes").querySelectorAll("button").forEach((b) => b.onclick = () => {
+    if (b.dataset.mode === S.mode) return;
+    if (b.dataset.mode === "supervise" && !confirm("Mode Supervisé : chaque validation écrira pour de vrai dans le CRM (case, WO, SMS, email). Continuer ?")) return;
+    for (const k of Object.keys(mem)) delete mem[k];
+    choix = ""; noCap = "";
+    act("/api/mode", {mode: b.dataset.mode}, "Changement de mode…");
+  });
+  $("#test-banner").textContent = S.mode === "test"
+    ? "MODE TEST — le compte est lu pour de vrai, mais rien n'est écrit ni envoyé : chaque écriture est affichée sous l'étape, avec un résultat fictif." : "";
+  $("#simulees").hidden = !(S.mode === "test" && S.simulees.length);
+  $("#sim-list").innerHTML = S.simulees.map((x) => `<li><b>${esc(x.etape)}</b><code>${esc(x.methode)} ${esc(x.chemin)}</code>
+    <table>${Object.entries(x.corps).map(([k, v]) => `<tr><td>${esc(k)}</td><td>${esc(typeof v === "object" ? JSON.stringify(v) : v)}</td></tr>`).join("")}</table></li>`).join("");
   $("#writes").textContent = `${S.ecritures} écriture(s) CRM`;
   $("#config-banner").textContent = (!S.demo && S.manquants.length)
-    ? `Configuration incomplète : ${S.manquants.length} valeur(s) à relever avec « decouvrir ». Lecture possible, écritures bloquées.` : "";
+    ? `Configuration incomplète : ${S.manquants.length} valeur(s) à relever (TUTORIEL.md, partie découverte). Mode Supervisé bloqué, mode Test disponible.` : "";
   const i = S.etapes.indexOf(S.etape);
   $("#steps").innerHTML = S.etapes.map((e, k) =>
     `<div class="step ${k < i ? "done" : k === i ? "cur" : ""}"><span class="n">${k < i ? "✓" : k + 1}</span>${esc(S.libelles[e])}</div>`).join("");
@@ -101,7 +116,7 @@ function vAdresse(d) {
 function vCase(d) {
   $("#view").innerHTML = `<h2>Case Movers</h2><p class="lead">Voici ce qui sera écrit dans le CRM. Rien ne part avant votre clic.</p>
     ${kv(S.apercu_case)}
-    <div class="actions"><button class="primary" id="go" ${d.case_id ? "disabled" : ""}>Créer le case et lancer le Work Order</button>
+    <div class="actions"><button class="primary" id="go" ${d.case_id ? "disabled" : ""}>${L("Créer le case et lancer le Work Order", "Tester la création du case (rien n'est écrit)")}</button>
     ${d.case_id ? `<span class="muted">Case ${esc(d.case_numero)} créé.</span>` : ""}</div>`;
   $("#go").onclick = () => act("/api/case", {}, "Création du case, attente du Work Order…");
 }
@@ -113,7 +128,7 @@ function vWo(d) {
     <label>Description du WO</label><textarea data-m="description" rows="10"></textarea>
     <label>Produits à ajouter</label>${packs || `<p class="muted">Aucun pack configuré : ajoutez les produits dans le CRM.</p>`}
     <label class="check"><input type="checkbox" data-m="prodok"> Produits vérifiés dans le CRM (prix, service code)</label>
-    <div class="actions"><button class="primary" id="go">Compléter le WO et passer au rendez-vous</button></div>`;
+    <div class="actions"><button class="primary" id="go">${L("Compléter le WO et passer au rendez-vous", "Tester la mise à jour du WO")}</button></div>`;
   $("#go").onclick = () => act("/api/wo", {description: mem.description, packs: S.packs.filter((_, k) => mem["pack" + k]),
     produits_verifies: !!mem.prodok}, "Mise à jour du WO…");
 }
@@ -125,7 +140,7 @@ function vBooking(d) {
   $("#view").innerHTML = `<h2>Rendez-vous technicien</h2>
     ${action ? `<p class="lead">Créneaux renvoyés par le CRM pour le WO ${esc(d.wo.numero)}. Choisissez-le avec le client.</p>
       <div class="slots">${slots || '<p class="muted">Aucun créneau chargé.</p>'}</div>
-      <div class="actions"><button class="primary" id="go" ${choix ? "" : "disabled"}>Réserver ce créneau</button><button id="reload">Recharger</button></div>`
+      <div class="actions"><button class="primary" id="go" ${choix ? "" : "disabled"}>${L("Réserver ce créneau", "Tester la réservation (créneaux fictifs)")}</button><button id="reload">Recharger</button></div>`
     : `<p class="lead">La fiche du WO ${esc(d.wo.numero)} est ouverte dans Edge (période de recherche déjà remplie).</p>
       <div class="alert info"><b>À faire dans le CRM</b>« Get appointments » → choisissez le créneau avec le client → validez. Revenez ici ensuite.</div>
       <div class="actions"><button class="primary" id="verif">Vérifier la réservation</button></div>`}
@@ -149,7 +164,7 @@ function vSms(d) {
     ${kv([["Destinataire", d.compte.mobile], ["WO", `${d.wo.numero} — ${d.wo.statut}`]])}
     <label>Texte du SMS</label><textarea data-m="sms" rows="4"></textarea>
     <p class="muted small" id="cnt"></p>
-    <div class="actions"><button class="primary" id="go">Envoyer le SMS</button></div>`;
+    <div class="actions"><button class="primary" id="go">${L("Envoyer le SMS", "Tester l'envoi du SMS (rien ne part)")}</button></div>`;
   const cnt = () => { $("#cnt").textContent = `${(mem.sms || "").length} caractères`; };
   setTimeout(() => { cnt(); document.querySelector("[data-m=sms]").addEventListener("input", cnt); }, 0);
   $("#go").onclick = () => act("/api/sms", {texte: mem.sms}, "Envoi du SMS…");
@@ -161,7 +176,7 @@ function vEmail(d) {
     <div class="row">${f("duree", "Durée (minutes)", "ex. 120")}${f("electricite", "Électricité sur place", "oui / non")}${f("reseau", "Réseau", "GSM / Wifi")}</div>
     <div class="row">${f("travaux", "Travaux prévus", "ex. Pas de travaux")}${f("materiel", "Matériel à réinstaller", "ex. 1x DOC, 2x sirène")}</div>
     <div class="actions"><button class="dark" id="prep">Préparer l'email</button>
-    <button class="primary" id="go" ${d.email_html && !S.email_zones.length ? "" : "disabled"}>Envoyer l'email</button></div>
+    <button class="primary" id="go" ${d.email_html && !S.email_zones.length ? "" : "disabled"}>${L("Envoyer l'email", "Tester l'envoi de l'email (rien ne part)")}</button></div>
     ${d.email_html ? `${S.email_zones.length ? `<div class="alert warn" style="margin-top:14px"><b>Encore surligné</b>${esc(S.email_zones.join(" · "))}</div>` : ""}
       <p class="muted" style="margin-top:14px">Objet : <b>${esc(d.email_sujet)}</b></p><iframe sandbox="" id="prev"></iframe>` : ""}`;
   if ($("#prev")) $("#prev").srcdoc = d.email_html;

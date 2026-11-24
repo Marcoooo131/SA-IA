@@ -70,3 +70,17 @@ iframe{width:100%;height:340px;border:1px solid var(--line);border-radius:10px;b
 .spinner{width:28px;height:28px;border:4px solid rgba(255,255,255,.3);border-top-color:var(--red);border-radius:50%;animation:s 1s linear infinite}
 @keyframes s{to{transform:rotate(360deg)}}
 .muted{color:var(--muted)}
+.modes{display:flex;background:#1c1c1f;border-radius:999px;padding:3px}
+.modes button{border:0;background:transparent;color:#bbb;padding:6px 14px;border-radius:999px;font-size:13px}
+.modes button.on{background:#fff;color:#000}
+.modes button.on.supervise{background:var(--red);color:#fff}
+.banner.test{background:#2a2140;color:#e6dcff;font-weight:600}
+.sim-card{margin-top:16px;min-height:0;border-style:dashed;border-color:#b9a6ea;background:#fbf9ff}
+.sim-card h3{margin:0 0 8px;font-size:15px}
+.sim-card ol{margin:0;padding-left:20px;display:grid;gap:10px}
+.sim-card li b{display:block}
+.sim-card code{display:block;font-size:12px;color:#555;margin:2px 0 4px}
+.sim-card table{border-collapse:collapse;font-size:12.5px;width:100%;table-layout:fixed}
+.sim-card td{border-top:1px solid #ece6fb;padding:3px 8px 3px 0;vertical-align:top;word-break:break-word}
+.sim-card td{white-space:pre-wrap}
+.sim-card td:first-child{color:#5b3fa0;font-family:Consolas,monospace;width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

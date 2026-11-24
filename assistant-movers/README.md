@@ -9,7 +9,8 @@ confirmation, puis affiche un compte rendu. Les étapes reprennent le [guide Mov
 >
 > | Élément | État |
 > |---|---|
-> | Parcours complet, arrêts de sécurité, interface rouge et noire, journal | **Opérationnels**, testés sur un **CRM fictif** (18 tests) |
+> | Modes **Test** (lecture réelle, aucune écriture, affiche ce qui aurait été écrit) et **Supervisé** (chaque écriture validée par l'agent) | **Opérationnels** |
+> | Parcours complet, arrêts de sécurité, interface rouge et noire, journal | **Opérationnels**, testés sur un **CRM fictif** (25 tests) |
 > | Connexion au CRM (session Edge de l'agent, API Web officielle) | Reprise de [`movers-dispatch`](../movers-dispatch/README.md), **jamais testée face au vrai CRM** |
 > | Noms techniques du CRM (champs Movers du case, table Work Order, table SMS, produits) | **Non renseignés** : à relever avec `decouvrir`. Toute écriture reste bloquée en attendant |
 > | Création du WO après « Completed Move Out Info » | Si le CRM ne le crée pas tout seul, l'assistant ouvre le case dans Edge et demande de cliquer **Finish** |
@@ -17,6 +18,19 @@ confirmation, puis affiche un compte rendu. Les étapes reprennent le [guide Mov
 > | SMS | **Envoyé par l'assistant** après validation de l'agent, via l'activité SMS du CRM (table à relever). Contrôle de doublon avant envoi |
 > | Email | Modèle CRM « Récapitulatif concernant votre déménagement », file **Movers** en expéditeur, actions standard `InstantiateTemplate` et `SendEmail` |
 > | Validation IT (usage automatisé de la session CRM) | **À obtenir**, comme pour movers-dispatch |
+
+**👉 Mise en route pas à pas, dont la partie découverte : [TUTORIEL.md](TUTORIEL.md).**
+
+## Modes
+
+| | Test (par défaut) | Supervisé |
+|---|---|---|
+| Lectures (compte, installations, contrats) | réelles | réelles |
+| Case, WO, SMS, email | **rien n'est écrit** : le corps exact de chaque écriture est affiché, avec un résultat fictif | écrits **après le clic de l'agent** |
+| Rendez-vous | créneaux fictifs | l'agent réserve dans le CRM, l'assistant relit |
+| Configuration incomplète | fonctionne et nomme le champ manquant | bloqué |
+
+Le changement de mode se fait dans l'en-tête, entre deux dossiers.
 
 ## Règles de fonctionnement
 
@@ -37,20 +51,19 @@ confirmation, puis affiche un compte rendu. Les étapes reprennent le [guide Mov
 | `windows\1-installer.bat` | installe les composants (une fois) et crée `assistant.toml` |
 | `windows\2-demo.bat` | démo sur un CRM fictif (comptes 10000001 à 10000005) |
 | `windows\3-decouvrir.bat` | relève les noms techniques du CRM dans `decouverte.txt` (lecture seule) |
-| `windows\4-lancer.bat` | assistant sur le vrai CRM |
+| `windows\4-lancer.bat` | assistant sur le vrai CRM (démarre en mode Test) |
+| `windows\5-verifier.bat` | contrôle chaque nom de `assistant.toml` dans le CRM (`verification.txt`) |
 
 Comptes de démo : `10000001` cas normal · `10000002` case Movers déjà ouvert · `10000003` aucun créneau (No Cap)
 · `10000004` WO non créé (Finish) · `10000005` SMS déjà présent (doublon).
 
-### Mise en service sur le vrai CRM
+### Mise en service sur le vrai CRM (détail dans le [tuto](TUTORIEL.md))
 
-1. `3-decouvrir.bat` : reporter dans `assistant.toml` les noms affichés dans `decouverte.txt` (adresse du CRM,
-   champs Movers du case et leurs valeurs, table Work Order, table SMS, produits). Le rapport ne contient que des
-   noms de tables et de champs.
-2. Facultatif : `3-decouvrir.bat --observer-booking 120`, puis cliquer soi-même « Get appointments » sur un WO de
-   test. Le rapport liste les appels faits par le CRM (méthode + adresse, sans contenu) pour brancher la
-   récupération directe des créneaux.
-3. `4-lancer.bat`, sur un **dossier de test** d'abord.
+1. `3-decouvrir.bat` → `decouverte.txt` (noms de tables et de champs uniquement) → recopier dans `assistant.toml`.
+2. `5-verifier.bat` jusqu'à « tout est bon ».
+3. `4-lancer.bat` en mode **Test** sur 5 dossiers réels, en comparant « Ce qui aurait été écrit » avec la saisie manuelle.
+4. Mode **Supervisé**, premier dossier sur un compte de test.
+5. Facultatif : `3-decouvrir.bat --observer-booking 120` pour brancher la récupération directe des créneaux.
 
 ## Structure (un fichier par fonctionnalité)
 
@@ -64,9 +77,10 @@ Comptes de démo : `10000001` cas normal · `10000002` case Movers déjà ouvert
 | `sms.py` | 12 SMS avec la date et la tranche relues dans le WO |
 | `email_confirmation.py` | 13 email depuis le modèle CRM, champs surlignés remplis |
 | `rapport.py` | 14 compte rendu |
-| `parcours.py` | enchaînement, aperçus, arrêts |
+| `parcours.py` | enchaînement, modes, aperçus, arrêts |
+| `simulation.py` | mode Test : écritures construites mais jamais envoyées |
 | `crm.py` / `transport.py` | API Web du CRM avec la session Edge de l'agent |
-| `decouverte.py` | relevé des noms techniques |
+| `decouverte.py` | découverte et vérification des noms techniques |
 | `fake.py` | CRM fictif (démo, tests) |
 | `journal.py` | journal en mémoire, téléphones et emails masqués |
 | `web/` | interface locale rouge et noire |

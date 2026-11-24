@@ -3,3 +3,4 @@ __pycache__/
 *.egg-info/
 assistant.toml
 decouverte.txt
+verification.txt

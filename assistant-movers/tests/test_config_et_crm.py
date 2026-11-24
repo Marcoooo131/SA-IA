@@ -15,7 +15,7 @@ EX = Path(__file__).parents[1] / "config" / "assistant.example.toml"
 def test_exemple_bloque_les_ecritures():
     cfg = cfgmod.load(EX)
     assert "connexion.environment_url" in cfg.manquants() and "case.champs.moving_out_or_in" in cfg.manquants()
-    a = Assistant(cfg, FakeCrm(), demo=False)
+    a = Assistant(cfg, FakeCrm(), demo=False, mode="supervise")
     a.ouvrir_compte("10000001")
     a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", date.today().isoformat(), "", "")
     a.creer_case()

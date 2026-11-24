@@ -115,6 +115,11 @@ def create_app(a: Assistant, token: str) -> FastAPI:
         a.envoyer_email()
         return etat()
 
+    @app.post("/api/mode")
+    def mode(b: dict = Body(...)):
+        a.changer_mode(str(b.get("mode", "")))
+        return etat()
+
     @app.post("/api/nouveau")
     def nouveau():
         a.nouveau()

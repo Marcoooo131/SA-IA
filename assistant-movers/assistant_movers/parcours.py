@@ -23,24 +23,53 @@ from . import work_order as m_wo
 from .config import Config
 from .journal import Journal
 from .models import Blocage, CrmError, Dossier, SessionExpired
+from .simulation import SimulationGateway
 
+MODES = {"test": "Test — aucune écriture", "supervise": "Supervisé — vous validez chaque écriture"}
 ETAPES = ["compte", "adresse", "case", "wo", "booking", "sms", "email", "fin"]
 LIBELLES = {"compte": "Client", "adresse": "Nouvelle adresse", "case": "Case Movers", "wo": "Work Order",
             "booking": "Rendez-vous", "sms": "SMS", "email": "Email", "fin": "Compte rendu"}
 
 
 class Assistant:
-    def __init__(self, cfg: Config, gw, demo: bool):
-        self.cfg, self.gw, self.demo = cfg, gw, demo
+    def __init__(self, cfg: Config, gw, demo: bool, mode: str | None = None):
+        self.cfg, self.reel, self.demo = cfg, gw, demo
+        self.mode = mode or cfg.mode_defaut
         self.journal = Journal()
         self.d = Dossier()
+        self.sim = SimulationGateway(gw)
         self.lock = threading.Lock()
         self.occupe = ""
         self.manquants = cfg.manquants()
         if demo:
-            self.journal.sim("Mode démo : CRM fictif, aucune donnée réelle, rien n'est envoyé.")
+            self.journal.sim("Démo : CRM fictif, aucune donnée réelle.")
         elif self.manquants:
-            self.journal.warn(f"Configuration incomplète ({len(self.manquants)} valeurs) : écritures bloquées. Lancez « decouvrir ».")
+            self.journal.warn(f"Configuration incomplète ({len(self.manquants)} valeurs) : mode Supervisé bloqué. "
+                              "Utilisez le mode Test pour la compléter (TUTORIEL.md).")
+        self.journal.info(f"Mode {MODES[self.mode]}.")
+
+    @property
+    def gw(self):
+        return self.sim if self.mode == "test" else self.reel
+
+    def _ok(self, m: str) -> None:
+        (self.journal.sim if self.mode == "test" else self.journal.ok)(("TEST — " if self.mode == "test" else "") + m)
+
+    def changer_mode(self, mode: str):
+        def go():
+            if mode not in MODES:
+                raise Blocage("Mode inconnu.", reprise=False)
+            if self.d.etape not in ("compte", "fin"):
+                raise Blocage("Terminez ou abandonnez le dossier en cours (« Nouveau dossier ») avant de changer de mode.", reprise=False)
+            if mode == "supervise" and not self.demo and self.manquants:
+                raise Blocage("Mode Supervisé indisponible : configuration incomplète.",
+                              action="Valeurs manquantes : " + ", ".join(self.manquants[:8]) + ("…" if len(self.manquants) > 8 else ""),
+                              reprise=False)
+            self.mode = mode
+            self.d = Dossier()
+            self.sim = SimulationGateway(self.reel)
+            self.journal.info(f"Mode {MODES[mode]}.")
+        self._run("Changement de mode", go)
 
     # ------------------------------------------------------------------ outils
     def _run(self, libelle: str, fn, *a, **kw):
@@ -70,7 +99,7 @@ class Assistant:
             raise Blocage(f"Action impossible à l'étape « {LIBELLES[self.d.etape]} ».", reprise=False)
 
     def _ecriture_permise(self):
-        if not self.demo and self.manquants:
+        if self.mode == "supervise" and not self.demo and self.manquants:
             raise Blocage("Écriture bloquée : configuration incomplète.",
                           action="Valeurs manquantes : " + ", ".join(self.manquants[:8]) + ("…" if len(self.manquants) > 8 else ""),
                           reprise=False)
@@ -132,18 +161,19 @@ class Assistant:
             self._ecriture_permise()
             if not self.d.case_id:
                 m_case.creer(self.gw, self.d)
-                self.journal.ok(f"Case {self.d.case_numero} créé, Moving Out renseigné, Completed Move Out Info = Yes.")
+                self._ok(f"Case {self.d.case_numero} créé, Moving Out renseigné, Completed Move Out Info = Yes.")
             self._attendre_wo()
         self._run("Création du case", go)
 
     def _attendre_wo(self):
         try:
-            m_case.attendre_wo(self.gw, self.d, 4 if self.demo else self.cfg.attente_wo_secondes, pause=1 if self.demo else 3)
+            rapide = self.demo or self.mode == "test"
+            m_case.attendre_wo(self.gw, self.d, 4 if rapide else self.cfg.attente_wo_secondes, pause=1 if rapide else 3)
         except Blocage:
-            if not self.demo:
+            if not self.demo and self.mode == "supervise":
                 self.gw.ouvrir_fiche("incident", self.d.case_id)
             raise
-        self.journal.ok(f"Work Order {self.d.wo.numero} créé par le CRM ({self.d.wo.type_nom or 'Installation'}).")
+        self._ok(f"Work Order {self.d.wo.numero} créé par le CRM ({self.d.wo.type_nom or 'Installation'}).")
         self.d.etape = "wo"
 
     def reprendre_wo(self):
@@ -151,7 +181,7 @@ class Assistant:
             self._exiger("case")
             if not self.d.case_id:
                 raise Blocage("Le case n'est pas encore créé.", reprise=False)
-            if self.demo:
+            if self.demo and self.mode == "supervise":
                 self.gw.simuler_finish(self.d.case_id)
                 self.journal.sim("Démo : « Finish » cliqué dans le CRM.")
             self._attendre_wo()
@@ -166,7 +196,7 @@ class Assistant:
             self._exiger("wo")
             self._ecriture_permise()
             m_wo.completer(self.gw, self.cfg, self.d, texte, packs, produits_verifies)
-            self.journal.ok(f"WO {self.d.wo.numero} complété" + (f" — produits : {', '.join(packs)}" if packs else "") + ".")
+            self._ok(f"WO {self.d.wo.numero} complété" + (f" — produits : {', '.join(packs)}" if packs else "") + ".")
             m_booking.preparer(self.gw, self.cfg, self.d)
             self.d.etape = "booking"
             self._ouvrir_booking()
@@ -174,7 +204,7 @@ class Assistant:
 
     # ------------------------------------------------------------------ 9-11
     def _methode(self) -> str:
-        return "action" if self.demo else self.cfg.booking.methode
+        return "action" if (self.demo or self.mode == "test") else self.cfg.booking.methode
 
     def _ouvrir_booking(self):
         if self._methode() == "action":
@@ -207,7 +237,7 @@ class Assistant:
 
     def _booke(self):
         wo = self.d.wo
-        self.journal.ok(f"Rendez-vous réservé : {wo.debut:%d/%m/%Y} entre {wo.debut:%Hh%M} et {wo.fin:%Hh%M} ({wo.statut}).")
+        self._ok(f"Rendez-vous réservé : {wo.debut:%d/%m/%Y} entre {wo.debut:%Hh%M} et {wo.fin:%Hh%M} ({wo.statut}).")
         self.d.sms_texte = m_sms.texte(self.cfg, self.d)
         self.d.etape = "sms"
 
@@ -220,7 +250,7 @@ class Assistant:
             self._exiger("sms")
             self._ecriture_permise()
             etat = m_sms.envoyer(self.gw, self.cfg, self.d, texte, forcer)
-            self.journal.ok(f"SMS envoyé ({etat}).")
+            self._ok(f"SMS envoyé ({etat}).")
             self.d.etape = "email"
         self._run("SMS", go)
 
@@ -240,27 +270,30 @@ class Assistant:
             if not self.d.email_html:
                 raise Blocage("Préparez d'abord l'email.", reprise=False)
             etat = m_email.envoyer(self.gw, self.d)
-            self.journal.ok(f"Email de confirmation envoyé depuis la file {self.cfg.email.file_expediteur} ({etat}).")
+            self._ok(f"Email de confirmation envoyé depuis la file {self.cfg.email.file_expediteur} ({etat}).")
             self.d.etape = "fin"
         self._run("Email", go)
 
     # ------------------------------------------------------------------ 14 / divers
     def compte_rendu(self) -> str:
-        return m_rapport.compte_rendu(self.d)
+        cr = m_rapport.compte_rendu(self.d)
+        return ("MODE TEST — rien n'a été écrit ni envoyé dans le CRM.\n" + cr) if self.mode == "test" else cr
 
     def nouveau(self):
         self.d = Dossier()
+        self.sim = SimulationGateway(self.reel)
         self.journal.info("Nouveau dossier.")
 
     def etat(self) -> dict:
         d = self.d
         return {
-            "demo": self.demo, "occupe": self.occupe, "etape": d.etape, "etapes": ETAPES, "libelles": LIBELLES,
+            "demo": self.demo, "mode": self.mode, "modes": MODES, "simulees": self.sim.simulees if self.mode == "test" else [],
+            "occupe": self.occupe, "etape": d.etape, "etapes": ETAPES, "libelles": LIBELLES,
             "manquants": self.manquants, "methode_booking": self._methode(),
             "dossier": d.vue(), "apercu_case": self.apercu_case(),
             "description": self.description_proposee() if d.etape == "wo" else "",
             "packs": [p.nom for p in self.cfg.work_order.packs],
             "email_zones": m_email.zones_surlignees(d.email_html) if d.email_html else [],
             "compte_rendu": self.compte_rendu() if d.etape == "fin" else "",
-            "journal": self.journal.vue(), "ecritures": self.gw.writes,
+            "journal": self.journal.vue(), "ecritures": self.reel.writes,
         }

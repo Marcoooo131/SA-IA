@@ -130,7 +130,7 @@ class EmailCfg:
 @dataclass
 class Config:
     connexion: Connexion = field(default_factory=Connexion)
-    mode_defaut: str = "simulation"
+    mode_defaut: str = "test"              # "test" (aucune écriture) ou "supervise" (écritures validées une à une)
     case: CaseCfg = field(default_factory=CaseCfg)
     work_order: WorkOrderCfg = field(default_factory=WorkOrderCfg)
     booking: BookingCfg = field(default_factory=BookingCfg)
@@ -174,6 +174,7 @@ def load(path: str | Path) -> Config:
     e = raw.get("email", {})
     c.email = EmailCfg(modele=e.get("modele", c.email.modele), file_expediteur=e.get("file_expediteur", c.email.file_expediteur),
                        remplacements=dict(e.get("remplacements", {})))
-    if c.mode_defaut not in ("simulation", "reel"):
-        raise ValueError("assistant.mode_defaut doit valoir \"simulation\" ou \"reel\".")
+    c.mode_defaut = {"simulation": "test", "reel": "supervise"}.get(c.mode_defaut, c.mode_defaut)
+    if c.mode_defaut not in ("test", "supervise"):
+        raise ValueError("assistant.mode_defaut doit valoir \"test\" ou \"supervise\".")
     return c

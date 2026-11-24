@@ -150,21 +150,38 @@ class DataverseGateway:
         return out
 
     # ---------------------------------------------------------------- 5-6 case
-    def creer_case(self, compte, installation_id, contrat_id, adresse) -> tuple[str, str]:
+    def _cle(self, section: str, d: dict, cle: str):
+        v = d.get(cle)
+        if v in (None, ""):
+            raise CrmError(f"Configuration : {section}.{cle} manquant (voir TUTORIEL.md, partie découverte).")
+        return v
+
+    def corps_case(self, compte, installation_id, contrat_id, adresse) -> dict:
         k = self.cfg.case
         body: dict = {"title": k.titre, f"{k.client_nav}@odata.bind": f"/accounts({_guid(compte.id)})"}
         if installation_id:
+            if not k.installation.ok:
+                raise CrmError("Configuration : case.installation (nav, set) manquant.")
             body[f"{k.installation.nav}@odata.bind"] = f"/{k.installation.set}({_guid(installation_id)})"
         if contrat_id and k.contrat.ok:
             body[f"{k.contrat.nav}@odata.bind"] = f"/{k.contrat.set}({_guid(contrat_id)})"
-        ch = k.champs
-        body[ch["moving_out_or_in"]] = k.valeurs["moving_out_or_in_out"]
-        body[ch["moving_out_interested"]] = k.valeurs["oui"]
-        body[ch["new_street"]] = adresse.rue
-        body[ch["new_postcode"]] = adresse.code_postal
-        body[ch["new_city"]] = adresse.ville
-        body[ch["moving_out_date"]] = adresse.date_demenagement.isoformat()
+        c = lambda x: self._cle("case.champs", k.champs, x)  # noqa: E731
+        v = lambda x: self._cle("case.valeurs", k.valeurs, x)  # noqa: E731
+        body[c("moving_out_or_in")] = v("moving_out_or_in_out")
+        body[c("moving_out_interested")] = v("oui")
+        body[c("new_street")] = adresse.rue
+        body[c("new_postcode")] = adresse.code_postal
+        body[c("new_city")] = adresse.ville
+        body[c("moving_out_date")] = adresse.date_demenagement.isoformat()
         body.update(k.fixes)
+        return body
+
+    def corps_move_out(self) -> dict:
+        k = self.cfg.case
+        return {self._cle("case.champs", k.champs, "completed_move_out"): self._cle("case.valeurs", k.valeurs, "oui")}
+
+    def creer_case(self, compte, installation_id, contrat_id, adresse) -> tuple[str, str]:
+        body = self.corps_case(compte, installation_id, contrat_id, adresse)
         data, new_id = self._post("incidents?$select=incidentid,ticketnumber", body, "Création du case", representation=True)
         case_id = (data.get("incidentid") or new_id or "").lower()
         if not case_id:
@@ -173,8 +190,7 @@ class DataverseGateway:
         return case_id, lu.get("ticketnumber", "")
 
     def terminer_move_out(self, case_id: str) -> None:
-        k = self.cfg.case
-        self._patch(f"incidents({_guid(case_id)})", {k.champs["completed_move_out"]: k.valeurs["oui"]}, "Completed Move Out Info")
+        self._patch(f"incidents({_guid(case_id)})", self.corps_move_out(), "Completed Move Out Info")
 
     # ---------------------------------------------------------------- 7-8 work order
     def _wo_select(self) -> str:
@@ -206,22 +222,38 @@ class DataverseGateway:
         w = self.cfg.work_order
         return self._wo(self._get(f"{w.entity_set}({_guid(wo_id)})", "Relecture du WO", {"$select": self._wo_select()}))
 
-    def completer_wo(self, wo, description) -> None:
+    def _wo_path(self, wo_id: str) -> str:
         w = self.cfg.work_order
+        if not w.entity_set:
+            raise CrmError("Configuration : work_order.entity_set manquant.")
+        return f"{w.entity_set}({wo_id if wo_id.startswith('sim-') else _guid(wo_id)})"
+
+    def corps_wo(self, wo_id: str, description: str) -> tuple[str, dict]:
+        w = self.cfg.work_order
+        if not w.description:
+            raise CrmError("Configuration : work_order.description manquant.")
         body: dict = {w.description: description}
         if w.template_nav and w.template_set and w.template_mover_m_id:
             body[f"{w.template_nav}@odata.bind"] = f"/{w.template_set}({_guid(w.template_mover_m_id)})"
-        self._patch(f"{w.entity_set}({_guid(wo.id)})", body, "Mise à jour du WO")
+        return self._wo_path(wo_id), body
 
-    def ajouter_produit(self, wo, pack) -> None:
+    def corps_produit(self, wo_id: str, pack) -> tuple[str, dict]:
         w = self.cfg.work_order
         if not (w.produits_set and w.produit_wo_nav and w.produit_nav and pack.produit_id):
-            raise CrmError("Ajout de produit non configuré (work_order.produits_set / produit_wo_nav / produit_nav / packs).")
-        self._post(w.produits_set, {f"{w.produit_wo_nav}@odata.bind": f"/{w.entity_set}({_guid(wo.id)})",
-                                    f"{w.produit_nav}@odata.bind": f"/products({_guid(pack.produit_id)})"}, "Ajout du produit")
+            raise CrmError("Configuration : ajout de produit incomplet (work_order.produits_set / produit_wo_nav / produit_nav / packs.produit_id).")
+        return w.produits_set, {f"{w.produit_wo_nav}@odata.bind": "/" + self._wo_path(wo_id),
+                                f"{w.produit_nav}@odata.bind": f"/products({_guid(pack.produit_id)})"}
+
+    def completer_wo(self, wo, description) -> None:
+        path, body = self.corps_wo(wo.id, description)
+        self._patch(path, body, "Mise à jour du WO")
+
+    def ajouter_produit(self, wo, pack) -> None:
+        path, body = self.corps_produit(wo.id, pack)
+        self._post(path, body, "Ajout du produit")
 
     # ---------------------------------------------------------------- 9-11 booking
-    def fenetre_booking(self, wo, debut, fin) -> None:
+    def corps_fenetre(self, wo_id: str, debut, fin) -> tuple[str, dict]:
         w = self.cfg.work_order
         body: dict = {}
         if w.timeband and w.timeband_valeur is not None:
@@ -230,8 +262,12 @@ class DataverseGateway:
             body[w.date_debut_recherche] = debut.isoformat()
         if w.date_fin_recherche:
             body[w.date_fin_recherche] = fin.isoformat()
+        return self._wo_path(wo_id), body
+
+    def fenetre_booking(self, wo, debut, fin) -> None:
+        path, body = self.corps_fenetre(wo.id, debut, fin)
         if body:
-            self._patch(f"{w.entity_set}({_guid(wo.id)})", body, "Période de recherche du booking")
+            self._patch(path, body, "Période de recherche du booking")
 
     def creneaux(self, wo) -> list[Creneau]:
         raise CrmError("Récupération directe des créneaux pas encore branchée : elle dépend de l'action CRM derrière "
@@ -248,11 +284,19 @@ class DataverseGateway:
             "$orderby": "createdon desc", "$top": "10"}).get("value", [])
         return [r.get(s.texte) or "" for r in rows]
 
+    def corps_sms(self, case_id: str, mobile: str, texte: str) -> tuple[str, dict]:
+        s = self.cfg.sms
+        manque = s.manquants()
+        if manque:
+            raise CrmError("Configuration : " + ", ".join(manque) + " manquant.")
+        cible = case_id if case_id.startswith("sim-") else _guid(case_id)
+        return s.entity_set, {s.texte: texte, s.mobile: mobile, s.sujet: "Confirmation rendez-vous Movers",
+                              f"{s.regarding_nav}@odata.bind": f"/incidents({cible})"}
+
     def envoyer_sms(self, case_id, mobile, texte) -> str:
         s = self.cfg.sms
-        body = {s.texte: texte, s.mobile: mobile, s.sujet: "Confirmation rendez-vous Movers",
-                f"{s.regarding_nav}@odata.bind": f"/incidents({_guid(case_id)})"}
-        _, new_id = self._post(s.entity_set, body, "Création du SMS")
+        path, body = self.corps_sms(case_id, mobile, texte)
+        _, new_id = self._post(path, body, "Création du SMS")
         if not new_id:
             raise CrmError("SMS créé mais identifiant non renvoyé : vérifiez les activités du case.")
         if s.envoi:
@@ -274,16 +318,23 @@ class DataverseGateway:
         v = r.body["value"][0]
         return v.get("subject", ""), v.get("description", "")
 
-    def envoyer_email(self, case_id, compte, sujet, html) -> str:
+    def file_expediteur(self) -> str:
         e = self.cfg.email
         q = self._get("queues", "File expéditrice", {"$select": "queueid", "$filter": f"name eq '{_q(e.file_expediteur)}'"}).get("value", [])
         if len(q) != 1:
             raise CrmError(f"File « {e.file_expediteur} » introuvable.")
-        body = {"subject": sujet, "description": html,
-                "regardingobjectid_incident@odata.bind": f"/incidents({_guid(case_id)})",
+        return q[0]["queueid"]
+
+    def corps_email(self, case_id: str, compte, sujet: str, html: str, queue_id: str) -> dict:
+        cible = case_id if case_id.startswith("sim-") else _guid(case_id)
+        return {"subject": sujet, "description": html,
+                "regardingobjectid_incident@odata.bind": f"/incidents({cible})",
                 "email_activity_parties": [
-                    {"partyid_queue@odata.bind": f"/queues({q[0]['queueid']})", "participationtypemask": 1},
+                    {"partyid_queue@odata.bind": f"/queues({queue_id})", "participationtypemask": 1},
                     {"partyid_account@odata.bind": f"/accounts({_guid(compte.id)})", "participationtypemask": 2}]}
+
+    def envoyer_email(self, case_id, compte, sujet, html) -> str:
+        body = self.corps_email(case_id, compte, sujet, html, self.file_expediteur())
         _, email_id = self._post("emails", body, "Création de l'email")
         if not email_id:
             raise CrmError("Email créé mais identifiant non renvoyé : vérifiez les activités du case.")

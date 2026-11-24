@@ -11,7 +11,7 @@ api_version = "v8.2"                 # `decouvrir` affiche la version du CRM
 browser_channel = "msedge"           # Edge déjà installé : aucun navigateur téléchargé
 
 [assistant]
-mode_defaut = "reel"
+mode_defaut = "test"                 # "test" : aucune écriture · "supervise" : vous validez chaque écriture
 attente_wo_secondes = 90             # délai max pour que le CRM crée le WO après « Completed Move Out Info »
 
 [compte]
