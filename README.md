@@ -56,6 +56,10 @@ logement, la maquette 3D, l'audit de sécurité, la comparaison des offres et le
 > Movers Emails à partir de l'Owner du Case du compte client ; Simulation par défaut, Supervisé, Automatique.
 > Ancienne version conservée à part (sans le bouton « Corriger ») : [`movers-dispatch-ancienne-version/`](movers-dispatch-ancienne-version/README.md).
 
+> 🏠 **Assistant Movers** (Python local, sans IA) : [`assistant-movers/`](assistant-movers/README.md) — à partir du
+> numéro client et de la nouvelle adresse : case Movers, Work Order, rendez-vous, SMS et email de confirmation,
+> avec validation de l'agent à chaque écriture ; même connexion CRM que Dispatch Movers.
+
 > 📽️ **Présentation équipe : nouvelle organisation Movers** (React + TypeScript, distincte de l'application Movers) :
 > [`movers-presentation/`](movers-presentation/README.md) — 13 diapositives interactives (planning, rôles, cinq templates,
 > rotation, gestion de la charge), plein écran, sommaire, notes de l'orateur et PowerPoint modifiable ;

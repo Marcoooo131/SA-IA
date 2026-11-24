@@ -1,0 +1,88 @@
+# Configuration de l'Assistant Movers — copier en `assistant.toml` (jamais versionné).
+# Les noms techniques propres au CRM Sector Alarm se relèvent avec :
+#     python -m assistant_movers decouvrir -c assistant.toml
+# (ou windows\3-decouvrir.bat). Rien n'est deviné : tant qu'une valeur manque, les écritures sont bloquées
+# et l'interface dit laquelle.
+
+[connexion]
+kind = "browser"                     # session Edge de l'agent (même méthode que movers-dispatch)
+environment_url = "https://SERVEUR-CRM/ORGANISATION"   # adresse affichée avant « /main.aspx »
+api_version = "v8.2"                 # `decouvrir` affiche la version du CRM
+browser_channel = "msedge"           # Edge déjà installé : aucun navigateur téléchargé
+
+[assistant]
+mode_defaut = "reel"
+attente_wo_secondes = 90             # délai max pour que le CRM crée le WO après « Completed Move Out Info »
+
+[compte]
+champ_numero = "accountnumber"       # colonne du numéro client (standard)
+
+[case]
+titre = "Movers - Déménagement"
+client_nav = "customerid_account"
+# Lookups (section « liens » du rapport) : nav = propriété de navigation, set = table, compte_attr = colonne
+# de la table qui pointe vers le compte, nom_attr = colonne à afficher.
+installation = { nav = "", set = "", compte_attr = "", nom_attr = "" }
+contrat = { nav = "", set = "", compte_attr = "", nom_attr = "" }
+
+[case.champs]                        # section « Case (incident) — champs Movers » du rapport
+moving_out_or_in = ""                # « Moving Out Or Moving In ? »
+moving_out_interested = ""           # « Moving Out interested in Installation »
+completed_move_out = ""              # « Completed Move Out Info »
+new_street = ""                      # « Street 1 (New Address Moving Out) »
+new_postcode = ""
+new_city = ""
+moving_out_date = ""
+
+[case.valeurs]                       # valeurs numériques relevées par `decouvrir` (ligne « valeurs : »)
+# moving_out_or_in_out = 100000001   # valeur de « Out »
+# oui = true                         # champs Oui/Non : true
+
+[case.fixes]                         # autres champs fixes du case : nom logique = valeur (ex. Case Type Takeover)
+# casetypecode = 100000003
+
+[work_order]
+entite = ""                          # nom logique de la table Work Order
+entity_set = ""
+compte_attr = ""                     # facultatif : signaler les WO déjà ouverts du compte
+case_attr = ""                       # lookup du WO vers le case
+numero = ""                          # « Activity Number » (FR-xxxxxxx)
+type_attr = ""                       # « Type of Work Order »
+# type_installation = 100000000
+template_nav = ""
+template_set = ""
+template_mover_m_id = ""             # identifiant du template « Mover M »
+description = "description"
+timeband = ""
+# timeband_valeur = 100000000        # « All/Half day »
+booked_start = ""                    # date/heure réservée (début)
+booked_end = ""
+date_debut_recherche = ""            # « Booked Start Date » de la recherche
+date_fin_recherche = ""
+statut_attr = "statuscode"
+produits_set = ""                    # table « Work Order Products »
+produit_wo_nav = ""
+produit_nav = ""
+
+# [[work_order.packs]]               # packs proposés à l'agent (identifiant produit relevé dans le CRM)
+# nom = "Pack Sérénité Home SAS"
+# produit_id = ""
+
+[booking]
+methode = "assiste"                  # l'agent clique « Get appointments » dans la fiche ouverte par l'assistant
+jours_recherche = 7
+
+[sms]
+entity_set = ""                      # table d'activité SMS du CRM
+texte = ""
+mobile = ""
+sujet = "subject"
+regarding_nav = ""                   # ex. regardingobjectid_incident_<table sms>
+modele = "Sector Alarm : votre rendez-vous de réinstallation est confirmé le {date} entre {debut} et {fin}. Le titulaire du contrat doit être présent."
+verifier_doublon = true
+[sms.envoi]                          # champs à passer après création si le CRM l'exige pour envoyer (ex. statuscode)
+
+[email]
+modele = "Sector Alarm - Récapitulatif concernant votre déménagement"
+file_expediteur = "Movers"
+[email.remplacements]                # texte exact surligné dans le modèle = clé (date, debut, fin, duree, electricite, reseau, travaux, materiel)

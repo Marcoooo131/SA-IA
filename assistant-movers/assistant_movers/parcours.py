@@ -1,0 +1,266 @@
+"""Chef d'orchestre : enchaîne les étapes dans l'ordre du guide, une action de l'agent à la fois.
+
+Règles :
+- chaque écriture dans le CRM part d'un clic de l'agent, après un aperçu de ce qui sera écrit ;
+- au moindre problème (erreur CRM, avertissement, valeur relue différente), le parcours s'arrête,
+  affiche le message et la consigne, et attend « Reprendre » ou « Nouveau dossier » ;
+- rien n'est conservé après la fermeture : le dossier et le journal vivent en mémoire.
+"""
+
+from __future__ import annotations
+
+import threading
+from dataclasses import asdict
+
+from . import adresse as m_adresse
+from . import booking as m_booking
+from . import case_movers as m_case
+from . import compte as m_compte
+from . import email_confirmation as m_email
+from . import rapport as m_rapport
+from . import sms as m_sms
+from . import work_order as m_wo
+from .config import Config
+from .journal import Journal
+from .models import Blocage, CrmError, Dossier, SessionExpired
+
+ETAPES = ["compte", "adresse", "case", "wo", "booking", "sms", "email", "fin"]
+LIBELLES = {"compte": "Client", "adresse": "Nouvelle adresse", "case": "Case Movers", "wo": "Work Order",
+            "booking": "Rendez-vous", "sms": "SMS", "email": "Email", "fin": "Compte rendu"}
+
+
+class Assistant:
+    def __init__(self, cfg: Config, gw, demo: bool):
+        self.cfg, self.gw, self.demo = cfg, gw, demo
+        self.journal = Journal()
+        self.d = Dossier()
+        self.lock = threading.Lock()
+        self.occupe = ""
+        self.manquants = cfg.manquants()
+        if demo:
+            self.journal.sim("Mode démo : CRM fictif, aucune donnée réelle, rien n'est envoyé.")
+        elif self.manquants:
+            self.journal.warn(f"Configuration incomplète ({len(self.manquants)} valeurs) : écritures bloquées. Lancez « decouvrir ».")
+
+    # ------------------------------------------------------------------ outils
+    def _run(self, libelle: str, fn, *a, **kw):
+        """Exécute une action ; transforme toute erreur en arrêt affiché à l'agent."""
+        if not self.lock.acquire(blocking=False):
+            raise Blocage("Une action est déjà en cours.", reprise=False)
+        self.occupe = libelle
+        try:
+            self.d.blocage = None
+            return fn(*a, **kw)
+        except Blocage as b:
+            self.d.blocage = {"message": str(b), "action": b.action, "reprise": b.reprise}
+            (self.journal.warn if b.reprise else self.journal.info)(f"{libelle} : {b}")
+        except SessionExpired as e:
+            self.d.blocage = {"message": str(e), "action": "Reconnectez-vous au CRM dans la fenêtre Edge, puis « Reprendre ».", "reprise": True}
+            self.journal.err(str(e))
+        except (CrmError, TimeoutError) as e:
+            self.d.blocage = {"message": str(e), "action": "Vérifiez dans le CRM avant de reprendre : rien n'est refait automatiquement.",
+                              "reprise": True}
+            self.journal.err(f"{libelle} : {e}")
+        finally:
+            self.occupe = ""
+            self.lock.release()
+
+    def _exiger(self, etape: str):
+        if self.d.etape != etape:
+            raise Blocage(f"Action impossible à l'étape « {LIBELLES[self.d.etape]} ».", reprise=False)
+
+    def _ecriture_permise(self):
+        if not self.demo and self.manquants:
+            raise Blocage("Écriture bloquée : configuration incomplète.",
+                          action="Valeurs manquantes : " + ", ".join(self.manquants[:8]) + ("…" if len(self.manquants) > 8 else ""),
+                          reprise=False)
+
+    # ------------------------------------------------------------------ 1-3
+    def ouvrir_compte(self, numero: str):
+        def go():
+            self.d = Dossier()
+            c = m_compte.charger_compte(self.gw, numero)
+            self.d.compte = c
+            if len(c.installations) == 1:
+                self.d.installation_id = c.installations[0].id
+            if len(c.contrats) == 1:
+                self.d.contrat_id = c.contrats[0].id
+            self.journal.ok(f"Compte {c.numero} trouvé : {c.nom}")
+            av = m_compte.avertissements(c)
+            if av:
+                raise Blocage(" · ".join(av), action="Lisez l'avertissement : « Continuer quand même » ou « Nouveau dossier ».")
+            self.d.etape = "adresse"
+        self._run("Recherche du compte", go)
+
+    def accepter_avertissement(self):
+        def go():
+            self._exiger("compte")
+            if not self.d.compte:
+                raise Blocage("Aucun compte chargé.", reprise=False)
+            self.d.avertissements_acceptes += m_compte.avertissements(self.d.compte)
+            self.journal.warn("Avertissement accepté par l'agent.")
+            self.d.etape = "adresse"
+        self._run("Avertissement", go)
+
+    # ------------------------------------------------------------------ 4
+    def saisir_adresse(self, rue, cp, ville, date_dem, installation_id, contrat_id):
+        def go():
+            self._exiger("adresse")
+            self.d.adresse = m_adresse.valider_adresse(rue, cp, ville, date_dem)
+            ids_inst = {i.id for i in self.d.compte.installations}
+            if installation_id:
+                if ids_inst and installation_id not in ids_inst:
+                    raise Blocage("Installation inconnue pour ce compte.", reprise=False)
+                self.d.installation_id = installation_id
+            if not self.d.installation_id and self.d.compte.installations:
+                raise Blocage("Choisissez l'installation qui déménage.", reprise=False)
+            if contrat_id:
+                self.d.contrat_id = contrat_id
+            self.journal.ok(f"Nouvelle adresse : {self.d.adresse.texte()}")
+            self.d.etape = "case"
+        self._run("Nouvelle adresse", go)
+
+    def apercu_case(self) -> list[tuple[str, str]]:
+        if self.d.etape != "case" or not self.d.adresse:
+            return []
+        return m_case.apercu(self.d, self.cfg.case.titre)
+
+    # ------------------------------------------------------------------ 5-7
+    def creer_case(self):
+        def go():
+            self._exiger("case")
+            self._ecriture_permise()
+            if not self.d.case_id:
+                m_case.creer(self.gw, self.d)
+                self.journal.ok(f"Case {self.d.case_numero} créé, Moving Out renseigné, Completed Move Out Info = Yes.")
+            self._attendre_wo()
+        self._run("Création du case", go)
+
+    def _attendre_wo(self):
+        try:
+            m_case.attendre_wo(self.gw, self.d, 4 if self.demo else self.cfg.attente_wo_secondes, pause=1 if self.demo else 3)
+        except Blocage:
+            if not self.demo:
+                self.gw.ouvrir_fiche("incident", self.d.case_id)
+            raise
+        self.journal.ok(f"Work Order {self.d.wo.numero} créé par le CRM ({self.d.wo.type_nom or 'Installation'}).")
+        self.d.etape = "wo"
+
+    def reprendre_wo(self):
+        def go():
+            self._exiger("case")
+            if not self.d.case_id:
+                raise Blocage("Le case n'est pas encore créé.", reprise=False)
+            if self.demo:
+                self.gw.simuler_finish(self.d.case_id)
+                self.journal.sim("Démo : « Finish » cliqué dans le CRM.")
+            self._attendre_wo()
+        self._run("Recherche du Work Order", go)
+
+    # ------------------------------------------------------------------ 8
+    def description_proposee(self) -> str:
+        return m_wo.description(self.cfg, self.d) if self.d.adresse else ""
+
+    def completer_wo(self, texte: str, packs: list[str], produits_verifies: bool):
+        def go():
+            self._exiger("wo")
+            self._ecriture_permise()
+            m_wo.completer(self.gw, self.cfg, self.d, texte, packs, produits_verifies)
+            self.journal.ok(f"WO {self.d.wo.numero} complété" + (f" — produits : {', '.join(packs)}" if packs else "") + ".")
+            m_booking.preparer(self.gw, self.cfg, self.d)
+            self.d.etape = "booking"
+            self._ouvrir_booking()
+        self._run("Work Order", go)
+
+    # ------------------------------------------------------------------ 9-11
+    def _methode(self) -> str:
+        return "action" if self.demo else self.cfg.booking.methode
+
+    def _ouvrir_booking(self):
+        if self._methode() == "action":
+            m_booking.charger_creneaux(self.gw, self.d)
+            self.journal.info(f"{len(self.d.creneaux)} créneaux disponibles.")
+        else:
+            self.gw.ouvrir_fiche(self.cfg.work_order.entite, self.d.wo.id)
+            self.journal.info("Fiche du WO ouverte dans Edge : « Get appointments », choisissez le créneau avec le client.")
+
+    def recharger_creneaux(self):
+        def go():
+            self._exiger("booking")
+            self._ouvrir_booking()
+        self._run("Créneaux", go)
+
+    def reserver(self, creneau_id: str):
+        def go():
+            self._exiger("booking")
+            self._ecriture_permise()
+            m_booking.reserver(self.gw, self.d, creneau_id)
+            self._booke()
+        self._run("Réservation", go)
+
+    def verifier_booking(self):
+        def go():
+            self._exiger("booking")
+            m_booking.verifier(self.gw, self.d)
+            self._booke()
+        self._run("Vérification de la réservation", go)
+
+    def _booke(self):
+        wo = self.d.wo
+        self.journal.ok(f"Rendez-vous réservé : {wo.debut:%d/%m/%Y} entre {wo.debut:%Hh%M} et {wo.fin:%Hh%M} ({wo.statut}).")
+        self.d.sms_texte = m_sms.texte(self.cfg, self.d)
+        self.d.etape = "sms"
+
+    def message_no_cap(self, dispos: str) -> str:
+        return m_booking.message_no_cap(self.d, dispos)
+
+    # ------------------------------------------------------------------ 12
+    def envoyer_sms(self, texte: str, forcer: bool = False):
+        def go():
+            self._exiger("sms")
+            self._ecriture_permise()
+            etat = m_sms.envoyer(self.gw, self.cfg, self.d, texte, forcer)
+            self.journal.ok(f"SMS envoyé ({etat}).")
+            self.d.etape = "email"
+        self._run("SMS", go)
+
+    # ------------------------------------------------------------------ 13
+    def preparer_email(self, saisies: dict[str, str]):
+        def go():
+            self._exiger("email")
+            m_email.preparer(self.gw, self.cfg, self.d, saisies)
+            restes = m_email.zones_surlignees(self.d.email_html)
+            self.journal.info("Email préparé depuis le modèle CRM" + (f" — {len(restes)} champ(s) encore surligné(s)." if restes else "."))
+        self._run("Préparation de l'email", go)
+
+    def envoyer_email(self):
+        def go():
+            self._exiger("email")
+            self._ecriture_permise()
+            if not self.d.email_html:
+                raise Blocage("Préparez d'abord l'email.", reprise=False)
+            etat = m_email.envoyer(self.gw, self.d)
+            self.journal.ok(f"Email de confirmation envoyé depuis la file {self.cfg.email.file_expediteur} ({etat}).")
+            self.d.etape = "fin"
+        self._run("Email", go)
+
+    # ------------------------------------------------------------------ 14 / divers
+    def compte_rendu(self) -> str:
+        return m_rapport.compte_rendu(self.d)
+
+    def nouveau(self):
+        self.d = Dossier()
+        self.journal.info("Nouveau dossier.")
+
+    def etat(self) -> dict:
+        d = self.d
+        return {
+            "demo": self.demo, "occupe": self.occupe, "etape": d.etape, "etapes": ETAPES, "libelles": LIBELLES,
+            "manquants": self.manquants, "methode_booking": self._methode(),
+            "dossier": d.vue(), "apercu_case": self.apercu_case(),
+            "description": self.description_proposee() if d.etape == "wo" else "",
+            "packs": [p.nom for p in self.cfg.work_order.packs],
+            "email_zones": m_email.zones_surlignees(d.email_html) if d.email_html else [],
+            "compte_rendu": self.compte_rendu() if d.etape == "fin" else "",
+            "journal": self.journal.vue(), "ecritures": self.gw.writes,
+        }

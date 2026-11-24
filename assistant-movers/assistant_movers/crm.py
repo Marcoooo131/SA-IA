@@ -1,0 +1,298 @@
+"""Passerelle vers le CRM : uniquement l'API Web officielle (celle qu'utilise l'interface du CRM),
+avec la session de l'agent. Les tables standard (account, incident, email, queue, template) gardent
+leurs noms Microsoft ; les tables et champs propres à Sector Alarm (Work Order, SMS, champs Movers)
+viennent de la configuration, relevée avec `decouvrir`.
+
+Chaque écriture est suivie d'une relecture. Toute réponse inattendue lève une erreur : le parcours
+s'arrête au lieu de deviner.
+"""
+
+from __future__ import annotations
+
+import re
+from datetime import date, datetime
+from typing import Protocol
+from zoneinfo import ZoneInfo
+
+from .config import Config, Pack
+from .models import Compte, CrmError, Creneau, NouvelleAdresse, Ref, SessionExpired, WorkOrder
+
+PARIS = ZoneInfo("Europe/Paris")
+ANNOT = 'odata.include-annotations="*"'
+FMT = "@OData.Community.Display.V1.FormattedValue"
+_GUID = re.compile(r"^[0-9a-fA-F-]{36}$")
+
+
+class Gateway(Protocol):
+    writes: int
+
+    def whoami(self) -> str: ...
+    def chercher_compte(self, numero: str) -> Compte: ...
+    def creer_case(self, compte: Compte, installation_id: str, contrat_id: str, adresse: NouvelleAdresse) -> tuple[str, str]: ...
+    def terminer_move_out(self, case_id: str) -> None: ...
+    def wo_du_case(self, case_id: str) -> WorkOrder | None: ...
+    def lire_wo(self, wo_id: str) -> WorkOrder: ...
+    def completer_wo(self, wo: WorkOrder, description: str) -> None: ...
+    def ajouter_produit(self, wo: WorkOrder, pack: Pack) -> None: ...
+    def fenetre_booking(self, wo: WorkOrder, debut: date, fin: date) -> None: ...
+    def creneaux(self, wo: WorkOrder) -> list[Creneau]: ...
+    def reserver(self, wo: WorkOrder, creneau: Creneau) -> None: ...
+    def sms_du_case(self, case_id: str) -> list[str]: ...
+    def envoyer_sms(self, case_id: str, mobile: str, texte: str) -> str: ...
+    def preparer_email(self, case_id: str) -> tuple[str, str]: ...
+    def envoyer_email(self, case_id: str, compte: Compte, sujet: str, html: str) -> str: ...
+    def ouvrir_fiche(self, entite: str, record_id: str) -> None: ...
+
+
+def _guid(v: str) -> str:
+    if not _GUID.match(v or ""):
+        raise CrmError(f"Identifiant invalide : {v!r}")
+    return v.lower()
+
+
+def _q(v: str) -> str:
+    return v.replace("'", "''")
+
+
+def _dt(v: str | None) -> datetime | None:
+    if not v:
+        return None
+    return datetime.fromisoformat(v.replace("Z", "+00:00")).astimezone(PARIS)
+
+
+class DataverseGateway:
+    def __init__(self, cfg: Config, transport):
+        self.cfg = cfg
+        self.t = transport
+        self.writes = 0
+
+    # ---------------------------------------------------------------- bas niveau
+    def _err(self, r, quoi: str) -> CrmError:
+        msg = ""
+        if isinstance(r.body, dict):
+            msg = (r.body.get("error") or {}).get("message", "")
+        if r.status == 401:
+            return SessionExpired(f"Session CRM expirée ({quoi}).", 401)
+        return CrmError(f"{quoi} : HTTP {r.status}" + (f" — {msg[:200]}" if msg else ""), r.status)
+
+    def _get(self, path: str, quoi: str, params: dict | None = None) -> dict:
+        r = self.t.request("GET", path, params=params, headers={"Prefer": ANNOT})
+        if r.status != 200:
+            raise self._err(r, quoi)
+        return r.body or {}
+
+    def _post(self, path: str, body: dict, quoi: str, representation: bool = False) -> tuple[dict, str]:
+        h = {"Prefer": "return=representation"} if representation else None
+        r = self.t.request("POST", path, json=body, headers=h)
+        if r.status not in (200, 201, 204):
+            raise self._err(r, quoi)
+        self.writes += 1
+        new_id = ""
+        loc = r.headers.get("odata-entityid", "")
+        m = re.search(r"\(([0-9a-fA-F-]{36})\)\s*$", loc)
+        if m:
+            new_id = m.group(1).lower()
+        return (r.body or {}), new_id
+
+    def _patch(self, path: str, body: dict, quoi: str) -> None:
+        r = self.t.request("PATCH", path, json=body, headers={"If-Match": "*"})
+        if r.status not in (200, 204):
+            raise self._err(r, quoi)
+        self.writes += 1
+
+    def whoami(self) -> str:
+        return self._get("WhoAmI", "Identité").get("UserId", "")
+
+    # ---------------------------------------------------------------- 1-3 compte
+    def chercher_compte(self, numero: str) -> Compte:
+        champ = self.cfg.compte_champ_numero
+        rows = self._get("accounts", "Recherche du compte", {
+            "$select": f"accountid,name,{champ},telephone1,emailaddress1,address1_composite",
+            "$filter": f"{champ} eq '{_q(numero)}' and statecode eq 0",
+            "$expand": "primarycontactid($select=contactid,fullname,mobilephone,emailaddress1)",
+            "$top": "3"}).get("value", [])
+        if not rows:
+            raise CrmError(f"Aucun compte actif avec le numéro {numero}.")
+        if len(rows) > 1:
+            raise CrmError(f"Plusieurs comptes actifs avec le numéro {numero} : vérifiez dans le CRM.")
+        a = rows[0]
+        contact = a.get("primarycontactid") or {}
+        c = Compte(id=a["accountid"].lower(), numero=a.get(champ, numero), nom=a.get("name", ""),
+                   mobile=contact.get("mobilephone") or a.get("telephone1") or "",
+                   email=contact.get("emailaddress1") or a.get("emailaddress1") or "",
+                   adresse=a.get("address1_composite") or "")
+        c.installations = self._liste_liee(self.cfg.case.installation, c.id)
+        c.contrats = self._liste_liee(self.cfg.case.contrat, c.id)
+        cases = self._get("incidents", "Cases du compte", {
+            "$select": "incidentid,title,ticketnumber",
+            "$filter": f"_customerid_value eq {c.id} and statecode eq 0"}).get("value", [])
+        c.cases_movers_ouverts = [Ref(x["incidentid"], f"{x.get('ticketnumber', '')} {x.get('title', '')}".strip())
+                                  for x in cases if "mover" in (x.get("title") or "").lower()]
+        w = self.cfg.work_order
+        if w.compte_attr and w.entity_set:
+            rows = self._get(w.entity_set, "Work Orders du compte", {
+                "$select": f"{w.numero}", "$filter": f"_{w.compte_attr}_value eq {c.id} and statecode eq 0"}).get("value", [])
+            c.wo_ouverts = [Ref("", x.get(w.numero, "")) for x in rows]
+        return c
+
+    def _liste_liee(self, lk, compte_id: str) -> list[Ref]:
+        if not (lk.set and lk.compte_attr):
+            return []
+        cle = lk.set[:-1] + "id" if lk.set.endswith("s") else ""
+        sel = ",".join(x for x in (lk.nom_attr,) if x)
+        rows = self._get(lk.set, "Liste liée au compte", {
+            **({"$select": sel} if sel else {}),
+            "$filter": f"_{lk.compte_attr}_value eq {compte_id} and statecode eq 0"}).get("value", [])
+        out = []
+        for x in rows:
+            rid = x.get(cle) or next((v for k, v in x.items() if k.endswith("id") and isinstance(v, str) and _GUID.match(v)), "")
+            out.append(Ref(rid.lower(), x.get(lk.nom_attr, "") if lk.nom_attr else rid))
+        return out
+
+    # ---------------------------------------------------------------- 5-6 case
+    def creer_case(self, compte, installation_id, contrat_id, adresse) -> tuple[str, str]:
+        k = self.cfg.case
+        body: dict = {"title": k.titre, f"{k.client_nav}@odata.bind": f"/accounts({_guid(compte.id)})"}
+        if installation_id:
+            body[f"{k.installation.nav}@odata.bind"] = f"/{k.installation.set}({_guid(installation_id)})"
+        if contrat_id and k.contrat.ok:
+            body[f"{k.contrat.nav}@odata.bind"] = f"/{k.contrat.set}({_guid(contrat_id)})"
+        ch = k.champs
+        body[ch["moving_out_or_in"]] = k.valeurs["moving_out_or_in_out"]
+        body[ch["moving_out_interested"]] = k.valeurs["oui"]
+        body[ch["new_street"]] = adresse.rue
+        body[ch["new_postcode"]] = adresse.code_postal
+        body[ch["new_city"]] = adresse.ville
+        body[ch["moving_out_date"]] = adresse.date_demenagement.isoformat()
+        body.update(k.fixes)
+        data, new_id = self._post("incidents?$select=incidentid,ticketnumber", body, "Création du case", representation=True)
+        case_id = (data.get("incidentid") or new_id or "").lower()
+        if not case_id:
+            raise CrmError("Case créé mais identifiant non renvoyé : vérifiez dans le CRM avant de recommencer.")
+        lu = self._get(f"incidents({case_id})", "Relecture du case", {"$select": "ticketnumber,title"})
+        return case_id, lu.get("ticketnumber", "")
+
+    def terminer_move_out(self, case_id: str) -> None:
+        k = self.cfg.case
+        self._patch(f"incidents({_guid(case_id)})", {k.champs["completed_move_out"]: k.valeurs["oui"]}, "Completed Move Out Info")
+
+    # ---------------------------------------------------------------- 7-8 work order
+    def _wo_select(self) -> str:
+        w = self.cfg.work_order
+        cols = [w.numero, w.description, w.booked_start, w.booked_end, w.statut_attr]
+        if w.type_attr:
+            cols.append(w.type_attr)
+        return ",".join(c for c in cols if c)
+
+    def _wo(self, row: dict) -> WorkOrder:
+        w = self.cfg.work_order
+        rid = next((v for k, v in row.items() if k == f"{w.entite}id" or k == "activityid"), "")
+        return WorkOrder(id=str(rid).lower(), numero=row.get(w.numero, ""),
+                         type_nom=row.get(f"{w.type_attr}{FMT}", "") if w.type_attr else "",
+                         statut=row.get(f"{w.statut_attr}{FMT}", ""), description=row.get(w.description) or "",
+                         debut=_dt(row.get(w.booked_start)), fin=_dt(row.get(w.booked_end)))
+
+    def wo_du_case(self, case_id: str) -> WorkOrder | None:
+        w = self.cfg.work_order
+        flt = f"_{w.case_attr}_value eq {_guid(case_id)}"
+        if w.type_attr and w.type_installation is not None:
+            flt += f" and {w.type_attr} eq {w.type_installation}"
+        rows = self._get(w.entity_set, "Work Order du case", {"$select": self._wo_select(), "$filter": flt}).get("value", [])
+        if len(rows) > 1:
+            raise CrmError("Plusieurs Work Orders Installation sur ce case : à vérifier dans le CRM.")
+        return self._wo(rows[0]) if rows else None
+
+    def lire_wo(self, wo_id: str) -> WorkOrder:
+        w = self.cfg.work_order
+        return self._wo(self._get(f"{w.entity_set}({_guid(wo_id)})", "Relecture du WO", {"$select": self._wo_select()}))
+
+    def completer_wo(self, wo, description) -> None:
+        w = self.cfg.work_order
+        body: dict = {w.description: description}
+        if w.template_nav and w.template_set and w.template_mover_m_id:
+            body[f"{w.template_nav}@odata.bind"] = f"/{w.template_set}({_guid(w.template_mover_m_id)})"
+        self._patch(f"{w.entity_set}({_guid(wo.id)})", body, "Mise à jour du WO")
+
+    def ajouter_produit(self, wo, pack) -> None:
+        w = self.cfg.work_order
+        if not (w.produits_set and w.produit_wo_nav and w.produit_nav and pack.produit_id):
+            raise CrmError("Ajout de produit non configuré (work_order.produits_set / produit_wo_nav / produit_nav / packs).")
+        self._post(w.produits_set, {f"{w.produit_wo_nav}@odata.bind": f"/{w.entity_set}({_guid(wo.id)})",
+                                    f"{w.produit_nav}@odata.bind": f"/products({_guid(pack.produit_id)})"}, "Ajout du produit")
+
+    # ---------------------------------------------------------------- 9-11 booking
+    def fenetre_booking(self, wo, debut, fin) -> None:
+        w = self.cfg.work_order
+        body: dict = {}
+        if w.timeband and w.timeband_valeur is not None:
+            body[w.timeband] = w.timeband_valeur
+        if w.date_debut_recherche:
+            body[w.date_debut_recherche] = debut.isoformat()
+        if w.date_fin_recherche:
+            body[w.date_fin_recherche] = fin.isoformat()
+        if body:
+            self._patch(f"{w.entity_set}({_guid(wo.id)})", body, "Période de recherche du booking")
+
+    def creneaux(self, wo) -> list[Creneau]:
+        raise CrmError("Récupération directe des créneaux pas encore branchée : elle dépend de l'action CRM derrière "
+                       "« Get appointments », à relever avec `decouvrir --observer-booking`. Utilisez booking.methode = \"assiste\".")
+
+    def reserver(self, wo, creneau) -> None:
+        raise CrmError("Réservation directe pas encore branchée (voir `decouvrir --observer-booking`).")
+
+    # ---------------------------------------------------------------- 12 SMS
+    def sms_du_case(self, case_id: str) -> list[str]:
+        s = self.cfg.sms
+        rows = self._get(s.entity_set, "SMS du case", {
+            "$select": f"{s.texte},createdon", "$filter": f"_regardingobjectid_value eq {_guid(case_id)}",
+            "$orderby": "createdon desc", "$top": "10"}).get("value", [])
+        return [r.get(s.texte) or "" for r in rows]
+
+    def envoyer_sms(self, case_id, mobile, texte) -> str:
+        s = self.cfg.sms
+        body = {s.texte: texte, s.mobile: mobile, s.sujet: "Confirmation rendez-vous Movers",
+                f"{s.regarding_nav}@odata.bind": f"/incidents({_guid(case_id)})"}
+        _, new_id = self._post(s.entity_set, body, "Création du SMS")
+        if not new_id:
+            raise CrmError("SMS créé mais identifiant non renvoyé : vérifiez les activités du case.")
+        if s.envoi:
+            self._patch(f"{s.entity_set}({new_id})", dict(s.envoi), "Déclenchement de l'envoi du SMS")
+        lu = self._get(f"{s.entity_set}({new_id})", "Relecture du SMS", {"$select": "statuscode"})
+        return lu.get(f"statuscode{FMT}", "créé")
+
+    # ---------------------------------------------------------------- 13 email
+    def preparer_email(self, case_id: str) -> tuple[str, str]:
+        e = self.cfg.email
+        t = self._get("templates", "Modèle d'email", {"$select": "templateid,title",
+                                                     "$filter": f"title eq '{_q(e.modele)}'"}).get("value", [])
+        if len(t) != 1:
+            raise CrmError(f"Modèle d'email « {e.modele} » introuvable (ou en double).")
+        r = self.t.request("POST", "InstantiateTemplate", json={
+            "TemplateId": t[0]["templateid"], "ObjectType": "incident", "ObjectId": _guid(case_id)})
+        if r.status != 200 or not (r.body or {}).get("value"):
+            raise self._err(r, "Préparation de l'email depuis le modèle")
+        v = r.body["value"][0]
+        return v.get("subject", ""), v.get("description", "")
+
+    def envoyer_email(self, case_id, compte, sujet, html) -> str:
+        e = self.cfg.email
+        q = self._get("queues", "File expéditrice", {"$select": "queueid", "$filter": f"name eq '{_q(e.file_expediteur)}'"}).get("value", [])
+        if len(q) != 1:
+            raise CrmError(f"File « {e.file_expediteur} » introuvable.")
+        body = {"subject": sujet, "description": html,
+                "regardingobjectid_incident@odata.bind": f"/incidents({_guid(case_id)})",
+                "email_activity_parties": [
+                    {"partyid_queue@odata.bind": f"/queues({q[0]['queueid']})", "participationtypemask": 1},
+                    {"partyid_account@odata.bind": f"/accounts({_guid(compte.id)})", "participationtypemask": 2}]}
+        _, email_id = self._post("emails", body, "Création de l'email")
+        if not email_id:
+            raise CrmError("Email créé mais identifiant non renvoyé : vérifiez les activités du case.")
+        r = self.t.request("POST", f"emails({email_id})/Microsoft.Dynamics.CRM.SendEmail", json={"IssueSend": True})
+        if r.status not in (200, 204):
+            raise self._err(r, "Envoi de l'email")
+        self.writes += 1
+        lu = self._get(f"emails({email_id})", "Relecture de l'email", {"$select": "statuscode"})
+        return lu.get(f"statuscode{FMT}", "")
+
+    def ouvrir_fiche(self, entite: str, record_id: str) -> None:
+        self.t.ouvrir_fiche(entite, _guid(record_id))
