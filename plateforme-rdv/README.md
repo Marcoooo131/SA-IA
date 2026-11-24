@@ -57,6 +57,7 @@ met à jour (grille d'offres §11.4, direction artistique, feuille de route §19
 | — | Filtrage des appels, protection des données, quotas SMS, plan 30 jours, simulation économique | [08-securisation-lancement.md](08-securisation-lancement.md) |
 | — | **Programme de lancement : diagnostic, 37 étapes, budget, scénarios financiers, décisions (document de référence)** | [09-programme-lancement.md](09-programme-lancement.md) |
 | — | Positionnement Vecall pour les artisans de la rénovation (étape 1.2) | [10-positionnement-renovation.md](10-positionnement-renovation.md) |
+| — | Guide d'entretiens artisans et grille de décision (étape 1.3) | [11-guide-entretiens.md](11-guide-entretiens.md) |
 
 ## En une page
 

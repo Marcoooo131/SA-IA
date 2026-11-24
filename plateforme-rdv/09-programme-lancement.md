@@ -9,8 +9,8 @@
 |---|---|
 | Ouvert le | 19/11/2026 |
 | Phase actuelle | **Phase 1 — Fondations** |
-| Étape actuelle | **1.1 — Vérifier le nom « Venio » (marque et domaines)** |
-| Étapes validées | **0 / 37 (0 %)** — seules les étapes validées avec preuve comptent |
+| Étape actuelle | **1.3 — Valider la proposition de valeur (entretiens)** · 1.1 encore ouverte (réservation de vecall.fr, recherche de marques) |
+| Étapes validées | **1 / 37 (3 %)** : 1.2 — seules les étapes validées avec preuve comptent |
 | Mode de financement | **Progressif par paliers (décision D0 du 19/11/2026)** : gratuit jusqu'à 10 clients, puis investissements financés par les revenus |
 | Budget de départ (palier 0) | **≈ 30 à 45 € HT**, puis ≈ 2 à 5 €/mois |
 | Budget engagé à ce jour | **0 €** (tout fonctionne sur des offres gratuites) |
@@ -223,9 +223,9 @@ estimé ≈ 87 300 € avec un dirigeant rémunéré → IS ≈ 17 600 €.
 | # | Décision | Quand | Statut |
 |---|---|---|---|
 | D0 | Mode de financement | — | **Décidé le 19/11/2026 : progressif par paliers** |
-| D1 | Garder « Venio » ou changer de nom | Étape 1.1 | **En attente** |
+| D1 | Nom | Étape 1.1 | **Provisoire : « Vecall »** (définitif après recherche de marques) |
 | D2 | Titulaire de la micro-entreprise, partage entre associés, rôles, temps consacré (accord écrit) | Étape 1.4 | En attente |
-| D3 | Un ou deux secteurs de départ (rénovation ? garages ?) | Étape 1.2 | En attente |
+| D3 | Secteur de départ | Étape 1.2 | **Décidé le 23/11/2026 : rénovation et bâtiment** |
 | D4 | Seuils exacts de passage aux paliers 1 et 2 | Étape 2.1 | En attente |
 | D5 | Fournisseur de téléphonie et de SMS | Étape 3.5 | En attente |
 | D6 | Développer invitations et messagerie, ou les retirer de l'offre | Étape 3.1 | En attente |
@@ -242,6 +242,9 @@ estimé ≈ 87 300 € avec un dirigeant rémunéré → IS ≈ 17 600 €.
 | 18/11/2026 | Stripe en mode test uniquement | Associés |
 | 19/11/2026 | Pas d'accès à Hugging Face (voix off) ; pas de connexion Stripe via formulaire | Associés |
 | 19/11/2026 | **D0 : lancement progressif, gratuit jusqu'à 10 clients puis investissements par paliers** | Associés |
+| 23/11/2026 | Nom provisoire « Vecall » (« Venio » et « Callify » écartés) ; vecall.fr à réserver par l'associé | Associés |
+| 23/11/2026 | D3 : secteur de départ rénovation et bâtiment | Associés |
+| 24/11/2026 | Étape 1.2 validée : positionnement approuvé sans modification | Associés |
 
 ## 7. Journal du budget
 
