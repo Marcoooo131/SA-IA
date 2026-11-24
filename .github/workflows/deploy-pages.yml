@@ -96,6 +96,9 @@ jobs:
       - name: Workshop concurrence
         run: |
           mkdir -p dist/workshop-concurrence && cp -r workshop-concurrence/. dist/workshop-concurrence/ && rm -f dist/workshop-concurrence/README.md
+      # Guide Movers débutant (…/guide-movers/) : présentation statique, un seul fichier
+      - name: Guide Movers débutant
+        run: mkdir -p dist/guide-movers && cp guide-movers-debutant/index.html dist/guide-movers/index.html
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

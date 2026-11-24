@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guide Movers — Débutant</title>
+<meta name="description" content="Guide pas à pas du service Movers pour les nouveaux agents : Twilio, tâche PRIO, case Movers, réinstallation, takeover, résiliation, No Cap.">
+<style>
+:root{
+  --red:#e30613; --red-d:#b0000c; --ink:#111; --ink2:#1c1c1f; --ink3:#2a2a2f;
+  --paper:#f6f5f3; --muted:#8b8b93; --line:rgba(255,255,255,.09);
+  --ok:#21a366; --warn:#f2a900; --info:#3d7bfd;
+  --r:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;background:var(--ink);color:#f2f2f2;overflow:hidden;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+/* ---------- top bar ---------- */
+.top{position:fixed;inset:0 0 auto 0;height:56px;display:flex;align-items:center;gap:12px;padding:0 16px;background:rgba(17,17,17,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);z-index:20}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.02em}
+.brand .dot{width:12px;height:12px;border-radius:50%;background:var(--red);box-shadow:0 0 0 4px rgba(227,6,19,.25)}
+.brand small{font-weight:500;color:var(--muted);margin-left:4px}
+.top .sp{flex:1}
+.chip{font-size:13px;color:#cfcfd4;padding:6px 10px;border:1px solid var(--line);border-radius:999px;white-space:nowrap}
+.menu-btn{padding:8px 12px;border-radius:10px;border:1px solid var(--line);font-size:14px}
+.menu-btn:hover{background:var(--ink3)}
+.progress{position:fixed;top:56px;left:0;height:3px;background:var(--red);z-index:21;transition:width .3s}
+/* ---------- sidebar ---------- */
+.side{position:fixed;top:0;bottom:0;left:0;width:320px;max-width:86vw;background:var(--ink2);border-right:1px solid var(--line);transform:translateX(-100%);transition:transform .25s;z-index:40;display:flex;flex-direction:column}
+.side.open{transform:none}
+.side h3{padding:18px 18px 8px;font-size:13px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.side nav{overflow:auto;padding:0 8px 24px}
+.side a{display:flex;gap:10px;align-items:baseline;padding:9px 10px;border-radius:10px;color:#ddd;text-decoration:none;font-size:14.5px}
+.side a:hover{background:var(--ink3)}
+.side a.cur{background:rgba(227,6,19,.16);color:#fff}
+.side a .n{color:var(--muted);font-variant-numeric:tabular-nums;min-width:22px;font-size:12.5px}
+.side .grp{padding:14px 10px 4px;font-size:11.5px;color:var(--red);font-weight:700;text-transform:uppercase;letter-spacing:.1em}
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s;z-index:30}
+.scrim.on{opacity:1;pointer-events:auto}
+/* ---------- slides ---------- */
+.deck{position:fixed;top:59px;bottom:64px;left:0;right:0}
+.slide{position:absolute;inset:0;overflow-y:auto;padding:clamp(18px,4vw,48px) clamp(16px,5vw,72px) 40px;opacity:0;pointer-events:none;transform:translateX(24px);transition:opacity .28s,transform .28s}
+.slide.on{opacity:1;pointer-events:auto;transform:none}
+.slide.prev{transform:translateX(-24px)}
+.wrap{max-width:1080px;margin:0 auto}
+.kicker{display:inline-flex;gap:8px;align-items:center;font-size:12.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--red);margin-bottom:10px}
+h1{font-size:clamp(30px,6vw,64px);line-height:1.02;font-weight:850;letter-spacing:-.02em}
+h2{font-size:clamp(24px,3.6vw,40px);line-height:1.1;font-weight:800;letter-spacing:-.01em;margin-bottom:8px}
+.lead{font-size:clamp(15.5px,1.8vw,19px);color:#c9c9cf;max-width:780px;line-height:1.5;margin:10px 0 22px}
+p{line-height:1.55}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.card{background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
+.card h4{font-size:16px;margin-bottom:6px;display:flex;gap:8px;align-items:center}
+.card p,.card li{font-size:14.5px;color:#cfcfd5}
+.card ul{padding-left:18px;display:grid;gap:5px}
+.tag{display:inline-block;font-size:11.5px;font-weight:700;padding:3px 8px;border-radius:6px;background:var(--ink3);color:#eee;letter-spacing:.03em}
+.tag.r{background:var(--red)}
+.tag.g{background:var(--ok)}
+.tag.y{background:var(--warn);color:#111}
+.tag.b{background:var(--info)}
+/* steps */
+ol.steps{list-style:none;counter-reset:s;display:grid;gap:10px}
+ol.steps>li{counter-increment:s;position:relative;padding:13px 16px 13px 56px;background:var(--ink2);border:1px solid var(--line);border-radius:12px;font-size:15px;line-height:1.5;color:#e6e6ea}
+ol.steps>li::before{content:counter(s);position:absolute;left:14px;top:12px;width:28px;height:28px;border-radius:8px;background:var(--red);color:#fff;font-weight:800;display:grid;place-items:center;font-size:14px}
+ol.steps b,.card b{color:#fff}
+.ui{font-family:Consolas,"SF Mono",Menlo,monospace;font-size:.88em;background:#2c2c33;border:1px solid #3a3a42;border-radius:6px;padding:1px 6px;white-space:nowrap;color:#fff}
+.field{color:#ffd0d3}
+/* callouts */
+.call{display:flex;gap:12px;padding:13px 16px;border-radius:12px;font-size:14.5px;line-height:1.5;margin-top:14px;border:1px solid}
+.call .i{font-size:18px;line-height:1.2}
+.call.tip{background:rgba(33,163,102,.1);border-color:rgba(33,163,102,.35)}
+.call.warn{background:rgba(242,169,0,.1);border-color:rgba(242,169,0,.4)}
+.call.stop{background:rgba(227,6,19,.12);border-color:rgba(227,6,19,.45)}
+/* template / copy box */
+.tpl{position:relative;background:#0b0b0c;border:1px solid #33333a;border-radius:12px;padding:16px 92px 16px 18px;font-family:Consolas,"SF Mono",Menlo,monospace;font-size:14px;line-height:1.6;white-space:pre-wrap;color:#e9e9ee;margin-top:10px}
+.tpl .copy{position:absolute;top:10px;right:10px;font-family:inherit;font-size:12.5px;padding:6px 10px;border-radius:8px;background:var(--red);color:#fff;font-weight:700}
+.tpl .copy.ok{background:var(--ok)}
+/* fake CRM panel */
+.crm{background:#fff;color:#222;border-radius:12px;overflow:hidden;font-size:13.5px;border:1px solid #ddd}
+.crm .bar{background:var(--red);color:#fff;padding:8px 12px;font-weight:700;display:flex;gap:10px;align-items:center;font-size:13px}
+.crm .bar span{opacity:.8;font-weight:500}
+.crm .tb{display:flex;flex-wrap:wrap;gap:4px 12px;padding:7px 12px;border-bottom:1px solid #eee;font-size:11.5px;color:#444;text-transform:uppercase;letter-spacing:.03em}
+.crm .tb .hl{color:var(--red);font-weight:800;outline:2px solid var(--red);outline-offset:2px;border-radius:3px}
+.crm .bpf{display:flex;font-size:12px}
+.crm .bpf div{flex:1;padding:6px 10px;background:#e8e8e8;color:#555}
+.crm .bpf div.a{background:#9bd29b;color:#123}
+.crm .body{padding:12px 14px;display:grid;grid-template-columns:auto 1fr;gap:5px 14px}
+.crm .body .k{color:#666}
+.crm .body .v{font-weight:600}
+.crm .body .v.hl{background:#fff1b8;border-radius:4px;padding:0 4px}
+/* flow */
+.flow{display:grid;gap:10px}
+.fl-row{display:flex;flex-wrap:wrap;gap:10px;align-items:stretch}
+.node{flex:1 1 180px;background:var(--ink2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;font-size:14px;position:relative}
+.node b{display:block;font-size:15px;margin-bottom:3px}
+.node small{color:#bdbdc4}
+.node.red{border-color:var(--red);box-shadow:inset 3px 0 0 var(--red)}
+.node.g{box-shadow:inset 3px 0 0 var(--ok)}
+.node.y{box-shadow:inset 3px 0 0 var(--warn)}
+.node.b{box-shadow:inset 3px 0 0 var(--info)}
+.arrow{text-align:center;color:var(--muted);font-size:20px;line-height:1}
+/* table */
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:700}
+td:first-child{font-weight:700;white-space:nowrap}
+/* checklist */
+.check{display:grid;gap:8px}
+.check label{display:flex;gap:12px;align-items:flex-start;padding:11px 14px;background:var(--ink2);border:1px solid var(--line);border-radius:12px;cursor:pointer;font-size:15px;line-height:1.45}
+.check input{appearance:none;flex:0 0 22px;height:22px;border:2px solid #55555d;border-radius:6px;margin-top:1px;display:grid;place-items:center}
+.check input:checked{background:var(--ok);border-color:var(--ok)}
+.check input:checked::after{content:"✓";color:#fff;font-weight:900;font-size:14px}
+.check label:has(input:checked){opacity:.6}
+/* cover */
+.cover{min-height:100%;display:flex;align-items:center}
+.cover .wrap{width:100%}
+.cover h1 span{color:var(--red)}
+.pill-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:26px}
+.big-btn{display:inline-flex;align-items:center;gap:10px;margin-top:28px;padding:14px 22px;border-radius:12px;background:var(--red);color:#fff;font-weight:800;font-size:16px}
+.big-btn:hover{background:var(--red-d)}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:4px 10px;border-radius:999px;background:var(--ink3);margin:2px 4px 2px 0}
+.status i{width:9px;height:9px;border-radius:50%;display:inline-block}
+/* bottom nav */
+.bottom{position:fixed;left:0;right:0;bottom:0;height:64px;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 16px calc(env(safe-area-inset-bottom)) ;background:rgba(17,17,17,.95);border-top:1px solid var(--line);z-index:20}
+.nav-btn{padding:10px 16px;border-radius:10px;border:1px solid var(--line);font-weight:700;font-size:14.5px;min-width:110px}
+.nav-btn.next{background:var(--red);border-color:var(--red)}
+.nav-btn:disabled{opacity:.35;cursor:default}
+.count{font-variant-numeric:tabular-nums;color:var(--muted);font-size:14px}
+@media (max-width:640px){
+  .chip.hide-s{display:none}
+  .nav-btn{min-width:0;padding:10px 14px}
+  .brand small{display:none}
+  .crm .body{grid-template-columns:1fr}
+  .crm .body .k{margin-top:4px}
+}
+@media print{
+  body{overflow:visible;background:#fff;color:#111}
+  .top,.bottom,.side,.scrim,.progress{display:none}
+  .deck{position:static}
+  .slide{position:static;opacity:1;transform:none;page-break-after:always;overflow:visible}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <button class="menu-btn" id="menuBtn" aria-label="Ouvrir le sommaire">☰ Sommaire</button>
+  <div class="brand"><span class="dot"></span>Guide Movers <small>· débutant</small></div>
+  <div class="sp"></div>
+  <span class="chip hide-s" id="sectionChip"></span>
+</header>
+<div class="progress" id="progress"></div>
+
+<aside class="side" id="side" aria-label="Sommaire">
+  <h3>Sommaire</h3>
+  <nav id="toc"></nav>
+</aside>
+<div class="scrim" id="scrim"></div>
+
+<main class="deck" id="deck">
+
+<!-- 1 COVER -->
+<section class="slide cover" data-sec="Introduction" data-title="Bienvenue">
+  <div class="wrap">
+    <div class="kicker">Formation · Service Movers</div>
+    <h1>Le service Movers,<br><span>pas à pas.</span></h1>
+    <p class="lead">Tout ce qu'il faut pour traiter ton premier dossier de déménagement : passer un appel dans Twilio, créer la tâche et le case dans le CRM, réinstaller, faire un takeover, résilier, et quoi faire quand il n'y a pas de créneau.</p>
+    <div class="pill-row">
+      <span class="tag">📞 Twilio Flex</span><span class="tag">🗂️ CRM Dynamics</span><span class="tag">🛠️ Work Orders</span><span class="tag">📅 Booking</span><span class="tag">💬 Teams No Cap</span>
+    </div>
+    <button class="big-btn" data-go="1">Commencer →</button>
+    <p style="margin-top:18px;color:var(--muted);font-size:13.5px">Navigation : flèches ← → du clavier, glisser sur mobile, ou le bouton ☰ Sommaire.</p>
+  </div>
+</section>
+
+<!-- 2 C'EST QUOI -->
+<section class="slide" data-sec="Introduction" data-title="C'est quoi Movers ?">
+  <div class="wrap">
+    <div class="kicker">Le principe</div>
+    <h2>Un client déménage : 3 issues possibles</h2>
+    <p class="lead">Ton rôle : comprendre ce que veut le client, puis lancer le bon circuit dans le CRM. Tout part toujours d'un <b>case « Movers – Déménagement »</b>.</p>
+    <div class="grid g3">
+      <div class="card"><h4><span class="tag g">Moving OUT</span></h4><p><b>Le client emmène son alarme</b> dans son nouveau logement.</p><ul style="margin-top:8px"><li>Work Order <b>Installation</b> (réinstallation)</li><li>Booking d'un technicien à la nouvelle adresse</li></ul></div>
+      <div class="card"><h4><span class="tag b">Moving IN · Takeover</span></h4><p><b>Le nouvel occupant reprend</b> l'alarme déjà en place.</p><ul style="margin-top:8px"><li>Création d'un <b>Lead</b> « Moving In Repreneur »</li><li>Transmis à un commercial</li></ul></div>
+      <div class="card"><h4><span class="tag r">Résiliation</span></h4><p><b>Personne ne garde le système</b> : on récupère le matériel.</p><ul style="margin-top:8px"><li>Work Order <b>Termination</b></li><li>Booking pour démontage / récupération</li></ul></div>
+    </div>
+    <div class="call tip"><span class="i">💡</span><div>Un même dossier peut combiner deux issues : par exemple le client part avec son alarme (Moving Out) <b>et</b> le nouvel occupant est intéressé (Takeover).</div></div>
+  </div>
+</section>
+
+<!-- 3 LEXIQUE -->
+<section class="slide" data-sec="Introduction" data-title="Lexique">
+  <div class="wrap">
+    <div class="kicker">Vocabulaire</div>
+    <h2>Les mots que tu vas entendre</h2>
+    <div class="card" style="padding:4px 6px;margin-top:14px">
+      <table>
+        <tr><th>Terme</th><th>Ce que ça veut dire</th></tr>
+        <tr><td>Account</td><td>La fiche client dans le CRM (coordonnées, contrats, activités, cases, work orders).</td></tr>
+        <tr><td>Task PRIO</td><td>Tâche « PRIO – Movers – Déménagement » créée pour qu'un dossier soit traité / rappelé. Elle passe par la file <b>Movers</b>.</td></tr>
+        <tr><td>Case</td><td>Le dossier « Movers – Déménagement ». Il porte le parcours (étapes en vert en haut de la fiche).</td></tr>
+        <tr><td>Work Order (WO)</td><td>Ordre d'intervention technicien. Numéro <b>FR-xxxxxxx</b>. Type <i>Installation</i> ou <i>Termination</i>.</td></tr>
+        <tr><td>Booking</td><td>Réservation du créneau technicien depuis le WO (<span class="ui">Get appointments</span>).</td></tr>
+        <tr><td>No Cap</td><td>« No capacity » : aucun créneau disponible → on passe par le canal Teams du planning.</td></tr>
+        <tr><td>Takeover</td><td>Reprise du contrat par le nouvel occupant (Moving In).</td></tr>
+        <tr><td>Queue</td><td>File de travail partagée (ex. <b>Movers</b>). On y ajoute un élément avec <span class="ui">Add to Queue</span>.</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- 4 OUTILS -->
+<section class="slide" data-sec="Introduction" data-title="Les outils">
+  <div class="wrap">
+    <div class="kicker">Ton poste de travail</div>
+    <h2>Les outils à ouvrir en début de journée</h2>
+    <div class="grid g2" style="margin-top:16px">
+      <div class="card"><h4>📞 Twilio Flex</h4><p>La téléphonie. On l'ouvre depuis la <b>Landing Page</b> interne → tuile <b>Twilio Flex</b>. File d'appels : <b>FR Movers</b>.</p></div>
+      <div class="card"><h4>🗂️ CRM (Dynamics)</h4><p>Fiches clients, tâches, cases, work orders, emails. Garde un onglet sur le dashboard <b>Churn – Defence Main activites</b>.</p></div>
+      <div class="card"><h4>🛰️ Site Admin</h4><p>Bouton <span class="ui">SITEADMIN</span> sur la fiche client : vérifier les centrales (panels) et leurs adresses.</p></div>
+      <div class="card"><h4>💬 Teams</h4><p>Canal <b>MO TO/Planning et No Cap</b> pour les demandes de créneau, et les groupes de l'équipe Movers pour l'entraide.</p></div>
+    </div>
+    <div class="call tip"><span class="i">💡</span><div>Dans le dashboard, les widgets à surveiller : <b>CS – Movers Prio task</b>, <b>Queue Item – Movers Tasks</b>, <b>My FUB</b> (tes relances) et <b>Items I am working on</b>.</div></div>
+  </div>
+</section>
+
+<!-- 5 PARCOURS -->
+<section class="slide" data-sec="Introduction" data-title="Le parcours complet">
+  <div class="wrap">
+    <div class="kicker">Vue d'ensemble</div>
+    <h2>Le parcours d'un dossier, du début à la fin</h2>
+    <div class="flow" style="margin-top:16px">
+      <div class="fl-row">
+        <div class="node red"><b>1 · Appel / demande</b><small>Twilio : entrant ou sortant</small></div>
+        <div class="node"><b>2 · Task PRIO</b><small>si le dossier doit être rappelé / traité plus tard → file Movers</small></div>
+        <div class="node red"><b>3 · Case Movers</b><small>« Movers – Déménagement » sur la fiche client</small></div>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="fl-row">
+        <div class="node g"><b>Moving OUT</b><small>WO Installation « WO – Mover »</small></div>
+        <div class="node b"><b>Moving IN · Takeover</b><small>Lead « Moving In Repreneur »</small></div>
+        <div class="node y"><b>Résiliation</b><small>WO Termination</small></div>
+      </div>
+      <div class="arrow">↓</div>
+      <div class="fl-row">
+        <div class="node"><b>4 · Booking</b><small>Get appointments → choisir un créneau</small></div>
+        <div class="node y"><b>Pas de créneau ?</b><small>→ No Cap sur Teams</small></div>
+        <div class="node g"><b>5 · Confirmation</b><small>SMS + email récapitulatif au client</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 TWILIO 1 -->
+<section class="slide" data-sec="1 · Twilio" data-title="Se connecter à Twilio">
+  <div class="wrap">
+    <div class="kicker">Module 1 · Téléphonie</div>
+    <h2>Se connecter et préparer son casque</h2>
+    <ol class="steps" style="margin-top:16px">
+      <li>Ouvre la <b>Landing Page</b> Sector Alarm et clique sur la tuile <b>Twilio Flex</b> (« Log on our contact center »).</li>
+      <li>Au chargement tu es en statut <span class="status"><i style="background:#999"></i>Offline</span>. À droite, l'onglet <b>Stats</b> montre la file <b>Voice – FR Movers</b> (appels en cours, en attente, agents connectés).</li>
+      <li>Clique sur l'icône <b>casque 🎧</b> en haut et vérifie le <b>périphérique de sortie</b> et le <b>micro</b> : sélectionne ton casque (pas les haut-parleurs du PC).</li>
+      <li>Change ton statut via le menu en haut à droite selon ce que tu fais (voir ci-dessous).</li>
+    </ol>
+    <div class="card" style="margin-top:14px">
+      <h4>Les statuts</h4>
+      <p><span class="status"><i style="background:var(--ok)"></i>Available</span> tu reçois les appels entrants ·
+      <span class="status"><i style="background:var(--info)"></i>Outbound Calls</span> tu passes des appels sortants ·
+      <span class="status"><i style="background:var(--warn)"></i>Wrap Up</span> fin d'appel (tâche à clôturer) ·
+      <span class="status"><i style="background:#999"></i>Offline</span> déconnecté</p>
+    </div>
+  </div>
+</section>
+
+<!-- 7 TWILIO 2 -->
+<section class="slide" data-sec="1 · Twilio" data-title="Passer et gérer un appel">
+  <div class="wrap">
+    <div class="kicker">Module 1 · Téléphonie</div>
+    <h2>Passer un appel sortant et le gérer</h2>
+    <div class="grid g2" style="margin-top:14px">
+      <ol class="steps">
+        <li>Passe en <b>Outbound Calls</b>, ouvre le pavé <b>Call</b> et saisis le numéro au format international : <span class="ui">+33 6 xx xx xx xx</span>. Lance l'appel.</li>
+        <li>L'écran affiche <b>Connecting call</b>, ton numéro d'appelant et la file <b>FR Movers</b>.</li>
+        <li>Une fois décroché (<b>Live</b>), clique sur <span class="ui">Start Recording</span> si l'appel doit être enregistré.</li>
+        <li>À droite, <b>Look up contact in CRM</b> : recherche par nom, adresse d'installation ou n° de compte CRM.</li>
+      </ol>
+      <div class="card">
+        <h4>Pendant l'appel (barre du bas)</h4>
+        <ul>
+          <li>🎙️ <b>Muet</b></li>
+          <li>⏸️ <b>Mise en attente</b> (bouton pause du correspondant) — reprends avec le même bouton</li>
+          <li>↪️ <b>Transfert</b> : onglets <i>Agents</i>, <i>Queues</i> ou <i>External</i></li>
+          <li>➕ <b>Ajouter</b> un participant · ⌨️ <b>Pavé</b> numérique</li>
+          <li>🔴 <b>Raccrocher</b> (ou <span class="ui">Hang Up</span>)</li>
+        </ul>
+      </div>
+    </div>
+    <div class="call warn"><span class="i">⚠️</span><div>Après avoir raccroché tu passes en <b>Wrap Up</b> : clique sur <span class="ui">Complete</span> pour clôturer, puis remets-toi en <b>Available</b> (ou Outbound Calls). Sinon tu ne reçois plus rien.</div></div>
+  </div>
+</section>
+
+<!-- 8 TASK PRIO -->
+<section class="slide" data-sec="2 · Task PRIO" data-title="Créer une tâche PRIO">
+  <div class="wrap">
+    <div class="kicker">Module 2 · CRM</div>
+    <h2>Créer une tâche « PRIO – Movers – Déménagement »</h2>
+    <p class="lead">Quand un client signale un déménagement et que le dossier doit être traité ou rappelé, on crée une tâche depuis sa fiche et on la met dans la file Movers.</p>
+    <div class="grid g2">
+      <ol class="steps">
+        <li>Ouvre la fiche client (<b>Account</b>), descends à <b>Activities</b> et clique sur l'icône <b>Tâche</b> (calendrier) pour en créer une.</li>
+        <li><span class="field">Subject</span> : <b>PRIO – Movers – Déménagement</b>.</li>
+        <li><span class="field">Description</span> : colle le modèle ci-contre et complète chaque ligne.</li>
+        <li><span class="ui">SAVE</span>, puis menu <span class="ui">…</span> → <span class="ui">Add to Queue</span> → file <b>Movers</b> → <span class="ui">Add</span>.</li>
+        <li>Vérifie : la tâche apparaît dans <b>CS – Movers Prio task</b> sur le dashboard.</li>
+      </ol>
+      <div>
+        <div class="tpl"><button class="copy">Copier</button>Nom interlocuteur :
+Numéro de téléphone :
+
+Propriétaire / locataire :
+
+Nouvelle adresse :
+Date de Déménagement :
+
+Horaire de Rappel :
+
+Informations Complémentaires : </div>
+        <div class="call tip"><span class="i">✍️</span><div>Exemple de « Informations complémentaires » : <i>« Le client veut désinstaller le système car bailleur social »</i>, <i>« rappeler après 14h »</i>.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 CASE CREATION -->
+<section class="slide" data-sec="3 · Case Movers" data-title="Créer le case Movers">
+  <div class="wrap">
+    <div class="kicker">Module 3 · CRM</div>
+    <h2>Créer le case « Movers – Déménagement »</h2>
+    <div class="grid g2" style="margin-top:14px">
+      <ol class="steps">
+        <li>Sur la fiche client, section <b>Cases</b> → bouton <b>+</b>. Un « New Case » s'ouvre.</li>
+        <li>Étape <b>Register Data</b> : renseigne <span class="field">Title</span>, vérifie <span class="field">Account</span>, choisis l'<span class="field">Installation</span>, le <span class="field">Mover Type</span>, le <span class="field">Contract</span> et le <span class="field">Case Type</span>.</li>
+        <li>Clique sur <span class="ui">Next Stage</span> → tu passes à l'étape <b>Info</b> (barre verte).</li>
+        <li>Réponds à <span class="field">Moving Out Or Moving In ?</span> → <b>Out</b> (le client part avec son alarme) ou <b>In</b> (repreneur).</li>
+        <li>Le formulaire affiche alors les champs du parcours choisi. <span class="ui">SAVE</span> régulièrement.</li>
+      </ol>
+      <div class="crm" aria-hidden="true">
+        <div class="bar">CASE : MASTER <span>· Movers – Déménagement</span></div>
+        <div class="bpf"><div>Register Data</div><div class="a">Info (Active)</div><div>Finish</div></div>
+        <div class="body">
+          <span class="k">Moving Out Or Moving In ?</span><span class="v hl">Out</span>
+          <span class="k">Moving Out interested in Ins.</span><span class="v">Yes / No</span>
+          <span class="k">Completed Move Out Info</span><span class="v">No → Yes</span>
+          <span class="k">Case Type</span><span class="v">Takeover</span>
+          <span class="k">Case Category</span><span class="v">Moving Customer</span>
+          <span class="k">Case Reason</span><span class="v">Moves to new adress</span>
+        </div>
+      </div>
+    </div>
+    <div class="call warn"><span class="i">⚠️</span><div>Bandeau rouge « Potential duplicate record » ou jaune « active cases / ObsCodes » : ce sont des avertissements. Lis-les (il y a peut-être déjà un dossier ouvert), mais ils ne bloquent pas.</div></div>
+  </div>
+</section>
+
+<!-- 10 MOVING OUT INFO -->
+<section class="slide" data-sec="4 · Moving Out" data-title="Moving Out : remplir le dossier">
+  <div class="wrap">
+    <div class="kicker">Module 4 · Réinstallation</div>
+    <h2>Moving Out : le client emmène son alarme</h2>
+    <ol class="steps" style="margin-top:14px">
+      <li>Étape Info : <span class="field">Moving Out Or Moving In</span> = <b>Out</b>.</li>
+      <li>Remplis la <b>nouvelle adresse</b> : <span class="field">Street 1 (New Address Moving Out)</span>, <span class="field">Postal Code</span>, <span class="field">City</span>, puis la <span class="field">Moving Out Date</span>. Le champ <span class="field">Coverage</span> indique si la zone est couverte (ex. <i>Full service</i>).</li>
+      <li>À droite, vérifie le bloc <b>Contract Information</b> : bon contrat, conditions, <span class="field">Last Income Date (Moving Out)</span>, <span class="field">Case Category</span> = <i>Moving Customer</i>, <span class="field">Case Reason</span> = <i>Moves to new adress</i>.</li>
+      <li><span class="field">Moving Out interested in Installation</span> = <b>Yes</b> si le client veut réinstaller.</li>
+      <li><span class="field">Completed Move Out Info</span> = <b>Yes</b>, puis clique sur <span class="ui">Finish</span>.</li>
+    </ol>
+    <div class="call tip"><span class="i">⚙️</span><div>Au <b>Finish</b>, le CRM crée automatiquement une <b>Opportunity « Takeover New Sale »</b> et un <b>Work Order Installation</b> (« WO – Mover », file <b>Movers</b>). Tu le retrouves dans le bloc <b>Work Orders (Case)</b> du case.</div></div>
+  </div>
+</section>
+
+<!-- 11 WO INSTALLATION -->
+<section class="slide" data-sec="4 · Moving Out" data-title="Préparer le WO Installation">
+  <div class="wrap">
+    <div class="kicker">Module 4 · Réinstallation</div>
+    <h2>Préparer le Work Order « WO – Mover »</h2>
+    <div class="grid g2" style="margin-top:14px">
+      <ol class="steps">
+        <li>Ouvre le WO depuis le case. Vérifie <span class="field">Type of Work Order</span> = <b>Installation</b> et <span class="field">Work Order Template</span> = <b>Mover M</b>.</li>
+        <li>Contrôle la centrale avec <span class="ui">SITEADMIN</span> (sur la fiche client) : bon n° de panel, bonne adresse.</li>
+        <li>Section <b>Work Order Products</b> → <b>+</b> : ajoute le pack à réinstaller et le produit de contrat <i>Maintenance et télésurveillance</i>. Vérifie les prix dans la fenêtre produit, puis <span class="ui">SAVE &amp; CLOSE</span>.</li>
+        <li>Section <b>Service Codes</b> : le code de réinstallation (ex. <i>Réinstallation SAS M</i>) doit être présent.</li>
+        <li>Complète la <span class="field">Description</span> du WO (modèle ci-contre).</li>
+      </ol>
+      <div>
+        <div class="tpl"><button class="copy">Copier</button>Mover vendu par :
+Ancien HWID :
+Système : SAS
+Type de contrat : Home
+Contacter TST pour reprise centrale si SAS
+Documents : Contrat / Mandat SEPA / Cerfa (uniquement pour les particuliers)
+Matériel : (ex. 1x DOC, 2x Sirène intérieure…)
+Complément d'installation : </div>
+        <div class="call tip"><span class="i">💡</span><div>Le <b>Total Hardware Price</b> et le <b>Total Contract Price</b> se calculent tout seuls à partir des produits ajoutés : relis-les avant le booking.</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 12 BOOKING -->
+<section class="slide" data-sec="5 · Booking" data-title="Réserver le technicien">
+  <div class="wrap">
+    <div class="kicker">Module 5 · Booking</div>
+    <h2>Réserver le créneau du technicien</h2>
+    <div class="grid g2" style="margin-top:14px">
+      <ol class="steps">
+        <li>Descends à <b>Booking and Product Information</b>.</li>
+        <li><span class="field">Timeband</span> : <b>All/Half day</b>. <span class="field">Booked Start Date</span> / <span class="field">Booked End Date</span> : la période dans laquelle chercher (ex. du jour J à J+7).</li>
+        <li>Vérifie l'adresse d'intervention (à droite) et le <span class="field">Mobile Phone for confirmation</span>.</li>
+        <li>Clique sur <span class="ui">Get appointments</span>, choisis un créneau avec le client et valide.</li>
+        <li>Si un message dit que le compte a déjà un WO ouvert ou planifié, lis-le puis <span class="ui">OK</span> pour continuer.</li>
+        <li>Résultat attendu : « <b>Work order is booked</b> », <span class="field">Status Reason</span> = <b>Scheduled</b>, dates en haut à droite.</li>
+      </ol>
+      <div class="card">
+        <h4>Les messages à connaître</h4>
+        <ul>
+          <li><b>Work order is booked</b> → c'est bon ✅ (boutons <i>Cancel booking</i> / <i>Re-schedule booking</i> disponibles).</li>
+          <li><b>ERROR (code: 8) An appointment for the criteria supplied is not available</b> → aucun créneau sur la période : élargis les dates, sinon <b>No Cap</b>.</li>
+          <li><b>ERROR (code: 280) Reserved</b> → créneau indisponible : réessaie, sinon <b>No Cap</b>.</li>
+          <li><b>Pending email warning</b> à l'ouverture → <span class="ui">Close</span>, sans impact.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 13 CONFIRMATION -->
+<section class="slide" data-sec="5 · Booking" data-title="Confirmer au client">
+  <div class="wrap">
+    <div class="kicker">Module 5 · Booking</div>
+    <h2>Confirmer le rendez-vous au client</h2>
+    <div class="grid g2" style="margin-top:14px">
+      <div class="card">
+        <h4>📱 SMS</h4>
+        <p>Après le booking, un SMS de confirmation part au client (date + créneau). Tu le vois dans le case, onglet <b>Notes → Activities</b>. Vérifie qu'il y est.</p>
+      </div>
+      <div class="card">
+        <h4>✉️ Email récapitulatif</h4>
+        <ol style="padding-left:18px;display:grid;gap:5px;font-size:14.5px;color:#cfcfd5">
+          <li>Depuis le case : nouvel email, <span class="field">From</span> = <b>Movers</b>.</li>
+          <li><span class="ui">INSERT TEMPLATE</span> → <b>Sector Alarm – Récapitulatif concernant votre déménagement</b>.</li>
+          <li>Remplace tous les champs <span style="background:#fff1b8;color:#111;padding:0 4px;border-radius:3px">surlignés en jaune</span>.</li>
+          <li><span class="ui">SEND</span>.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="card" style="margin-top:14px">
+      <h4>Champs à compléter dans l'email</h4>
+      <p>Jour de l'intervention · Créneau d'arrivée du technicien · Durée de l'intervention · Électricité sur place · Réseau (GSM / Wifi) · Travaux prévus · Matériel à réinstaller.</p>
+    </div>
+    <div class="call warn"><span class="i">⚠️</span><div>Rappelle au client que <b>le titulaire du contrat doit être présent</b> le jour de la réinstallation et qu'un rendez-vous non honoré est facturé <b>89 €</b> (c'est écrit dans l'email). Si le CRM affiche « At least one recipient does not have an email address », ajoute ou corrige l'email sur la fiche avant d'envoyer.</div></div>
+  </div>
+</section>
+
+<!-- 14 TAKEOVER -->
+<section class="slide" data-sec="6 · Takeover" data-title="Takeover : le repreneur">
+  <div class="wrap">
+    <div class="kicker">Module 6 · Moving In</div>
+    <h2>Takeover : le nouvel occupant reprend l'alarme</h2>
+    <ol class="steps" style="margin-top:14px">
+      <li>Dans le case (Case Type <b>Takeover</b>), étape Info : <span class="field">Moving Out Or Moving In</span> = <b>In</b>. <span class="field">New house owner interested</span> : <b>Yes</b> / <b>Unknown</b>.</li>
+      <li>Remplis le bloc repreneur : <span class="field">Is business? (Moving In)</span>, <span class="field">First Name</span>, <span class="field">Last Name</span> (ou <span class="field">Business Name</span> si professionnel), <span class="field">Mobile phone</span>, <span class="field">E-mail address</span>, <span class="field">Product Line</span> (ex. <i>Smart Alarm System</i>).</li>
+      <li><span class="field">Completed Move In Information</span> = <b>Yes</b> → <span class="ui">SAVE</span> → <span class="ui">Finish</span>.</li>
+      <li>Le CRM crée un <b>Lead</b> : Topic « Moving In Repreneur », <span class="field">Type of Lead</span> / <span class="field">Lead Source</span> = <b>Moving In</b>, <span class="field">Sales Type</span> = <b>Movers</b>.</li>
+      <li>Sur le Lead : complète la <span class="field">Workorder Description</span> (ex. « le client veut reprendre le contrat pour le 19/10 »), vérifie <span class="field">Contract Terms</span>, puis attribue le <span class="field">Owner</span> / <span class="field">Sales Person</span> au commercial qui reprend le dossier. <span class="ui">SAVE</span>.</li>
+    </ol>
+    <div class="call tip"><span class="i">💡</span><div>Le Takeover concerne le <b>nouvel occupant</b>. L'ancien client (celui qui part) reste sur son propre parcours : réinstallation (Module 4) ou résiliation (Module 7).</div></div>
+  </div>
+</section>
+
+<!-- 15 TERMINATION -->
+<section class="slide" data-sec="7 · Résiliation" data-title="Créer le WO Termination">
+  <div class="wrap">
+    <div class="kicker">Module 7 · Résiliation</div>
+    <h2>Résiliation : créer le Work Order « Termination »</h2>
+    <div class="grid g2" style="margin-top:14px">
+      <ol class="steps">
+        <li>Depuis le case, bouton <span class="ui">WORK ORDER</span> → nouveau WO de type <b>Termination</b>. Account, Contract, Installation et Case sont pré-remplis. <span class="ui">SAVE</span>.</li>
+        <li><span class="field">Work Order Template</span> : <b>Termination WO – Mover – Déménagement</b>. Le Subject et la Description se remplissent tout seuls.</li>
+        <li>Complète dans la Description le <b>nom du client</b> et le <b>numéro de téléphone</b>.</li>
+        <li>Vérifie dans <b>Work Order Products</b> la ligne <b>Service de résiliation</b> (0,00 €).</li>
+        <li>Fais le <b>booking</b> comme au Module 5 (Get appointments) → statut <b>Scheduled</b>.</li>
+      </ol>
+      <div>
+        <p style="font-size:14px;color:var(--muted);margin-bottom:4px">Ce que le modèle met dans la Description :</p>
+        <div class="tpl"><button class="copy">Copier</button>Déménagement
+BILLING : Pas de remboursement, pas de facturation
+Nom du client :
+Numéro de téléphone :
+Merci de laisser le clavier et prendre des stickers Takeover et de coller sur le clavier
+Système : SAS
+Démontage et récupération du système : Oui
+Récupérer plaques et stickers
+Récupérer carte SIM et contact TST pour reset</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 16 NO CAP -->
+<section class="slide" data-sec="8 · No Cap" data-title="Pas de créneau : No Cap">
+  <div class="wrap">
+    <div class="kicker">Module 8 · No Cap</div>
+    <h2>Pas de créneau ? Demande au planning (No Cap)</h2>
+    <p class="lead">Si <span class="ui">Get appointments</span> renvoie une erreur (code 8, code 280…) même en élargissant les dates, ne bloque pas le client : le planning peut forcer un créneau.</p>
+    <div class="grid g2">
+      <ol class="steps">
+        <li>Dans le WO, copie l'<span class="field">Activity Number</span> (<b>FR-xxxxxxx</b>).</li>
+        <li>Ouvre Teams → canal <b>MO TO/Planning et No Cap</b>.</li>
+        <li>Poste un message au format : <b>FR – Nom du client – Code postal – Disponibilités</b> (plusieurs dates si possible).</li>
+        <li>Ajoute une contrainte utile si besoin (ex. « pas trop tôt le matin », « dispo tous les mardis »).</li>
+        <li>Suis la réponse du planning dans le fil et confirme au client une fois le créneau posé.</li>
+      </ol>
+      <div>
+        <div class="tpl"><button class="copy">Copier</button>FR-XXXXXXX - Nom du client - Code postal - dispos : JJ/MM, JJ/MM, JJ/MM</div>
+        <p style="font-size:14px;color:var(--muted);margin:14px 0 4px">Exemples (fictifs) :</p>
+        <div class="tpl" style="font-size:13px">FR-1234567 - Jean Martin - 29000 - dispos : 7/12, 14/12, 17/12
+FR-7654321 - Claire Robert - 72000 - dispo tous les mardis, merci de booker le premier mardi possible</div>
+      </div>
+    </div>
+    <div class="call warn"><span class="i">⚠️</span><div>Un message = un dossier. Toujours le <b>numéro FR en premier</b> : c'est ce que le planning cherche dans le CRM.</div></div>
+  </div>
+</section>
+
+<!-- 17 ERREURS -->
+<section class="slide" data-sec="9 · Récap" data-title="Pièges fréquents">
+  <div class="wrap">
+    <div class="kicker">À éviter</div>
+    <h2>Les pièges du débutant</h2>
+    <div class="grid g2" style="margin-top:14px">
+      <div class="card"><h4>🔁 Statut Twilio oublié</h4><p>Après un appel, toujours <b>Complete</b> le wrap-up et repasser en <b>Available</b>.</p></div>
+      <div class="card"><h4>📭 Tâche hors file</h4><p>Une tâche PRIO non ajoutée à la file <b>Movers</b> est invisible pour l'équipe. Vérifie le dashboard.</p></div>
+      <div class="card"><h4>⏭️ Finish trop tôt</h4><p>Ne clique sur <b>Finish</b> qu'après avoir mis <i>Completed Move Out/In Info</i> = Yes et tout vérifié : c'est ce qui crée WO / Lead.</p></div>
+      <div class="card"><h4>💸 Produits non vérifiés</h4><p>Relis les produits et les totaux du WO avant le booking.</p></div>
+      <div class="card"><h4>✉️ Pas de récap</h4><p>Chaque réinstallation bookée = SMS vérifié + email récapitulatif envoyé.</p></div>
+      <div class="card"><h4>🧩 No Cap incomplet</h4><p>Sans n° FR, code postal et disponibilités, le planning ne peut rien faire.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- 18 CHECKLIST -->
+<section class="slide" data-sec="9 · Récap" data-title="Checklist d'un dossier">
+  <div class="wrap">
+    <div class="kicker">À garder sous la main</div>
+    <h2>Checklist : un dossier Movers complet</h2>
+    <p class="lead">Coche au fur et à mesure (les cases se vident si tu recharges la page).</p>
+    <div class="check">
+      <label><input type="checkbox"> Client identifié dans le CRM (Look up in CRM / recherche)</label>
+      <label><input type="checkbox"> Task <b>PRIO – Movers – Déménagement</b> créée avec le modèle et ajoutée à la file <b>Movers</b> (si rappel nécessaire)</label>
+      <label><input type="checkbox"> Case <b>Movers – Déménagement</b> créé : installation, contrat, case type</label>
+      <label><input type="checkbox"> Étape Info remplie (Out / In), nouvelle adresse et date de déménagement</label>
+      <label><input type="checkbox"> <b>Completed … Info = Yes</b> puis <b>Finish</b></label>
+      <label><input type="checkbox"> WO vérifié : template, produits, service code, description</label>
+      <label><input type="checkbox"> Booking fait (statut <b>Scheduled</b>) — ou demande <b>No Cap</b> postée sur Teams</label>
+      <label><input type="checkbox"> SMS présent + email « Récapitulatif concernant votre déménagement » envoyé</label>
+      <label><input type="checkbox"> Takeover : Lead « Moving In Repreneur » complété et attribué</label>
+      <label><input type="checkbox"> Twilio : wrap-up complété, statut remis</label>
+    </div>
+  </div>
+</section>
+
+<!-- 19 FIN -->
+<section class="slide cover" data-sec="9 · Récap" data-title="Résumé express">
+  <div class="wrap">
+    <div class="kicker">Résumé express</div>
+    <h1>Appel → Tâche → Case<br>→ <span>WO / Lead</span> → Booking<br>→ Confirmation.</h1>
+    <p class="lead">En cas de doute : relis le module concerné via ☰ Sommaire, et demande à l'équipe sur Teams. Personne ne t'en voudra de poser une question — on t'en voudra d'un dossier mal booké 😉</p>
+    <button class="big-btn" data-go="0">↺ Revenir au début</button>
+  </div>
+</section>
+
+</main>
+
+<footer class="bottom">
+  <button class="nav-btn" id="prevBtn">← Précédent</button>
+  <span class="count" id="count"></span>
+  <button class="nav-btn next" id="nextBtn">Suivant →</button>
+</footer>
+
+<script>
+(function(){
+  const slides=[...document.querySelectorAll('.slide')];
+  const toc=document.getElementById('toc');
+  const side=document.getElementById('side'), scrim=document.getElementById('scrim');
+  let cur=0;
+
+  // build table of contents grouped by section
+  let lastSec='';
+  slides.forEach((s,i)=>{
+    const sec=s.dataset.sec;
+    if(sec!==lastSec){const g=document.createElement('div');g.className='grp';g.textContent=sec;toc.appendChild(g);lastSec=sec;}
+    const a=document.createElement('a');a.href='#'+(i+1);
+    a.innerHTML='<span class="n">'+(i+1)+'</span><span></span>';
+    a.lastChild.textContent=s.dataset.title;
+    a.addEventListener('click',e=>{e.preventDefault();go(i);closeMenu();});
+    toc.appendChild(a);
+  });
+  const links=[...toc.querySelectorAll('a')];
+
+  function go(i){
+    i=Math.max(0,Math.min(slides.length-1,i));
+    slides.forEach((s,j)=>{s.classList.toggle('on',j===i);s.classList.toggle('prev',j<i);});
+    cur=i;
+    slides[i].scrollTop=0;
+    links.forEach((l,j)=>l.classList.toggle('cur',j===i));
+    document.getElementById('count').textContent=(i+1)+' / '+slides.length;
+    document.getElementById('progress').style.width=((i+1)/slides.length*100)+'%';
+    document.getElementById('sectionChip').textContent=slides[i].dataset.sec;
+    document.getElementById('prevBtn').disabled=i===0;
+    const nb=document.getElementById('nextBtn');nb.disabled=i===slides.length-1;
+    if(location.hash!=='#'+(i+1)) history.replaceState(null,'','#'+(i+1));
+  }
+  function openMenu(){side.classList.add('open');scrim.classList.add('on');}
+  function closeMenu(){side.classList.remove('open');scrim.classList.remove('on');}
+
+  document.getElementById('menuBtn').onclick=()=>side.classList.contains('open')?closeMenu():openMenu();
+  scrim.onclick=closeMenu;
+  document.getElementById('prevBtn').onclick=()=>go(cur-1);
+  document.getElementById('nextBtn').onclick=()=>go(cur+1);
+  document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>go(+b.dataset.go));
+
+  document.addEventListener('keydown',e=>{
+    if(e.target.closest('input,textarea'))return;
+    if(e.key==='ArrowRight'||e.key==='PageDown')go(cur+1);
+    else if(e.key==='ArrowLeft'||e.key==='PageUp')go(cur-1);
+    else if(e.key==='Home')go(0);
+    else if(e.key==='End')go(slides.length-1);
+    else if(e.key==='Escape')closeMenu();
+  });
+
+  // swipe on touch devices
+  let x0=null,y0=null;
+  document.getElementById('deck').addEventListener('touchstart',e=>{x0=e.touches[0].clientX;y0=e.touches[0].clientY;},{passive:true});
+  document.getElementById('deck').addEventListener('touchend',e=>{
+    if(x0===null)return;
+    const dx=e.changedTouches[0].clientX-x0, dy=e.changedTouches[0].clientY-y0;
+    if(Math.abs(dx)>60&&Math.abs(dx)>Math.abs(dy)*1.5)go(cur+(dx<0?1:-1));
+    x0=null;
+  });
+
+  // copy buttons
+  document.querySelectorAll('.tpl .copy').forEach(btn=>{
+    btn.onclick=async()=>{
+      const text=[...btn.parentNode.childNodes].filter(n=>n!==btn).map(n=>n.textContent).join('').replace(/^\s+/,'');
+      try{await navigator.clipboard.writeText(text);}
+      catch(_){const t=document.createElement('textarea');t.value=text;document.body.appendChild(t);t.select();try{document.execCommand('copy');}catch(e){}t.remove();}
+      btn.textContent='Copié ✓';btn.classList.add('ok');
+      setTimeout(()=>{btn.textContent='Copier';btn.classList.remove('ok');},1600);
+    };
+  });
+
+  const start=parseInt(location.hash.slice(1),10);
+  go(Number.isFinite(start)?start-1:0);
+  window.addEventListener('hashchange',()=>{const n=parseInt(location.hash.slice(1),10);if(Number.isFinite(n)&&n-1!==cur)go(n-1);});
+})();
+</script>
+</body>
+</html>
