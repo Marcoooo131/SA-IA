@@ -10,7 +10,7 @@
 | Ouvert le | 19/11/2026 |
 | Phase actuelle | **Phase 1 — Fondations** |
 | Étape actuelle | **1.3 — Valider la proposition de valeur (entretiens)** · 1.1 encore ouverte (réservation de vecall.fr, recherche de marques) |
-| Étapes validées | **1 / 37 (3 %)** : 1.2 — seules les étapes validées avec preuve comptent |
+| Étapes validées | **2 / 37 (5 %)** : 1.2, 3.1 — seules les étapes validées avec preuve comptent |
 | Mode de financement | **Progressif par paliers (décision D0 du 19/11/2026)** : gratuit jusqu'à 10 clients, puis investissements financés par les revenus |
 | Budget de départ (palier 0) | **≈ 30 à 45 € HT**, puis ≈ 2 à 5 €/mois |
 | Budget engagé à ce jour | **0 €** (tout fonctionne sur des offres gratuites) |
@@ -228,8 +228,8 @@ estimé ≈ 87 300 € avec un dirigeant rémunéré → IS ≈ 17 600 €.
 | D3 | Secteur de départ | Étape 1.2 | **Décidé le 23/11/2026 : rénovation et bâtiment** |
 | D4 | Seuils exacts de passage aux paliers 1 et 2 | Étape 2.1 | En attente |
 | D5 | Fournisseur de téléphonie et de SMS | Étape 3.5 | En attente |
-| D6 | Développer invitations et messagerie, ou les retirer de l'offre | Étape 3.1 | En attente |
-| D7 | Avenir de l'offre Starter (prix, support) | Étape 5.2 | En attente |
+| D6 | Invitations et messagerie | Étape 3.1 | **Décidé le 24/11/2026 : retirées de l'offre, annoncées « pas encore disponibles »** |
+| D7 | Grille tarifaire | Étape 5.2 | **Décidé le 24/11/2026 : offre unique à 39 € HT/mois ou 390 € HT/an, 100 SMS inclus** (à confirmer par les entretiens) |
 
 ---
 
@@ -245,6 +245,8 @@ estimé ≈ 87 300 € avec un dirigeant rémunéré → IS ≈ 17 600 €.
 | 23/11/2026 | Nom provisoire « Vecall » (« Venio » et « Callify » écartés) ; vecall.fr à réserver par l'associé | Associés |
 | 23/11/2026 | D3 : secteur de départ rénovation et bâtiment | Associés |
 | 24/11/2026 | Étape 1.2 validée : positionnement approuvé sans modification | Associés |
+| 24/11/2026 | Offre unique à 39 € HT/mois (390 € HT/an), 100 SMS inclus ; seuil ≈ 167 clients pour un dirigeant rémunéré | Associés |
+| 24/11/2026 | En ligne : mot de passe oublié, vérification email, page Tarifs conforme, CGV et pages légales ; étape 3.1 validée | Associés |
 
 ## 7. Journal du budget
 
