@@ -10,7 +10,7 @@ from .crm import DataverseGateway
 
 MOTS_CASE = ("moving", "move", "mover", "completed", "street", "postal", "city", "installation", "contract", "contrat",
              "case type", "category", "reason", "coverage", "interested")
-MOTS_WO = ("activity number", "type of work order", "template", "description", "timeband", "booked", "start date",
+MOTS_WO = ("duration", "durée", "duree", "minutes", "activity number", "type of work order", "template", "description", "timeband", "booked", "start date",
            "end date", "case", "account", "status", "mobile")
 MOTS_SMS = ("text", "message", "body", "mobile", "phone", "number", "regarding", "status")
 MOTS_TABLES = ("work order", "sms", "installation", "contract", "contrat", "work order product", "service code",
@@ -166,6 +166,31 @@ class Decouverte:
                     self.p(f"        {r.get('productid')}  « {r.get('name')} » ({r.get('productnumber') or ''})")
                 if not rows:
                     self.p("        aucun produit trouvé avec ce mot")
+
+        noms = [o.nom for o in g.cfg.work_order.options] or ["DOC", "DMP", "DF", "SAVE"]
+        self.p("\n[Produits complémentaires] (identifiant → work_order.options.produit_id)")
+        for nom in noms:
+            rows = g._get("products", "Produits", {"$select": "name,productnumber,price",
+                          "$filter": f"contains(name,'{nom.replace(chr(39), chr(39) * 2)}') and statecode eq 0", "$top": "15"}).get("value", [])
+            self.p(f"    « {nom} » :")
+            for r in rows:
+                self.p(f"        {r.get('productid')}  « {r.get('name')} » ({r.get('productnumber') or ''})  prix = {r.get('price')}")
+            if not rows:
+                self.p("        aucun produit trouvé")
+        self.p("\n[Produit — colonnes de prix]  → work_order.prix_attr / mensualite_attr")
+        rows = g._get("EntityDefinitions(LogicalName='product')/Attributes", "Champs produit",
+                      {"$select": "LogicalName,DisplayName,AttributeType"}).get("value", [])
+        for a in sorted(rows, key=lambda r: r["LogicalName"]):
+            if a.get("AttributeType") in ("Money", "Decimal") and not a["LogicalName"].endswith("_base"):
+                self.p(f"    {a['LogicalName']:<45} {a.get('AttributeType', ''):<8} « {_label(a)} »")
+
+        self.p("\n[SMS — services d'envoi et modèles]  → sms.liens (nom exact)")
+        for ent, attr in (("sa_smsservices", "sa_name"), ("log_smstemplates", "log_name")):
+            try:
+                for r in g._get(ent, ent, {"$select": attr, "$filter": "statecode eq 0", "$top": "30"}).get("value", []):
+                    self.p(f"    {ent:<18} « {r.get(attr)} »")
+            except Exception as ex:  # noqa: BLE001
+                self.p(f"    {ent} : non lisible ({ex})")
 
         self.p("\n[Actions CRM pouvant servir au booking]")
         try:

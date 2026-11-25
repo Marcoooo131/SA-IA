@@ -38,6 +38,7 @@ class Compte:
     nom: str
     mobile: str = ""
     mobiles: list[str] = field(default_factory=list)   # tous les numéros en 06/07 trouvés sur la fiche
+    composants: dict[str, str] = field(default_factory=dict)  # installation → matériel installé (« 2x Sirène, 1x DOC »)
     email: str = ""
     adresse: str = ""
     installations: list[Ref] = field(default_factory=list)
@@ -99,6 +100,8 @@ class Dossier:
     blocage: dict | None = None
     avertissements_acceptes: list[str] = field(default_factory=list)
     infos: dict[str, str] = field(default_factory=dict)   # durée, électricité, réseau, travaux, matériel (saisis au case)
+    agent: str = ""                                       # utilisateur CRM connecté (« Mover vendu par »)
+    options: dict[str, int] = field(default_factory=dict) # produits complémentaires ajoutés au WO : nom → quantité
 
     def vue(self) -> dict:
         d = asdict(self)

@@ -43,6 +43,10 @@ class Gateway(Protocol):
     def preparer_email(self, case_id: str) -> tuple[str, str]: ...
     def envoyer_email(self, case_id: str, compte: Compte, sujet: str, html: str) -> str: ...
     def ouvrir_fiche(self, entite: str, record_id: str) -> None: ...
+    def agent_nom(self) -> str: ...
+    def composants_installation(self, installation_id: str) -> str: ...
+    def prix_produit(self, produit_id: str) -> tuple[str, str]: ...
+    def duree_wo(self, wo_id: str) -> str: ...
 
 
 def _guid(v: str) -> str:
@@ -163,6 +167,11 @@ class DataverseGateway:
                    adresse=a.get("address1_composite") or "")
         c.installations = self._liste_liee(self.cfg.case.installation, c.id)
         c.contrats = self._liste_liee(self.cfg.case.contrat, c.id)
+        for inst in c.installations:
+            try:
+                c.composants[inst.id] = self.composants_installation(inst.id)
+            except CrmError:
+                c.composants[inst.id] = ""
         cases = self._get("incidents", "Cases du compte", {
             "$select": "incidentid,title,ticketnumber",
             "$filter": f"_customerid_value eq {c.id} and statecode eq 0"}).get("value", [])
@@ -371,8 +380,15 @@ class DataverseGateway:
         cle = ("nom", entity_set, nom)
         if cle not in self._formats:
             rows = self._get(entity_set, f"Fiche « {nom} »", {"$filter": f"{nom_attr} eq '{_q(nom)}' and statecode eq 0", "$top": "2"}).get("value", [])
+            if not rows:   # nom approchant, sinon la seule fiche active de la table
+                actives = self._get(entity_set, f"Fiches de {entity_set}", {"$select": nom_attr, "$filter": "statecode eq 0", "$top": "50"}).get("value", [])
+                proches = [r for r in actives if nom.lower() in (r.get(nom_attr) or "").lower()]
+                rows = proches if len(proches) == 1 else (actives if len(actives) == 1 else [])
+                if not rows:
+                    noms = ", ".join(f"« {r.get(nom_attr)} »" for r in actives[:10]) or "aucune fiche active"
+                    raise CrmError(f"« {nom} » introuvable dans {entity_set} (fiches actives : {noms}) : corrigez sms.liens.")
             if len(rows) != 1:
-                raise CrmError(f"« {nom} » {'introuvable' if not rows else 'en double'} dans {entity_set} : vérifiez sms.liens.")
+                raise CrmError(f"« {nom} » en double dans {entity_set} : vérifiez sms.liens.")
             pk = entity_set[:-1] + "id" if entity_set.endswith("s") else ""
             rid = rows[0].get(pk) or next((v for k, v in rows[0].items() if k.endswith("id") and isinstance(v, str) and _GUID.match(v)), "")
             self._formats[cle] = _guid(rid)
@@ -432,3 +448,53 @@ class DataverseGateway:
 
     def ouvrir_fiche(self, entite: str, record_id: str) -> None:
         self.t.ouvrir_fiche(entite, _guid(record_id))
+
+    # ---------------------------------------------------------------- lectures d'aide (description, email)
+    def agent_nom(self) -> str:
+        uid = self.whoami()
+        if not uid:
+            return ""
+        return self._get(f"systemusers({_guid(uid)})", "Utilisateur connecté", {"$select": "fullname"}).get("fullname", "")
+
+    def composants_installation(self, installation_id: str) -> str:
+        """Matériel posé sur l'installation (table des composants), regroupé : « 2x Sirène intérieure, 1x DOC »."""
+        k = self.cfg.case
+        cle = ("composants", k.composants_entite)
+        if cle not in self._formats:
+            rels = self._get(f"EntityDefinitions(LogicalName='{k.composants_entite}')/ManyToOneRelationships", "Liens des composants",
+                             {"$select": "ReferencingAttribute,ReferencedEntity"}).get("value", [])
+            inst = next((r["ReferencingAttribute"] for r in rels if r["ReferencedEntity"] == k.installation.set[:-1]), "")
+            prod = next((r["ReferencingAttribute"] for r in rels if r["ReferencedEntity"] == "product"), "")
+            self._formats[cle] = f"{inst}|{prod}"
+        inst, prod = self._formats[cle].split("|")
+        if not inst:
+            raise CrmError("Lien composant → installation introuvable.")
+        rows = self._get(k.composants_set, "Composants de l'installation",
+                         {"$filter": f"_{inst}_value eq {_guid(installation_id)} and statecode eq 0"}).get("value", [])
+        compte: dict[str, float] = {}
+        for r in rows:
+            nom = (r.get(f"_{prod}_value{FMT}") if prod else "") or r.get("log_name") or ""
+            qte = next((v for kk, v in r.items() if "quantit" in kk.lower() and isinstance(v, (int, float)) and "@" not in kk), 1) or 1
+            if nom:
+                compte[nom] = compte.get(nom, 0) + qte
+        return ", ".join(f"{int(q) if float(q).is_integer() else q}x {n}" for n, q in compte.items())
+
+    def prix_produit(self, produit_id: str) -> tuple[str, str]:
+        w = self.cfg.work_order
+        cols = [c for c in (w.prix_attr, w.mensualite_attr) if c]
+        if not cols:
+            return "", ""
+        r = self._get(f"products({_guid(produit_id)})", "Prix du produit", {"$select": ",".join(cols)})
+        f = lambda c: (r.get(f"{c}{FMT}") or (f"{r[c]:.2f} €".replace(".", ",") if isinstance(r.get(c), (int, float)) else "")) if c else ""  # noqa: E731
+        return f(w.prix_attr), f(w.mensualite_attr)
+
+    def duree_wo(self, wo_id: str) -> str:
+        """Durée d'intervention portée par le WO (colonne configurée, sinon première colonne « durée » renseignée)."""
+        w = self.cfg.work_order
+        r = self._get(self._wo_path(wo_id), "Durée du WO")
+        cles = [w.duree_attr] if w.duree_attr else [kk for kk in r if re.search(r"dur(ation|ee)", kk.lower()) and "@" not in kk]
+        for kk in cles:
+            v = r.get(kk)
+            if isinstance(v, (int, float)) and v > 0:
+                return str(int(v))
+        return ""

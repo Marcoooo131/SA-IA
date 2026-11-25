@@ -79,7 +79,8 @@ def create_app(a: Assistant, token: str) -> FastAPI:
 
     @app.post("/api/wo")
     def wo(b: dict = Body(...)):
-        a.completer_wo(b.get("description", ""), list(b.get("packs", [])), bool(b.get("produits_verifies")))
+        opts = {str(k): int(v) for k, v in (b.get("options") or {}).items() if str(v).isdigit()}
+        a.completer_wo(b.get("description", ""), list(b.get("packs", [])), bool(b.get("produits_verifies")), opts)
         return etat()
 
     @app.post("/api/creneaux")
