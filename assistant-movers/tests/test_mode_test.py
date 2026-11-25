@@ -46,6 +46,7 @@ def cfg_complete():
     c.case.installation = cfgmod.Lookup("new_installationid", "new_installations", "new_accountid", "new_name")
     c.work_order.entite, c.work_order.entity_set = "new_workorder", "new_workorders"
     c.sms.entity_set, c.sms.texte, c.sms.mobile, c.sms.regarding_nav = "new_smses", "new_text", "new_mobile", "regardingobjectid_incident_new_sms"
+    c.facturation.last_income_attr = ""   # couvert par test_parcours
     c.email.remplacements = {f"[{k.upper()}]": k for k in ("date", "debut", "fin", "duree", "electricite", "reseau", "travaux", "materiel")}
     return c
 
