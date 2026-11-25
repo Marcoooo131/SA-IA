@@ -155,3 +155,30 @@ def test_produit_par_numero_resolu(a):
     a.cfg.work_order.options.append(Pack(nom="5 DOC", numero="10607"))
     a._resoudre_produits()
     assert a.cfg.work_order.options[-1].produit_id == "demo-10607"
+
+
+def test_opportunite_qualifiee_avant_le_wo(a):
+    a.cfg.opportunite.methode = "win"
+    jusqu_au_booking(a)
+    assert a.d.opp_id and a.d.opp_gagnee and a.d.wo
+
+
+def test_opportunite_assistee_bloque_puis_reprend(a):
+    a.cfg.opportunite.methode = "assiste"
+    a.ouvrir_compte("10000001")
+    if a.d.etape == "compte":
+        a.accepter_avertissement()
+    a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", DATE, "", "", INFOS)
+    a.creer_case()
+    assert a.d.blocage and "opportunit" in a.d.blocage["message"]
+    a.reprendre_wo()
+    assert a.d.wo and not a.d.blocage
+
+
+def test_last_income_date_veille_de_la_prochaine_facture(a):
+    a.cfg.facturation.last_income_attr = "log_lastincomedate"
+    a.cfg.facturation.next_invoice_attr = "log_nextinvoicedate"
+    jusqu_au_booking(a)
+    a.reserver(a.d.creneaux[0].id)
+    assert a.d.last_income == (date.today() + timedelta(days=19)).isoformat()
+    assert a.gw.last_income.isoformat() == a.d.last_income

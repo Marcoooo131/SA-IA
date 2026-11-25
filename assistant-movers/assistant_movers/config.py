@@ -142,6 +142,29 @@ class EmailCfg:
 
 
 @dataclass
+class OpportuniteCfg:
+    """Qualification de l'opportunité créée par le CRM après le case (Sold Date, « Resolve Opp Won », Finish).
+    Sans `methode`, l'étape est sautée."""
+    methode: str = ""              # "" (rien), "win" (action WinOpportunity), "workflow" (processus à la demande), "assiste" (l'agent clique)
+    case_attrs: list = field(default_factory=lambda: ["log_relatedturnoveropportunity", "log_relatedtakeoveropportunity"])
+    date_vente_attr: str = ""      # « Sold Date » de l'opportunité
+    champs_fixes: dict = field(default_factory=dict)   # autres champs à écrire avant de gagner (nom logique → valeur)
+    statut_gagne: int = 3          # statuscode « Won »
+    workflow: str = ""             # nom exact du processus « Resolve Opp Won » si methode = "workflow"
+    attente_secondes: int = 60     # attente de l'opportunité après le case
+
+
+@dataclass
+class FacturationCfg:
+    """Après le booking : Last Income Date = Next Invoice Date − 1 jour, sur la fiche choisie (contrat ou installation)."""
+    source: str = "contrat"                    # "contrat" (contrat du case) ou "installation"
+    entite: str = "log_contract"
+    entity_set: str = "log_contracts"
+    next_invoice_attr: str = ""                # « Next Invoice Date »
+    last_income_attr: str = ""                 # « Last Income Date » ; vide = étape sautée
+
+
+@dataclass
 class Config:
     connexion: Connexion = field(default_factory=Connexion)
     mode_defaut: str = "test"              # "test" (aucune écriture) ou "supervise" (écritures validées une à une)
@@ -150,6 +173,8 @@ class Config:
     booking: BookingCfg = field(default_factory=BookingCfg)
     sms: SmsCfg = field(default_factory=SmsCfg)
     email: EmailCfg = field(default_factory=EmailCfg)
+    opportunite: OpportuniteCfg = field(default_factory=OpportuniteCfg)
+    facturation: FacturationCfg = field(default_factory=FacturationCfg)
     attente_wo_secondes: int = 90
     compte_champ_numero: str = "accountnumber"
     compte_champ_mobile: str = ""          # facultatif : colonne « Mobile Phone » du compte (sinon détection d'un 06/07)
@@ -160,7 +185,18 @@ class Config:
         m = []
         if not self.connexion.environment_url or "SERVEUR" in self.connexion.environment_url:
             m.append("connexion.environment_url")
-        return m + self.case.manquants() + self.work_order.manquants() + self.sms.manquants()
+        m += self.case.manquants() + self.work_order.manquants() + self.sms.manquants()
+        o = self.opportunite
+        if o.methode not in ("", "win", "workflow", "assiste"):
+            m.append("opportunite.methode")
+        if o.methode in ("win", "workflow") and not o.date_vente_attr:
+            m.append("opportunite.date_vente_attr")
+        if o.methode == "workflow" and not o.workflow:
+            m.append("opportunite.workflow")
+        f = self.facturation
+        if f.last_income_attr and not (f.next_invoice_attr and f.entity_set and f.source in ("contrat", "installation")):
+            m.append("facturation")
+        return m
 
 
 def _lookup(d: dict | None) -> Lookup:
@@ -189,6 +225,8 @@ def load(path: str | Path) -> Config:
     packs = [Pack(**p) for p in w.pop("packs", [])]
     options = [Pack(**p) for p in w.pop("options", [])]
     c.work_order = WorkOrderCfg(**w, packs=packs, options=options)
+    c.opportunite = OpportuniteCfg(**raw.get("opportunite", {}))
+    c.facturation = FacturationCfg(**raw.get("facturation", {}))
     c.booking = BookingCfg(**raw.get("booking", {}))
     c.sms = SmsCfg(**raw.get("sms", {}))
     e = raw.get("email", {})

@@ -192,6 +192,18 @@ des contrats. Ensuite :
 installation = { nav = "new_InstallationId", set = "new_installations", compte_attr = "new_accountid", nom_attr = "new_name" }
 ```
 
+## Étape 9 bis : l'opportunité (`[opportunite]`)
+
+Après le case, le CRM crée une opportunité. Le WO n'apparaît qu'une fois l'opportunité qualifiée : Sold Date = aujourd'hui, puis « Resolve Opp Won ». L'assistant le fait seul.
+
+- `date_vente_attr` : le nom de « Sold Date », dans la section **[Opportunité]** de la découverte.
+- `methode = "win"` utilise l'action standard du CRM. Si la découverte montre un processus « Resolve Opp Won » lançable (catégorie 0), mettez `methode = "workflow"` et son nom dans `workflow`.
+- En cas de doute : `methode = "assiste"`, l'assistant ouvre l'opportunité et vous cliquez.
+
+## Étape 9 ter : la Last Income Date (`[facturation]`)
+
+Après le booking, l'assistant met la Last Income Date du contrat à la veille de sa Next Invoice Date. Reportez les deux noms de champs depuis les sections **[log_contract — dates de facturation]** (ou `log_installation`, avec `source = "installation"`) de la découverte.
+
 ## Étape 10 : le Work Order (`[work_order]`)
 
 1. Bloc **`[Tables à repérer]`**, ligne « Work Order » : recopiez `entite` et `entity_set`.

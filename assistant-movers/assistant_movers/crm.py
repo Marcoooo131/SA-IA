@@ -10,7 +10,7 @@ s'arrête au lieu de deviner.
 from __future__ import annotations
 
 import re
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Protocol
 from zoneinfo import ZoneInfo
 
@@ -32,6 +32,10 @@ class Gateway(Protocol):
     def creer_case(self, compte: Compte, installation_id: str, contrat_id: str, adresse: NouvelleAdresse) -> tuple[str, str]: ...
     def terminer_move_out(self, case_id: str) -> None: ...
     def wo_du_case(self, case_id: str) -> WorkOrder | None: ...
+    def opp_du_case(self, case_id: str, compte_id: str) -> str: ...
+    def qualifier_opp(self, opp_id: str) -> None: ...
+    def next_invoice(self, record_id: str) -> date | None: ...
+    def maj_last_income(self, record_id: str, d: date) -> None: ...
     def lire_wo(self, wo_id: str) -> WorkOrder: ...
     def completer_wo(self, wo: WorkOrder, description: str) -> None: ...
     def ajouter_produit(self, wo: WorkOrder, pack: Pack) -> None: ...
@@ -265,6 +269,74 @@ class DataverseGateway:
 
     def terminer_move_out(self, case_id: str) -> None:
         self._patch(f"incidents({_guid(case_id)})", self.corps_move_out(), "Completed Move Out Info")
+
+    # ---------------------------------------------------------------- 6 bis opportunité
+    def opp_du_case(self, case_id: str, compte_id: str) -> str:
+        """Opportunité créée par le CRM pour ce case : lien sur le case, sinon la seule opportunité ouverte
+        du compte créée depuis moins d'une heure."""
+        o = self.cfg.opportunite
+        try:
+            c = self._get(f"incidents({_guid(case_id)})", "Opportunité du case",
+                          {"$select": ",".join(f"_{a}_value" for a in o.case_attrs)})
+            for a in o.case_attrs:
+                if c.get(f"_{a}_value"):
+                    return str(c[f"_{a}_value"]).lower()
+        except CrmError:
+            pass
+        depuis = (datetime.now(timezone.utc) - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        rows = self._get("opportunities", "Opportunités du compte", {"$select": "opportunityid,name",
+                         "$filter": f"_customerid_value eq {_guid(compte_id)} and statecode eq 0 and createdon ge {depuis}"}).get("value", [])
+        if len(rows) > 1:
+            raise CrmError("Plusieurs opportunités ouvertes récentes sur ce compte : qualifiez la bonne à la main.")
+        return rows[0]["opportunityid"].lower() if rows else ""
+
+    def corps_vente(self) -> dict:
+        o = self.cfg.opportunite
+        body = {o.date_vente_attr: self._valeur_date("opportunity", o.date_vente_attr, date.today())} if o.date_vente_attr else {}
+        body.update(o.champs_fixes)
+        return body
+
+    def corps_gagner(self, opp_id: str) -> tuple[str, dict]:
+        o = self.cfg.opportunite
+        if o.methode == "workflow":
+            wid = self._par_nom_workflow(o.workflow)
+            return f"workflows({wid})/Microsoft.Dynamics.CRM.ExecuteWorkflow", {"EntityId": _guid(opp_id)}
+        return "WinOpportunity", {"Status": o.statut_gagne, "OpportunityClose": {
+            "subject": "Movers - opportunité gagnée", "actualend": date.today().isoformat(),
+            "opportunityid@odata.bind": f"/opportunities({_guid(opp_id)})"}}
+
+    def _par_nom_workflow(self, nom: str) -> str:
+        rows = self._get("workflows", f"Processus « {nom} »", {"$select": "workflowid",
+                         "$filter": f"name eq '{_q(nom)}' and type eq 1 and statecode eq 1", "$top": "2"}).get("value", [])
+        if len(rows) != 1:
+            raise CrmError(f"Processus « {nom} » {'introuvable ou inactif' if not rows else 'en double'}.")
+        return rows[0]["workflowid"]
+
+    def qualifier_opp(self, opp_id: str) -> None:
+        corps = self.corps_vente()
+        if corps:
+            self._patch(f"opportunities({_guid(opp_id)})", corps, "Sold Date de l'opportunité")
+        chemin, body = self.corps_gagner(opp_id)
+        self._post(chemin, body, "Resolve Opp Won")
+        lu = self._get(f"opportunities({_guid(opp_id)})", "Relecture de l'opportunité", {"$select": "statecode"})
+        if lu.get("statecode") != 1:
+            raise CrmError("L'opportunité n'est pas passée en « Gagnée » : vérifiez la fiche.")
+
+    # ---------------------------------------------------------------- 11 bis facturation
+    def next_invoice(self, record_id: str) -> date | None:
+        f = self.cfg.facturation
+        v = self._get(f"{f.entity_set}({_guid(record_id)})", "Next Invoice Date", {"$select": f.next_invoice_attr}).get(f.next_invoice_attr)
+        if not v:
+            return None
+        return datetime.fromisoformat(v.replace("Z", "+00:00")).astimezone(PARIS).date() if "T" in v else date.fromisoformat(v[:10])
+
+    def corps_last_income(self, d: date) -> dict:
+        f = self.cfg.facturation
+        return {f.last_income_attr: self._valeur_date(f.entite, f.last_income_attr, d)}
+
+    def maj_last_income(self, record_id: str, d: date) -> None:
+        f = self.cfg.facturation
+        self._patch(f"{f.entity_set}({_guid(record_id)})", self.corps_last_income(d), "Last Income Date")
 
     # ---------------------------------------------------------------- 7-8 work order
     def _wo_select(self) -> str:

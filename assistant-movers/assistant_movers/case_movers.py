@@ -23,6 +23,24 @@ def creer(gw, dossier: Dossier) -> None:
     gw.terminer_move_out(dossier.case_id)
 
 
+def qualifier_opp(gw, dossier: Dossier, methode: str, secondes: int, pause: float = 3.0) -> None:
+    """Sold Date = aujourd'hui puis « Resolve Opp Won » sur l'opportunité créée par le CRM (sans Finish manuel)."""
+    fin = time.monotonic() + secondes
+    while not dossier.opp_id:
+        dossier.opp_id = gw.opp_du_case(dossier.case_id, dossier.compte.id)
+        if dossier.opp_id:
+            break
+        if time.monotonic() >= fin:
+            raise Blocage("Le CRM n'a pas encore créé l'opportunité du case.",
+                          action="Vérifiez le case ouvert dans Edge (étape Info, « Finish »), puis « Reprendre ».")
+        time.sleep(pause)
+    if methode == "assiste":
+        raise Blocage("Qualifiez l'opportunité ouverte dans Edge.",
+                      action="Sold Date = aujourd'hui, « Resolve Opp Won », puis « Finish » ; ensuite « Reprendre ».")
+    gw.qualifier_opp(dossier.opp_id)
+    dossier.opp_gagnee = True
+
+
 def attendre_wo(gw, dossier: Dossier, secondes: int, pause: float = 3.0) -> None:
     fin = time.monotonic() + secondes
     while True:
@@ -32,5 +50,7 @@ def attendre_wo(gw, dossier: Dossier, secondes: int, pause: float = 3.0) -> None
             return
         if time.monotonic() >= fin:
             raise Blocage("Le CRM n'a pas créé le Work Order Installation.",
-                          action="Dans la fiche du case ouverte dans Edge, vérifiez l'étape Info et cliquez « Finish », puis « Reprendre ».")
+                          action=("Dans la fiche ouverte dans Edge, terminez la qualification (« Finish ») si besoin, puis « Reprendre »."
+                                  if dossier.opp_id else
+                                  "Dans la fiche du case ouverte dans Edge, vérifiez l'étape Info et cliquez « Finish », puis « Reprendre »."))
         time.sleep(pause)

@@ -9,6 +9,8 @@ Règles :
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import re
 import threading
 from dataclasses import asdict
@@ -169,8 +171,24 @@ class Assistant:
             if not self.d.case_id:
                 m_case.creer(self.gw, self.d)
                 self._ok(f"Case {self.d.case_numero} créé, Moving Out renseigné, Completed Move Out Info = Yes.")
+            self._qualifier_opp()
             self._attendre_wo()
         self._run("Création du case", go)
+
+    def _qualifier_opp(self):
+        methode = self.cfg.opportunite.methode
+        if not methode or self.d.opp_gagnee:
+            return
+        rapide = self.demo or self.mode == "test"
+        try:
+            m_case.qualifier_opp(self.gw, self.d, methode, 4 if rapide else self.cfg.opportunite.attente_secondes, pause=1 if rapide else 3)
+        except Blocage:
+            if not self.demo and self.mode == "supervise":
+                self.gw.ouvrir_fiche("opportunity" if self.d.opp_id else "incident", self.d.opp_id or self.d.case_id)
+            if methode == "assiste" and self.d.opp_id:
+                self.d.opp_gagnee = True      # l'agent qualifie à la main ; « Reprendre » attend ensuite le WO
+            raise
+        self._ok("Opportunité qualifiée : Sold Date = aujourd'hui, « Resolve Opp Won ».")
 
     def _attendre_wo(self):
         try:
@@ -178,7 +196,7 @@ class Assistant:
             m_case.attendre_wo(self.gw, self.d, 4 if rapide else self.cfg.attente_wo_secondes, pause=1 if rapide else 3)
         except Blocage:
             if not self.demo and self.mode == "supervise":
-                self.gw.ouvrir_fiche("incident", self.d.case_id)
+                self.gw.ouvrir_fiche("opportunity" if self.d.opp_id else "incident", self.d.opp_id or self.d.case_id)
             raise
         self._ok(f"Work Order {self.d.wo.numero} créé par le CRM ({self.d.wo.type_nom or 'Installation'}).")
         self.d.etape = "wo"
@@ -191,6 +209,7 @@ class Assistant:
             if self.demo and self.mode == "supervise":
                 self.gw.simuler_finish(self.d.case_id)
                 self.journal.sim("Démo : « Finish » cliqué dans le CRM.")
+            self._qualifier_opp()
             self._attendre_wo()
         self._run("Recherche du Work Order", go)
 
@@ -277,9 +296,26 @@ class Assistant:
             self._booke()
         self._run("Vérification de la réservation", go)
 
+    def _last_income(self):
+        f = self.cfg.facturation
+        if not f.last_income_attr or self.d.last_income:
+            return
+        rid = self.d.contrat_id if f.source == "contrat" else self.d.installation_id
+        if not rid:
+            raise Blocage(f"Pas de {f.source} sur ce dossier : Last Income Date non renseignée.",
+                          action="Renseignez-la à la main (Next Invoice Date − 1 jour), puis « Vérifier ».")
+        prochaine = self.gw.next_invoice(rid)
+        if not prochaine:
+            raise Blocage("Next Invoice Date vide sur la fiche : Last Income Date non renseignée.",
+                          action="Renseignez-la à la main, puis « Vérifier ».")
+        self.gw.maj_last_income(rid, prochaine - timedelta(days=1))
+        self.d.last_income = (prochaine - timedelta(days=1)).isoformat()
+        self._ok(f"Last Income Date = {prochaine - timedelta(days=1):%d/%m/%Y} (Next Invoice Date {prochaine:%d/%m/%Y} − 1 jour).")
+
     def _booke(self):
         wo = self.d.wo
         self._ok(f"Rendez-vous réservé : {wo.debut:%d/%m/%Y} entre {wo.debut:%Hh%M} et {wo.fin:%Hh%M} ({wo.statut}).")
+        self._last_income()
         self.d.sms_texte = m_sms.texte(self.cfg, self.d)
         self.d.etape = "sms"
 
