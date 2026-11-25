@@ -16,6 +16,7 @@ attente_wo_secondes = 90             # délai max pour que le CRM crée le WO ap
 
 [compte]
 champ_numero = "accountnumber"       # colonne du numéro client (standard)
+champ_mobile = ""                    # facultatif : colonne « Mobile Phone » ; sinon 1er numéro en 06/07 de la fiche
 
 [case]
 titre = "Movers - Déménagement"
@@ -85,6 +86,8 @@ regarding_nav = ""                   # ex. regardingobjectid_incident_<table sms
 wo_attr = ""                         # facultatif : lien du SMS vers le WO (repère les SMS déjà envoyés par le CRM)
 modele = "Sector Alarm : votre rendez-vous de réinstallation est confirmé le {date} entre {debut} et {fin}. Le titulaire du contrat doit être présent."
 verifier_doublon = true
+# Fiches rattachées au SMS comme le fait le bouton SMS du CRM (service d'envoi, modèle), retrouvées par leur nom :
+# liens = [ { nav = "", set = "", nom_attr = "", nom = "" } ]
 [sms.envoi]                          # champs à passer après création si le CRM l'exige pour envoyer (ex. statuscode)
 
 [email]

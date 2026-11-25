@@ -21,6 +21,7 @@ PARIS = ZoneInfo("Europe/Paris")
 ANNOT = 'odata.include-annotations="*"'
 FMT = "@OData.Community.Display.V1.FormattedValue"
 _GUID = re.compile(r"^[0-9a-fA-F-]{36}$")
+_MOBILE = re.compile(r"^(?:0|\+33|0033)[67]\d{8}$")
 
 
 class Gateway(Protocol):
@@ -140,8 +141,12 @@ class DataverseGateway:
     # ---------------------------------------------------------------- 1-3 compte
     def chercher_compte(self, numero: str) -> Compte:
         champ = self.cfg.compte_champ_numero
+        mob = self.cfg.compte_champ_mobile
+        cols = ["accountid", "name", champ, "telephone1", "telephone2", "telephone3", "emailaddress1", "address1_composite"]
+        if mob and mob not in cols:
+            cols.append(mob)
         rows = self._get("accounts", "Recherche du compte", {
-            "$select": f"accountid,name,{champ},telephone1,emailaddress1,address1_composite",
+            "$select": ",".join(cols),
             "$filter": f"{champ} eq '{_q(numero)}' and statecode eq 0",
             "$expand": "primarycontactid($select=contactid,fullname,mobilephone,emailaddress1)",
             "$top": "3"}).get("value", [])
@@ -151,8 +156,10 @@ class DataverseGateway:
             raise CrmError(f"Plusieurs comptes actifs avec le numéro {numero} : vérifiez dans le CRM.")
         a = rows[0]
         contact = a.get("primarycontactid") or {}
-        c = Compte(id=a["accountid"].lower(), numero=a.get(champ, numero), nom=a.get("name", ""),
-                   mobile=contact.get("mobilephone") or a.get("telephone1") or "",
+        candidats = [a.get(mob) if mob else None, contact.get("mobilephone"), a.get("telephone1"), a.get("telephone2"), a.get("telephone3")]
+        candidats = [x.strip() for x in candidats if x and x.strip()]
+        mobile = next((x for x in candidats if _MOBILE.match(re.sub(r"[\s.-]", "", x))), candidats[0] if candidats else "")
+        c = Compte(id=a["accountid"].lower(), numero=a.get(champ, numero), nom=a.get("name", ""), mobile=mobile,
                    email=contact.get("emailaddress1") or a.get("emailaddress1") or "",
                    adresse=a.get("address1_composite") or "")
         c.installations = self._liste_liee(self.cfg.case.installation, c.id)
@@ -333,8 +340,23 @@ class DataverseGateway:
         if manque:
             raise CrmError("Configuration : " + ", ".join(manque) + " manquant.")
         cible = case_id if case_id.startswith("sim-") else _guid(case_id)
-        return s.entity_set, {s.texte: texte, s.mobile: mobile, s.sujet: "Confirmation rendez-vous Movers",
-                              f"{s.regarding_nav}@odata.bind": f"/incidents({cible})"}
+        corps = {s.texte: texte, s.mobile: mobile, s.sujet: "Confirmation rendez-vous Movers",
+                 f"{s.regarding_nav}@odata.bind": f"/incidents({cible})"}
+        for lien in s.liens:
+            corps[f"{lien['nav']}@odata.bind"] = f"/{lien['set']}({self._par_nom(lien['set'], lien['nom_attr'], lien['nom'])})"
+        return s.entity_set, corps
+
+    def _par_nom(self, entity_set: str, nom_attr: str, nom: str) -> str:
+        """Identifiant d'une fiche active retrouvée par son nom exact (lecture seule, gardé pour la session)."""
+        cle = ("nom", entity_set, nom)
+        if cle not in self._formats:
+            rows = self._get(entity_set, f"Fiche « {nom} »", {"$filter": f"{nom_attr} eq '{_q(nom)}' and statecode eq 0", "$top": "2"}).get("value", [])
+            if len(rows) != 1:
+                raise CrmError(f"« {nom} » {'introuvable' if not rows else 'en double'} dans {entity_set} : vérifiez sms.liens.")
+            pk = entity_set[:-1] + "id" if entity_set.endswith("s") else ""
+            rid = rows[0].get(pk) or next((v for k, v in rows[0].items() if k.endswith("id") and isinstance(v, str) and _GUID.match(v)), "")
+            self._formats[cle] = _guid(rid)
+        return self._formats[cle]
 
     def envoyer_sms(self, case_id, mobile, texte) -> str:
         s = self.cfg.sms

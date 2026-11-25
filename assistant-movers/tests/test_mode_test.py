@@ -13,6 +13,7 @@ DEMO = Path(__file__).parents[1] / "assistant_movers" / "demo.toml"
 DATE = (date.today() + timedelta(days=10)).isoformat()
 ACC = "44444444-4444-4444-4444-444444444444"
 INST = "55555555-5555-5555-5555-555555555555"
+INFOS = {"duree": "120", "electricite": "oui", "reseau": "GSM", "travaux": "", "materiel": "1x DOC"}
 
 
 class LectureSeule:
@@ -51,7 +52,7 @@ def test_parcours_test_sans_aucune_ecriture():
     a = Assistant(cfg_complete(), DataverseGateway(cfg_complete(), t), demo=False, mode="test")
     a.ouvrir_compte("10031562")
     assert a.d.etape == "adresse" and a.d.installation_id == INST
-    a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", DATE, "", "")
+    a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", DATE, "", "", INFOS)
     a.creer_case()
     assert a.d.etape == "wo" and a.d.case_numero == "CAS-TEST", a.d.blocage
     a.completer_wo(a.description_proposee(), [], True)
@@ -70,15 +71,18 @@ def test_parcours_test_sans_aucune_ecriture():
     assert a.compte_rendu().startswith("MODE TEST")
 
 
-def test_mode_test_email_refuse_si_zone_non_configuree():
+def test_zones_remplies_par_libelle_sans_config_et_zone_inconnue_bloque():
     cfg = cfg_complete()
     cfg.email.remplacements = {}
     a = Assistant(cfg, DataverseGateway(cfg, LectureSeule()), demo=False, mode="test")
     a.ouvrir_compte("10031562")
-    a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", DATE, "", "")
+    a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", DATE, "", "", INFOS)
     a.creer_case(); a.completer_wo("desc", [], True); a.reserver(a.d.creneaux[0].id); a.envoyer_sms(a.d.sms_texte)
-    a.preparer_email({})
-    assert "[DATE]" in a.etat()["email_zones"]
+    assert a.etat()["email_zones"] == []
+    assert "120" in a.d.email_html and "GSM" in a.d.email_html and f"{a.d.wo.debut:%d/%m/%Y}" in a.d.email_html
+    a.sim.preparer_email = lambda case_id: ("S", '<p>Code porte : <span style="background-color:yellow">XXXX</span></p>')
+    a.preparer_email()
+    assert a.etat()["email_zones"] == ["XXXX"]
     a.envoyer_email()
     assert a.d.etape == "email" and a.d.blocage
 
@@ -88,7 +92,7 @@ def test_mode_test_signale_le_champ_manquant():
     cfg.case.champs["new_street"] = ""
     a = Assistant(cfg, DataverseGateway(cfg, LectureSeule()), demo=False, mode="test")
     a.ouvrir_compte("10031562")
-    a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", DATE, "", "")
+    a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", DATE, "", "", INFOS)
     a.creer_case()
     assert "case.champs.new_street" in a.d.blocage["message"]
 

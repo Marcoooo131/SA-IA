@@ -97,20 +97,29 @@ function vCompte() {
 }
 const kvCompte = (c) => kv([["Client", `${c.numero} — ${c.nom}`], ["Mobile", c.mobile], ["Email", c.email], ["Adresse actuelle", c.adresse]]);
 
+const CLES = ["duree", "electricite", "reseau", "travaux", "materiel"];
+const fi = (k, lab, ph) => `<div><label>${lab}</label><input data-m="e_${k}" placeholder="${esc(ph)}"></div>`;
+const infos = () => Object.fromEntries(CLES.map((k) => [k, mem["e_" + k] || ""]));
+
 function vAdresse(d) {
   const c = d.compte;
   const sel = (id, list, cur, lab) => list.length > 1
-    ? `<label>${lab}</label><select data-m="${id}"><option value="">— choisir —</option>${list.map((x) => `<option value="${esc(x.id)}" ${x.id === cur ? "selected" : ""}>${esc(x.nom)}</option>`).join("")}</select>`
-    : (list.length ? `<label>${lab}</label><input value="${esc(list[0].nom)}" disabled>` : "");
+    ? `<div><label>${lab}</label><select data-m="${id}"><option value="">— choisir —</option>${list.map((x) => `<option value="${esc(x.id)}" ${x.id === cur ? "selected" : ""}>${esc(x.nom)}</option>`).join("")}</select></div>`
+    : (list.length ? `<div><label>${lab}</label><input value="${esc(list[0].nom)}" disabled></div>` : "");
   $("#view").innerHTML = `<h2>Nouvelle adresse</h2><p class="lead">Là où le client emmène son alarme.</p>${kvCompte(c)}
     <div class="row">${sel("installation_id", c.installations, d.installation_id, "Installation qui déménage")}${sel("contrat_id", c.contrats, d.contrat_id, "Contrat")}</div>
     <label>Rue (numéro et voie)</label><input data-m="rue" autocomplete="off">
     <div class="row"><div><label>Code postal</label><input data-m="cp" inputmode="numeric" maxlength="5"></div>
     <div><label>Ville</label><input data-m="ville"></div>
     <div><label>Date de déménagement</label><input type="date" data-m="date"></div></div>
-    <div class="actions"><button class="primary" id="go">Valider l'adresse</button></div>`;
+    <div class="box"><b>Infos de l'intervention</b> <span class="muted small">— elles remplissent l'email récapitulatif (et le matériel, la description du WO)</span>
+    <div class="row">${fi("duree", "Durée (minutes)", "ex. 120")}
+      <div><label>Électricité sur place</label><select data-m="e_electricite"><option value="">— choisir —</option><option>oui</option><option>non</option></select></div>
+      <div><label>Réseau</label><select data-m="e_reseau"><option value="">— choisir —</option><option>GSM</option><option>Wifi</option><option>GSM / Wifi</option></select></div></div>
+    <div class="row">${fi("travaux", "Travaux prévus", "Pas de travaux")}${fi("materiel", "Matériel à réinstaller", "ex. 1x DOC, 2x sirène intérieure")}</div></div>
+    <div class="actions"><button class="primary" id="go">Valider l'adresse et les infos</button></div>`;
   $("#go").onclick = () => act("/api/adresse", {rue: mem.rue, cp: mem.cp, ville: mem.ville, date: mem.date,
-    installation_id: mem.installation_id || "", contrat_id: mem.contrat_id || ""}, "Contrôle…");
+    installation_id: mem.installation_id || "", contrat_id: mem.contrat_id || "", infos: infos()}, "Contrôle…");
 }
 
 function vCase(d) {
@@ -171,17 +180,16 @@ function vSms(d) {
 }
 
 function vEmail(d) {
-  const f = (k, lab, ph) => `<div><label>${lab}</label><input data-m="e_${k}" placeholder="${esc(ph)}"></div>`;
-  $("#view").innerHTML = `<h2>Email récapitulatif</h2><p class="lead">Modèle CRM, envoyé depuis la file Movers. Date et tranche reprises du WO.</p>
-    <div class="row">${f("duree", "Durée (minutes)", "ex. 120")}${f("electricite", "Électricité sur place", "oui / non")}${f("reseau", "Réseau", "GSM / Wifi")}</div>
-    <div class="row">${f("travaux", "Travaux prévus", "ex. Pas de travaux")}${f("materiel", "Matériel à réinstaller", "ex. 1x DOC, 2x sirène")}</div>
-    <div class="actions"><button class="dark" id="prep">Préparer l'email</button>
+  for (const k of CLES) if (mem["e_" + k] === undefined && d.infos[k]) mem["e_" + k] = d.infos[k];
+  $("#view").innerHTML = `<h2>Email récapitulatif</h2><p class="lead">Modèle CRM rempli avec le rendez-vous et les infos saisies au case. Corrigez si besoin, relisez, envoyez.</p>
+    <div class="row">${fi("duree", "Durée (minutes)", "")}${fi("electricite", "Électricité sur place", "")}${fi("reseau", "Réseau", "")}</div>
+    <div class="row">${fi("travaux", "Travaux prévus", "")}${fi("materiel", "Matériel à réinstaller", "")}</div>
+    <div class="actions"><button class="dark" id="prep">Mettre à jour l'aperçu</button>
     <button class="primary" id="go" ${d.email_html && !S.email_zones.length ? "" : "disabled"}>${L("Envoyer l'email", "Tester l'envoi de l'email (rien ne part)")}</button></div>
-    ${d.email_html ? `${S.email_zones.length ? `<div class="alert warn" style="margin-top:14px"><b>Encore surligné</b>${esc(S.email_zones.join(" · "))}</div>` : ""}
+    ${d.email_html ? `${S.email_zones.length ? `<div class="alert warn" style="margin-top:14px"><b>Encore surligné dans le modèle</b>${esc(S.email_zones.join(" · "))}</div>` : ""}
       <p class="muted" style="margin-top:14px">Objet : <b>${esc(d.email_sujet)}</b></p><iframe sandbox="" id="prev"></iframe>` : ""}`;
   if ($("#prev")) $("#prev").srcdoc = d.email_html;
-  const vals = () => Object.fromEntries(["duree", "electricite", "reseau", "travaux", "materiel"].map((k) => [k, mem["e_" + k] || ""]));
-  $("#prep").onclick = () => act("/api/email/preparer", vals(), "Préparation de l'email…");
+  $("#prep").onclick = () => act("/api/email/preparer", infos(), "Mise à jour de l'email…");
   $("#go").onclick = () => act("/api/email/envoyer", {}, "Envoi de l'email…");
 }
 

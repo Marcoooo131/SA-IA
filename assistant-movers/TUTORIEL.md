@@ -242,7 +242,9 @@ produit_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 
 ## Étape 12 : l'email (`[email.remplacements]`)
 
-Ces valeurs se relèvent **dans l'assistant**, en mode Test (étape 14) :
+L'assistant remplit seul les zones surlignées du modèle d'après leur libellé (jour, créneau, durée, électricité,
+réseau, travaux, matériel), avec le rendez-vous et les **infos saisies au case** (étape Nouvelle adresse). Cette
+section ne sert que si une zone n'est pas reconnue : elle s'affiche alors à l'étape Email, en mode Test :
 
 1. Allez jusqu'à l'étape **Email** sur un dossier et cliquez **Préparer l'email**.
 2. Le cadre jaune **« Encore surligné »** liste les zones surlignées du vrai modèle, par exemple `23/12/2026 · 8h30 · oui`.

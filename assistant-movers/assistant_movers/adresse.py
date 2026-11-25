@@ -27,3 +27,20 @@ def valider_adresse(rue: str, code_postal: str, ville: str, date_demenagement: s
     if erreurs:
         raise Blocage("À corriger : " + ", ".join(erreurs) + ".", reprise=False)
     return NouvelleAdresse(rue, cp, ville, d)
+
+
+INFOS = {"duree": "durée de l'intervention", "electricite": "électricité sur place", "reseau": "réseau",
+         "travaux": "travaux prévus", "materiel": "matériel à réinstaller"}
+
+
+def valider_infos(infos: dict[str, str]) -> dict[str, str]:
+    """Infos de l'intervention, saisies avec la nouvelle adresse : elles remplissent l'email (et le matériel, le WO)."""
+    v = {k: (infos.get(k) or "").strip() for k in INFOS}
+    if not v["travaux"]:
+        v["travaux"] = "Pas de travaux"
+    manque = [lib for k, lib in INFOS.items() if not v[k]]
+    if manque:
+        raise Blocage("À compléter : " + ", ".join(manque) + ".", reprise=False)
+    if not re.fullmatch(r"\d{1,3}", v["duree"]):
+        raise Blocage("Durée de l'intervention : un nombre de minutes (ex. 120).", reprise=False)
+    return v

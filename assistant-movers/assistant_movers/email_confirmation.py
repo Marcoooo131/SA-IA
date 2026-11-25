@@ -25,14 +25,38 @@ def valeurs(dossier: Dossier, saisies: dict[str, str]) -> dict[str, str]:
     return v
 
 
+# Libellé lu juste avant une zone surlignée → clé de la valeur. Le plus proche de la zone l'emporte.
+LIBELLES = [("date", r"jour|date|le\s*$"), ("debut", r"entre\s*$|arriv\w*\s*(du technicien)?\s*:?\s*(entre)?\s*$"),
+            ("fin", r"\bet\s*$|\bà\s*$"), ("duree", r"dur[ée]e"), ("electricite", r"[ée]lectricit[ée]"),
+            ("reseau", r"r[ée]seau|gsm|wifi"), ("travaux", r"travaux"), ("materiel", r"mat[ée]riel")]
+
+
+def _texte(h: str) -> str:
+    return _html.unescape(re.sub(r"<[^>]+>", " ", h))
+
+
+def cle_par_libelle(avant: str) -> str:
+    """Devine la valeur attendue d'après le texte qui précède la zone (dernière ligne / 80 caractères)."""
+    t = re.split(r"[\n\r]|<br|</p|</li", avant)[-1] if avant else ""
+    t = _texte(t)[-80:].lower()
+    best, pos = "", -1
+    for cle, motif in LIBELLES:
+        for m in re.finditer(motif, t):
+            if m.end() > pos:
+                best, pos = cle, m.end()
+    return best
+
+
 def remplir(cfg: Config, html: str, vals: dict[str, str]) -> str:
-    def remplace(m):
-        brut = re.sub(r"<[^>]+>", "", m.group(1)).strip()
-        cle = cfg.email.remplacements.get(brut)
-        if cle and vals.get(cle):
-            return _html.escape(vals[cle])          # surlignage retiré : la zone est remplie
-        return m.group(0)
-    return _SURLIGNE.sub(remplace, html)
+    out, last = [], 0
+    for m in _SURLIGNE.finditer(html):
+        brut = _texte(m.group(1)).strip()
+        cle = cfg.email.remplacements.get(brut) or cle_par_libelle(html[max(0, m.start() - 400):m.start()])
+        out.append(html[last:m.start()])
+        out.append(_html.escape(vals[cle]) if cle and vals.get(cle) else m.group(0))   # zone remplie : surlignage retiré
+        last = m.end()
+    out.append(html[last:])
+    return "".join(out)
 
 
 def preparer(gw, cfg: Config, dossier: Dossier, saisies: dict[str, str]) -> None:
