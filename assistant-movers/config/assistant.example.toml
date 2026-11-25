@@ -45,6 +45,15 @@ moving_out_date = ""
 [case.fixes]                         # autres champs fixes du case : nom logique = valeur (ex. Case Type Takeover)
 # casetypecode = 100000003
 
+[opportunite]
+# Après le case, le CRM crée une opportunité qu'il faut qualifier pour obtenir le WO :
+# Sold Date = aujourd'hui, puis « Resolve Opp Won ». Laisser methode = "" pour sauter l'étape.
+methode = "win"                 # "win" (action standard WinOpportunity), "workflow" (processus à la demande), "assiste" (l'agent clique)
+date_vente_attr = "log_solddate"   # « Sold Date » : à confirmer avec 3-decouvrir (section [Opportunité])
+statut_gagne = 3                # statuscode « Won »
+# workflow = "Resolve Opp Won"  # nom exact du processus si methode = "workflow"
+attente_secondes = 60
+
 [work_order]
 entite = ""                          # nom logique de la table Work Order
 entity_set = ""

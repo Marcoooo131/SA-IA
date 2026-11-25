@@ -169,8 +169,24 @@ class Assistant:
             if not self.d.case_id:
                 m_case.creer(self.gw, self.d)
                 self._ok(f"Case {self.d.case_numero} créé, Moving Out renseigné, Completed Move Out Info = Yes.")
+            self._qualifier_opp()
             self._attendre_wo()
         self._run("Création du case", go)
+
+    def _qualifier_opp(self):
+        methode = self.cfg.opportunite.methode
+        if not methode or self.d.opp_gagnee:
+            return
+        rapide = self.demo or self.mode == "test"
+        try:
+            m_case.qualifier_opp(self.gw, self.d, methode, 4 if rapide else self.cfg.opportunite.attente_secondes, pause=1 if rapide else 3)
+        except Blocage:
+            if not self.demo and self.mode == "supervise":
+                self.gw.ouvrir_fiche("opportunity" if self.d.opp_id else "incident", self.d.opp_id or self.d.case_id)
+            if methode == "assiste" and self.d.opp_id:
+                self.d.opp_gagnee = True      # l'agent qualifie à la main ; « Reprendre » attend ensuite le WO
+            raise
+        self._ok("Opportunité qualifiée : Sold Date = aujourd'hui, « Resolve Opp Won ».")
 
     def _attendre_wo(self):
         try:
@@ -178,7 +194,7 @@ class Assistant:
             m_case.attendre_wo(self.gw, self.d, 4 if rapide else self.cfg.attente_wo_secondes, pause=1 if rapide else 3)
         except Blocage:
             if not self.demo and self.mode == "supervise":
-                self.gw.ouvrir_fiche("incident", self.d.case_id)
+                self.gw.ouvrir_fiche("opportunity" if self.d.opp_id else "incident", self.d.opp_id or self.d.case_id)
             raise
         self._ok(f"Work Order {self.d.wo.numero} créé par le CRM ({self.d.wo.type_nom or 'Installation'}).")
         self.d.etape = "wo"
@@ -191,6 +207,7 @@ class Assistant:
             if self.demo and self.mode == "supervise":
                 self.gw.simuler_finish(self.d.case_id)
                 self.journal.sim("Démo : « Finish » cliqué dans le CRM.")
+            self._qualifier_opp()
             self._attendre_wo()
         self._run("Recherche du Work Order", go)
 

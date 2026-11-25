@@ -54,6 +54,18 @@ class SimulationGateway:
     def terminer_move_out(self, case_id):
         self._note("Completed Move Out Info", "PATCH", f"incidents({case_id})", self._corps("corps_move_out") or {"completed_move_out": "Yes"})
 
+    def opp_du_case(self, case_id, compte_id):
+        return "sim-opp"
+
+    def qualifier_opp(self, opp_id):
+        corps = self._corps("corps_vente")
+        if corps is not None:
+            self._note("Sold Date de l'opportunité", "PATCH", f"opportunities({opp_id})", corps)
+            chemin, body = self.reel.corps_gagner("00000000-0000-0000-0000-000000000000")
+            self._note("Resolve Opp Won", "POST", chemin, body)
+        else:
+            self._note("Opportunité", "PATCH+POST", f"opportunities({opp_id})", {"sold_date": "aujourd'hui", "resolve": "Won"})
+
     def wo_du_case(self, case_id):
         if not self.wo:
             self.wo = WorkOrder(id="sim-wo", numero="FR-TEST", type_nom="Installation (fictif)", statut="Open (test)")

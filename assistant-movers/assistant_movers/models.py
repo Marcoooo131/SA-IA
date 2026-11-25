@@ -90,6 +90,8 @@ class Dossier:
     adresse: NouvelleAdresse | None = None
     case_id: str = ""
     case_numero: str = ""
+    opp_id: str = ""
+    opp_gagnee: bool = False
     wo: WorkOrder | None = None
     creneaux: list[Creneau] = field(default_factory=list)
     sms_texte: str = ""

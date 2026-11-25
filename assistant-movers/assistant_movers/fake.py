@@ -85,6 +85,12 @@ class FakeCrm:
         if not self.cases[case_id]["wo"]:
             self._creer_wo(case_id)
 
+    def opp_du_case(self, case_id, compte_id):
+        return f"opp-{case_id[:8]}"
+
+    def qualifier_opp(self, opp_id):
+        self.writes += 1
+
     def wo_du_case(self, case_id):
         wid = self.cases[case_id]["wo"]
         return self.wos[wid] if wid else None

@@ -192,6 +192,24 @@ class Decouverte:
             except Exception as ex:  # noqa: BLE001
                 self.p(f"    {ent} : non lisible ({ex})")
 
+        self.p("\n[Opportunité (opportunity) — Sold Date, statut]  → [opportunite]")
+        try:
+            self._attributs("opportunity", ("sold", "vente", "vendu", "won", "gagn", "resolve", "statuscode", "qualif"))
+        except Exception as ex:  # noqa: BLE001
+            self.p(f"    non lisible ({ex})")
+        self.p("\n[Processus « Resolve Opp Won »]  → opportunite.workflow (catégorie : 0 = workflow lançable, 1 = dialogue, 3 = action)")
+        try:
+            wfs = g._get("workflows", "Processus", {"$select": "name,category,ondemand,primaryentity",
+                         "$filter": "type eq 1 and statecode eq 1"}).get("value", [])
+            hits = [w for w in wfs if (w.get("primaryentity") == "opportunity" or "opp" in _n(w.get("name", "")))
+                    and any(m in _n(w.get("name", "")) for m in ("resolve", "won", "win", "gagn", "qualif", "sold", "vente"))]
+            for w in hits:
+                self.p(f"    « {w.get('name')} »  catégorie {w.get('category')}  à la demande = {w.get('ondemand')}  ({w.get('primaryentity')})")
+            if not hits:
+                self.p("    aucun processus trouvé : methode = \"win\" (action standard) ou \"assiste\".")
+        except Exception as ex:  # noqa: BLE001
+            self.p(f"    liste non lisible ({ex})")
+
         self.p("\n[Actions CRM pouvant servir au booking]")
         try:
             acts = g._get("workflows", "Actions", {"$select": "name,uniquename", "$filter": "category eq 3 and type eq 1"}).get("value", [])
@@ -280,6 +298,18 @@ class Verification:
                 self._champ(wa, "work_order", cle, getattr(w, cle), requis=False)
             if w.template_nav:
                 self.p(w.template_nav in self._navs(w.entite), f"work_order.template_nav = {w.template_nav}")
+        o = cfg.opportunite
+        if o.methode:
+            self.titre("[opportunite]")
+            self.p(o.methode in ("win", "workflow", "assiste"), f"opportunite.methode = {o.methode}")
+            if o.date_vente_attr:
+                self._champ(self._attrs("opportunity"), "opportunite", "date_vente_attr", o.date_vente_attr)
+            if o.methode == "workflow":
+                try:
+                    self.gw._par_nom_workflow(o.workflow)
+                    self.p(True, f"opportunite.workflow = {o.workflow}")
+                except Exception as e:  # noqa: BLE001
+                    self.p(False, f"opportunite.workflow = {o.workflow}", str(e))
         if w.produits_set:
             self.p(w.produits_set in sets, f"work_order.produits_set = {w.produits_set}")
         for pk in list(w.packs) + list(w.options):
