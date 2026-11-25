@@ -97,6 +97,7 @@ class Dossier:
     email_envoye: bool = False
     blocage: dict | None = None
     avertissements_acceptes: list[str] = field(default_factory=list)
+    infos: dict[str, str] = field(default_factory=dict)   # durée, électricité, réseau, travaux, matériel (saisis au case)
 
     def vue(self) -> dict:
         d = asdict(self)

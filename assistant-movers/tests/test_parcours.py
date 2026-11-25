@@ -9,6 +9,7 @@ from assistant_movers.parcours import Assistant
 
 DEMO = Path(__file__).parents[1] / "assistant_movers" / "demo.toml"
 DATE = (date.today() + timedelta(days=10)).isoformat()
+INFOS = {"duree": "120", "electricite": "oui", "reseau": "GSM", "travaux": "", "materiel": "1x DOC"}
 
 
 @pytest.fixture
@@ -20,7 +21,7 @@ def jusqu_au_booking(a, numero="10000001"):
     a.ouvrir_compte(numero)
     if a.d.etape == "compte":
         a.accepter_avertissement()
-    a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", DATE, "", "")
+    a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", DATE, "", "", INFOS)
     a.creer_case()
     if a.d.etape == "case":
         a.reprendre_wo()
@@ -59,13 +60,13 @@ def test_avertissement_case_deja_ouvert_arrete(a):
 
 def test_adresse_invalide(a):
     a.ouvrir_compte("10000001")
-    a.saisir_adresse("x", "690", "", "2020-01-01", "", "")
+    a.saisir_adresse("x", "690", "", "2020-01-01", "", "", INFOS)
     assert a.d.etape == "adresse" and "code postal" in a.d.blocage["message"]
 
 
 def test_wo_non_cree_demande_finish(a):
     a.ouvrir_compte("10000004")
-    a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", DATE, "", "")
+    a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", DATE, "", "", INFOS)
     a.creer_case()
     assert a.d.etape == "case" and "Finish" in a.d.blocage["action"]
     writes = a.gw.writes
@@ -100,10 +101,18 @@ def test_email_champ_manquant_refuse(a):
     jusqu_au_booking(a)
     a.reserver(a.d.creneaux[0].id)
     a.envoyer_sms(a.d.sms_texte)
-    a.preparer_email({"duree": "120"})
+    assert a.etat()["email_zones"] == []          # préparé tout seul avec les infos du case
+    a.d.infos["electricite"] = ""
+    a.preparer_email()
     assert "[ELECTRICITE]" in a.etat()["email_zones"]
     a.envoyer_email()
     assert not a.d.email_envoye and a.d.blocage
+
+
+def test_infos_obligatoires_au_case(a):
+    a.ouvrir_compte("10000001")
+    a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", DATE, "", "", {"duree": "120"})
+    assert a.d.etape == "adresse" and "électricité" in a.d.blocage["message"]
 
 
 def test_etape_dans_le_desordre(a):

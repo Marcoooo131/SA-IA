@@ -10,6 +10,7 @@ from assistant_movers.parcours import Assistant
 from assistant_movers.transport import Response
 
 EX = Path(__file__).parents[1] / "config" / "assistant.example.toml"
+INFOS = {"duree": "120", "electricite": "oui", "reseau": "GSM", "travaux": "", "materiel": "1x DOC"}
 
 
 def test_exemple_bloque_les_ecritures():
@@ -17,7 +18,7 @@ def test_exemple_bloque_les_ecritures():
     assert "connexion.environment_url" in cfg.manquants() and "case.champs.moving_out_or_in" in cfg.manquants()
     a = Assistant(cfg, FakeCrm(), demo=False, mode="supervise")
     a.ouvrir_compte("10000001")
-    a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", date.today().isoformat(), "", "")
+    a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", date.today().isoformat(), "", "", INFOS)
     a.creer_case()
     assert "configuration incomplète" in a.d.blocage["message"] and a.gw.writes == 0
 

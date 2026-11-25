@@ -132,10 +132,11 @@ class Assistant:
         self._run("Avertissement", go)
 
     # ------------------------------------------------------------------ 4
-    def saisir_adresse(self, rue, cp, ville, date_dem, installation_id, contrat_id):
+    def saisir_adresse(self, rue, cp, ville, date_dem, installation_id, contrat_id, infos: dict | None = None):
         def go():
             self._exiger("adresse")
             self.d.adresse = m_adresse.valider_adresse(rue, cp, ville, date_dem)
+            self.d.infos = m_adresse.valider_infos(infos or {})
             ids_inst = {i.id for i in self.d.compte.installations}
             if installation_id:
                 if ids_inst and installation_id not in ids_inst:
@@ -189,7 +190,7 @@ class Assistant:
 
     # ------------------------------------------------------------------ 8
     def description_proposee(self) -> str:
-        return m_wo.description(self.cfg, self.d) if self.d.adresse else ""
+        return m_wo.description(self.cfg, self.d, materiel=self.d.infos.get("materiel", "")) if self.d.adresse else ""
 
     def completer_wo(self, texte: str, packs: list[str], produits_verifies: bool):
         def go():
@@ -252,13 +253,18 @@ class Assistant:
             etat = m_sms.envoyer(self.gw, self.cfg, self.d, texte, forcer)
             self._ok(f"SMS envoyé ({etat}).")
             self.d.etape = "email"
+            m_email.preparer(self.gw, self.cfg, self.d, self.d.infos)
+            restes = m_email.zones_surlignees(self.d.email_html)
+            self.journal.info("Email préparé avec les infos saisies au case" + (f" — {len(restes)} zone(s) encore surlignée(s)." if restes else "."))
         self._run("SMS", go)
 
     # ------------------------------------------------------------------ 13
-    def preparer_email(self, saisies: dict[str, str]):
+    def preparer_email(self, saisies: dict[str, str] | None = None):
         def go():
             self._exiger("email")
-            m_email.preparer(self.gw, self.cfg, self.d, saisies)
+            if saisies:   # corrections éventuelles de l'agent à l'étape Email
+                self.d.infos.update({k: v.strip() for k, v in saisies.items() if v and v.strip()})
+            m_email.preparer(self.gw, self.cfg, self.d, self.d.infos)
             restes = m_email.zones_surlignees(self.d.email_html)
             self.journal.info("Email préparé depuis le modèle CRM" + (f" — {len(restes)} champ(s) encore surligné(s)." if restes else "."))
         self._run("Préparation de l'email", go)

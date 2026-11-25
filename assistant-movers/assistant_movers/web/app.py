@@ -63,7 +63,8 @@ def create_app(a: Assistant, token: str) -> FastAPI:
     @app.post("/api/adresse")
     def adresse(b: dict = Body(...)):
         a.saisir_adresse(b.get("rue", ""), b.get("cp", ""), b.get("ville", ""), b.get("date", ""),
-                         b.get("installation_id", ""), b.get("contrat_id", ""))
+                         b.get("installation_id", ""), b.get("contrat_id", ""),
+                         {k: str(v) for k, v in (b.get("infos") or {}).items()})
         return etat()
 
     @app.post("/api/case")
