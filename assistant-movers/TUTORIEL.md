@@ -231,6 +231,7 @@ produit_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 ```
 
 > Sans `produit_id`, le pack reste proposé, mais l'agent ajoute le produit à la main et coche « Produits vérifiés ».
+> Plus simple : `numero = "19230"` (numéro produit du catalogue) à la place de `produit_id`, l'assistant retrouve l'identifiant tout seul. Valable aussi pour `[[work_order.options]]` (DOC, DMP, DF, SAVE…).
 
 ## Étape 11 : le SMS (`[sms]`)
 

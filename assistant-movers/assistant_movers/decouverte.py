@@ -282,8 +282,14 @@ class Verification:
                 self.p(w.template_nav in self._navs(w.entite), f"work_order.template_nav = {w.template_nav}")
         if w.produits_set:
             self.p(w.produits_set in sets, f"work_order.produits_set = {w.produits_set}")
-        for pk in w.packs:
-            if pk.produit_id:
+        for pk in list(w.packs) + list(w.options):
+            if pk.numero and not pk.produit_id:
+                try:
+                    self.gw.produit_par_numero(pk.numero)
+                    self.p(True, f"produit « {pk.nom} » (n° {pk.numero})")
+                except Exception as e:  # noqa: BLE001
+                    self.p(False, f"produit « {pk.nom} » (n° {pk.numero})", str(e))
+            elif pk.produit_id:
                 try:
                     self.gw._get(f"products({pk.produit_id})", "Produit", {"$select": "name"})
                     self.p(True, f"pack « {pk.nom} »")

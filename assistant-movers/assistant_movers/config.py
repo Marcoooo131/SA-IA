@@ -61,6 +61,7 @@ class CaseCfg:
 class Pack:
     nom: str
     produit_id: str = ""
+    numero: str = ""               # facultatif : numéro produit du catalogue (ex. 19230), traduit en identifiant au lancement
     nav: str = ""                  # facultatif : lien produit propre au pack (ex. produit matériel ou produit de contrat)
     prix: str = ""                 # facultatif : prix catalogue affiché (sinon lu sur le produit)
     mensualite: str = ""           # facultatif : mensualité affichée (sinon lue sur le produit)

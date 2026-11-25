@@ -148,3 +148,10 @@ def test_choix_du_mobile_a_l_etape_sms(a):
     assert not a.d.sms_envoye and "invalide" in a.d.blocage["message"]
     a.envoyer_sms(a.d.sms_texte, mobile="07 11 22 33 44")
     assert a.d.sms_envoye and a.d.compte.mobile == "07 11 22 33 44"
+
+
+def test_produit_par_numero_resolu(a):
+    from assistant_movers.config import Pack
+    a.cfg.work_order.options.append(Pack(nom="5 DOC", numero="10607"))
+    a._resoudre_produits()
+    assert a.cfg.work_order.options[-1].produit_id == "demo-10607"
