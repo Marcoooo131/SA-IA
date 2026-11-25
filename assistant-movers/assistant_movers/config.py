@@ -112,6 +112,8 @@ class SmsCfg:
     regarding_nav: str = ""        # ex. regardingobjectid_incident_<entité sms>
     wo_attr: str = ""              # facultatif : lien du SMS vers le WO (contrôle de doublon des SMS envoyés par le CRM)
     envoi: dict[str, int | str] = field(default_factory=dict)  # champs à passer après création pour déclencher l'envoi
+    # Fiches à rattacher au SMS, retrouvées par leur nom (ex. service d'envoi « Sector Alarm », modèle « Booking Confirmation »)
+    liens: list[dict] = field(default_factory=list)
     modele: str = ("Sector Alarm : votre rendez-vous de réinstallation est confirmé le {date} "
                    "entre {debut} et {fin}. Le titulaire du contrat doit être présent.")
     verifier_doublon: bool = True
@@ -141,6 +143,7 @@ class Config:
     email: EmailCfg = field(default_factory=EmailCfg)
     attente_wo_secondes: int = 90
     compte_champ_numero: str = "accountnumber"
+    compte_champ_mobile: str = ""          # facultatif : colonne « Mobile Phone » du compte (sinon détection d'un 06/07)
 
     def manquants(self) -> list[str]:
         if self.connexion.kind == "fake":
@@ -164,6 +167,7 @@ def load(path: str | Path) -> Config:
     c.mode_defaut = a.get("mode_defaut", c.mode_defaut)
     c.attente_wo_secondes = int(a.get("attente_wo_secondes", c.attente_wo_secondes))
     c.compte_champ_numero = raw.get("compte", {}).get("champ_numero", c.compte_champ_numero)
+    c.compte_champ_mobile = raw.get("compte", {}).get("champ_mobile", "")
     k = raw.get("case", {})
     c.case = CaseCfg(titre=k.get("titre", c.case.titre), client_nav=k.get("client_nav", c.case.client_nav),
                      installation=_lookup(k.get("installation")), contrat=_lookup(k.get("contrat")),

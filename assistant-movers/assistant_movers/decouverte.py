@@ -127,6 +127,21 @@ class Decouverte:
                 self.p(f"[{lab} ({logical}) — liens]")
                 self._relations(logical)
 
+        self.p("\n[Compte (account) — téléphones]  → compte.champ_mobile")
+        rows = g._get("EntityDefinitions(LogicalName='account')/Attributes", "Champs du compte",
+                      {"$select": "LogicalName,DisplayName,AttributeType"}).get("value", [])
+        for a in sorted(rows, key=lambda r: r["LogicalName"]):
+            lab = _label(a)
+            if a.get("AttributeType") == "String" and any(m in _n(lab) for m in ("phone", "mobile", "portable")):
+                self.p(f"    {a['LogicalName']:<45} « {lab} »")
+
+        for lien in g.cfg.sms.liens:
+            try:
+                g._par_nom(lien["set"], lien["nom_attr"], lien["nom"])
+                self.p(f"    SMS : « {lien['nom']} » trouvé dans {lien['set']}")
+            except Exception as ex:  # noqa: BLE001
+                self.p(f"    SMS : {ex}")
+
         e = g.cfg.email
         self.p("\n[Email]")
         t = g._get("templates", "Modèles", {"$select": "title", "$filter": f"title eq '{e.modele.replace(chr(39), chr(39) * 2)}'"}).get("value", [])
