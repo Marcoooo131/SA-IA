@@ -24,6 +24,8 @@ client_nav = "customerid_account"
 # de la table qui pointe vers le compte, nom_attr = colonne à afficher.
 installation = { nav = "", set = "", compte_attr = "", nom_attr = "" }
 contrat = { nav = "", set = "", compte_attr = "", nom_attr = "" }
+# Si le code postal du case est une fiche (lien) et non un texte : la table et sa colonne « code ».
+# code_postal = { nav = "", set = "", nom_attr = "" }
 
 [case.champs]                        # section « Case (incident) — champs Movers » du rapport
 moving_out_or_in = ""                # « Moving Out Or Moving In ? »
@@ -36,7 +38,8 @@ moving_out_date = ""
 
 [case.valeurs]                       # valeurs numériques relevées par `decouvrir` (ligne « valeurs : »)
 # moving_out_or_in_out = 100000001   # valeur de « Out »
-# oui = true                         # champs Oui/Non : true
+# oui = true                         # « Completed Move Out Info » : true si Oui/Non, sinon le nombre de « Yes »
+# interesse_oui = true               # « Moving Out interested in Installation » : idem
 
 [case.fixes]                         # autres champs fixes du case : nom logique = valeur (ex. Case Type Takeover)
 # casetypecode = 100000003
@@ -67,6 +70,7 @@ produit_nav = ""
 # [[work_order.packs]]               # packs proposés à l'agent (identifiant produit relevé dans le CRM)
 # nom = "Pack Sérénité Home SAS"
 # produit_id = ""
+# nav = ""                           # facultatif : lien produit propre à ce pack (sinon produit_nav)
 
 [booking]
 methode = "assiste"                  # l'agent clique « Get appointments » dans la fiche ouverte par l'assistant
@@ -78,6 +82,7 @@ texte = ""
 mobile = ""
 sujet = "subject"
 regarding_nav = ""                   # ex. regardingobjectid_incident_<table sms>
+wo_attr = ""                         # facultatif : lien du SMS vers le WO (repère les SMS déjà envoyés par le CRM)
 modele = "Sector Alarm : votre rendez-vous de réinstallation est confirmé le {date} entre {debut} et {fin}. Le titulaire du contrat doit être présent."
 verifier_doublon = true
 [sms.envoi]                          # champs à passer après création si le CRM l'exige pour envoyer (ex. statuscode)

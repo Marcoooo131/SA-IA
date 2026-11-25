@@ -49,7 +49,7 @@ class T:
 def cfg_complete():
     c = cfgmod.load(EX)
     c.case.champs = {k: f"new_{k}" for k in c.case.REQUIS}
-    c.case.valeurs = {"moving_out_or_in_out": 100000001, "oui": True}
+    c.case.valeurs = {"moving_out_or_in_out": 100000001, "oui": True, "interesse_oui": True}
     c.case.installation = cfgmod.Lookup("new_installationid", "new_installations")
     return c
 
@@ -59,11 +59,11 @@ def test_creation_case_corps_web_api():
     gw = DataverseGateway(cfg_complete(), t)
     cid, num = gw.creer_case(Compte(id="44444444-4444-4444-4444-444444444444", numero="1", nom="X"),
                              "55555555-5555-5555-5555-555555555555", "", NouvelleAdresse("8 av", "69003", "LYON", date(2026, 12, 1)))
-    _, path, body = t.calls[0]
+    _, path, body = next(c for c in t.calls if c[0] == "POST")
     assert cid.startswith("1111") and num == "CAS-1"
     assert body["customerid_account@odata.bind"] == "/accounts(44444444-4444-4444-4444-444444444444)"
     assert body["new_installationid@odata.bind"] == "/new_installations(55555555-5555-5555-5555-555555555555)"
-    assert body["new_moving_out_or_in"] == 100000001 and body["new_moving_out_date"] == "2026-12-01"
+    assert body["new_moving_out_or_in"] == 100000001 and body["new_moving_out_date"] == "2026-12-01T11:00:00Z"
 
 
 def test_email_depuis_la_file_movers():
@@ -75,3 +75,26 @@ def test_email_depuis_la_file_movers():
     parties = post[2]["email_activity_parties"]
     assert parties[0] == {"partyid_queue@odata.bind": "/queues(22222222-2222-2222-2222-222222222222)", "participationtypemask": 1}
     assert any(c[1].endswith("Microsoft.Dynamics.CRM.SendEmail") for c in t.calls) and etat == "Pending Send"
+
+
+class Meta(T):
+    """Champ date seule + code postal en table."""
+
+    def request(self, method, path, *, params=None, json=None, headers=None):
+        if "DateTimeAttributeMetadata" in path:
+            return Response(200, {"DateTimeBehavior": {"Value": "DateOnly"}}, {})
+        if path == "log_postcodes":
+            return Response(200, {"value": [{"log_postcodeid": "66666666-6666-6666-6666-666666666666", "log_name": "69003"}]}, {})
+        return super().request(method, path, params=params, json=json, headers=headers)
+
+
+def test_date_seule_et_code_postal_en_table():
+    cfg = cfg_complete()
+    cfg.case.code_postal = cfgmod.Lookup("log_PostalCode", "log_postcodes", "", "log_name")
+    t = Meta()
+    DataverseGateway(cfg, t).creer_case(Compte(id="44444444-4444-4444-4444-444444444444", numero="1", nom="X"), "",
+                                        "", NouvelleAdresse("8 av", "69003", "LYON", date(2026, 12, 1)))
+    body = next(c for c in t.calls if c[0] == "POST")[2]
+    assert body["new_moving_out_date"] == "2026-12-01"
+    assert body["log_PostalCode@odata.bind"] == "/log_postcodes(66666666-6666-6666-6666-666666666666)"
+    assert "new_new_postcode" not in body

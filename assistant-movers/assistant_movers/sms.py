@@ -24,7 +24,7 @@ def envoyer(gw, cfg: Config, dossier: Dossier, message: str, forcer: bool = Fals
     if jour not in message:
         raise Blocage(f"Le SMS ne contient pas la date réservée ({jour}).", reprise=False)
     if cfg.sms.verifier_doublon and not forcer:
-        deja = [t for t in gw.sms_du_case(dossier.case_id) if jour in t]
+        deja = [t for t in gw.sms_du_case(dossier.case_id, dossier.wo.id) if jour in t]
         if deja:
             raise Blocage("Un SMS mentionnant cette date existe déjà sur le case.",
                           action="Vérifiez les activités du case. « Envoyer quand même » seulement si le client ne l'a pas reçu.")
