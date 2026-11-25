@@ -34,6 +34,8 @@ class Gateway(Protocol):
     def wo_du_case(self, case_id: str) -> WorkOrder | None: ...
     def opp_du_case(self, case_id: str, compte_id: str) -> str: ...
     def qualifier_opp(self, opp_id: str) -> None: ...
+    def next_invoice(self, record_id: str) -> date | None: ...
+    def maj_last_income(self, record_id: str, d: date) -> None: ...
     def lire_wo(self, wo_id: str) -> WorkOrder: ...
     def completer_wo(self, wo: WorkOrder, description: str) -> None: ...
     def ajouter_produit(self, wo: WorkOrder, pack: Pack) -> None: ...
@@ -319,6 +321,22 @@ class DataverseGateway:
         lu = self._get(f"opportunities({_guid(opp_id)})", "Relecture de l'opportunité", {"$select": "statecode"})
         if lu.get("statecode") != 1:
             raise CrmError("L'opportunité n'est pas passée en « Gagnée » : vérifiez la fiche.")
+
+    # ---------------------------------------------------------------- 11 bis facturation
+    def next_invoice(self, record_id: str) -> date | None:
+        f = self.cfg.facturation
+        v = self._get(f"{f.entity_set}({_guid(record_id)})", "Next Invoice Date", {"$select": f.next_invoice_attr}).get(f.next_invoice_attr)
+        if not v:
+            return None
+        return datetime.fromisoformat(v.replace("Z", "+00:00")).astimezone(PARIS).date() if "T" in v else date.fromisoformat(v[:10])
+
+    def corps_last_income(self, d: date) -> dict:
+        f = self.cfg.facturation
+        return {f.last_income_attr: self._valeur_date(f.entite, f.last_income_attr, d)}
+
+    def maj_last_income(self, record_id: str, d: date) -> None:
+        f = self.cfg.facturation
+        self._patch(f"{f.entity_set}({_guid(record_id)})", self.corps_last_income(d), "Last Income Date")
 
     # ---------------------------------------------------------------- 7-8 work order
     def _wo_select(self) -> str:

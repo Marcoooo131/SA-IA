@@ -54,6 +54,14 @@ statut_gagne = 3                # statuscode « Won »
 # workflow = "Resolve Opp Won"  # nom exact du processus si methode = "workflow"
 attente_secondes = 60
 
+[facturation]
+# Après le booking : Last Income Date = Next Invoice Date − 1 jour. Laisser last_income_attr = "" pour sauter l'étape.
+source = "contrat"                       # fiche à modifier : "contrat" (contrat du case) ou "installation"
+entite = "log_contract"
+entity_set = "log_contracts"
+next_invoice_attr = "log_nextinvoicedate"   # « Next Invoice Date » : à confirmer avec 3-decouvrir
+last_income_attr = "log_lastincomedate"     # « Last Income Date » : à confirmer avec 3-decouvrir
+
 [work_order]
 entite = ""                          # nom logique de la table Work Order
 entity_set = ""

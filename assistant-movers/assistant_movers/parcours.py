@@ -9,6 +9,8 @@ Règles :
 
 from __future__ import annotations
 
+from datetime import timedelta
+
 import re
 import threading
 from dataclasses import asdict
@@ -294,9 +296,26 @@ class Assistant:
             self._booke()
         self._run("Vérification de la réservation", go)
 
+    def _last_income(self):
+        f = self.cfg.facturation
+        if not f.last_income_attr or self.d.last_income:
+            return
+        rid = self.d.contrat_id if f.source == "contrat" else self.d.installation_id
+        if not rid:
+            raise Blocage(f"Pas de {f.source} sur ce dossier : Last Income Date non renseignée.",
+                          action="Renseignez-la à la main (Next Invoice Date − 1 jour), puis « Vérifier ».")
+        prochaine = self.gw.next_invoice(rid)
+        if not prochaine:
+            raise Blocage("Next Invoice Date vide sur la fiche : Last Income Date non renseignée.",
+                          action="Renseignez-la à la main, puis « Vérifier ».")
+        self.gw.maj_last_income(rid, prochaine - timedelta(days=1))
+        self.d.last_income = (prochaine - timedelta(days=1)).isoformat()
+        self._ok(f"Last Income Date = {prochaine - timedelta(days=1):%d/%m/%Y} (Next Invoice Date {prochaine:%d/%m/%Y} − 1 jour).")
+
     def _booke(self):
         wo = self.d.wo
         self._ok(f"Rendez-vous réservé : {wo.debut:%d/%m/%Y} entre {wo.debut:%Hh%M} et {wo.fin:%Hh%M} ({wo.statut}).")
+        self._last_income()
         self.d.sms_texte = m_sms.texte(self.cfg, self.d)
         self.d.etape = "sms"
 

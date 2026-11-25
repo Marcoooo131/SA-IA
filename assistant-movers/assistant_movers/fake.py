@@ -91,6 +91,14 @@ class FakeCrm:
     def qualifier_opp(self, opp_id):
         self.writes += 1
 
+    def next_invoice(self, record_id):
+        from datetime import date, timedelta
+        return date.today() + timedelta(days=20)
+
+    def maj_last_income(self, record_id, d):
+        self.last_income = d
+        self.writes += 1
+
     def wo_du_case(self, case_id):
         wid = self.cases[case_id]["wo"]
         return self.wos[wid] if wid else None

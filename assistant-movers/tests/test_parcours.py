@@ -173,3 +173,12 @@ def test_opportunite_assistee_bloque_puis_reprend(a):
     assert a.d.blocage and "opportunit" in a.d.blocage["message"]
     a.reprendre_wo()
     assert a.d.wo and not a.d.blocage
+
+
+def test_last_income_date_veille_de_la_prochaine_facture(a):
+    a.cfg.facturation.last_income_attr = "log_lastincomedate"
+    a.cfg.facturation.next_invoice_attr = "log_nextinvoicedate"
+    jusqu_au_booking(a)
+    a.reserver(a.d.creneaux[0].id)
+    assert a.d.last_income == (date.today() + timedelta(days=19)).isoformat()
+    assert a.gw.last_income.isoformat() == a.d.last_income

@@ -66,6 +66,14 @@ class SimulationGateway:
         else:
             self._note("Opportunité", "PATCH+POST", f"opportunities({opp_id})", {"sold_date": "aujourd'hui", "resolve": "Won"})
 
+    def next_invoice(self, record_id):
+        return self.reel.next_invoice(record_id)
+
+    def maj_last_income(self, record_id, d):
+        f = getattr(self.reel, "cfg", None)
+        chemin = f"{f.facturation.entity_set}({record_id})" if f else f"contrat({record_id})"
+        self._note("Last Income Date", "PATCH", chemin, self._corps("corps_last_income", d) or {"last_income_date": d.isoformat()})
+
     def wo_du_case(self, case_id):
         if not self.wo:
             self.wo = WorkOrder(id="sim-wo", numero="FR-TEST", type_nom="Installation (fictif)", statut="Open (test)")

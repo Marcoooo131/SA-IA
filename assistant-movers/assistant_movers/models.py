@@ -92,6 +92,7 @@ class Dossier:
     case_numero: str = ""
     opp_id: str = ""
     opp_gagnee: bool = False
+    last_income: str = ""
     wo: WorkOrder | None = None
     creneaux: list[Creneau] = field(default_factory=list)
     sms_texte: str = ""

@@ -155,6 +155,16 @@ class OpportuniteCfg:
 
 
 @dataclass
+class FacturationCfg:
+    """Après le booking : Last Income Date = Next Invoice Date − 1 jour, sur la fiche choisie (contrat ou installation)."""
+    source: str = "contrat"                    # "contrat" (contrat du case) ou "installation"
+    entite: str = "log_contract"
+    entity_set: str = "log_contracts"
+    next_invoice_attr: str = ""                # « Next Invoice Date »
+    last_income_attr: str = ""                 # « Last Income Date » ; vide = étape sautée
+
+
+@dataclass
 class Config:
     connexion: Connexion = field(default_factory=Connexion)
     mode_defaut: str = "test"              # "test" (aucune écriture) ou "supervise" (écritures validées une à une)
@@ -164,6 +174,7 @@ class Config:
     sms: SmsCfg = field(default_factory=SmsCfg)
     email: EmailCfg = field(default_factory=EmailCfg)
     opportunite: OpportuniteCfg = field(default_factory=OpportuniteCfg)
+    facturation: FacturationCfg = field(default_factory=FacturationCfg)
     attente_wo_secondes: int = 90
     compte_champ_numero: str = "accountnumber"
     compte_champ_mobile: str = ""          # facultatif : colonne « Mobile Phone » du compte (sinon détection d'un 06/07)
@@ -182,6 +193,9 @@ class Config:
             m.append("opportunite.date_vente_attr")
         if o.methode == "workflow" and not o.workflow:
             m.append("opportunite.workflow")
+        f = self.facturation
+        if f.last_income_attr and not (f.next_invoice_attr and f.entity_set and f.source in ("contrat", "installation")):
+            m.append("facturation")
         return m
 
 
@@ -212,6 +226,7 @@ def load(path: str | Path) -> Config:
     options = [Pack(**p) for p in w.pop("options", [])]
     c.work_order = WorkOrderCfg(**w, packs=packs, options=options)
     c.opportunite = OpportuniteCfg(**raw.get("opportunite", {}))
+    c.facturation = FacturationCfg(**raw.get("facturation", {}))
     c.booking = BookingCfg(**raw.get("booking", {}))
     c.sms = SmsCfg(**raw.get("sms", {}))
     e = raw.get("email", {})

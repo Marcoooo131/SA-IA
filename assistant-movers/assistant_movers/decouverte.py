@@ -197,6 +197,12 @@ class Decouverte:
             self._attributs("opportunity", ("sold", "vente", "vendu", "won", "gagn", "resolve", "statuscode", "qualif"))
         except Exception as ex:  # noqa: BLE001
             self.p(f"    non lisible ({ex})")
+        for ent in ("log_contract", "log_installation"):
+            self.p(f"\n[{ent} — dates de facturation]  → [facturation]")
+            try:
+                self._attributs(ent, ("invoice", "income", "factur", "revenu"))
+            except Exception as ex:  # noqa: BLE001
+                self.p(f"    non lisible ({ex})")
         self.p("\n[Processus « Resolve Opp Won »]  → opportunite.workflow (catégorie : 0 = workflow lançable, 1 = dialogue, 3 = action)")
         try:
             wfs = g._get("workflows", "Processus", {"$select": "name,category,ondemand,primaryentity",
@@ -298,6 +304,12 @@ class Verification:
                 self._champ(wa, "work_order", cle, getattr(w, cle), requis=False)
             if w.template_nav:
                 self.p(w.template_nav in self._navs(w.entite), f"work_order.template_nav = {w.template_nav}")
+        f = cfg.facturation
+        if f.last_income_attr:
+            self.titre("[facturation]")
+            fa = self._attrs(f.entite)
+            self._champ(fa, "facturation", "next_invoice_attr", f.next_invoice_attr)
+            self._champ(fa, "facturation", "last_income_attr", f.last_income_attr)
         o = cfg.opportunite
         if o.methode:
             self.titre("[opportunite]")
