@@ -169,9 +169,15 @@ class Decouverte:
 
         noms = [o.nom for o in g.cfg.work_order.options] or ["DOC", "DMP", "DF", "SAVE"]
         self.p("\n[Produits complémentaires] (identifiant → work_order.options.produit_id)")
+        synonymes = {"DOC": ["DOC", "ouverture"], "DMP": ["DMP", "mouvement", "PIR", "Pircam"], "DF": ["DF", "fumée", "fumee", "smoke"],
+                     "SAVE": ["SAVE", "Voice"]}
         for nom in noms:
+            mots = synonymes.get(nom.upper(), [nom])
+            flt = " or ".join(f"contains(name,'{m.replace(chr(39), chr(39) * 2)}')" for m in mots)
             rows = g._get("products", "Produits", {"$select": "name,productnumber,price",
-                          "$filter": f"contains(name,'{nom.replace(chr(39), chr(39) * 2)}') and statecode eq 0", "$top": "15"}).get("value", [])
+                          "$filter": f"({flt}) and statecode eq 0", "$top": "25"}).get("value", [])
+            rows = [r for r in rows if not (r.get("name") or "").lower().startswith("pack")] + \
+                   [r for r in rows if (r.get("name") or "").lower().startswith("pack")]
             self.p(f"    « {nom} » :")
             for r in rows:
                 self.p(f"        {r.get('productid')}  « {r.get('name')} » ({r.get('productnumber') or ''})  prix = {r.get('price')}")
