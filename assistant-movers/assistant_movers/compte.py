@@ -26,7 +26,7 @@ def avertissements(compte: Compte) -> list[str]:
     if compte.wo_ouverts:
         a.append("Work Order déjà ouvert : " + ", ".join(r.nom for r in compte.wo_ouverts))
     if not compte.mobile:
-        a.append("Aucun mobile sur le compte : le SMS ne pourra pas partir.")
+        a.append("Aucun mobile en 06/07 trouvé sur la fiche : vous pourrez saisir le numéro à l'étape SMS.")
     if not compte.email:
         a.append("Aucun email sur le compte : l'email de confirmation ne pourra pas partir.")
     return a

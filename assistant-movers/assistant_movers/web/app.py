@@ -103,7 +103,7 @@ def create_app(a: Assistant, token: str) -> FastAPI:
 
     @app.post("/api/sms")
     def sms(b: dict = Body(...)):
-        a.envoyer_sms(str(b.get("texte", "")), bool(b.get("forcer")))
+        a.envoyer_sms(str(b.get("texte", "")), bool(b.get("forcer")), str(b.get("mobile", "")))
         return etat()
 
     @app.post("/api/email/preparer")

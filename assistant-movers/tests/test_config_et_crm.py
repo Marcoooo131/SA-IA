@@ -110,6 +110,10 @@ class Annuaire(T):
             return Response(200, {"value": [{"sa_smsserviceid": "77777777-7777-7777-7777-777777777777"}]}, {})
         if method == "GET" and path == "log_smstemplates":
             return Response(200, {"value": [{"log_smstemplateid": "88888888-8888-8888-8888-888888888888"}]}, {})
+        if method == "GET" and path == "accounts(44444444-4444-4444-4444-444444444444)":
+            return Response(200, {"accountid": "44444444-4444-4444-4444-444444444444", "telephone1": "02 99 00 00 00",
+                                  "log_mobilephone2": "0620134709", "log_mobilephone": "06 71 95 11 00",
+                                  "log_workphone": "+33 7 11 22 33 44", "emailaddress1": "x@y.fr"}, {})
         if method == "GET" and path in ("incidents", "log_installations", "log_contracts"):
             return Response(200, {"value": []}, {})
         return super().request(method, path, params=params, json=json, headers=headers)
@@ -117,7 +121,8 @@ class Annuaire(T):
 
 def test_mobile_prefere_un_06_07():
     c = DataverseGateway(cfg_complete(), Annuaire()).chercher_compte("1")
-    assert c.mobile == "06 71 95 11 00"
+    assert c.mobile == "06 71 95 11 00"                       # « Mobile Phone » d'abord
+    assert c.mobiles == ["06 71 95 11 00", "0620134709", "+33 7 11 22 33 44"]   # puis Mobile Phone 2, puis les autres 06/07
 
 
 def test_sms_rattache_service_et_modele():

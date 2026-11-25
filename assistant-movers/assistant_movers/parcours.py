@@ -9,6 +9,7 @@ Règles :
 
 from __future__ import annotations
 
+import re
 import threading
 from dataclasses import asdict
 
@@ -246,10 +247,14 @@ class Assistant:
         return m_booking.message_no_cap(self.d, dispos)
 
     # ------------------------------------------------------------------ 12
-    def envoyer_sms(self, texte: str, forcer: bool = False):
+    def envoyer_sms(self, texte: str, forcer: bool = False, mobile: str = ""):
         def go():
             self._exiger("sms")
             self._ecriture_permise()
+            if mobile:
+                if re.sub(r"[\s.\-]", "", mobile) and not re.fullmatch(r"(?:0|\+33)[67]\d{8}", re.sub(r"[\s.\-]", "", mobile)):
+                    raise Blocage("Numéro de mobile invalide (06 ou 07, 10 chiffres).", reprise=False)
+                self.d.compte.mobile = mobile.strip()
             etat = m_sms.envoyer(self.gw, self.cfg, self.d, texte, forcer)
             self._ok(f"SMS envoyé ({etat}).")
             self.d.etape = "email"

@@ -28,6 +28,9 @@ class LectureSeule:
         if path == "accounts":
             return Response(200, {"value": [{"accountid": ACC, "name": "CLIENT TEST", "accountnumber": "10031562",
                                              "telephone1": "0612345678", "emailaddress1": "c@exemple.fr"}]}, {})
+        if path == f"accounts({ACC})":
+            return Response(200, {"accountid": ACC, "name": "CLIENT TEST", "telephone1": "02 99 00 00 00",
+                                  "sa_mobilephone": "06 71 95 11 00", "sa_mobilephone2": "06 20 13 47 09"}, {})
         if path == "new_installations":
             return Response(200, {"value": [{"new_installationid": INST, "new_name": "Installation SAS"}]}, {})
         if path == "queues":

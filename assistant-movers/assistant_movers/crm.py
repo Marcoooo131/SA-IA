@@ -156,10 +156,9 @@ class DataverseGateway:
             raise CrmError(f"Plusieurs comptes actifs avec le numéro {numero} : vérifiez dans le CRM.")
         a = rows[0]
         contact = a.get("primarycontactid") or {}
-        candidats = [a.get(mob) if mob else None, contact.get("mobilephone"), a.get("telephone1"), a.get("telephone2"), a.get("telephone3")]
-        candidats = [x.strip() for x in candidats if x and x.strip()]
-        mobile = next((x for x in candidats if _MOBILE.match(re.sub(r"[\s.-]", "", x))), candidats[0] if candidats else "")
-        c = Compte(id=a["accountid"].lower(), numero=a.get(champ, numero), nom=a.get("name", ""), mobile=mobile,
+        mobiles = self._mobiles_du_compte(a, contact)
+        c = Compte(id=a["accountid"].lower(), numero=a.get(champ, numero), nom=a.get("name", ""),
+                   mobile=mobiles[0] if mobiles else "", mobiles=mobiles,
                    email=contact.get("emailaddress1") or a.get("emailaddress1") or "",
                    adresse=a.get("address1_composite") or "")
         c.installations = self._liste_liee(self.cfg.case.installation, c.id)
@@ -175,6 +174,27 @@ class DataverseGateway:
                 "$select": f"{w.numero}", "$filter": f"_{w.compte_attr}_value eq {c.id} and statecode eq 0"}).get("value", [])
             c.wo_ouverts = [Ref("", x.get(w.numero, "")) for x in rows]
         return c
+
+    def _mobiles_du_compte(self, a: dict, contact: dict) -> list[str]:
+        """Tous les numéros en 06/07 de la fiche client, dans l'ordre : colonne imposée, colonnes dont le nom contient
+        « mobile » (Mobile Phone, puis Mobile Phone 2…), contact principal, puis toute autre colonne texte du compte.
+        La fiche complète est relue (lecture seule) car Sector Alarm range les mobiles dans ses propres colonnes."""
+        mob = self.cfg.compte_champ_mobile
+        complet = self._get(f"accounts({a['accountid']})", "Fiche du compte")
+        texte = {k: v for k, v in complet.items() if isinstance(v, str) and "@" not in k}
+        ordre = ([mob] if mob else []) + sorted((k for k in texte if "mobile" in k.lower()), key=lambda k: (len(k), k))
+        valeurs = [texte.get(k) for k in ordre] + [contact.get("mobilephone")] + [texte[k] for k in sorted(texte) if k not in ordre]
+        out: list[str] = []
+        vus: set[str] = set()
+        for v in valeurs:
+            if not v:
+                continue
+            brut = re.sub(r"[\s.\-()]", "", v)
+            norm = re.sub(r"^(\+33|0033)", "0", brut)
+            if _MOBILE.match(brut) and norm not in vus:
+                vus.add(norm)
+                out.append(v.strip())
+        return out
 
     def _liste_liee(self, lk, compte_id: str) -> list[Ref]:
         if not (lk.set and lk.compte_attr):

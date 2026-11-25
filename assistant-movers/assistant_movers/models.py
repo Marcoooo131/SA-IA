@@ -37,6 +37,7 @@ class Compte:
     numero: str
     nom: str
     mobile: str = ""
+    mobiles: list[str] = field(default_factory=list)   # tous les numéros en 06/07 trouvés sur la fiche
     email: str = ""
     adresse: str = ""
     installations: list[Ref] = field(default_factory=list)

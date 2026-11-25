@@ -10,7 +10,7 @@ confirmation, puis affiche un compte rendu. Les étapes reprennent le [guide Mov
 > | Élément | État |
 > |---|---|
 > | Modes **Test** (lecture réelle, aucune écriture, affiche ce qui aurait été écrit) et **Supervisé** (chaque écriture validée par l'agent) | **Opérationnels** |
-> | Parcours complet, arrêts de sécurité, interface rouge et noire, journal | **Opérationnels**, testés sur un **CRM fictif** (29 tests) |
+> | Parcours complet, arrêts de sécurité, interface rouge et noire, journal | **Opérationnels**, testés sur un **CRM fictif** (30 tests) |
 > | Connexion au CRM (session Edge de l'agent, API Web officielle) | Reprise de [`movers-dispatch`](../movers-dispatch/README.md), **jamais testée face au vrai CRM** |
 > | Noms techniques du CRM (champs Movers du case, table Work Order, table SMS, produits) | **Non renseignés** : à relever avec `decouvrir`. Toute écriture reste bloquée en attendant |
 > | Création du WO après « Completed Move Out Info » | Si le CRM ne le crée pas tout seul, l'assistant ouvre le case dans Edge et demande de cliquer **Finish** |
