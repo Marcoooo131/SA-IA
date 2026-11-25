@@ -41,6 +41,9 @@ class FakeCrm:
                       contrats=[Ref(str(uuid.uuid4()), "C-SFR-DEMO" + n[-3:] + " — Home")])
             for n, nom in (("10000001", "DEMO Martin Claire"), ("10000002", "DEMO Durand Paul"),
                            ("10000003", "DEMO Petit Inès"), ("10000004", "DEMO Moreau Luc"), ("10000005", "DEMO Garcia Léa"))}
+        for c in self.comptes.values():
+            c.mobiles = [c.mobile, "07 98 76 54 32"]
+            c.composants = {i.id: "1x Centrale SAS, 1x Clavier, 2x DOC, 1x Sirène intérieure" for i in c.installations}
         self.comptes["10000002"].cases_movers_ouverts = [Ref(str(uuid.uuid4()), "CAS-000123 Movers - Déménagement")]
         self.cases: dict[str, dict] = {}
         self.wos: dict[str, WorkOrder] = {}
@@ -142,3 +145,15 @@ class FakeCrm:
 
     def ouvrir_fiche(self, entite, record_id):
         return None
+
+    def agent_nom(self):
+        return "Agent Démo"
+
+    def composants_installation(self, installation_id):
+        return "1x Centrale SAS, 1x Clavier, 2x DOC, 1x Sirène intérieure"
+
+    def prix_produit(self, produit_id):
+        return "", ""
+
+    def duree_wo(self, wo_id):
+        return ""

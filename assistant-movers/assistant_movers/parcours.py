@@ -115,6 +115,10 @@ class Assistant:
                 self.d.installation_id = c.installations[0].id
             if len(c.contrats) == 1:
                 self.d.contrat_id = c.contrats[0].id
+            try:
+                self.d.agent = self.gw.agent_nom()
+            except CrmError:
+                self.d.agent = ""
             self.journal.ok(f"Compte {c.numero} trouvé : {c.nom}")
             av = m_compte.avertissements(c)
             if av:
@@ -137,7 +141,7 @@ class Assistant:
         def go():
             self._exiger("adresse")
             self.d.adresse = m_adresse.valider_adresse(rue, cp, ville, date_dem)
-            self.d.infos = m_adresse.valider_infos(infos or {})
+            self.d.infos = {}
             ids_inst = {i.id for i in self.d.compte.installations}
             if installation_id:
                 if ids_inst and installation_id not in ids_inst:
@@ -147,6 +151,7 @@ class Assistant:
                 raise Blocage("Choisissez l'installation qui déménage.", reprise=False)
             if contrat_id:
                 self.d.contrat_id = contrat_id
+            self.d.infos = m_adresse.valider_infos(infos or {}, self.d.compte.composants.get(self.d.installation_id, ""))
             self.journal.ok(f"Nouvelle adresse : {self.d.adresse.texte()}")
             self.d.etape = "case"
         self._run("Nouvelle adresse", go)
@@ -191,14 +196,35 @@ class Assistant:
 
     # ------------------------------------------------------------------ 8
     def description_proposee(self) -> str:
-        return m_wo.description(self.cfg, self.d, materiel=self.d.infos.get("materiel", "")) if self.d.adresse else ""
+        if not self.d.adresse:
+            return ""
+        hwid = next((i.nom for i in self.d.compte.installations if i.id == self.d.installation_id), "")
+        return m_wo.description(self.cfg, self.d, agent=self.d.agent, hwid=hwid, materiel=self.d.infos.get("materiel", ""))
 
-    def completer_wo(self, texte: str, packs: list[str], produits_verifies: bool):
+    def tarifs_options(self) -> list[dict]:
+        if not hasattr(self, "_tarifs"):
+            self._tarifs = {}
+        out = []
+        for o in self.cfg.work_order.options:
+            if not (o.produit_id or self.demo):
+                continue
+            if o.nom not in self._tarifs:
+                try:
+                    lu = self.gw.prix_produit(o.produit_id) if o.produit_id else ("", "")
+                except CrmError:
+                    lu = ("", "")
+                self._tarifs[o.nom] = (o.prix or lu[0], o.mensualite or lu[1])
+            p, m = self._tarifs[o.nom]
+            out.append({"nom": o.nom, "prix": p, "mensualite": m})
+        return out
+
+    def completer_wo(self, texte: str, packs: list[str], produits_verifies: bool, options: dict | None = None):
         def go():
             self._exiger("wo")
             self._ecriture_permise()
-            m_wo.completer(self.gw, self.cfg, self.d, texte, packs, produits_verifies)
-            self._ok(f"WO {self.d.wo.numero} complété" + (f" — produits : {', '.join(packs)}" if packs else "") + ".")
+            m_wo.completer(self.gw, self.cfg, self.d, texte, packs, produits_verifies, options)
+            ajouts = packs + [f"{q}x {n}" for n, q in self.d.options.items()]
+            self._ok(f"WO {self.d.wo.numero} complété" + (f" — produits : {', '.join(ajouts)}" if ajouts else "") + ".")
             m_booking.preparer(self.gw, self.cfg, self.d)
             self.d.etape = "booking"
             self._ouvrir_booking()
@@ -258,6 +284,12 @@ class Assistant:
             etat = m_sms.envoyer(self.gw, self.cfg, self.d, texte, forcer)
             self._ok(f"SMS envoyé ({etat}).")
             self.d.etape = "email"
+            try:
+                duree = self.gw.duree_wo(self.d.wo.id)
+            except CrmError:
+                duree = ""
+            if duree:
+                self.d.infos["duree"] = duree
             m_email.preparer(self.gw, self.cfg, self.d, self.d.infos)
             restes = m_email.zones_surlignees(self.d.email_html)
             self.journal.info("Email préparé avec les infos saisies au case" + (f" — {len(restes)} zone(s) encore surlignée(s)." if restes else "."))
@@ -304,6 +336,7 @@ class Assistant:
             "dossier": d.vue(), "apercu_case": self.apercu_case(),
             "description": self.description_proposee() if d.etape == "wo" else "",
             "packs": [p.nom for p in self.cfg.work_order.packs if p.produit_id or self.demo],
+            "options": self.tarifs_options() if d.etape == "wo" else [],
             "email_zones": m_email.zones_surlignees(d.email_html) if d.email_html else [],
             "compte_rendu": self.compte_rendu() if d.etape == "fin" else "",
             "journal": self.journal.vue(), "ecritures": self.reel.writes,

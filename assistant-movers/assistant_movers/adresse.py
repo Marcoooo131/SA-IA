@@ -33,14 +33,19 @@ INFOS = {"duree": "durée de l'intervention", "electricite": "électricité sur 
          "travaux": "travaux prévus", "materiel": "matériel à réinstaller"}
 
 
-def valider_infos(infos: dict[str, str]) -> dict[str, str]:
-    """Infos de l'intervention, saisies avec la nouvelle adresse : elles remplissent l'email (et le matériel, le WO)."""
+DEFAUTS = {"electricite": "oui", "reseau": "GSM / Wifi", "travaux": "Pas de travaux"}
+
+
+def valider_infos(infos: dict[str, str], materiel_installation: str = "") -> dict[str, str]:
+    """Infos de l'intervention, saisies avec la nouvelle adresse : elles remplissent l'email (et le matériel, le WO).
+    Valeurs par défaut : électricité oui, réseau GSM / Wifi, pas de travaux, matériel = composants de l'installation.
+    La durée peut rester vide : elle est alors reprise du WO."""
     v = {k: (infos.get(k) or "").strip() for k in INFOS}
-    if not v["travaux"]:
-        v["travaux"] = "Pas de travaux"
-    manque = [lib for k, lib in INFOS.items() if not v[k]]
-    if manque:
-        raise Blocage("À compléter : " + ", ".join(manque) + ".", reprise=False)
-    if not re.fullmatch(r"\d{1,3}", v["duree"]):
+    for k, d in DEFAUTS.items():
+        v[k] = v[k] or d
+    v["materiel"] = v["materiel"] or materiel_installation
+    if not v["materiel"]:
+        raise Blocage("À compléter : matériel à réinstaller (aucun composant trouvé sur l'installation).", reprise=False)
+    if v["duree"] and not re.fullmatch(r"\d{1,3}", v["duree"]):
         raise Blocage("Durée de l'intervention : un nombre de minutes (ex. 120).", reprise=False)
     return v

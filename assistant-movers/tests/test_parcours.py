@@ -109,10 +109,25 @@ def test_email_champ_manquant_refuse(a):
     assert not a.d.email_envoye and a.d.blocage
 
 
-def test_infos_obligatoires_au_case(a):
+def test_infos_par_defaut_et_materiel_de_l_installation(a):
     a.ouvrir_compte("10000001")
-    a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", DATE, "", "", {"duree": "120"})
-    assert a.d.etape == "adresse" and "électricité" in a.d.blocage["message"]
+    a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", DATE, "", "", {"duree": "abc"})
+    assert a.d.etape == "adresse" and "Durée" in a.d.blocage["message"]
+    a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", DATE, "", "", {})
+    assert a.d.infos == {"duree": "", "electricite": "oui", "reseau": "GSM / Wifi", "travaux": "Pas de travaux",
+                         "materiel": "1x Centrale SAS, 1x Clavier, 2x DOC, 1x Sirène intérieure"}
+
+
+def test_description_auto_et_produits_complementaires(a):
+    a.ouvrir_compte("10000001")
+    a.saisir_adresse("8 avenue des Tests", "69003", "Lyon", DATE, "", "", {})
+    a.creer_case()
+    desc = a.description_proposee()
+    assert "Mover vendu par : Agent Démo" in desc and "Ancien HWID : Installation principale" in desc
+    assert "Matériel : 1x Centrale SAS" in desc
+    assert [o["nom"] for o in a.etat()["options"]] == ["DOC", "DMP", "DF", "SAVE"]
+    a.completer_wo(desc, [], False, {"DOC": 2, "SAVE": 1})
+    assert a.d.etape == "booking" and a.d.wo.produits == ["DOC", "DOC", "SAVE"]
 
 
 def test_etape_dans_le_desordre(a):

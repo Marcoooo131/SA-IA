@@ -7,6 +7,23 @@ nom = "Pack Sérénité Home SAS"
 [[work_order.packs]]
 nom = "Maintenance et télésurveillance"
 
+[[work_order.options]]
+nom = "DOC"
+prix = "39,00 €"
+mensualite = "1,00 €"
+[[work_order.options]]
+nom = "DMP"
+prix = "59,00 €"
+mensualite = "1,50 €"
+[[work_order.options]]
+nom = "DF"
+prix = "49,00 €"
+mensualite = "1,00 €"
+[[work_order.options]]
+nom = "SAVE"
+prix = "99,00 €"
+mensualite = "2,00 €"
+
 [email.remplacements]
 "[DATE]" = "date"
 "[DEBUT]" = "debut"

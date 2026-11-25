@@ -103,6 +103,9 @@ const infos = () => Object.fromEntries(CLES.map((k) => [k, mem["e_" + k] || ""])
 
 function vAdresse(d) {
   const c = d.compte;
+  const inst = mem.installation_id || d.installation_id;
+  if (mem.e_travaux === undefined) mem.e_travaux = "Pas de travaux";
+  if (inst && mem._inst !== inst) { mem.e_materiel = (c.composants || {})[inst] || ""; mem._inst = inst; }
   const sel = (id, list, cur, lab) => list.length > 1
     ? `<div><label>${lab}</label><select data-m="${id}"><option value="">— choisir —</option>${list.map((x) => `<option value="${esc(x.id)}" ${x.id === cur ? "selected" : ""}>${esc(x.nom)}</option>`).join("")}</select></div>`
     : (list.length ? `<div><label>${lab}</label><input value="${esc(list[0].nom)}" disabled></div>` : "");
@@ -112,12 +115,15 @@ function vAdresse(d) {
     <div class="row"><div><label>Code postal</label><input data-m="cp" inputmode="numeric" maxlength="5"></div>
     <div><label>Ville</label><input data-m="ville"></div>
     <div><label>Date de déménagement</label><input type="date" data-m="date"></div></div>
-    <div class="box"><b>Infos de l'intervention</b> <span class="muted small">— elles remplissent l'email récapitulatif (et le matériel, la description du WO)</span>
-    <div class="row">${fi("duree", "Durée (minutes)", "ex. 120")}
-      <div><label>Électricité sur place</label><select data-m="e_electricite"><option value="">— choisir —</option><option>oui</option><option>non</option></select></div>
-      <div><label>Réseau</label><select data-m="e_reseau"><option value="">— choisir —</option><option>GSM</option><option>Wifi</option><option>GSM / Wifi</option></select></div></div>
-    <div class="row">${fi("travaux", "Travaux prévus", "Pas de travaux")}${fi("materiel", "Matériel à réinstaller", "ex. 1x DOC, 2x sirène intérieure")}</div></div>
+    <div class="box"><b>Infos de l'intervention</b> <span class="muted small">— pré-remplies, elles servent à l'email récapitulatif et à la description du WO</span>
+    <div class="row"><div><label>Durée</label><select data-m="e_duree"><option value="">Reprise du WO</option>${[60, 90, 120, 150, 180, 210, 240].map((m) => `<option value="${m}">${m} min</option>`).join("")}</select></div>
+      <div><label>Électricité sur place</label><select data-m="e_electricite"><option>oui</option><option>non</option></select></div>
+      <div><label>Réseau</label><select data-m="e_reseau"><option>GSM / Wifi</option><option>GSM</option><option>Wifi</option></select></div></div>
+    <div class="row">${fi("travaux", "Travaux prévus", "")}</div>
+    <label>Matériel à réinstaller <span class="muted small">(composants de l'installation)</span></label><textarea data-m="e_materiel" rows="2"></textarea></div>
     <div class="actions"><button class="primary" id="go">Valider l'adresse et les infos</button></div>`;
+  const si = document.querySelector("[data-m=installation_id]");
+  if (si) si.addEventListener("change", () => { mem.installation_id = si.value; vAdresse(d); bind(); });
   $("#go").onclick = () => act("/api/adresse", {rue: mem.rue, cp: mem.cp, ville: mem.ville, date: mem.date,
     installation_id: mem.installation_id || "", contrat_id: mem.contrat_id || "", infos: infos()}, "Contrôle…");
 }
@@ -130,15 +136,36 @@ function vCase(d) {
   $("#go").onclick = () => act("/api/case", {}, "Création du case, attente du Work Order…");
 }
 
+function complement() {
+  return S.options.filter((o) => +(mem["opt_" + o.nom] || 0) > 0).map((o) => {
+    const t = [o.prix, o.mensualite ? o.mensualite + "/mois" : ""].filter(Boolean).join(" + ");
+    return `${mem["opt_" + o.nom]}x ${o.nom}${t ? ` (${t})` : ""}`;
+  }).join(", ");
+}
+
+function majDescription() {
+  const ta = document.querySelector("[data-m=description]");
+  const ligne = "Complément d'installation : " + complement();
+  mem.description = /Complément d'installation :.*$/m.test(mem.description)
+    ? mem.description.replace(/Complément d'installation :.*$/m, ligne) : mem.description + "\n" + ligne;
+  if (ta) ta.value = mem.description;
+}
+
 function vWo(d) {
   if (mem.description === undefined) mem.description = S.description;
   const packs = S.packs.map((p, k) => `<label class="check"><input type="checkbox" data-m="pack${k}"> ${esc(p)}</label>`).join("");
-  $("#view").innerHTML = `<h2>Work Order ${esc(d.wo.numero)}</h2><p class="lead">Créé par le CRM (${esc(d.wo.type_nom || "Installation")} · ${esc(d.wo.statut)}). Complétez-le.</p>
+  const opts = S.options.map((o) => `<div class="opt"><label>${esc(o.nom)}</label>
+      <select data-m="opt_${esc(o.nom)}" class="optq">${[0, 1, 2, 3, 4, 5, 6].map((n) => `<option value="${n}">${n}</option>`).join("")}</select>
+      <span class="muted small">${esc(o.prix || "prix catalogue")}${o.mensualite ? ` + ${esc(o.mensualite)}/mois` : ""}</span></div>`).join("");
+  $("#view").innerHTML = `<h2>Work Order ${esc(d.wo.numero)}</h2><p class="lead">Créé par le CRM (${esc(d.wo.type_nom || "Installation")} · ${esc(d.wo.statut)}). Description pré-remplie : relisez, ajustez.</p>
     <label>Description du WO</label><textarea data-m="description" rows="10"></textarea>
-    <label>Produits à ajouter</label>${packs || `<p class="muted">Aucun pack configuré : ajoutez les produits dans le CRM.</p>`}
+    <label>Pack</label>${packs || `<p class="muted">Aucun pack configuré.</p>`}
+    ${opts ? `<label>Produits complémentaires</label><div class="opts">${opts}</div>` : ""}
     <label class="check"><input type="checkbox" data-m="prodok"> Produits vérifiés dans le CRM (prix, service code)</label>
     <div class="actions"><button class="primary" id="go">${L("Compléter le WO et passer au rendez-vous", "Tester la mise à jour du WO")}</button></div>`;
+  setTimeout(() => document.querySelectorAll(".optq").forEach((x) => x.addEventListener("change", majDescription)), 0);
   $("#go").onclick = () => act("/api/wo", {description: mem.description, packs: S.packs.filter((_, k) => mem["pack" + k]),
+    options: Object.fromEntries(S.options.map((o) => [o.nom, +(mem["opt_" + o.nom] || 0)])),
     produits_verifies: !!mem.prodok}, "Mise à jour du WO…");
 }
 

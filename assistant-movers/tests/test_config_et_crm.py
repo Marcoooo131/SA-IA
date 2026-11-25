@@ -133,3 +133,41 @@ def test_sms_rattache_service_et_modele():
     path, corps = DataverseGateway(cfg, Annuaire()).corps_sms("11111111-1111-1111-1111-111111111111", "0671951100", "Bonjour")
     assert corps["sa_smsservice_log_sms@odata.bind"] == "/sa_smsservices(77777777-7777-7777-7777-777777777777)"
     assert corps["log_SMSTemplateId_log_sms@odata.bind"] == "/log_smstemplates(88888888-8888-8888-8888-888888888888)"
+
+
+class Lectures(T):
+    def request(self, method, path, *, params=None, json=None, headers=None):
+        F = "@OData.Community.Display.V1.FormattedValue"
+        if path == "EntityDefinitions(LogicalName='log_installationproduct')/ManyToOneRelationships":
+            return Response(200, {"value": [{"ReferencingAttribute": "log_installationid", "ReferencedEntity": "log_installation"},
+                                            {"ReferencingAttribute": "log_productid", "ReferencedEntity": "product"}]}, {})
+        if path == "log_installationproducts":
+            return Response(200, {"value": [{"_log_productid_value" + F: "Sirène intérieure", "log_quantity": 2},
+                                            {"_log_productid_value" + F: "DOC", "log_quantity": 1},
+                                            {"_log_productid_value" + F: "DOC"}]}, {})
+        if path == "sa_smsservices":
+            if "eq 'Sector Alarm'" in (params or {}).get("$filter", ""):
+                return Response(200, {"value": []}, {})
+            return Response(200, {"value": [{"sa_smsserviceid": "77777777-7777-7777-7777-777777777777", "sa_name": "SA France SMS"}]}, {})
+        if path.startswith("new_workorders("):
+            return Response(200, {"new_estimatedduration": 150, "new_name": "x"}, {})
+        if path.startswith("products("):
+            return Response(200, {"price": 39.0, "price" + F: "39,00 €", "sa_monthly": 1.5}, {})
+        if path == "WhoAmI":
+            return Response(200, {"UserId": "12121212-1212-1212-1212-121212121212"}, {})
+        if path.startswith("systemusers("):
+            return Response(200, {"fullname": "Marco Test"}, {})
+        return super().request(method, path, params=params, json=json, headers=headers)
+
+
+def test_lectures_aide():
+    cfg = cfg_complete()
+    cfg.case.installation = cfgmod.Lookup("log_RelatedInstallation", "log_installations")
+    cfg.work_order.entite, cfg.work_order.entity_set = "new_workorder", "new_workorders"
+    cfg.work_order.mensualite_attr = "sa_monthly"
+    gw = DataverseGateway(cfg, Lectures())
+    assert gw.composants_installation("55555555-5555-5555-5555-555555555555") == "2x Sirène intérieure, 2x DOC"
+    assert gw.duree_wo("55555555-5555-5555-5555-555555555555") == "150"
+    assert gw.prix_produit("55555555-5555-5555-5555-555555555555") == ("39,00 €", "1,50 €")
+    assert gw.agent_nom() == "Marco Test"
+    assert gw._par_nom("sa_smsservices", "sa_name", "Sector Alarm") == "77777777-7777-7777-7777-777777777777"

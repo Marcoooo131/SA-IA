@@ -124,5 +124,17 @@ class SimulationGateway:
     def ouvrir_fiche(self, entite, record_id):
         return None
 
+    def agent_nom(self):
+        return self.reel.agent_nom()
+
+    def composants_installation(self, installation_id):
+        return self.reel.composants_installation(installation_id)
+
+    def prix_produit(self, produit_id):
+        return self.reel.prix_produit(produit_id)
+
+    def duree_wo(self, wo_id):
+        return ""   # WO fictif en mode Test : durée choisie par l'agent
+
     def simuler_finish(self, case_id):
         return None

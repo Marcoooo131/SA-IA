@@ -39,6 +39,8 @@ class CaseCfg:
     installation: Lookup = field(default_factory=Lookup)
     contrat: Lookup = field(default_factory=Lookup)
     code_postal: Lookup = field(default_factory=Lookup)   # si le code postal du CRM est une table (ex. log_postcode)
+    composants_entite: str = "log_installationproduct"    # composants de l'installation (matériel à réinstaller)
+    composants_set: str = "log_installationproducts"
     champs: dict[str, str] = field(default_factory=dict)     # clé métier → nom logique
     valeurs: dict[str, int | bool | str] = field(default_factory=dict)  # clé métier → valeur à écrire
     fixes: dict[str, int | bool | str] = field(default_factory=dict)    # nom logique → valeur fixe (type, catégorie…)
@@ -60,6 +62,8 @@ class Pack:
     nom: str
     produit_id: str = ""
     nav: str = ""                  # facultatif : lien produit propre au pack (ex. produit matériel ou produit de contrat)
+    prix: str = ""                 # facultatif : prix catalogue affiché (sinon lu sur le produit)
+    mensualite: str = ""           # facultatif : mensualité affichée (sinon lue sur le produit)
 
 
 @dataclass
@@ -86,6 +90,10 @@ class WorkOrderCfg:
     produit_wo_nav: str = ""
     produit_nav: str = ""
     packs: list[Pack] = field(default_factory=list)
+    options: list[Pack] = field(default_factory=list)   # produits complémentaires (DOC, DMP, DF, SAVE…) avec quantité
+    prix_attr: str = "price"       # colonne du prix catalogue sur le produit
+    mensualite_attr: str = ""      # colonne de la mensualité sur le produit
+    duree_attr: str = ""           # facultatif : colonne « durée » du WO (sinon détectée, sinon choisie par l'agent)
     description_modele: str = ""
 
     def manquants(self) -> list[str]:
@@ -172,11 +180,14 @@ def load(path: str | Path) -> Config:
     c.case = CaseCfg(titre=k.get("titre", c.case.titre), client_nav=k.get("client_nav", c.case.client_nav),
                      installation=_lookup(k.get("installation")), contrat=_lookup(k.get("contrat")),
                      code_postal=_lookup(k.get("code_postal")),
+                     composants_entite=k.get("composants_entite", "log_installationproduct"),
+                     composants_set=k.get("composants_set", "log_installationproducts"),
                      champs=dict(k.get("champs", {})), valeurs=dict(k.get("valeurs", {})),
                      fixes=dict(k.get("fixes", {})))
     w = dict(raw.get("work_order", {}))
     packs = [Pack(**p) for p in w.pop("packs", [])]
-    c.work_order = WorkOrderCfg(**w, packs=packs)
+    options = [Pack(**p) for p in w.pop("options", [])]
+    c.work_order = WorkOrderCfg(**w, packs=packs, options=options)
     c.booking = BookingCfg(**raw.get("booking", {}))
     c.sms = SmsCfg(**raw.get("sms", {}))
     e = raw.get("email", {})
