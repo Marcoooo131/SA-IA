@@ -13,7 +13,8 @@ MOTS_CASE = ("moving", "move", "mover", "completed", "street", "postal", "city",
 MOTS_WO = ("activity number", "type of work order", "template", "description", "timeband", "booked", "start date",
            "end date", "case", "account", "status", "mobile")
 MOTS_SMS = ("text", "message", "body", "mobile", "phone", "number", "regarding", "status")
-MOTS_TABLES = ("work order", "sms", "installation", "contract", "contrat", "work order product", "service code")
+MOTS_TABLES = ("work order", "sms", "installation", "contract", "contrat", "work order product", "service code",
+               "postcode", "postal code", "code postal", "activity template")
 MOTS_ACTIONS = ("appoint", "book", "slot", "sam", "schedul", "rdv", "creneau")
 
 
@@ -51,10 +52,16 @@ class Decouverte:
         cast = {"Picklist": "PicklistAttributeMetadata", "Boolean": "BooleanAttributeMetadata", "Status": "StatusAttributeMetadata"}[typ]
         try:
             m = self.gw._get(f"EntityDefinitions(LogicalName='{entite}')/Attributes(LogicalName='{attr}')/Microsoft.Dynamics.CRM.{cast}",
-                             "Valeurs", {"$select": "LogicalName", "$expand": "OptionSet"})
+                             "Valeurs", {"$select": "LogicalName", "$expand": "OptionSet,GlobalOptionSet"})
         except Exception:  # noqa: BLE001
-            return
+            try:
+                m = self.gw._get(f"EntityDefinitions(LogicalName='{entite}')/Attributes(LogicalName='{attr}')/Microsoft.Dynamics.CRM.{cast}",
+                                 "Valeurs", {"$select": "LogicalName", "$expand": "OptionSet"})
+            except Exception:  # noqa: BLE001
+                return
         os_ = m.get("OptionSet") or {}
+        if not (os_.get("Options") or os_.get("TrueOption")):
+            os_ = m.get("GlobalOptionSet") or os_
         opts = os_.get("Options") or [o for o in (os_.get("TrueOption"), os_.get("FalseOption")) if o]
         vals = []
         for o in opts:
@@ -124,9 +131,26 @@ class Decouverte:
         self.p("\n[Email]")
         t = g._get("templates", "Modèles", {"$select": "title", "$filter": f"title eq '{e.modele.replace(chr(39), chr(39) * 2)}'"}).get("value", [])
         self.p(f"    Modèle « {e.modele} » : {'trouvé' if len(t) == 1 else f'{len(t)} résultat(s)'}")
+        if len(t) != 1:
+            proches = g._get("templates", "Modèles proches", {"$select": "title",
+                             "$filter": "contains(title,'menagement') or contains(title,'Mover') or contains(title,'capitulatif')"}).get("value", [])
+            for x in proches:
+                self.p(f"    modèle proche : « {x.get('title')} »  → à recopier dans email.modele")
         q = g._get("queues", "Files", {"$select": "name", "$filter": f"name eq '{e.file_expediteur}'"}).get("value", [])
         self.p(f"    File « {e.file_expediteur} » : {'trouvée' if len(q) == 1 else f'{len(q)} résultat(s)'}")
         self.p("    Zones surlignées du modèle : visibles à l'étape Email de l'assistant (à reporter dans [email.remplacements]).")
+
+        if g.cfg.work_order.packs:
+            self.p("\n[Produits des packs] (identifiant → work_order.packs.produit_id)")
+            for pk in g.cfg.work_order.packs:
+                mot = max(pk.nom.split(), key=len) if pk.nom else ""
+                rows = g._get("products", "Produits", {"$select": "name,productnumber",
+                              "$filter": f"contains(name,'{mot.replace(chr(39), chr(39) * 2)}') and statecode eq 0", "$top": "15"}).get("value", [])
+                self.p(f"    « {pk.nom} » :")
+                for r in rows:
+                    self.p(f"        {r.get('productid')}  « {r.get('name')} » ({r.get('productnumber') or ''})")
+                if not rows:
+                    self.p("        aucun produit trouvé avec ce mot")
 
         self.p("\n[Actions CRM pouvant servir au booking]")
         try:
@@ -195,7 +219,7 @@ class Verification:
             self.p(k in cfg.case.valeurs, f"case.valeurs.{k}", "" if k in cfg.case.valeurs else "vide (obligatoire)")
         for nom in cfg.case.fixes:
             self.p(nom in inc, f"case.fixes.{nom}", "" if nom in inc else "champ inexistant")
-        for cle, lk in (("installation", cfg.case.installation), ("contrat", cfg.case.contrat)):
+        for cle, lk in (("installation", cfg.case.installation), ("contrat", cfg.case.contrat), ("code_postal", cfg.case.code_postal)):
             if not lk.nav:
                 self.p(False if cle == "installation" else None, f"case.{cle}.nav", "vide")
                 continue

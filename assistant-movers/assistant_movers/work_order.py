@@ -25,7 +25,7 @@ def description(cfg: Config, dossier: Dossier, agent: str = "", hwid: str = "", 
 def completer(gw, cfg: Config, dossier: Dossier, texte: str, packs_choisis: list[str], produits_verifies: bool) -> None:
     if not texte.strip():
         raise Blocage("La description du WO est vide.", reprise=False)
-    packs = {p.nom: p for p in cfg.work_order.packs}
+    packs = {p.nom: p for p in cfg.work_order.packs if p.produit_id or not hasattr(gw, "corps_produit")}
     inconnus = [n for n in packs_choisis if n not in packs]
     if inconnus:
         raise Blocage("Pack inconnu : " + ", ".join(inconnus), reprise=False)

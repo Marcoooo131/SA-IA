@@ -38,13 +38,14 @@ class CaseCfg:
     client_nav: str = "customerid_account"   # standard Dynamics
     installation: Lookup = field(default_factory=Lookup)
     contrat: Lookup = field(default_factory=Lookup)
+    code_postal: Lookup = field(default_factory=Lookup)   # si le code postal du CRM est une table (ex. log_postcode)
     champs: dict[str, str] = field(default_factory=dict)     # clé métier → nom logique
     valeurs: dict[str, int | bool | str] = field(default_factory=dict)  # clé métier → valeur à écrire
     fixes: dict[str, int | bool | str] = field(default_factory=dict)    # nom logique → valeur fixe (type, catégorie…)
 
     REQUIS = ("moving_out_or_in", "moving_out_interested", "completed_move_out",
               "new_street", "new_postcode", "new_city", "moving_out_date")
-    VALEURS_REQUISES = ("moving_out_or_in_out", "oui")
+    VALEURS_REQUISES = ("moving_out_or_in_out", "oui", "interesse_oui")
 
     def manquants(self) -> list[str]:
         m = [f"case.champs.{k}" for k in self.REQUIS if not self.champs.get(k)]
@@ -58,6 +59,7 @@ class CaseCfg:
 class Pack:
     nom: str
     produit_id: str = ""
+    nav: str = ""                  # facultatif : lien produit propre au pack (ex. produit matériel ou produit de contrat)
 
 
 @dataclass
@@ -108,6 +110,7 @@ class SmsCfg:
     mobile: str = ""
     sujet: str = "subject"
     regarding_nav: str = ""        # ex. regardingobjectid_incident_<entité sms>
+    wo_attr: str = ""              # facultatif : lien du SMS vers le WO (contrôle de doublon des SMS envoyés par le CRM)
     envoi: dict[str, int | str] = field(default_factory=dict)  # champs à passer après création pour déclencher l'envoi
     modele: str = ("Sector Alarm : votre rendez-vous de réinstallation est confirmé le {date} "
                    "entre {debut} et {fin}. Le titulaire du contrat doit être présent.")
@@ -164,6 +167,7 @@ def load(path: str | Path) -> Config:
     k = raw.get("case", {})
     c.case = CaseCfg(titre=k.get("titre", c.case.titre), client_nav=k.get("client_nav", c.case.client_nav),
                      installation=_lookup(k.get("installation")), contrat=_lookup(k.get("contrat")),
+                     code_postal=_lookup(k.get("code_postal")),
                      champs=dict(k.get("champs", {})), valeurs=dict(k.get("valeurs", {})),
                      fixes=dict(k.get("fixes", {})))
     w = dict(raw.get("work_order", {}))

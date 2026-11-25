@@ -292,7 +292,7 @@ class Assistant:
             "manquants": self.manquants, "methode_booking": self._methode(),
             "dossier": d.vue(), "apercu_case": self.apercu_case(),
             "description": self.description_proposee() if d.etape == "wo" else "",
-            "packs": [p.nom for p in self.cfg.work_order.packs],
+            "packs": [p.nom for p in self.cfg.work_order.packs if p.produit_id or self.demo],
             "email_zones": m_email.zones_surlignees(d.email_html) if d.email_html else [],
             "compte_rendu": self.compte_rendu() if d.etape == "fin" else "",
             "journal": self.journal.vue(), "ecritures": self.reel.writes,

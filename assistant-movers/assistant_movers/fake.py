@@ -124,7 +124,7 @@ class FakeCrm:
         if self._numero_compte(cid) == "10000005":
             self.sms.setdefault(cid, []).append(f"RDV confirmé le {creneau.debut:%d/%m/%Y} (SMS déjà parti)")
 
-    def sms_du_case(self, case_id):
+    def sms_du_case(self, case_id, wo_id=""):
         return list(self.sms.get(case_id, []))
 
     def envoyer_sms(self, case_id, mobile, texte):

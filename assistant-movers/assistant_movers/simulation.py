@@ -95,7 +95,7 @@ class SimulationGateway:
                    {"créneau": creneau.libelle(), "note": "en mode Supervisé, c'est vous qui réservez dans le CRM (méthode assistée)"})
         self.wo.debut, self.wo.fin, self.wo.statut = creneau.debut, creneau.fin, "Scheduled (test)"
 
-    def sms_du_case(self, case_id):
+    def sms_du_case(self, case_id, wo_id=""):
         return []
 
     def envoyer_sms(self, case_id, mobile, texte):

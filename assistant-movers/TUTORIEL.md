@@ -156,13 +156,17 @@ completed_move_out = "new_completedmoveout"
 Puis `[case.valeurs]`, à partir des lignes **`valeurs :`** :
 
 - `moving_out_or_in_out` = le **nombre** devant `Out`, sous « Moving Out Or Moving In ? ».
-- `oui` : si les champs « … interested » et « Completed … » sont de type **Boolean**, écrivez `oui = true`.
-  S'ils sont de type **Picklist**, écrivez le **nombre** devant `Yes`.
+- `oui` (pour « Completed … ») et `interesse_oui` (pour « … interested ») : si le champ est de type **Boolean**,
+  écrivez `true` ; s'il est de type **Picklist**, écrivez le **nombre** devant `Yes`.
+- Si « Postal Code » est de type **Lookup** (une fiche, pas un texte), remplissez aussi
+  `code_postal = { nav = "…", set = "…", nom_attr = "…" }` dans `[case]` avec la ligne « Postal Code » des liens
+  et la table des codes postaux de `[Tables à repérer]`.
 
 ```toml
 [case.valeurs]
 moving_out_or_in_out = 100000001
 oui = true
+interesse_oui = 100000000
 ```
 
 **`[case.fixes]` (facultatif) :** les autres champs remplis à la main dans la vidéo, avec toujours la même valeur

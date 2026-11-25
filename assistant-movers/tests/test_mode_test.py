@@ -38,7 +38,7 @@ def cfg_complete():
     c = cfgmod.load(EX)
     c.connexion.environment_url = "https://crm.exemple/ORG"
     c.case.champs = {k: f"new_{k}" for k in c.case.REQUIS}
-    c.case.valeurs = {"moving_out_or_in_out": 100000001, "oui": True}
+    c.case.valeurs = {"moving_out_or_in_out": 100000001, "oui": True, "interesse_oui": True}
     c.case.installation = cfgmod.Lookup("new_installationid", "new_installations", "new_accountid", "new_name")
     c.work_order.entite, c.work_order.entity_set = "new_workorder", "new_workorders"
     c.sms.entity_set, c.sms.texte, c.sms.mobile, c.sms.regarding_nav = "new_smses", "new_text", "new_mobile", "regardingobjectid_incident_new_sms"

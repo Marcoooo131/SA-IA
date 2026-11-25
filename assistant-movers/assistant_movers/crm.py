@@ -10,7 +10,7 @@ s'arrête au lieu de deviner.
 from __future__ import annotations
 
 import re
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import Protocol
 from zoneinfo import ZoneInfo
 
@@ -37,7 +37,7 @@ class Gateway(Protocol):
     def fenetre_booking(self, wo: WorkOrder, debut: date, fin: date) -> None: ...
     def creneaux(self, wo: WorkOrder) -> list[Creneau]: ...
     def reserver(self, wo: WorkOrder, creneau: Creneau) -> None: ...
-    def sms_du_case(self, case_id: str) -> list[str]: ...
+    def sms_du_case(self, case_id: str, wo_id: str = "") -> list[str]: ...
     def envoyer_sms(self, case_id: str, mobile: str, texte: str) -> str: ...
     def preparer_email(self, case_id: str) -> tuple[str, str]: ...
     def envoyer_email(self, case_id: str, compte: Compte, sujet: str, html: str) -> str: ...
@@ -65,6 +65,40 @@ class DataverseGateway:
         self.cfg = cfg
         self.t = transport
         self.writes = 0
+        self._formats: dict[tuple[str, str], str] = {}
+
+    def _valeur_date(self, entite: str, attr: str, d: date) -> str:
+        """Date au format attendu par le champ : « 2026-12-08 » pour un champ date seule, sinon midi heure de Paris
+        en UTC (évite tout décalage de jour). Le format est lu une fois dans les métadonnées (lecture seule)."""
+        cle = (entite, attr)
+        if cle not in self._formats:
+            try:
+                m = self._get(f"EntityDefinitions(LogicalName='{entite}')/Attributes(LogicalName='{attr}')"
+                              "/Microsoft.Dynamics.CRM.DateTimeAttributeMetadata", "Format de date",
+                              {"$select": "Format,DateTimeBehavior"})
+                beh = (m.get("DateTimeBehavior") or {}).get("Value", "")
+                self._formats[cle] = "date" if beh == "DateOnly" else "datetime"
+            except CrmError:
+                self._formats[cle] = "datetime"
+        if self._formats[cle] == "date":
+            return d.isoformat()
+        return datetime.combine(d, time(12, 0), PARIS).astimezone(ZoneInfo("UTC")).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def _code_postal(self, cp: str, ville: str) -> str:
+        lk = self.cfg.case.code_postal
+        champ = lk.nom_attr or "log_name"
+        rows = self._get(lk.set, "Code postal", {"$filter": f"{champ} eq '{_q(cp)}'", "$top": "20"}).get("value", [])
+        if not rows:
+            raise CrmError(f"Code postal {cp} inconnu dans le CRM : vérifiez-le, ou saisissez l'adresse à la main.")
+        if len(rows) > 1:
+            villes = [r for r in rows if ville and ville.upper() in " ".join(str(v) for v in r.values() if isinstance(v, str)).upper()]
+            if len(villes) == 1:
+                rows = villes
+            else:
+                raise CrmError(f"Plusieurs fiches pour le code postal {cp} dans le CRM : choisissez-la à la main dans le case.")
+        cle = lk.set[:-1] + "id" if lk.set.endswith("s") else ""
+        rid = rows[0].get(cle) or next((v for k, v in rows[0].items() if k.endswith("id") and isinstance(v, str) and _GUID.match(v)), "")
+        return _guid(rid)
 
     # ---------------------------------------------------------------- bas niveau
     def _err(self, r, quoi: str) -> CrmError:
@@ -168,11 +202,14 @@ class DataverseGateway:
         c = lambda x: self._cle("case.champs", k.champs, x)  # noqa: E731
         v = lambda x: self._cle("case.valeurs", k.valeurs, x)  # noqa: E731
         body[c("moving_out_or_in")] = v("moving_out_or_in_out")
-        body[c("moving_out_interested")] = v("oui")
+        body[c("moving_out_interested")] = v("interesse_oui")
         body[c("new_street")] = adresse.rue
-        body[c("new_postcode")] = adresse.code_postal
+        if k.code_postal.ok:
+            body[f"{k.code_postal.nav}@odata.bind"] = f"/{k.code_postal.set}({self._code_postal(adresse.code_postal, adresse.ville)})"
+        else:
+            body[c("new_postcode")] = adresse.code_postal
         body[c("new_city")] = adresse.ville
-        body[c("moving_out_date")] = adresse.date_demenagement.isoformat()
+        body[c("moving_out_date")] = self._valeur_date("incident", c("moving_out_date"), adresse.date_demenagement)
         body.update(k.fixes)
         return body
 
@@ -239,10 +276,11 @@ class DataverseGateway:
 
     def corps_produit(self, wo_id: str, pack) -> tuple[str, dict]:
         w = self.cfg.work_order
-        if not (w.produits_set and w.produit_wo_nav and w.produit_nav and pack.produit_id):
+        nav = pack.nav or w.produit_nav
+        if not (w.produits_set and w.produit_wo_nav and nav and pack.produit_id):
             raise CrmError("Configuration : ajout de produit incomplet (work_order.produits_set / produit_wo_nav / produit_nav / packs.produit_id).")
         return w.produits_set, {f"{w.produit_wo_nav}@odata.bind": "/" + self._wo_path(wo_id),
-                                f"{w.produit_nav}@odata.bind": f"/products({_guid(pack.produit_id)})"}
+                                f"{nav}@odata.bind": f"/products({_guid(pack.produit_id)})"}
 
     def completer_wo(self, wo, description) -> None:
         path, body = self.corps_wo(wo.id, description)
@@ -259,9 +297,9 @@ class DataverseGateway:
         if w.timeband and w.timeband_valeur is not None:
             body[w.timeband] = w.timeband_valeur
         if w.date_debut_recherche:
-            body[w.date_debut_recherche] = debut.isoformat()
+            body[w.date_debut_recherche] = self._valeur_date(w.entite, w.date_debut_recherche, debut)
         if w.date_fin_recherche:
-            body[w.date_fin_recherche] = fin.isoformat()
+            body[w.date_fin_recherche] = self._valeur_date(w.entite, w.date_fin_recherche, fin)
         return self._wo_path(wo_id), body
 
     def fenetre_booking(self, wo, debut, fin) -> None:
@@ -277,10 +315,15 @@ class DataverseGateway:
         raise CrmError("Réservation directe pas encore branchée (voir `decouvrir --observer-booking`).")
 
     # ---------------------------------------------------------------- 12 SMS
-    def sms_du_case(self, case_id: str) -> list[str]:
+    def sms_du_case(self, case_id: str, wo_id: str = "") -> list[str]:
         s = self.cfg.sms
-        rows = self._get(s.entity_set, "SMS du case", {
-            "$select": f"{s.texte},createdon", "$filter": f"_regardingobjectid_value eq {_guid(case_id)}",
+        flt = [f"_regardingobjectid_value eq {_guid(case_id)}"]
+        if wo_id and not wo_id.startswith("sim-"):
+            flt.append(f"_regardingobjectid_value eq {_guid(wo_id)}")
+            if s.wo_attr:
+                flt.append(f"_{s.wo_attr}_value eq {_guid(wo_id)}")
+        rows = self._get(s.entity_set, "SMS du case et du WO", {
+            "$select": f"{s.texte},createdon", "$filter": " or ".join(flt),
             "$orderby": "createdon desc", "$top": "10"}).get("value", [])
         return [r.get(s.texte) or "" for r in rows]
 
