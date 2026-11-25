@@ -71,6 +71,7 @@ produit_nav = ""
 # [[work_order.packs]]               # packs proposés à l'agent (identifiant produit relevé dans le CRM)
 # nom = "Pack Sérénité Home SAS"
 # produit_id = ""
+# numero = ""          # ou le numéro produit du catalogue (ex. 19230) à la place de produit_id
 # nav = ""                           # facultatif : lien produit propre à ce pack (sinon produit_nav)
 
 [booking]

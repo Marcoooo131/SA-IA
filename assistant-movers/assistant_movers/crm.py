@@ -46,6 +46,7 @@ class Gateway(Protocol):
     def agent_nom(self) -> str: ...
     def composants_installation(self, installation_id: str) -> str: ...
     def prix_produit(self, produit_id: str) -> tuple[str, str]: ...
+    def produit_par_numero(self, numero: str) -> str: ...
     def duree_wo(self, wo_id: str) -> str: ...
 
 
@@ -478,6 +479,14 @@ class DataverseGateway:
             if nom:
                 compte[nom] = compte.get(nom, 0) + qte
         return ", ".join(f"{int(q) if float(q).is_integer() else q}x {n}" for n, q in compte.items())
+
+    def produit_par_numero(self, numero: str) -> str:
+        n = str(numero).strip().replace("'", "''")
+        rows = self._get("products", "Produit par numéro", {"$select": "productid,name",
+                         "$filter": f"productnumber eq '{n}' and statecode eq 0", "$top": "2"}).get("value", [])
+        if len(rows) != 1:
+            raise CrmError(f"Produit n° {numero} : {'introuvable' if not rows else 'plusieurs produits actifs'}.")
+        return rows[0]["productid"]
 
     def prix_produit(self, produit_id: str) -> tuple[str, str]:
         w = self.cfg.work_order

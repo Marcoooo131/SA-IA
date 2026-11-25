@@ -201,7 +201,20 @@ class Assistant:
         hwid = next((i.nom for i in self.d.compte.installations if i.id == self.d.installation_id), "")
         return m_wo.description(self.cfg, self.d, agent=self.d.agent, hwid=hwid, materiel=self.d.infos.get("materiel", ""))
 
+    def _resoudre_produits(self) -> None:
+        """Traduit une seule fois les numéros produit (config `numero`) en identifiants CRM."""
+        if getattr(self, "_produits_resolus", False):
+            return
+        for p in list(self.cfg.work_order.packs) + list(self.cfg.work_order.options):
+            if p.numero and not p.produit_id:
+                try:
+                    p.produit_id = self.gw.produit_par_numero(p.numero)
+                except CrmError as e:
+                    self.journal.info(f"« {p.nom} » non proposé : {e}")
+        self._produits_resolus = True
+
     def tarifs_options(self) -> list[dict]:
+        self._resoudre_produits()
         if not hasattr(self, "_tarifs"):
             self._tarifs = {}
         out = []
@@ -222,6 +235,7 @@ class Assistant:
         def go():
             self._exiger("wo")
             self._ecriture_permise()
+            self._resoudre_produits()
             m_wo.completer(self.gw, self.cfg, self.d, texte, packs, produits_verifies, options)
             ajouts = packs + [f"{q}x {n}" for n, q in self.d.options.items()]
             self._ok(f"WO {self.d.wo.numero} complété" + (f" — produits : {', '.join(ajouts)}" if ajouts else "") + ".")
@@ -335,7 +349,7 @@ class Assistant:
             "manquants": self.manquants, "methode_booking": self._methode(),
             "dossier": d.vue(), "apercu_case": self.apercu_case(),
             "description": self.description_proposee() if d.etape == "wo" else "",
-            "packs": [p.nom for p in self.cfg.work_order.packs if p.produit_id or self.demo],
+            "packs": [p.nom for p in self.cfg.work_order.packs if p.produit_id or p.numero or self.demo],
             "options": self.tarifs_options() if d.etape == "wo" else [],
             "email_zones": m_email.zones_surlignees(d.email_html) if d.email_html else [],
             "compte_rendu": self.compte_rendu() if d.etape == "fin" else "",

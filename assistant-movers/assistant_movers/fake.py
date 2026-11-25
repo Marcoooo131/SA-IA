@@ -152,6 +152,9 @@ class FakeCrm:
     def composants_installation(self, installation_id):
         return "1x Centrale SAS, 1x Clavier, 2x DOC, 1x Sirène intérieure"
 
+    def produit_par_numero(self, numero):
+        return f"demo-{numero}"
+
     def prix_produit(self, produit_id):
         return "", ""
 

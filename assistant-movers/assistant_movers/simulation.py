@@ -130,6 +130,9 @@ class SimulationGateway:
     def composants_installation(self, installation_id):
         return self.reel.composants_installation(installation_id)
 
+    def produit_par_numero(self, numero):
+        return self.reel.produit_par_numero(numero)
+
     def prix_produit(self, produit_id):
         return self.reel.prix_produit(produit_id)
 
