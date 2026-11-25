@@ -81,7 +81,7 @@ function renderBlocage(b) {
     reprendre: () => act("/api/case/reprendre", {}, "Recherche du Work Order…"),
     recharger: () => act("/api/creneaux", {}, "Créneaux…"),
     verifier: () => act("/api/verifier", {}, "Lecture du WO…"),
-    forcer: () => act("/api/sms", {texte: mem.sms, forcer: true}, "Envoi du SMS…"),
+    forcer: () => act("/api/sms", {texte: mem.sms, mobile: mem.mobile || "", forcer: true}, "Envoi du SMS…"),
   })[x.dataset.a]());
 }
 
@@ -95,7 +95,7 @@ function vCompte() {
   $("#num").onkeydown = (e) => { if (e.key === "Enter") { mem.numero = e.target.value; go(); } };
   setTimeout(() => $("#num").focus(), 0);
 }
-const kvCompte = (c) => kv([["Client", `${c.numero} — ${c.nom}`], ["Mobile", c.mobile], ["Email", c.email], ["Adresse actuelle", c.adresse]]);
+const kvCompte = (c) => kv([["Client", `${c.numero} — ${c.nom}`], ["Mobile(s)", (c.mobiles && c.mobiles.length ? c.mobiles : [c.mobile]).join(" · ")], ["Email", c.email], ["Adresse actuelle", c.adresse]]);
 
 const CLES = ["duree", "electricite", "reseau", "travaux", "materiel"];
 const fi = (k, lab, ph) => `<div><label>${lab}</label><input data-m="e_${k}" placeholder="${esc(ph)}"></div>`;
@@ -170,13 +170,16 @@ function vBooking(d) {
 function vSms(d) {
   if (mem.sms === undefined) mem.sms = d.sms_texte;
   $("#view").innerHTML = `<h2>SMS de confirmation</h2><p class="lead">Rendez-vous réservé : <b>${esc(fmt(d.wo.debut))}</b> → ${esc(hh(d.wo.fin))}. Relisez puis envoyez.</p>
-    ${kv([["Destinataire", d.compte.mobile], ["WO", `${d.wo.numero} — ${d.wo.statut}`]])}
+    ${kv([["WO", `${d.wo.numero} — ${d.wo.statut}`]])}
+    <label>Mobile du client</label>
+    ${d.compte.mobiles.length > 1 ? `<select data-m="mobile">${d.compte.mobiles.map((m) => `<option ${m === d.compte.mobile ? "selected" : ""}>${esc(m)}</option>`).join("")}</select>`
+      : `<input data-m="mobile" value="${esc(d.compte.mobile)}" placeholder="06 xx xx xx xx" inputmode="tel">`}
     <label>Texte du SMS</label><textarea data-m="sms" rows="4"></textarea>
     <p class="muted small" id="cnt"></p>
     <div class="actions"><button class="primary" id="go">${L("Envoyer le SMS", "Tester l'envoi du SMS (rien ne part)")}</button></div>`;
   const cnt = () => { $("#cnt").textContent = `${(mem.sms || "").length} caractères`; };
   setTimeout(() => { cnt(); document.querySelector("[data-m=sms]").addEventListener("input", cnt); }, 0);
-  $("#go").onclick = () => act("/api/sms", {texte: mem.sms}, "Envoi du SMS…");
+  $("#go").onclick = () => act("/api/sms", {texte: mem.sms, mobile: mem.mobile || ""}, "Envoi du SMS…");
 }
 
 function vEmail(d) {

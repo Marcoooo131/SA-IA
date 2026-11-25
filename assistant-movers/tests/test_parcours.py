@@ -124,3 +124,12 @@ def test_nouveau_efface_le_dossier(a):
     a.ouvrir_compte("10000001")
     a.nouveau()
     assert a.d.compte is None and a.d.etape == "compte"
+
+
+def test_choix_du_mobile_a_l_etape_sms(a):
+    jusqu_au_booking(a)
+    a.reserver(a.d.creneaux[0].id)
+    a.envoyer_sms(a.d.sms_texte, mobile="01 23 45 67 89")
+    assert not a.d.sms_envoye and "invalide" in a.d.blocage["message"]
+    a.envoyer_sms(a.d.sms_texte, mobile="07 11 22 33 44")
+    assert a.d.sms_envoye and a.d.compte.mobile == "07 11 22 33 44"
