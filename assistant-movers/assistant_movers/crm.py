@@ -298,12 +298,26 @@ class DataverseGateway:
 
     def corps_gagner(self, opp_id: str) -> tuple[str, dict]:
         o = self.cfg.opportunite
+        if o.methode == "action":
+            unique, entite = self._action_par_nom(o.workflow)
+            if entite and entite != "none":
+                return f"opportunities({_guid(opp_id)})/Microsoft.Dynamics.CRM.{unique}", {}
+            return unique, {"Target": {"opportunityid": _guid(opp_id), "@odata.type": "Microsoft.Dynamics.CRM.opportunity"}}
         if o.methode == "workflow":
             wid = self._par_nom_workflow(o.workflow)
             return f"workflows({wid})/Microsoft.Dynamics.CRM.ExecuteWorkflow", {"EntityId": _guid(opp_id)}
         return "WinOpportunity", {"Status": o.statut_gagne, "OpportunityClose": {
             "subject": "Movers - opportunité gagnée", "actualend": date.today().isoformat(),
             "opportunityid@odata.bind": f"/opportunities({_guid(opp_id)})"}}
+
+    def _action_par_nom(self, nom: str) -> tuple[str, str]:
+        """Nom technique (avec préfixe) et entité liée de l'action CRM affichée sous ce nom."""
+        rows = self._get("workflows", f"Action « {nom} »", {"$select": "uniquename,primaryentity,name",
+                         "$filter": f"(name eq '{_q(nom)}' or uniquename eq '{_q(nom)}') and category eq 3 and type eq 1 and statecode eq 1",
+                         "$top": "2"}).get("value", [])
+        if len(rows) != 1 or not rows[0].get("uniquename"):
+            raise CrmError(f"Action « {nom} » {'introuvable ou inactive' if not rows else 'en double ou sans nom technique'}.")
+        return rows[0]["uniquename"], rows[0].get("primaryentity") or ""
 
     def _par_nom_workflow(self, nom: str) -> str:
         rows = self._get("workflows", f"Processus « {nom} »", {"$select": "workflowid",

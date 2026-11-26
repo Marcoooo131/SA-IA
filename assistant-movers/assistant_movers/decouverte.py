@@ -205,12 +205,13 @@ class Decouverte:
                 self.p(f"    non lisible ({ex})")
         self.p("\n[Processus « Resolve Opp Won »]  → opportunite.workflow (catégorie : 0 = workflow lançable, 1 = dialogue, 3 = action)")
         try:
-            wfs = g._get("workflows", "Processus", {"$select": "name,category,ondemand,primaryentity",
+            wfs = g._get("workflows", "Processus", {"$select": "name,uniquename,category,ondemand,primaryentity",
                          "$filter": "type eq 1 and statecode eq 1"}).get("value", [])
             hits = [w for w in wfs if (w.get("primaryentity") == "opportunity" or "opp" in _n(w.get("name", "")))
                     and any(m in _n(w.get("name", "")) for m in ("resolve", "won", "win", "gagn", "qualif", "sold", "vente"))]
             for w in hits:
-                self.p(f"    « {w.get('name')} »  catégorie {w.get('category')}  à la demande = {w.get('ondemand')}  ({w.get('primaryentity')})")
+                self.p(f"    « {w.get('name')} »  catégorie {w.get('category')}  à la demande = {w.get('ondemand')}  ({w.get('primaryentity')})"
+                       + (f"  nom technique {w.get('uniquename')}" if w.get("uniquename") else ""))
             if not hits:
                 self.p("    aucun processus trouvé : methode = \"win\" (action standard) ou \"assiste\".")
         except Exception as ex:  # noqa: BLE001
@@ -313,12 +314,12 @@ class Verification:
         o = cfg.opportunite
         if o.methode:
             self.titre("[opportunite]")
-            self.p(o.methode in ("win", "workflow", "assiste"), f"opportunite.methode = {o.methode}")
+            self.p(o.methode in ("action", "win", "workflow", "assiste"), f"opportunite.methode = {o.methode}")
             if o.date_vente_attr:
                 self._champ(self._attrs("opportunity"), "opportunite", "date_vente_attr", o.date_vente_attr)
-            if o.methode == "workflow":
+            if o.methode in ("workflow", "action"):
                 try:
-                    self.gw._par_nom_workflow(o.workflow)
+                    (self.gw._action_par_nom if o.methode == "action" else self.gw._par_nom_workflow)(o.workflow)
                     self.p(True, f"opportunite.workflow = {o.workflow}")
                 except Exception as e:  # noqa: BLE001
                     self.p(False, f"opportunite.workflow = {o.workflow}", str(e))
