@@ -60,7 +60,7 @@ source = "contrat"                       # fiche à modifier : "contrat" (contra
 entite = "log_contract"
 entity_set = "log_contracts"
 next_invoice_attr = "log_nextinvoicedate"   # « Next Invoice Date » : à confirmer avec 3-decouvrir
-last_income_attr = "log_lastincomedate"     # « Last Income Date » : à confirmer avec 3-decouvrir
+last_income_attr = "log_lastinvoicedate"    # « Last Income Date » (nom technique log_lastinvoicedate)
 
 [work_order]
 entite = ""                          # nom logique de la table Work Order

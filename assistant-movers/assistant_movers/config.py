@@ -145,12 +145,12 @@ class EmailCfg:
 class OpportuniteCfg:
     """Qualification de l'opportunité créée par le CRM après le case (Sold Date, « Resolve Opp Won », Finish).
     Sans `methode`, l'étape est sautée."""
-    methode: str = ""              # "" (rien), "win" (action WinOpportunity), "workflow" (processus à la demande), "assiste" (l'agent clique)
+    methode: str = ""              # "" (rien), "action" (action CRM du bouton), "win" (WinOpportunity), "workflow" (processus à la demande), "assiste"
     case_attrs: list = field(default_factory=lambda: ["log_relatedturnoveropportunity", "log_relatedtakeoveropportunity"])
     date_vente_attr: str = ""      # « Sold Date » de l'opportunité
     champs_fixes: dict = field(default_factory=dict)   # autres champs à écrire avant de gagner (nom logique → valeur)
     statut_gagne: int = 3          # statuscode « Won »
-    workflow: str = ""             # nom exact du processus « Resolve Opp Won » si methode = "workflow"
+    workflow: str = ""             # nom exact du processus ou de l'action « Resolve Opp Won » (methode = "workflow" ou "action")
     attente_secondes: int = 60     # attente de l'opportunité après le case
 
 
@@ -187,11 +187,11 @@ class Config:
             m.append("connexion.environment_url")
         m += self.case.manquants() + self.work_order.manquants() + self.sms.manquants()
         o = self.opportunite
-        if o.methode not in ("", "win", "workflow", "assiste"):
+        if o.methode not in ("", "action", "win", "workflow", "assiste"):
             m.append("opportunite.methode")
-        if o.methode in ("win", "workflow") and not o.date_vente_attr:
+        if o.methode in ("action", "win", "workflow") and not o.date_vente_attr:
             m.append("opportunite.date_vente_attr")
-        if o.methode == "workflow" and not o.workflow:
+        if o.methode in ("workflow", "action") and not o.workflow:
             m.append("opportunite.workflow")
         f = self.facturation
         if f.last_income_attr and not (f.next_invoice_attr and f.entity_set and f.source in ("contrat", "installation")):
