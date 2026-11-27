@@ -17,7 +17,7 @@ lecture des lettres scannées par Azure AI (étape 6 bis, à n'activer qu'avec l
 - **A. Installation (une seule fois, environ 30 minutes)** : étapes 1 à 6 bis
 - **B. Chaque jour** : étapes 7 à 10
 - **C. Les deux semaines de supervision, puis le mode Automatique** : étape 11
-- **D. Installer une nouvelle version** : étape 12
+- **D. Installer une nouvelle version, changer de collègue** : étapes 12 et 13
 - **En cas de souci**
 
 ---
@@ -53,6 +53,7 @@ lecture des lettres scannées par Azure AI (étape 6 bis, à n'activer qu'avec l
 | `3-decouvrir.bat` | lit le CRM (sans rien modifier) pour trouver les informations à recopier dans la configuration |
 | `4-lancer.bat` | lance l'agent sur le vrai CRM : **c'est celui de tous les jours** |
 | `5-exporter-corrections.bat` | exporte vos corrections dans un fichier Excel (étape 11) |
+| `7-changer-collegue.bat` | remplace un collègue qui quitte l'équipe par un nouveau, dans la configuration et les rotations (étape 13) |
 
 > Les dossiers `movers-dispatch` (sans Azure) et `movers-dispatch-ancienne-version` sont les autres
 > versions. Pour ce tuto, vous n'en avez pas besoin.
@@ -103,13 +104,13 @@ environment_url = "https://serveur.exemple.net/SectorAlarmFR"
 **b) Les rotations.** Il y a **une rotation par nom de tâche** : « Prio - Movers - Déménagement »,
 « Movers - Résiliation », « Movers - Résiliation exception » et « Movers - Takeovers ». Elles sont déjà
 définies (sections `[[rotations]]`). Dans la section `[rotation]`, mettez les collègues dans l'ordre de
-passage voulu pour chacune, avec leur clé en minuscules : `chloe`, `kader`, `estefania`, `marc-antoine`.
+passage voulu pour chacune, avec leur clé en minuscules : `chloe`, `kader`, `agathe`, `marc-antoine`.
 
 ```toml
-resiliation_exception = ["chloe", "kader", "estefania", "marc-antoine"]
-resiliation = ["chloe", "kader", "estefania", "marc-antoine"]
-prio_demenagement = ["chloe", "kader", "estefania", "marc-antoine"]
-takeover = ["chloe", "kader", "estefania", "marc-antoine"]
+resiliation_exception = ["chloe", "kader", "agathe", "marc-antoine"]
+resiliation = ["chloe", "kader", "agathe", "marc-antoine"]
+prio_demenagement = ["chloe", "kader", "agathe", "marc-antoine"]
+takeover = ["chloe", "kader", "agathe", "marc-antoine"]
 ```
 
 > Si votre `dispatch.toml` vient d'une ancienne version, copiez ces sections (`[[rotations]]` et
@@ -239,7 +240,7 @@ Comment l'agent choisit le collègue :
    le faites) ; sinon par l'adresse de l'expéditeur, le « Numéro de client » écrit dans le mail, le champ
    « Email » du formulaire HubSpot ou un téléphone. Il ne retient le
    client que si **un seul compte** correspond.
-2. **Il regarde les Cases « Mover / MOVERS » du client.** Si l'un appartient à Kader, Estefania,
+2. **Il regarde les Cases « Mover / MOVERS » du client.** Si l'un appartient à Kader, Agathe,
    Marc-Antoine ou Chloé, c'est cette personne. Entre deux Cases de personnes différentes, l'**actif ou
    annulé** passe avant le **résolu**.
 3. **Sinon, la rotation 1 pour 1 du nom de la tâche** décide : « Prio - Movers - Déménagement »,
@@ -359,6 +360,39 @@ Votre journal est mis à jour automatiquement, sans rien perdre.
 
 ---
 
+## Étape 13 : un collègue quitte l'équipe, un autre arrive
+
+Exemple : **Estefania part, Agathe arrive.** L'agent remplace Estefania par Agathe dans `dispatch.toml` et
+dans les 4 rotations, **à la même place** dans l'ordre de passage. Il va chercher tout seul l'identifiant
+d'Agathe dans le CRM. Vous n'avez rien à recopier.
+
+1. Fermez toutes les fenêtres noires de l'agent.
+2. Double-cliquez sur **`windows\7-changer-collegue.bat`** et répondez aux trois questions :
+   - **Clé du collègue qui part** : `estefania` (en minuscules, sans accent) ;
+   - **Prénom du nouveau collègue** : `Agathe` ;
+   - **Nom de famille** : son nom, écrit comme dans le CRM.
+3. Une fenêtre **Edge** s'ouvre : connectez-vous au CRM comme d'habitude. L'agent ne fait que **lire** la
+   liste des utilisateurs.
+4. Il affiche la personne trouvée, avec son nom complet et son identifiant Windows. **Vérifiez que c'est
+   bien elle**, tapez **O** puis Entrée.
+5. Message « C'est fait » : relancez **`4-lancer.bat`**. Dans le tableau de bord, Agathe apparaît dans
+   **Rotation 1 pour 1** et dans les listes **Attribuer à…**.
+
+À savoir :
+- L'ancien fichier est gardé à côté, sous le nom `dispatch.avant-AAAAMMJJ-HHMMSS.toml`.
+- Si l'agent trouve **0** ou **plusieurs** personnes actives avec ce prénom et ce nom, il ne modifie rien
+  et le dit : vérifiez l'orthographe (accents compris) dans le CRM.
+- Les mails déjà attribués à Estefania ne changent pas. Les Cases dont elle est encore **Owner** ne la
+  désignent plus : ces clients passent par la **rotation**. Si un autre collègue a aussi un Case sur ce
+  client, c'est lui qui est choisi.
+
+**Sans le fichier `.bat`**, vous pouvez aussi le faire à la main dans `dispatch.toml` : remplacez le bloc
+`[[collaborators]]` d'Estefania par `key = "agathe"`, `first_name = "Agathe"`, `systemuser_id = ""`, puis
+`"estefania"` par `"agathe"` dans la section `[rotation]`. Ensuite, lancez `3-decouvrir.bat` et recopiez
+l'identifiant d'Agathe (étape 6).
+
+---
+
 ## En cas de souci
 
 | Message | Que faire |
@@ -368,6 +402,8 @@ Votre journal est mis à jour automatiquement, sans rien perdre.
 | La fenêtre noire se ferme tout de suite | Vérifier que le `.bat` est bien dans `movers-dispatch-azure\windows`, puis relancer `1-installer.bat`. |
 | L'installation est très lente ou échoue | Le dossier est probablement dans OneDrive : refaire l'étape 2 hors OneDrive. |
 | « Session Dynamics 365 non ouverte » ou « Connexion au CRM non faite dans le délai » | Relancer et se connecter dans la fenêtre Edge dans les 5 minutes. La fenêtre Edge doit rester ouverte tant que l'agent tourne. |
+| `7-changer-collegue.bat` : « … introuvable dans dispatch.toml » | La clé tapée n'existe pas : le message donne les clés présentes (ex. `estefania`). |
+| `7-changer-collegue.bat` : « 0 actif(s) trouvé(s) » ou « 2 actif(s) » | Prénom ou nom mal orthographié, ou compte CRM inactif ou en double : vérifier dans le CRM. |
 | « faute de frappe » dans `dispatch.toml` | Le message donne la ligne : chaque valeur doit être entre guillemets droits `"…"`, sans espace en début de ligne. |
 | `! Mettre connection.api_version = "v9.0"` (ou autre) | Recopier cette valeur dans `dispatch.toml` à la ligne `api_version = …`, puis relancer `3-decouvrir.bat`. |
 | `! systemuserid non renseigné` | Un des quatre `systemuser_id` est vide ou incomplet (étape 6). |
@@ -376,7 +412,7 @@ Votre journal est mis à jour automatiquement, sans rien perdre.
 | « Recherche du client désactivée : la colonne account.… n'existe pas » | Corriger `champs_telephone` ou `champs_email` dans `[client]` d'après `3-decouvrir.bat` (étape 6). Le reste de l'agent continue de fonctionner. |
 | « Regarding … pointe vers « contract » » | M'envoyer la partie « Colonnes de « contract » » de `decouverte.txt` (étape 6). |
 | « Le numéro … correspond à 0 compte(s) actif(s) » | Le n° tapé n'existe pas (souvent un chiffre mal lu sur une lettre) : relire la pièce jointe. |
-| « rotation.… : collaborateur(s) inconnu(s) » | Dans `[rotation]`, utiliser les clés `chloe`, `kader`, `estefania`, `marc-antoine`. |
+| « rotation.… : collaborateur(s) inconnu(s) » | Dans `[rotation]`, utiliser les clés `chloe`, `kader`, `agathe`, `marc-antoine`. |
 | « Lecture des lettres désactivée : la variable Windows MD_AZURE_DI_KEY (clé Azure) est vide » | Refaire l'étape 6 bis b), fermer **toutes** les fenêtres noires, puis relancer `4-lancer.bat`. |
 | « [lecture] endpoint : adresse https… » | L'adresse de l'étape 6 bis c) est vide ou ne commence pas par `https://`. |
 | « Azure a répondu HTTP 401 (clé refusée…) » | Clé fausse ou renouvelée : la redemander à l'informatique, puis refaire l'étape 6 bis b). |

@@ -21,7 +21,7 @@ def gid(label: str) -> str:
 
 USERS = {
     "kader": User(gid("u/kader"), "Kader", "Kader Exemple", False),
-    "estefania": User(gid("u/estefania"), "Estefania", "Estefania Exemple", False),
+    "agathe": User(gid("u/agathe"), "Agathe", "Agathe Exemple", False),
     "marc-antoine": User(gid("u/marc-antoine"), "Marc-Antoine", "Marc-Antoine Exemple", False),
     "chloe": User(gid("u/chloe"), "Chloé", "Chloé Exemple", False),
     "autre": User(gid("u/autre"), "Camille", "Camille Autre-Service", False),
@@ -229,10 +229,10 @@ def demo_crm() -> FakeCrm:
     """Fictitious queue covering the cases listed in the specification and the two recorded mails."""
     crm = FakeCrm()
     # recorded mail 1: Regarding = account, one "Mover" case, Canceled (statecode 2)
-    crm.add("1", "Voir document joint (démo 1)", "Client Démo A", [("CAS-1001", "estefania", 2)])
+    crm.add("1", "Voir document joint (démo 1)", "Client Démo A", [("CAS-1001", "agathe", 2)])
     # recorded mail 2: Regarding = the "MOVERS" case (Canceled), the account also has a resolved "Mover" case
     crm.add("2", "Re : Contrat (démo 2)", "Client Démo B",
-            [("CAS-1002", "estefania", 1, "Mover"), ("CAS-1003", "kader", 2, "MOVERS")],
+            [("CAS-1002", "agathe", 1, "Mover"), ("CAS-1003", "kader", 2, "MOVERS")],
             regarding_entity="incident", regarding_case=1)
     crm.add("3", "Changement de titulaire (démo 3)", "Client Démo C",
             [("CAS-1004", "marc-antoine", 0), ("CAS-0950", "kader", 1, "CARE - Separation Contrat")])
@@ -240,7 +240,7 @@ def demo_crm() -> FakeCrm:
     crm.add("5", "Déménagement (démo 5)", "Client Démo E", [("CAS-1006", "kader", 1), ("CAS-1007", "chloe", 0)])
     crm.add("6", "Question sur contrat (démo 6)", "Client Démo F", [("CAS-1008", "chloe", 1, "Reactive Upgrade")])
     crm.add("7", "Déménagement (démo 7)", "Client Démo G", [("CAS-1009", "autre", 0), ("CAS-1010", "team", 0)])
-    crm.add("8", "Déménagement (démo 8)", "Client Démo H", [("CAS-1011", "estefania", 0)], worker="estefania")
+    crm.add("8", "Déménagement (démo 8)", "Client Démo H", [("CAS-1011", "agathe", 0)], worker="agathe")
     crm.add("9", "Mail sans compte (démo 9)", None, [])
     crm.add("10", "Rappeler le client (tâche démo 10)", "Client Démo I", [("CAS-1012", "marc-antoine", 0, "MOVERS")],
             kind="task")

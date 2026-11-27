@@ -20,7 +20,7 @@ def row(agent, qid):
     return agent.journal.item(qid)
 
 
-@pytest.mark.parametrize("owner,first", [("kader", "Kader"), ("estefania", "Estefania"),
+@pytest.mark.parametrize("owner,first", [("kader", "Kader"), ("agathe", "Agathe"),
                                          ("marc-antoine", "Marc-Antoine"), ("chloe", "Chloé")])
 def test_case_owned_by_each_collaborator_is_assigned(owner, first):
     agent, crm = make(automatic_allowed=True)
@@ -89,7 +89,7 @@ def test_mail_already_processed_is_skipped_and_never_overwritten():
     assert crm.writes == 0 and out["ignores"] == 1
     # second run after an assignment: the item stays "assigned", no new write
     agent2, crm2 = make(automatic_allowed=True)
-    q = crm2.add("c", "s", "c", [("CAS-3", "estefania", 0)])
+    q = crm2.add("c", "s", "c", [("CAS-3", "agathe", 0)])
     agent2.run(Mode.AUTOMATIC, confirm_automatic=True)
     agent2.run(Mode.AUTOMATIC, confirm_automatic=True)
     assert crm2.writes == 1 and row(agent2, q)["status"] == Status.ASSIGNED.value
@@ -137,19 +137,19 @@ def test_expired_session_stops_without_writing():
 
 
 def test_recorded_mail_1_account_with_one_canceled_mover_case():
-    """Video, 1st mail: Regarding = account; its only case "Mover" is Canceled, owner Estefania."""
+    """Video, 1st mail: Regarding = account; its only case "Mover" is Canceled, owner Agathe."""
     agent, crm = make(automatic_allowed=True)
-    qid = crm.add("a", "Voir document joint", "Client fictif", [("CAS-186840", "estefania", 2)])
+    qid = crm.add("a", "Voir document joint", "Client fictif", [("CAS-186840", "agathe", 2)])
     agent.run(Mode.AUTOMATIC, confirm_automatic=True)
-    assert row(agent, qid)["worked_by_name"] == "Estefania" and row(agent, qid)["status"] == Status.ASSIGNED.value
+    assert row(agent, qid)["worked_by_name"] == "Agathe" and row(agent, qid)["status"] == Status.ASSIGNED.value
 
 
 def test_recorded_mail_2_regarding_is_the_movers_case():
     """Video, 2nd mail: Regarding = the case "MOVERS" (Canceled, owner Kader). The account also holds a more
-    recent resolved "Mover" case of Estefania: the case named in Regarding wins."""
+    recent resolved "Mover" case of Agathe: the case named in Regarding wins."""
     agent, crm = make(automatic_allowed=True)
     qid = crm.add("a", "Re :Contrat", "Client fictif",
-                  [("CAS-167719", "estefania", 1, "Mover"), ("CAS-163699", "kader", 2, "MOVERS"),
+                  [("CAS-167719", "agathe", 1, "Mover"), ("CAS-163699", "kader", 2, "MOVERS"),
                    ("CAS-151076", "autre", 1, "108180 - CARE - Separation Contrat")],
                   regarding_entity="incident", regarding_case=1)
     agent.run(Mode.AUTOMATIC, confirm_automatic=True)
@@ -159,11 +159,11 @@ def test_recorded_mail_2_regarding_is_the_movers_case():
 
 
 def test_different_owners_the_active_or_canceled_case_wins_over_resolved():
-    """Business rule: same cases as the 2nd mail but Regarding = account — Resolved (Estefania) vs
+    """Business rule: same cases as the 2nd mail but Regarding = account — Resolved (Agathe) vs
     Canceled (Kader): the Canceled one wins. Same with Active vs Resolved."""
     agent, crm = make(automatic_allowed=True)
-    q1 = crm.add("a", "s", "c", [("CAS-167719", "estefania", 1, "Mover"), ("CAS-163699", "kader", 2, "MOVERS")])
-    q2 = crm.add("b", "s", "c", [("CAS-1", "chloe", 0), ("CAS-2", "estefania", 1)])
+    q1 = crm.add("a", "s", "c", [("CAS-167719", "agathe", 1, "Mover"), ("CAS-163699", "kader", 2, "MOVERS")])
+    q2 = crm.add("b", "s", "c", [("CAS-1", "chloe", 0), ("CAS-2", "agathe", 1)])
     agent.run(Mode.AUTOMATIC, confirm_automatic=True)
     assert row(agent, q1)["worked_by_name"] == "Kader" and row(agent, q1)["case_number"] == "CAS-163699"
     assert row(agent, q2)["worked_by_name"] == "Chloé" and row(agent, q2)["status"] == Status.ASSIGNED.value
@@ -171,8 +171,8 @@ def test_different_owners_the_active_or_canceled_case_wins_over_resolved():
 
 def test_different_owners_both_active_or_canceled_stay_ambiguous():
     agent, crm = make(automatic_allowed=True)
-    q1 = crm.add("a", "s", "c", [("CAS-1", "chloe", 0), ("CAS-2", "estefania", 2)])
-    q2 = crm.add("b", "s", "c", [("CAS-3", "chloe", 1), ("CAS-4", "estefania", 1)])   # both Resolved
+    q1 = crm.add("a", "s", "c", [("CAS-1", "chloe", 0), ("CAS-2", "agathe", 2)])
+    q2 = crm.add("b", "s", "c", [("CAS-3", "chloe", 1), ("CAS-4", "agathe", 1)])   # both Resolved
     agent.run(Mode.AUTOMATIC, confirm_automatic=True)
     assert row(agent, q1)["status"] == row(agent, q2)["status"] == Status.REVIEW.value and crm.writes == 0
 
@@ -229,8 +229,8 @@ def test_mail_without_account_and_inactive_collaborator():
     agent, crm = make(automatic_allowed=True)
     no_account = crm.add("a", "s", None, [])
     contact = crm.add("b", "s", "Contact", [], regarding_entity="contact")
-    inactive = crm.add("c", "s", "c", [("CAS-1", "estefania", 0)])
-    u = USERS["estefania"]
+    inactive = crm.add("c", "s", "c", [("CAS-1", "agathe", 0)])
+    u = USERS["agathe"]
     crm.users[u.id] = type(u)(u.id, u.first_name, u.full_name, True)
     agent.run(Mode.AUTOMATIC, confirm_automatic=True)
     assert "Regarding" in row(agent, no_account)["reason"]
@@ -347,15 +347,15 @@ def test_journal_keeps_no_email_body_and_truncates_subject():
 def test_correction_writes_the_right_collaborator_and_keeps_what_the_agent_saw():
     agent, crm = make(readiness_streak=2)
     good = crm.add("a", "s", "c", [("CAS-1", "kader", 0)])
-    wrong = crm.add("b", "s", "c", [("CAS-2", "chloe", 0), ("CAS-3", "estefania", 1)])   # agent proposes Chloé
+    wrong = crm.add("b", "s", "c", [("CAS-2", "chloe", 0), ("CAS-3", "agathe", 1)])   # agent proposes Chloé
     agent.run(Mode.SUPERVISED)
     agent.approve(good, "marc-antoine")
-    r = agent.correct(wrong, "estefania", "marc-antoine", "le Case résolu était le bon")
-    assert r["status"] == Status.ASSIGNED.value and crm.items[wrong].worker.id == USERS["estefania"].id
+    r = agent.correct(wrong, "agathe", "marc-antoine", "le Case résolu était le bon")
+    assert r["status"] == Status.ASSIGNED.value and crm.items[wrong].worker.id == USERS["agathe"].id
     s = agent.journal.supervision(agent.cfg.readiness_streak)
     assert (s["acceptees"], s["corrigees"], s["serie"], s["taux_accord"], s["pret"]) == (1, 1, 0, 50, False)
     c = s["corrections"][0]
-    assert (c["propose"], c["retenu"], c["case_propose"], c["note"]) == ("Chloé", "Estefania", "CAS-2", "le Case résolu était le bon")
+    assert (c["propose"], c["retenu"], c["case_propose"], c["note"]) == ("Chloé", "Agathe", "CAS-2", "le Case résolu était le bon")
     assert any("CAS-3 « Mover » résolu" in x for x in c["cases_vus"])
 
 

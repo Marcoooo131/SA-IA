@@ -88,8 +88,10 @@ def _decide(cfg: Config, item: QueueItem, email: Email | None, cases: list[Case]
                         code="regarding_other")
     owned = [c for c in pertinent if c.owner and c.owner.entity == "systemuser" and cfg.collaborator_for(c.owner.id)]
     if not owned:
-        return Decision(Status.REVIEW, "Owner non reconnu : aucun Case pertinent n'appartient à Kader, Estefania, "
-                        "Marc-Antoine ou Chloé.", considered=considered, code="owner_unknown")
+        team = [c.first_name for c in cfg.collaborators]
+        return Decision(Status.REVIEW, "Owner non reconnu : aucun Case pertinent n'appartient à "
+                        + (", ".join(team[:-1]) + " ou " + team[-1] if len(team) > 1 else "".join(team)) + ".",
+                        considered=considered, code="owner_unknown")
     owners = {c.owner.id.lower() for c in owned}
     if len(owners) > 1:
         # Rule from the business: between cases of different collaborators, the Active or Canceled one

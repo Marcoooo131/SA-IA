@@ -176,14 +176,14 @@ def test_rotation_turns_one_for_one_per_category_and_skips_absents():
     agent, crm = make(automatic_allowed=True)
     res = [crm.add(f"r{n}", f"Movers - Résiliation ({n})", f"Client R{n}", [], kind="task") for n in range(5)]
     dem = [crm.add(f"d{n}", "HubSpot Moving Home", f"Client D{n}", [("CAS-9", "autre", 0)]) for n in range(2)]
-    agent.set_absent("estefania", True, "local")
+    agent.set_absent("agathe", True, "local")
     agent.run(Mode.AUTOMATIC, confirm_automatic=True)
     assert [row(agent, q)["worked_by_name"] for q in res] == ["Kader", "Marc-Antoine", "Chloé", "Kader", "Marc-Antoine"]
     assert [row(agent, q)["worked_by_name"] for q in dem] == ["Kader", "Marc-Antoine"]   # its own turn
     assert all(row(agent, q)["method"] == "rotation" for q in res + dem)
     nxt = {c["key"]: c["prochain"] for c in agent.rotation_state()["categories"]}
     assert (nxt["resiliation"], nxt["prio_demenagement"]) == ("Chloé", "Chloé")             # remembered after the run
-    agent.set_absent("estefania", False, "local")
+    agent.set_absent("agathe", False, "local")
     assert {c["key"]: c["prochain"] for c in agent.rotation_state()["categories"]}["resiliation"] == "Chloé"
 
 
@@ -193,10 +193,10 @@ def test_rotation_does_not_replace_the_case_owner_and_proposals_do_not_advance_i
     free = [crm.add(f"f{n}", "Movers - Résiliation", f"Client F{n}", [], kind="task") for n in range(2)]
     agent.run(Mode.SIMULATION)
     assert row(agent, owned)["method"] == "case" and row(agent, owned)["worked_by_name"] == "Chloé"
-    assert [row(agent, q)["worked_by_name"] for q in free] == ["Kader", "Estefania"]
+    assert [row(agent, q)["worked_by_name"] for q in free] == ["Kader", "Agathe"]
     assert agent.journal.setting("rotation:resiliation") is None      # simulation: the turn did not move
     agent.run(Mode.SIMULATION)
-    assert [row(agent, q)["worked_by_name"] for q in free] == ["Kader", "Estefania"]
+    assert [row(agent, q)["worked_by_name"] for q in free] == ["Kader", "Agathe"]
 
 
 def test_supervised_rotation_keeps_the_proposed_person_and_correction_moves_the_turn():
@@ -204,9 +204,9 @@ def test_supervised_rotation_keeps_the_proposed_person_and_correction_moves_the_
     a = crm.add("a", "Movers - Résiliation", "Client A", [], kind="task")
     b = crm.add("b", "Movers - Résiliation", "Client B", [], kind="task")
     agent.run(Mode.SUPERVISED)
-    assert (row(agent, a)["worked_by_name"], row(agent, b)["worked_by_name"]) == ("Kader", "Estefania")
-    assert agent.approve(b, "local")["worked_by_name"] == "Estefania"          # out of order: still Estefania
-    assert agent.journal.setting("rotation:resiliation") == "estefania"
+    assert (row(agent, a)["worked_by_name"], row(agent, b)["worked_by_name"]) == ("Kader", "Agathe")
+    assert agent.approve(b, "local")["worked_by_name"] == "Agathe"          # out of order: still Agathe
+    assert agent.journal.setting("rotation:resiliation") == "agathe"
     assert agent.correct(a, "chloe", "local", "Kader en formation")["worked_by_name"] == "Chloé"
     assert agent.journal.setting("rotation:resiliation") == "chloe"
 
@@ -323,7 +323,7 @@ def test_rotation_counters_per_category_and_person():
     agent.run(Mode.AUTOMATIC, confirm_automatic=True)
     counts = {c["key"]: c for c in agent.rotation_state()["categories"]}
     assert counts["resiliation"]["aujourdhui"] == counts["resiliation"]["total"] == 3
-    assert counts["resiliation"]["par_personne"] == {"Kader": 1, "Estefania": 1, "Marc-Antoine": 1}
+    assert counts["resiliation"]["par_personne"] == {"Kader": 1, "Agathe": 1, "Marc-Antoine": 1}
     assert counts["prio_demenagement"]["total"] == 1
 
 
@@ -348,7 +348,7 @@ def test_four_independent_rotations():
     ids = {n: [crm.add(f"{n}{i}", n, f"C{n}{i}", [], kind="task") for i in range(2)] for n in names}
     agent.run(Mode.AUTOMATIC, confirm_automatic=True)
     for n in names:   # each rotation starts at the top of its own order
-        assert [row(agent, q)["worked_by_name"] for q in ids[n]] == ["Kader", "Estefania"], n
+        assert [row(agent, q)["worked_by_name"] for q in ids[n]] == ["Kader", "Agathe"], n
     counts = {c["label"]: c["total"] for c in agent.rotation_state()["categories"]}
     assert counts == {n: 2 for n in names}
 

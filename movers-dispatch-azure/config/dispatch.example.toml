@@ -94,10 +94,10 @@ applique = "sans_owner"
 tache_inconnue = "resiliation"
 # Ordre de passage de chaque rotation (clés des [[collaborators]] ci-dessous). Les absents se cochent
 # dans le tableau de bord. Une rotation absente ici suit l'ordre des [[collaborators]].
-resiliation_exception = ["chloe", "kader", "estefania", "marc-antoine"]
-resiliation = ["chloe", "kader", "estefania", "marc-antoine"]
-prio_demenagement = ["chloe", "kader", "estefania", "marc-antoine"]
-takeover = ["chloe", "kader", "estefania", "marc-antoine"]
+resiliation_exception = ["chloe", "kader", "agathe", "marc-antoine"]
+resiliation = ["chloe", "kader", "agathe", "marc-antoine"]
+prio_demenagement = ["chloe", "kader", "agathe", "marc-antoine"]
+takeover = ["chloe", "kader", "agathe", "marc-antoine"]
 
 [client]
 # Regarding vide : l'agent cherche le compte comme dans la vidéo (n° client écrit dans le texte, adresse de
@@ -133,8 +133,8 @@ first_name = "Kader"
 systemuser_id = ""
 
 [[collaborators]]
-key = "estefania"
-first_name = "Estefania"
+key = "agathe"
+first_name = "Agathe"
 systemuser_id = ""
 
 [[collaborators]]
