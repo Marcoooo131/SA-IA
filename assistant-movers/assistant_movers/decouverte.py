@@ -4,6 +4,8 @@ donnée client."""
 
 from __future__ import annotations
 
+import re
+
 import unicodedata
 
 from .crm import DataverseGateway
@@ -79,6 +81,23 @@ class Decouverte:
             if r["ReferencedEntity"] in ("systemuser", "team", "businessunit", "transactioncurrency", "organization"):
                 continue
             self.p(f"    {r['ReferencingAttribute']:<40} → {r['ReferencedEntity']:<28} nav = {r['ReferencingEntityNavigationPropertyName']}")
+
+    def _parametres_action(self, wid: str) -> None:
+        """Paramètres d'entrée d'une action CRM, lus dans sa définition (XAML)."""
+        try:
+            xaml = self.gw._get(f"workflows({wid})", "Définition de l'action", {"$select": "xaml"}).get("xaml") or ""
+        except Exception as ex:  # noqa: BLE001
+            self.p(f"        paramètres non lisibles ({ex})")
+            return
+        props = re.findall(r'<x:Property\s+Name="([^"]+)"\s+Type="(InArgument|OutArgument)\(([^)]+)\)"(.*?)</x:Property>', xaml, re.S)
+        if not props:
+            self.p("        aucun paramètre déclaré")
+        for nom, sens, typ, corps in props:
+            if sens != "InArgument" or nom in ("InputEntities", "CreatedEntities", "Target"):
+                continue
+            requis = "obligatoire" if re.search(r'ArgumentRequiredAttribute\s+Value="True"', corps) else "facultatif"
+            entite = re.search(r'ArgumentEntityAttribute\s+Value="([^"]+)"', corps)
+            self.p(f"        paramètre {nom:<32} {typ.split(':')[-1]:<18} {requis}" + (f"  ({entite.group(1)})" if entite else ""))
 
     def lancer(self) -> list[str]:
         g = self.gw
@@ -205,13 +224,15 @@ class Decouverte:
                 self.p(f"    non lisible ({ex})")
         self.p("\n[Processus « Resolve Opp Won »]  → opportunite.workflow (catégorie : 0 = workflow lançable, 1 = dialogue, 3 = action)")
         try:
-            wfs = g._get("workflows", "Processus", {"$select": "name,uniquename,category,ondemand,primaryentity",
+            wfs = g._get("workflows", "Processus", {"$select": "workflowid,name,uniquename,category,ondemand,primaryentity",
                          "$filter": "type eq 1 and statecode eq 1"}).get("value", [])
             hits = [w for w in wfs if (w.get("primaryentity") == "opportunity" or "opp" in _n(w.get("name", "")))
                     and any(m in _n(w.get("name", "")) for m in ("resolve", "won", "win", "gagn", "qualif", "sold", "vente"))]
             for w in hits:
                 self.p(f"    « {w.get('name')} »  catégorie {w.get('category')}  à la demande = {w.get('ondemand')}  ({w.get('primaryentity')})"
                        + (f"  nom technique {w.get('uniquename')}" if w.get("uniquename") else ""))
+                if w.get("category") == 3:
+                    self._parametres_action(w["workflowid"])
             if not hits:
                 self.p("    aucun processus trouvé : methode = \"win\" (action standard) ou \"assiste\".")
         except Exception as ex:  # noqa: BLE001

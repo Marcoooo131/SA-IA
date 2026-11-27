@@ -15,7 +15,7 @@ from typing import Protocol
 from zoneinfo import ZoneInfo
 
 from .config import Config, Pack
-from .models import Compte, CrmError, Creneau, NouvelleAdresse, Ref, SessionExpired, WorkOrder
+from .models import Blocage, Compte, CrmError, Creneau, NouvelleAdresse, Ref, SessionExpired, WorkOrder
 
 PARIS = ZoneInfo("Europe/Paris")
 ANNOT = 'odata.include-annotations="*"'
@@ -33,7 +33,7 @@ class Gateway(Protocol):
     def terminer_move_out(self, case_id: str) -> None: ...
     def wo_du_case(self, case_id: str) -> WorkOrder | None: ...
     def opp_du_case(self, case_id: str, compte_id: str) -> str: ...
-    def qualifier_opp(self, opp_id: str) -> None: ...
+    def qualifier_opp(self, opp_id: str, ctx: dict | None = None) -> None: ...
     def next_invoice(self, record_id: str) -> date | None: ...
     def maj_last_income(self, record_id: str, d: date) -> None: ...
     def lire_wo(self, wo_id: str) -> WorkOrder: ...
@@ -296,13 +296,25 @@ class DataverseGateway:
         body.update(o.champs_fixes)
         return body
 
-    def corps_gagner(self, opp_id: str) -> tuple[str, dict]:
+    def corps_gagner(self, opp_id: str, ctx: dict | None = None) -> tuple[str, dict]:
         o = self.cfg.opportunite
         if o.methode == "action":
             unique, entite = self._action_par_nom(o.workflow)
+            jetons = {"aujourdhui": date.today().isoformat(), "opp_id": _guid(opp_id), **(ctx or {})}
+
+            def remplir(v):
+                if isinstance(v, dict):
+                    return {k: remplir(x) for k, x in v.items()}
+                if isinstance(v, list):
+                    return [remplir(x) for x in v]
+                if isinstance(v, str):
+                    for k, x in jetons.items():
+                        v = v.replace("{" + k + "}", str(x or ""))
+                return v
+            params = remplir(dict(o.parametres))
             if entite and entite != "none":
-                return f"opportunities({_guid(opp_id)})/Microsoft.Dynamics.CRM.{unique}", {}
-            return unique, {"Target": {"opportunityid": _guid(opp_id), "@odata.type": "Microsoft.Dynamics.CRM.opportunity"}}
+                return f"opportunities({_guid(opp_id)})/Microsoft.Dynamics.CRM.{unique}", params
+            return unique, {"Target": {"opportunityid": _guid(opp_id), "@odata.type": "Microsoft.Dynamics.CRM.opportunity"}, **params}
         if o.methode == "workflow":
             wid = self._par_nom_workflow(o.workflow)
             return f"workflows({wid})/Microsoft.Dynamics.CRM.ExecuteWorkflow", {"EntityId": _guid(opp_id)}
@@ -326,12 +338,24 @@ class DataverseGateway:
             raise CrmError(f"Processus « {nom} » {'introuvable ou inactif' if not rows else 'en double'}.")
         return rows[0]["workflowid"]
 
-    def qualifier_opp(self, opp_id: str) -> None:
+    def opp_gagnee(self, opp_id: str) -> bool:
+        return self._get(f"opportunities({_guid(opp_id)})", "Statut de l'opportunité", {"$select": "statecode"}).get("statecode") == 1
+
+    def qualifier_opp(self, opp_id: str, ctx: dict | None = None) -> None:
+        if self.opp_gagnee(opp_id):
+            return                                    # déjà gagnée (à la main) : rien à refaire
         corps = self.corps_vente()
         if corps:
             self._patch(f"opportunities({_guid(opp_id)})", corps, "Sold Date de l'opportunité")
-        chemin, body = self.corps_gagner(opp_id)
-        self._post(chemin, body, "Resolve Opp Won")
+        chemin, body = self.corps_gagner(opp_id, ctx)
+        try:
+            self._post(chemin, body, "Resolve Opp Won")
+        except CrmError as e:
+            if "unresolved parameters" in str(e) or "parameter" in str(e).lower():
+                raise Blocage("L'action « Resolve Opp Won » attend des paramètres que la config ne fournit pas encore.",
+                              action="Cliquez « Resolve Opp Won » puis « Finish » sur l'opportunité ouverte dans Edge, puis « Reprendre ». "
+                                     "Lancez ensuite 3-decouvrir.bat : la section [Processus] liste ces paramètres.") from e
+            raise
         lu = self._get(f"opportunities({_guid(opp_id)})", "Relecture de l'opportunité", {"$select": "statecode"})
         if lu.get("statecode") != 1:
             raise CrmError("L'opportunité n'est pas passée en « Gagnée » : vérifiez la fiche.")

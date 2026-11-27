@@ -151,6 +151,7 @@ class OpportuniteCfg:
     champs_fixes: dict = field(default_factory=dict)   # autres champs à écrire avant de gagner (nom logique → valeur)
     statut_gagne: int = 3          # statuscode « Won »
     workflow: str = ""             # nom exact du processus ou de l'action « Resolve Opp Won » (methode = "workflow" ou "action")
+    parametres: dict = field(default_factory=dict)   # paramètres de l'action ; jetons {aujourdhui} {case_id} {compte_id} {contrat_id} {installation_id} {opp_id}
     attente_secondes: int = 60     # attente de l'opportunité après le case
 
 

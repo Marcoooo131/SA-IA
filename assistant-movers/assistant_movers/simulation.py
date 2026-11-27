@@ -57,11 +57,11 @@ class SimulationGateway:
     def opp_du_case(self, case_id, compte_id):
         return "sim-opp"
 
-    def qualifier_opp(self, opp_id):
+    def qualifier_opp(self, opp_id, ctx=None):
         corps = self._corps("corps_vente")
         if corps is not None:
             self._note("Sold Date de l'opportunité", "PATCH", f"opportunities({opp_id})", corps)
-            chemin, body = self.reel.corps_gagner("00000000-0000-0000-0000-000000000000")
+            chemin, body = self.reel.corps_gagner("00000000-0000-0000-0000-000000000000", ctx)
             self._note("Resolve Opp Won", "POST", chemin, body)
         else:
             self._note("Opportunité", "PATCH+POST", f"opportunities({opp_id})", {"sold_date": "aujourd'hui", "resolve": "Won"})
