@@ -183,7 +183,7 @@ def test_opportunite_gagnee_par_l_action_du_bouton():
                 return Response(200, {"value": [{"uniquename": "sa_CreateContractAndInstallationOnOppAndSetOppAsWon",
                                                  "primaryentity": "opportunity"}]}, {})
             if method == "GET" and path.startswith("opportunities("):
-                return Response(200, {"statecode": 1}, {})
+                return Response(200, {"statecode": 1 if any(m == "POST" for m, *_ in self.ecrits) else 0}, {})
             if method == "GET":
                 return Response(200, {"value": []}, {})
             self.ecrits.append((method, path, json))
@@ -197,3 +197,33 @@ def test_opportunite_gagnee_par_l_action_du_bouton():
     assert t.ecrits[0][0] == "PATCH" and "log_solddate" in t.ecrits[0][2]
     assert t.ecrits[1][1] == ("opportunities(55555555-5555-5555-5555-555555555555)/"
                               "Microsoft.Dynamics.CRM.sa_CreateContractAndInstallationOnOppAndSetOppAsWon")
+
+
+def test_opportunite_deja_gagnee_rien_a_refaire_et_parametres_remplis():
+    class Lect:
+        def __init__(self, etat):
+            self.etat, self.ecrits = etat, []
+
+        def request(self, method, path, *, params=None, json=None, headers=None):
+            if method == "GET" and path == "workflows":
+                return Response(200, {"value": [{"uniquename": "sa_X", "primaryentity": "opportunity"}]}, {})
+            if method == "GET" and path.startswith("opportunities("):
+                return Response(200, {"statecode": self.etat}, {})
+            if method == "GET":
+                return Response(200, {"value": []}, {})
+            self.ecrits.append((method, path, json))
+            if method == "POST":
+                self.etat = 1
+            return Response(204, None, {})
+
+    cfg = cfg_complete()
+    cfg.opportunite.methode, cfg.opportunite.workflow, cfg.opportunite.date_vente_attr = "action", "X", "log_solddate"
+    cfg.opportunite.parametres = {"SoldDate": "{aujourdhui}", "Contract": {"@odata.type": "Microsoft.Dynamics.CRM.log_contract",
+                                                                          "log_contractid": "{contrat_id}"}}
+    t = Lect(1)
+    DataverseGateway(cfg, t).qualifier_opp("55555555-5555-5555-5555-555555555555")
+    assert t.ecrits == []
+    t = Lect(0)
+    DataverseGateway(cfg, t).qualifier_opp("55555555-5555-5555-5555-555555555555", {"contrat_id": "abc"})
+    corps = t.ecrits[1][2]
+    assert corps["SoldDate"] == date.today().isoformat() and corps["Contract"]["log_contractid"] == "abc"

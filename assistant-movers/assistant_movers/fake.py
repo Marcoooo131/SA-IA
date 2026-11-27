@@ -88,7 +88,7 @@ class FakeCrm:
     def opp_du_case(self, case_id, compte_id):
         return f"opp-{case_id[:8]}"
 
-    def qualifier_opp(self, opp_id):
+    def qualifier_opp(self, opp_id, ctx=None):
         self.writes += 1
 
     def next_invoice(self, record_id):

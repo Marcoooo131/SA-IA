@@ -37,7 +37,8 @@ def qualifier_opp(gw, dossier: Dossier, methode: str, secondes: int, pause: floa
     if methode == "assiste":
         raise Blocage("Qualifiez l'opportunité ouverte dans Edge.",
                       action="Sold Date = aujourd'hui, « Resolve Opp Won », puis « Finish » ; ensuite « Reprendre ».")
-    gw.qualifier_opp(dossier.opp_id)
+    gw.qualifier_opp(dossier.opp_id, {"case_id": dossier.case_id, "compte_id": dossier.compte.id,
+                                      "contrat_id": dossier.contrat_id, "installation_id": dossier.installation_id})
     dossier.opp_gagnee = True
 
 
