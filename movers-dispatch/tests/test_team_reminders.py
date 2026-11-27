@@ -44,7 +44,7 @@ def test_assigned_tasks_land_sorted_in_the_team_file(tmp_path):
     first = data["reminders"][0]
     assert first["start"] == "2099-10-30T08:15:00Z" and first["subject"] == "Movers - Résiliation"
     assert first["client"] and first["collaborator_key"] == "chloe"
-    assert {c["key"] for c in data["collaborators"]} == {"kader", "estefania", "marc-antoine", "chloe"}
+    assert {c["key"] for c in data["collaborators"]} == {"kader", "agathe", "marc-antoine", "chloe"}
     assert actions(agent, late) == actions(agent, early) == ["rappel_enregistre"]
     csv_text = (tmp_path / team_reminders.CSV_NAME).read_text(encoding="utf-8-sig")
     assert csv_text.splitlines()[1].startswith("30/10/2099;09:15;;Chloé;Movers - Résiliation")

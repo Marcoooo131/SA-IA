@@ -2,8 +2,9 @@
 
 Agent qui parcourt les mails et tâches Movers du CRM (sous-tableaux *Queue Item - Movers - Emails* et
 *Queue Item - Movers tasks*), retrouve le **Case** Movers indiqué par le champ **Regarding**, lit l'**Owner**
-de ce Case et renseigne le même collaborateur dans le champ **Worked By** du Queue Item. Seuls Kader,
-Estefania, Marc-Antoine et Chloé peuvent être affectés. Quand aucun Case ne désigne l'un d'eux, une liste
+de ce Case et renseigne le même collaborateur dans le champ **Worked By** du Queue Item. Seuls les
+collègues de `dispatch.toml` peuvent être affectés : Kader, Agathe, Marc-Antoine et Chloé (Agathe remplace
+Estefania, voir `windows\7-changer-collegue.bat`). Quand aucun Case ne désigne l'un d'eux, une liste
 déroulante du tableau de bord permet de choisir à qui attribuer l'élément.
 
 > **État actuel : à lire avant toute utilisation**

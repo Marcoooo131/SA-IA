@@ -223,6 +223,42 @@ def cmd_journal(args) -> None:
             print(f"{len(rows)} ligne(s) exportée(s) dans {args.output}")
 
 
+def cmd_collegue(args) -> None:
+    """Replaces a collaborator: the new one's systemuser_id is read in the CRM, shown, then written after « O »."""
+    from . import team
+
+    cfg = _load(args)
+    old = cfg.collaborator(args.ancien.strip().lower())
+    if old is None:
+        sys.exit(f"« {args.ancien} » n'est pas dans dispatch.toml. Clés présentes : {', '.join(c.key for c in cfg.collaborators)}")
+    first_name, last_name = args.prenom.strip(), args.nom.strip()
+    new_key = team.make_key(first_name)
+    if cfg.collaborator(new_key):
+        sys.exit(f"« {new_key} » est déjà dans dispatch.toml : rien à faire.")
+    gw, t = connect(cfg)
+    try:
+        if not isinstance(gw, DataverseGateway):
+            sys.exit("Connexion de démonstration : rien à faire.")
+        user = team.pick_user(gw.find_users(first_name), first_name, last_name)
+    except (CrmError, team.TeamError) as e:
+        sys.exit(str(e))
+    finally:
+        if t:
+            t.close()
+    print(f"\n{old.first_name} quitte la rotation, remplacé(e) par :")
+    print(f"    {user.get('fullname')}  <{user.get('domainname')}>  actif")
+    print(f"    systemuser_id = {user['systemuserid']}")
+    if not args.oui and input("\nC'est la bonne personne ? Taper O puis Entrée pour confirmer : ").strip().lower() not in ("o", "oui"):
+        sys.exit("Rien n'a été modifié.")
+    try:
+        backup = team.apply(cfg.path, Journal(cfg.database), old.key, new_key, user.get("firstname") or first_name,
+                            user["systemuserid"].lower())
+    except (team.TeamError, config_mod.ConfigError, OSError) as e:
+        sys.exit(f"Rien n'a été modifié : {e}")
+    print(f"\nC'est fait. {user.get('firstname')} remplace {old.first_name} dans dispatch.toml et dans les 4 rotations "
+          f"(à la même place).\nAncienne version gardée : {backup.name}\nRelancez 4-lancer.bat.")
+
+
 def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     p = argparse.ArgumentParser(prog="movers-dispatch", description=__doc__)
@@ -264,6 +300,14 @@ def main(argv: list[str] | None = None) -> None:
     sp.add_argument("--corrections", action="store_true", help="corrections faites en mode Supervisé (à analyser)")
     sp.add_argument("--output", "-o", help="fichier CSV à écrire (sinon : affichage)")
     sp.set_defaults(func=cmd_journal)
+
+    sp = sub.add_parser("collegue", help="remplace un collègue qui quitte l'équipe par un nouveau (dispatch.toml + rotations)")
+    common(sp, demo=False)
+    sp.add_argument("--ancien", required=True, help="clé du collègue qui part (ex. estefania)")
+    sp.add_argument("--prenom", required=True, help="prénom du nouveau collègue, comme dans le CRM")
+    sp.add_argument("--nom", required=True, help="nom de famille du nouveau collègue, comme dans le CRM")
+    sp.add_argument("--oui", action="store_true", help="ne pas demander de confirmation")
+    sp.set_defaults(func=cmd_collegue)
 
     args = p.parse_args(argv)
     args.func(args)
